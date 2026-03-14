@@ -1,0 +1,58 @@
+{
+  "nav": {
+    "home": "Home",
+    "products": "Products",
+    "reports": "Reports"
+  },
+  "home": {
+    "title": "MediaWorks",
+    "subtitle": "Home Shopping Research Automation Platform",
+    "description": "Upload product files to automatically generate comprehensive home shopping research reports",
+    "uploadTitle": "Upload Product Files",
+    "uploadDescription": "Drag & drop or click to upload PDF, PPT, DOCX, or image files",
+    "uploadButton": "Choose Files",
+    "supportedFormats": "Supported: PDF, PPT, PPTX, DOCX, DOC, JPG, PNG, GIF",
+    "analyzing": "Analyzing...",
+    "uploadSuccess": "File uploaded successfully",
+    "recentProducts": "Recent Products",
+    "noProducts": "No products yet. Upload a file to get started.",
+    "viewReport": "View Report",
+    "status": {
+      "pending": "Pending",
+      "analyzing": "Analyzing",
+      "completed": "Completed",
+      "failed": "Failed"
+    }
+  },
+  "report": {
+    "title": "Research Report",
+    "downloadPdf": "Download PDF",
+    "generating": "Generating Report...",
+    "productInfo": "Product Information",
+    "marketability": "Marketability Analysis",
+    "demographics": "Target Demographics",
+    "seasonality": "Seasonality",
+    "cogsAnalysis": "Cost Analysis (COGS)",
+    "influencers": "Recommended Influencers",
+    "contentIdeas": "Content Ideas",
+    "score": "Score",
+    "platform": "Platform",
+    "followers": "Followers",
+    "matchReason": "Match Reason",
+    "jan": "Jan", "feb": "Feb", "mar": "Mar", "apr": "Apr",
+    "may": "May", "jun": "Jun", "jul": "Jul", "aug": "Aug",
+    "sep": "Sep", "oct": "Oct", "nov": "Nov", "dec": "Dec",
+    "supplier": "Supplier",
+    "estimatedCost": "Est. Cost",
+    "moq": "MOQ",
+    "link": "Link",
+    "ageGroup": "Age Group",
+    "gender": "Gender",
+    "interests": "Interests",
+    "income": "Income Level"
+  },
+  "language": {
+    "en": "English",
+    "ja": "日本語"
+  }
+}

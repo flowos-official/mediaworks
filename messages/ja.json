@@ -1,0 +1,58 @@
+{
+  "nav": {
+    "home": "ホーム",
+    "products": "商品",
+    "reports": "レポート"
+  },
+  "home": {
+    "title": "MediaWorks",
+    "subtitle": "ホームショッピング リサーチ自動化プラットフォーム",
+    "description": "商品ファイルをアップロードして、ホームショッピング向けの総合リサーチレポートを自動生成",
+    "uploadTitle": "商品ファイルをアップロード",
+    "uploadDescription": "ドラッグ＆ドロップ、またはクリックしてPDF・PPT・DOCX・画像ファイルをアップロード",
+    "uploadButton": "ファイルを選択",
+    "supportedFormats": "対応形式: PDF, PPT, PPTX, DOCX, DOC, JPG, PNG, GIF",
+    "analyzing": "分析中...",
+    "uploadSuccess": "アップロード完了",
+    "recentProducts": "最近の商品",
+    "noProducts": "商品がありません。ファイルをアップロードして開始してください。",
+    "viewReport": "レポートを見る",
+    "status": {
+      "pending": "待機中",
+      "analyzing": "分析中",
+      "completed": "完了",
+      "failed": "エラー"
+    }
+  },
+  "report": {
+    "title": "リサーチレポート",
+    "downloadPdf": "PDFダウンロード",
+    "generating": "レポート生成中...",
+    "productInfo": "商品情報",
+    "marketability": "市場性分析",
+    "demographics": "ターゲット人口統計",
+    "seasonality": "季節性",
+    "cogsAnalysis": "原価分析（COGS）",
+    "influencers": "推奨インフルエンサー",
+    "contentIdeas": "コンテンツアイデア",
+    "score": "スコア",
+    "platform": "プラットフォーム",
+    "followers": "フォロワー",
+    "matchReason": "マッチング理由",
+    "jan": "1月", "feb": "2月", "mar": "3月", "apr": "4月",
+    "may": "5月", "jun": "6月", "jul": "7月", "aug": "8月",
+    "sep": "9月", "oct": "10月", "nov": "11月", "dec": "12月",
+    "supplier": "サプライヤー",
+    "estimatedCost": "推定コスト",
+    "moq": "最小注文数",
+    "link": "リンク",
+    "ageGroup": "年齢層",
+    "gender": "性別",
+    "interests": "関心事",
+    "income": "収入レベル"
+  },
+  "language": {
+    "en": "English",
+    "ja": "日本語"
+  }
+}
