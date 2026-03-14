@@ -6,7 +6,7 @@ import { runProductResearch } from '@/lib/brave';
 export const maxDuration = 300; // 5 minutes
 
 export async function POST(request: NextRequest) {
-  const { productId, fileBase64, mimeType, fileName } = await request.json();
+  const { productId, fileBase64, mimeType, fileName, locale = 'en' } = await request.json();
   
   const supabase = getServiceClient();
 
@@ -17,9 +17,9 @@ export async function POST(request: NextRequest) {
       .update({ status: 'analyzing' })
       .eq('id', productId);
 
-    // Step 1: Extract product info with Gemini
-    console.log(`[${productId}] Extracting product info...`);
-    const productInfo = await extractProductInfo(fileBase64, mimeType, fileName);
+    // Step 1: Extract product info with Gemini (locale-aware)
+    console.log(`[${productId}] Extracting product info (locale: ${locale})...`);
+    const productInfo = await extractProductInfo(fileBase64, mimeType, fileName, locale);
 
     // Update product name and description
     await supabase
@@ -30,13 +30,13 @@ export async function POST(request: NextRequest) {
       })
       .eq('id', productId);
 
-    // Step 2: Run web research with Brave
-    console.log(`[${productId}] Running web research...`);
-    const searchResults = await runProductResearch(productInfo.name, productInfo.category);
+    // Step 2: Run web research with Brave (locale-aware Japanese queries)
+    console.log(`[${productId}] Running web research (locale: ${locale})...`);
+    const searchResults = await runProductResearch(productInfo.name, productInfo.category, locale);
 
-    // Step 3: Synthesize research with Gemini
-    console.log(`[${productId}] Synthesizing research...`);
-    const research = await synthesizeResearch(productInfo, searchResults);
+    // Step 3: Synthesize research with Gemini (locale-aware output)
+    console.log(`[${productId}] Synthesizing research (locale: ${locale})...`);
+    const research = await synthesizeResearch(productInfo, searchResults, locale);
 
     // Step 4: Save research results
     const { error: researchError } = await supabase
@@ -53,7 +53,8 @@ export async function POST(request: NextRequest) {
         raw_json: {
           product_info: productInfo,
           search_results: searchResults,
-          research
+          research,
+          locale
         }
       });
 

@@ -11,6 +11,7 @@ interface Props {
       link?: string;
     }>;
     summary: string;
+    margin_analysis?: string;
   };
 }
 
@@ -63,6 +64,14 @@ export default function CogsSection({ cogs_estimate }: Props) {
           </table>
         </div>
         <p className="text-sm text-gray-600 bg-green-50 p-3 rounded-lg">{cogs_estimate.summary}</p>
+        {cogs_estimate.margin_analysis && (
+          <div className="bg-yellow-50 p-3 rounded-lg">
+            <p className="text-xs font-semibold text-yellow-700 mb-1">
+              マージン分析 / Margin Analysis
+            </p>
+            <p className="text-sm text-yellow-900">{cogs_estimate.margin_analysis}</p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

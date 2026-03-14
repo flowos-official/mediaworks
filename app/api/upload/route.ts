@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase';
-import { extractProductInfo } from '@/lib/gemini';
 
 const SUPPORTED_MIME_TYPES: Record<string, string> = {
   'application/pdf': 'application/pdf',
@@ -18,6 +17,8 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
+    // Accept locale from the form data; defaults to 'en'
+    const locale = (formData.get('locale') as string) || 'en';
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
@@ -65,7 +66,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to create product record' }, { status: 500 });
     }
 
-    // Trigger async analysis
+    // Trigger async analysis with locale
     const base64 = Buffer.from(fileBytes).toString('base64');
     
     // Start async analysis (fire and forget)
@@ -77,7 +78,8 @@ export async function POST(request: NextRequest) {
         productId: product.id,
         fileBase64: base64,
         mimeType,
-        fileName: file.name
+        fileName: file.name,
+        locale  // ← pass locale to analysis pipeline
       })
     }).catch(console.error);
 

@@ -93,6 +93,12 @@ export default async function ProductReportPage({
             <MarketabilitySection
               score={research.marketability_score}
               description={research.marketability_description}
+              market_size={research.market_size}
+              competitors={research.competitors}
+              usp_points={research.usp_points}
+              risk_analysis={research.risk_analysis}
+              recommended_sales_timing={research.recommended_sales_timing}
+              expected_roi={research.expected_roi}
             />
 
             {/* Demographics */}

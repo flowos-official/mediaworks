@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { Upload, FileText, Image, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -11,6 +11,7 @@ interface FileUploadProps {
 
 export default function FileUpload({ onUploadComplete }: FileUploadProps) {
   const t = useTranslations('home');
+  const locale = useLocale();
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
@@ -32,7 +33,7 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
   const handleFile = async (file: File) => {
     if (!ACCEPTED.includes(file.type)) {
       setStatus('error');
-      setStatusMsg('Unsupported file type');
+      setStatusMsg(locale === 'ja' ? 'サポートされていないファイル形式です' : 'Unsupported file type');
       return;
     }
 
@@ -42,6 +43,7 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
     try {
       const formData = new FormData();
       formData.append('file', file);
+      formData.append('locale', locale); // ← pass locale to upload API
 
       const res = await fetch('/api/upload', {
         method: 'POST',
@@ -55,7 +57,9 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
       onUploadComplete();
     } catch {
       setStatus('error');
-      setStatusMsg('Upload failed. Please try again.');
+      setStatusMsg(
+        locale === 'ja' ? 'アップロードに失敗しました。もう一度お試しください。' : 'Upload failed. Please try again.'
+      );
     } finally {
       setUploading(false);
     }
@@ -66,7 +70,7 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
     setIsDragging(false);
     const file = e.dataTransfer.files[0];
     if (file) handleFile(file);
-  }, []);
+  }, [locale]);
 
   const onDragOver = (e: React.DragEvent) => {
     e.preventDefault();
