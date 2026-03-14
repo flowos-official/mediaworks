@@ -2,51 +2,16 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
-export async function extractProductInfo(fileBase64: string, mimeType: string, fileName: string): Promise<{
+export interface ProductInfo {
   name: string;
   description: string;
   features: string[];
   category: string;
   price_range?: string;
   target_market?: string;
-}> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-
-  const prompt = `You are a product analyst for home shopping channels. Analyze this file and extract all product information.
-
-Return a JSON object with these fields:
-- name: Product name (string)
-- description: Detailed product description (string)
-- features: Key product features (array of strings)
-- category: Product category (string)
-- price_range: Price range if mentioned (string, optional)
-- target_market: Target market if mentioned (string, optional)
-
-File name: ${fileName}
-
-Return only valid JSON, no markdown.`;
-
-  const result = await model.generateContent([
-    {
-      inlineData: {
-        mimeType,
-        data: fileBase64
-      }
-    },
-    prompt
-  ]);
-
-  const text = result.response.text().trim();
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error('Failed to extract product info from file');
-  
-  return JSON.parse(jsonMatch[0]);
 }
 
-export async function synthesizeResearch(
-  productInfo: Record<string, unknown>,
-  searchResults: Record<string, string>
-): Promise<{
+export interface ResearchOutput {
   marketability_score: number;
   marketability_description: string;
   demographics: {
@@ -77,8 +42,51 @@ export async function synthesizeResearch(
     description: string;
     format: string;
   }>;
-}> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+}
+
+export async function extractProductInfo(
+  fileBase64: string,
+  mimeType: string,
+  fileName: string
+): Promise<ProductInfo> {
+  const model = genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' });
+
+  const prompt = `You are a product analyst for home shopping channels. Analyze this file and extract all product information.
+
+Return a JSON object with these fields:
+- name: Product name (string)
+- description: Detailed product description (string)
+- features: Key product features (array of strings)
+- category: Product category (string)
+- price_range: Price range if mentioned (string, optional)
+- target_market: Target market if mentioned (string, optional)
+
+File name: ${fileName}
+
+Return only valid JSON, no markdown.`;
+
+  const result = await model.generateContent([
+    {
+      inlineData: {
+        mimeType,
+        data: fileBase64,
+      },
+    },
+    prompt,
+  ]);
+
+  const text = result.response.text().trim();
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('Failed to extract product info from file');
+
+  return JSON.parse(jsonMatch[0]) as ProductInfo;
+}
+
+export async function synthesizeResearch(
+  productInfo: ProductInfo,
+  searchResults: Record<string, string>
+): Promise<ResearchOutput> {
+  const model = genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' });
 
   const prompt = `You are a home shopping marketing research analyst. Based on the product information and web search results, generate a comprehensive research report.
 
@@ -86,7 +94,9 @@ Product Information:
 ${JSON.stringify(productInfo, null, 2)}
 
 Web Search Results:
-${Object.entries(searchResults).map(([key, val]) => `## ${key}\n${val}`).join('\n\n')}
+${Object.entries(searchResults)
+  .map(([key, val]) => `## ${key}\n${val}`)
+  .join('\n\n')}
 
 Generate a JSON response with these exact fields:
 {
@@ -138,6 +148,6 @@ Provide 3-5 items for influencers and content_ideas. Return only valid JSON, no 
   const text = result.response.text().trim();
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error('Failed to synthesize research');
-  
-  return JSON.parse(jsonMatch[0]);
+
+  return JSON.parse(jsonMatch[0]) as ResearchOutput;
 }
