@@ -1,61 +1,77 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { useState } from 'react';
+import { Tv, Copy, Check } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-interface BroadcastScripts {
-	sec30: string;
-	sec60: string;
-	min5: string;
+interface Props {
+  broadcast_scripts: {
+    sec30: string;
+    sec60: string;
+    min5: string;
+  };
 }
 
-interface BroadcastScriptSectionProps {
-	scripts: BroadcastScripts;
-}
-
-const TABS = [
-	{ key: "sec30" as const, label: "30초" },
-	{ key: "sec60" as const, label: "60초" },
-	{ key: "min5" as const, label: "5분" },
+const tabs = [
+  { key: 'sec30' as const, label: '30秒' },
+  { key: 'sec60' as const, label: '60秒' },
+  { key: 'min5' as const, label: '5分' },
 ];
 
-export default function BroadcastScriptSection({
-	scripts,
-}: BroadcastScriptSectionProps) {
-	const [activeTab, setActiveTab] = useState<keyof BroadcastScripts>("sec30");
+export default function BroadcastScriptSection({ broadcast_scripts }: Props) {
+  const [activeTab, setActiveTab] = useState<'sec30' | 'sec60' | 'min5'>('sec30');
+  const [copied, setCopied] = useState(false);
 
-	if (!scripts) return null;
+  if (!broadcast_scripts) return null;
 
-	return (
-		<Card>
-			<CardContent className="p-6">
-				<h3 className="text-lg font-semibold text-gray-900 mb-4">
-					방송 스크립트
-				</h3>
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(broadcast_scripts[activeTab]);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
-				<div className="flex gap-2 mb-4">
-					{TABS.map(({ key, label }) => (
-						<button
-							key={key}
-							type="button"
-							onClick={() => setActiveTab(key)}
-							className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-								activeTab === key
-									? "bg-blue-600 text-white"
-									: "bg-gray-100 text-gray-600 hover:bg-gray-200"
-							}`}
-						>
-							{label}
-						</button>
-					))}
-				</div>
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <Tv size={20} className="text-purple-600" />
+          放送台本
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex gap-2">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                activeTab === tab.key
+                  ? 'bg-purple-600 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-				<div className="bg-gray-50 rounded-lg p-4">
-					<p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
-						{scripts[activeTab] || "스크립트가 아직 생성되지 않았습니다."}
-					</p>
-				</div>
-			</CardContent>
-		</Card>
-	);
+        <div className="relative">
+          <div className="bg-gray-50 rounded-xl p-5 text-sm leading-relaxed text-gray-800 whitespace-pre-wrap">
+            {broadcast_scripts[activeTab]}
+          </div>
+          <button
+            onClick={handleCopy}
+            className="absolute top-3 right-3 p-2 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
+            title="コピー"
+          >
+            {copied ? (
+              <Check size={14} className="text-green-600" />
+            ) : (
+              <Copy size={14} className="text-gray-500" />
+            )}
+          </button>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }

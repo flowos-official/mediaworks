@@ -9,6 +9,18 @@ interface FileUploadProps {
   onUploadComplete: () => void;
 }
 
+const ACCEPTED = [
+  'application/pdf',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+];
+
 export default function FileUpload({ onUploadComplete }: FileUploadProps) {
   const t = useTranslations('home');
   const locale = useLocale();
@@ -17,18 +29,6 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [statusMsg, setStatusMsg] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const ACCEPTED = [
-    'application/pdf',
-    'application/vnd.ms-powerpoint',
-    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'image/jpeg',
-    'image/png',
-    'image/gif',
-    'image/webp',
-  ];
 
   const handleFile = useCallback(async (file: File) => {
     if (!ACCEPTED.includes(file.type)) {
@@ -43,7 +43,7 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('locale', locale); // ← pass locale to upload API
+      formData.append('locale', locale);
 
       const res = await fetch('/api/upload', {
         method: 'POST',
@@ -63,7 +63,7 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
     } finally {
       setUploading(false);
     }
-  }, [locale, t, onUploadComplete]);
+  }, [t, onUploadComplete, locale]);
 
   const onDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
