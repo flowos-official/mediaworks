@@ -30,7 +30,7 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
     'image/webp',
   ];
 
-  const handleFile = async (file: File) => {
+  const handleFile = useCallback(async (file: File) => {
     if (!ACCEPTED.includes(file.type)) {
       setStatus('error');
       setStatusMsg(locale === 'ja' ? 'サポートされていないファイル形式です' : 'Unsupported file type');
@@ -63,14 +63,14 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
     } finally {
       setUploading(false);
     }
-  };
+  }, [locale, t, onUploadComplete]);
 
   const onDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
     const file = e.dataTransfer.files[0];
     if (file) handleFile(file);
-  }, [locale]);
+  }, [handleFile]);
 
   const onDragOver = (e: React.DragEvent) => {
     e.preventDefault();

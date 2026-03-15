@@ -8,6 +8,9 @@ import SeasonalitySection from '@/components/report/SeasonalitySection';
 import CogsSection from '@/components/report/CogsSection';
 import InfluencersSection from '@/components/report/InfluencersSection';
 import ContentIdeasSection from '@/components/report/ContentIdeasSection';
+import CompetitorSection from '@/components/report/CompetitorSection';
+import BroadcastScriptSection from '@/components/report/BroadcastScriptSection';
+import JapanExportSection from '@/components/report/JapanExportSection';
 import PdfDownload from '@/components/report/PdfDownload';
 import { ArrowLeft, Package, Calendar } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -115,6 +118,27 @@ export default async function ProductReportPage({
 
             {/* Content Ideas */}
             <ContentIdeasSection content_ideas={research.content_ideas} />
+
+            {/* Competitor Analysis */}
+            {research.competitor_analysis && (
+              <CompetitorSection
+                competitors={research.competitor_analysis}
+                recommendedPriceRange={research.recommended_price_range || ''}
+              />
+            )}
+
+            {/* Japan Export Score */}
+            {research.japan_export_fit_score != null && (
+              <JapanExportSection
+                score={research.japan_export_fit_score}
+                recommendedPriceRange={research.recommended_price_range || ''}
+              />
+            )}
+
+            {/* Broadcast Scripts */}
+            {research.broadcast_scripts && (
+              <BroadcastScriptSection scripts={research.broadcast_scripts} />
+            )}
           </div>
         )}
       </main>
