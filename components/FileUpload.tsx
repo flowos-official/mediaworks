@@ -9,41 +9,53 @@ interface FileUploadProps {
   onUploadComplete: () => void;
 }
 
+const ACCEPTED = [
+  'application/pdf',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+];
+
 export default function FileUpload({ onUploadComplete }: FileUploadProps) {
   const t = useTranslations('home');
   const locale = useLocale();
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadCount, setUploadCount] = useState(0);
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [statusMsg, setStatusMsg] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const ACCEPTED = [
-    'application/pdf',
-    'application/vnd.ms-powerpoint',
-    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'image/jpeg',
-    'image/png',
-    'image/gif',
-    'image/webp',
-  ];
+  const handleFiles = useCallback(async (fileList: FileList | File[]) => {
+    const files = Array.from(fileList).filter((f) => ACCEPTED.includes(f.type));
 
-  const handleFile = useCallback(async (file: File) => {
-    if (!ACCEPTED.includes(file.type)) {
+    if (files.length === 0) {
       setStatus('error');
-      setStatusMsg(locale === 'ja' ? 'サポートされていないファイル形式です' : 'Unsupported file type');
+      setStatusMsg(
+        locale === 'ja'
+          ? 'サポートされていないファイル形式です'
+          : 'Unsupported file type'
+      );
       return;
     }
 
     setUploading(true);
+    setUploadCount(files.length);
     setStatus('idle');
 
     try {
       const formData = new FormData();
-      formData.append('file', file);
-      formData.append('locale', locale); // ← pass locale to upload API
+      for (const file of files) {
+        formData.append('files', file);
+      }
+      formData.append('locale', locale);
 
       const res = await fetch('/api/upload', {
         method: 'POST',
@@ -52,25 +64,37 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
 
       if (!res.ok) throw new Error('Upload failed');
 
+      const data = await res.json();
       setStatus('success');
-      setStatusMsg(t('uploadSuccess'));
+      setStatusMsg(
+        locale === 'ja'
+          ? `${data.filesUploaded}件のファイルをアップロードしました`
+          : `${data.filesUploaded} file(s) uploaded successfully`
+      );
       onUploadComplete();
     } catch {
       setStatus('error');
       setStatusMsg(
-        locale === 'ja' ? 'アップロードに失敗しました。もう一度お試しください。' : 'Upload failed. Please try again.'
+        locale === 'ja'
+          ? 'アップロードに失敗しました。もう一度お試しください。'
+          : 'Upload failed. Please try again.'
       );
     } finally {
       setUploading(false);
+      setUploadCount(0);
     }
-  }, [locale, t, onUploadComplete]);
+  }, [locale, onUploadComplete]);
 
-  const onDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const file = e.dataTransfer.files[0];
-    if (file) handleFile(file);
-  }, [handleFile]);
+  const onDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setIsDragging(false);
+      if (e.dataTransfer.files.length > 0) {
+        handleFiles(e.dataTransfer.files);
+      }
+    },
+    [handleFiles]
+  );
 
   const onDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -80,8 +104,9 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
   const onDragLeave = () => setIsDragging(false);
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) handleFile(file);
+    if (e.target.files && e.target.files.length > 0) {
+      handleFiles(e.target.files);
+    }
   };
 
   return (
@@ -102,8 +127,9 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
         <input
           ref={fileInputRef}
           type="file"
+          multiple
           className="hidden"
-          accept=".pdf,.ppt,.pptx,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp"
+          accept=".pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.webp"
           onChange={onFileChange}
           disabled={uploading}
         />
@@ -121,7 +147,11 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
 
           <div>
             <p className="text-lg font-semibold text-gray-800">
-              {uploading ? t('analyzing') : t('uploadTitle')}
+              {uploading
+                ? locale === 'ja'
+                  ? `${uploadCount}件のファイルをアップロード中...`
+                  : `Uploading ${uploadCount} file(s)...`
+                : t('uploadTitle')}
             </p>
             {!uploading && (
               <p className="text-sm text-gray-500 mt-1">{t('uploadDescription')}</p>
@@ -131,7 +161,7 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
           {!uploading && (
             <div className="flex items-center gap-4 text-xs text-gray-400">
               <span className="flex items-center gap-1">
-                <FileText size={12} /> PDF, PPT, DOCX
+                <FileText size={12} /> PDF, PPT, DOCX, XLS
               </span>
               <span className="flex items-center gap-1">
                 <Image size={12} /> JPG, PNG

@@ -20,6 +20,16 @@ export type Product = {
   created_at: string;
 };
 
+export type ProductFile = {
+  id: string;
+  product_id: string;
+  file_url: string;
+  file_name: string;
+  mime_type: string;
+  is_primary: boolean;
+  created_at: string;
+};
+
 export type ResearchResult = {
   id: string;
   product_id: string;
