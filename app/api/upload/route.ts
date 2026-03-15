@@ -15,6 +15,29 @@ const SUPPORTED_MIME_TYPES = new Set([
   'image/webp',
 ]);
 
+// Fallback: infer MIME type from file extension when browser/curl doesn't set it
+const EXT_TO_MIME: Record<string, string> = {
+  '.pdf': 'application/pdf',
+  '.ppt': 'application/vnd.ms-powerpoint',
+  '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  '.doc': 'application/msword',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.xls': 'application/vnd.ms-excel',
+  '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+};
+
+function resolveMimeType(file: File): string | null {
+  if (file.type && SUPPORTED_MIME_TYPES.has(file.type)) return file.type;
+  const ext = file.name.match(/\.[^.]+$/)?.[0]?.toLowerCase();
+  if (ext && EXT_TO_MIME[ext]) return EXT_TO_MIME[ext];
+  return null;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
@@ -42,7 +65,8 @@ export async function POST(request: NextRequest) {
 
     // Upload all files to Supabase Storage
     for (const file of files) {
-      if (!SUPPORTED_MIME_TYPES.has(file.type)) {
+      const mimeType = resolveMimeType(file);
+      if (!mimeType) {
         console.warn(`Skipping unsupported file type: ${file.type} (${file.name})`);
         continue;
       }
@@ -54,7 +78,7 @@ export async function POST(request: NextRequest) {
       const { error: storageError } = await supabase.storage
         .from('product-files')
         .upload(storageFileName, fileBytes, {
-          contentType: file.type,
+          contentType: mimeType,
           upsert: false,
         });
 
@@ -71,7 +95,7 @@ export async function POST(request: NextRequest) {
         fileName: file.name,
         storageFileName,
         publicUrl: urlData.publicUrl,
-        mimeType: file.type,
+        mimeType,
         fileBytes,
       });
     }
