@@ -120,21 +120,24 @@ export default async function ProductReportPage({
             <ContentIdeasSection content_ideas={research.content_ideas} />
 
             {/* Competitor Analysis */}
-            {research.raw_json?.research?.competitor_analysis && (
-              <CompetitorSection competitor_analysis={research.raw_json.research.competitor_analysis} />
+            {research.competitor_analysis && (
+              <CompetitorSection
+                competitors={research.competitor_analysis}
+                recommendedPriceRange={research.recommended_price_range || ''}
+              />
+            )}
+
+            {/* Japan Export Score */}
+            {research.japan_export_fit_score != null && (
+              <JapanExportSection
+                score={research.japan_export_fit_score}
+                recommendedPriceRange={research.recommended_price_range || ''}
+              />
             )}
 
             {/* Broadcast Scripts */}
-            {research.raw_json?.research?.broadcast_scripts && (
-              <BroadcastScriptSection broadcast_scripts={research.raw_json.research.broadcast_scripts} />
-            )}
-
-            {/* Japan Export Fit */}
-            {research.raw_json?.research?.japan_export_fit_score != null && (
-              <JapanExportSection
-                japan_export_fit_score={research.raw_json.research.japan_export_fit_score}
-                recommended_price_range={research.raw_json.research.recommended_price_range || ''}
-              />
+            {research.broadcast_scripts && (
+              <BroadcastScriptSection scripts={research.broadcast_scripts} />
             )}
           </div>
         )}

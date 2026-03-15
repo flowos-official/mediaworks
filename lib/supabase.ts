@@ -16,7 +16,7 @@ export type Product = {
   description: string | null;
   file_url: string;
   file_name: string;
-  status: 'pending' | 'analyzing' | 'extracted' | 'completed' | 'failed';
+  status: 'pending' | 'extracted' | 'analyzing' | 'completed' | 'failed';
   created_at: string;
 };
 

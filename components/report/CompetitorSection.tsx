@@ -1,52 +1,65 @@
-'use client';
+"use client";
 
-import { Swords } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
-interface Props {
-  competitor_analysis: Array<{
-    name: string;
-    price: string;
-    platform: string;
-    key_difference: string;
-  }>;
+interface Competitor {
+	name: string;
+	price: string;
+	platform: string;
+	key_difference: string;
 }
 
-export default function CompetitorSection({ competitor_analysis }: Props) {
-  if (!competitor_analysis?.length) return null;
+interface CompetitorSectionProps {
+	competitors: Competitor[];
+	recommendedPriceRange: string;
+}
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Swords size={20} className="text-orange-600" />
-          競合分析
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left py-2 pr-4 text-gray-500 font-medium">商品名</th>
-                <th className="text-left py-2 pr-4 text-gray-500 font-medium">価格</th>
-                <th className="text-left py-2 pr-4 text-gray-500 font-medium">プラットフォーム</th>
-                <th className="text-left py-2 text-gray-500 font-medium">差別化ポイント</th>
-              </tr>
-            </thead>
-            <tbody>
-              {competitor_analysis.map((item, i) => (
-                <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="py-3 pr-4 font-medium text-gray-900">{item.name}</td>
-                  <td className="py-3 pr-4 text-orange-700 font-semibold">{item.price}</td>
-                  <td className="py-3 pr-4 text-gray-600">{item.platform}</td>
-                  <td className="py-3 text-gray-600">{item.key_difference}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </CardContent>
-    </Card>
-  );
+export default function CompetitorSection({
+	competitors,
+	recommendedPriceRange,
+}: CompetitorSectionProps) {
+	if (!competitors || competitors.length === 0) return null;
+
+	return (
+		<Card>
+			<CardContent className="p-6">
+				<h3 className="text-lg font-semibold text-gray-900 mb-4">
+					경쟁상품 분석
+				</h3>
+
+				{recommendedPriceRange && (
+					<div className="mb-4 p-3 bg-blue-50 rounded-lg">
+						<p className="text-sm text-blue-800">
+							<span className="font-semibold">권장 가격대 (일본 홈쇼핑):</span>{" "}
+							{recommendedPriceRange}
+						</p>
+					</div>
+				)}
+
+				<div className="space-y-3">
+					{competitors.map((comp, i) => (
+						<div
+							key={comp.name || i}
+							className="flex items-start gap-4 p-3 bg-gray-50 rounded-lg"
+						>
+							<div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-sm font-bold text-gray-600">
+								{i + 1}
+							</div>
+							<div className="flex-1">
+								<div className="flex items-center gap-2 mb-1">
+									<span className="font-semibold text-sm">{comp.name}</span>
+									<Badge variant="outline" className="text-xs">
+										{comp.platform}
+									</Badge>
+								</div>
+								<p className="text-sm text-gray-600">{comp.price}</p>
+								<p className="text-xs text-gray-500 mt-1">{comp.key_difference}</p>
+							</div>
+						</div>
+					))}
+				</div>
+			</CardContent>
+		</Card>
+	);
 }

@@ -1,77 +1,91 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Tv, Copy, Check } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Copy, Check } from "lucide-react";
 
-interface Props {
-  broadcast_scripts: {
-    sec30: string;
-    sec60: string;
-    min5: string;
-  };
+interface BroadcastScripts {
+	sec30: string;
+	sec60: string;
+	min5: string;
 }
 
-const tabs = [
-  { key: 'sec30' as const, label: '30秒' },
-  { key: 'sec60' as const, label: '60秒' },
-  { key: 'min5' as const, label: '5分' },
+interface BroadcastScriptSectionProps {
+	scripts: BroadcastScripts;
+}
+
+const TABS = [
+	{ key: "sec30" as const, label: "30秒" },
+	{ key: "sec60" as const, label: "60秒" },
+	{ key: "min5" as const, label: "5分" },
 ];
 
-export default function BroadcastScriptSection({ broadcast_scripts }: Props) {
-  const [activeTab, setActiveTab] = useState<'sec30' | 'sec60' | 'min5'>('sec30');
-  const [copied, setCopied] = useState(false);
+export default function BroadcastScriptSection({
+	scripts,
+}: BroadcastScriptSectionProps) {
+	const [activeTab, setActiveTab] = useState<keyof BroadcastScripts>("sec30");
+	const [copied, setCopied] = useState(false);
 
-  if (!broadcast_scripts) return null;
+	if (!scripts) return null;
 
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(broadcast_scripts[activeTab]);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+	const handleCopy = async () => {
+		const text = scripts[activeTab];
+		if (!text) return;
+		await navigator.clipboard.writeText(text);
+		setCopied(true);
+		setTimeout(() => setCopied(false), 2000);
+	};
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Tv size={20} className="text-purple-600" />
-          放送台本
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex gap-2">
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                activeTab === tab.key
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+	return (
+		<Card>
+			<CardContent className="p-6">
+				<h3 className="text-lg font-semibold text-gray-900 mb-4">
+					放送スクリプト
+				</h3>
 
-        <div className="relative">
-          <div className="bg-gray-50 rounded-xl p-5 text-sm leading-relaxed text-gray-800 whitespace-pre-wrap">
-            {broadcast_scripts[activeTab]}
-          </div>
-          <button
-            onClick={handleCopy}
-            className="absolute top-3 right-3 p-2 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
-            title="コピー"
-          >
-            {copied ? (
-              <Check size={14} className="text-green-600" />
-            ) : (
-              <Copy size={14} className="text-gray-500" />
-            )}
-          </button>
-        </div>
-      </CardContent>
-    </Card>
-  );
+				<div className="flex items-center justify-between mb-4">
+					<div className="flex gap-2">
+						{TABS.map(({ key, label }) => (
+							<button
+								key={key}
+								type="button"
+								onClick={() => setActiveTab(key)}
+								className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+									activeTab === key
+										? "bg-blue-600 text-white"
+										: "bg-gray-100 text-gray-600 hover:bg-gray-200"
+								}`}
+							>
+								{label}
+							</button>
+						))}
+					</div>
+
+					<button
+						type="button"
+						onClick={handleCopy}
+						className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+					>
+						{copied ? (
+							<>
+								<Check size={14} className="text-green-600" />
+								コピー済み
+							</>
+						) : (
+							<>
+								<Copy size={14} />
+								コピー
+							</>
+						)}
+					</button>
+				</div>
+
+				<div className="bg-gray-50 rounded-lg p-4">
+					<p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
+						{scripts[activeTab] || "スクリプトがまだ生成されていません。"}
+					</p>
+				</div>
+			</CardContent>
+		</Card>
+	);
 }
