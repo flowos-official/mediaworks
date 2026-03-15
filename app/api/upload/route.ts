@@ -54,12 +54,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No files provided' }, { status: 400 });
     }
 
-    // Debug: log all received files
-    console.log(`Received ${files.length} file(s):`);
-    for (const f of files) {
-      console.log(`  - ${f.name} (type: "${f.type}", size: ${f.size})`);
-    }
-
     const supabase = getServiceClient();
     const uploadedFiles: Array<{
       fileName: string;
@@ -71,13 +65,11 @@ export async function POST(request: NextRequest) {
 
     // Upload all files to Supabase Storage
     for (const file of files) {
-      console.log(`Processing file: name=${file.name}, type=${file.type}, size=${file.size}`);
       const mimeType = resolveMimeType(file);
       if (!mimeType) {
-        console.warn(`Skipping unsupported file type: ${file.type} / name: ${file.name}`);
+        console.warn(`Skipping unsupported file: ${file.name} (type: ${file.type})`);
         continue;
       }
-      console.log(`Resolved MIME type: ${mimeType}`);
 
       const fileBuffer = await file.arrayBuffer();
       const fileBytes = new Uint8Array(fileBuffer);
