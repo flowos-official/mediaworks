@@ -105,6 +105,8 @@ export async function synthesizeResearch(
 
 	const prompt = `You are a home shopping marketing research analyst specializing in Japan market expansion. Based on the product information and web search results, generate a comprehensive research report.
 
+IMPORTANT: ALL text fields in the JSON response MUST be written in Japanese (日本語). This includes marketability_description, demographics fields, influencer match_reason, content_ideas titles and descriptions, competitor key_difference, broadcast_scripts, recommended_price_range descriptions, and any other text. Only product names, URLs, and numeric values may remain in their original language.
+
 Product Information:
 ${JSON.stringify(productInfo, null, 2)}
 
