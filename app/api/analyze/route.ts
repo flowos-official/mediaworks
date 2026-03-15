@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
 import { extractProductInfo } from "@/lib/gemini";
 
-export const maxDuration = 60; // Only extraction now — fast
+export const maxDuration = 120; // Extract only — fast, but buffer for large files
 
 export async function POST(request: NextRequest) {
 	const { productId, fileBase64, mimeType, fileName } = await request.json();
