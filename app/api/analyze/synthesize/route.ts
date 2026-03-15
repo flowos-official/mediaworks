@@ -4,7 +4,7 @@ import { synthesizeResearch } from "@/lib/gemini";
 import { runProductResearch } from "@/lib/brave";
 import type { ProductInfo } from "@/lib/gemini";
 
-export const maxDuration = 800; // Vercel Pro max (800s)
+export const maxDuration = 300; // Vercel Pro max (800s)
 
 export async function POST(request: NextRequest) {
 	const { productId } = await request.json();
