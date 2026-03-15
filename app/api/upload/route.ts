@@ -1,62 +1,100 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase';
 
-const SUPPORTED_MIME_TYPES: Record<string, string> = {
-  'application/pdf': 'application/pdf',
-  'application/vnd.ms-powerpoint': 'application/vnd.ms-powerpoint',
-  'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-  'application/msword': 'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'image/jpeg': 'image/jpeg',
-  'image/png': 'image/png',
-  'image/gif': 'image/gif',
-  'image/webp': 'image/webp',
-};
+const SUPPORTED_MIME_TYPES = new Set([
+  'application/pdf',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+]);
 
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
-    const file = formData.get('file') as File;
-    // Accept locale from the form data; defaults to 'en'
     const locale = (formData.get('locale') as string) || 'en';
 
-    if (!file) {
-      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+    // Support both single 'file' and multiple 'files' fields
+    let files = formData.getAll('files') as File[];
+    if (files.length === 0) {
+      const singleFile = formData.get('file') as File;
+      if (singleFile) files = [singleFile];
     }
 
-    const mimeType = SUPPORTED_MIME_TYPES[file.type] || file.type;
+    if (files.length === 0) {
+      return NextResponse.json({ error: 'No files provided' }, { status: 400 });
+    }
+
     const supabase = getServiceClient();
+    const uploadedFiles: Array<{
+      fileName: string;
+      storageFileName: string;
+      publicUrl: string;
+      mimeType: string;
+      fileBytes: Uint8Array;
+    }> = [];
 
-    // Upload file to Supabase Storage
-    const fileBuffer = await file.arrayBuffer();
-    const fileBytes = new Uint8Array(fileBuffer);
-    const fileName = `${Date.now()}-${file.name}`;
+    // Upload all files to Supabase Storage
+    for (const file of files) {
+      if (!SUPPORTED_MIME_TYPES.has(file.type)) {
+        console.warn(`Skipping unsupported file type: ${file.type} (${file.name})`);
+        continue;
+      }
 
-    const { error: storageError } = await supabase.storage
-      .from('product-files')
-      .upload(fileName, fileBytes, {
-        contentType: file.type,
-        upsert: false
+      const fileBuffer = await file.arrayBuffer();
+      const fileBytes = new Uint8Array(fileBuffer);
+      const storageFileName = `${Date.now()}-${file.name}`;
+
+      const { error: storageError } = await supabase.storage
+        .from('product-files')
+        .upload(storageFileName, fileBytes, {
+          contentType: file.type,
+          upsert: false,
+        });
+
+      if (storageError) {
+        console.error(`Storage error for ${file.name}:`, storageError);
+        continue;
+      }
+
+      const { data: urlData } = supabase.storage
+        .from('product-files')
+        .getPublicUrl(storageFileName);
+
+      uploadedFiles.push({
+        fileName: file.name,
+        storageFileName,
+        publicUrl: urlData.publicUrl,
+        mimeType: file.type,
+        fileBytes,
       });
-
-    if (storageError) {
-      console.error('Storage error:', storageError);
-      return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 });
     }
 
-    const { data: urlData } = supabase.storage
-      .from('product-files')
-      .getPublicUrl(fileName);
+    if (uploadedFiles.length === 0) {
+      return NextResponse.json({ error: 'No files could be uploaded' }, { status: 400 });
+    }
 
-    // Create product record with pending status
+    // Use the product name from form data, or derive from first file name
+    const productName =
+      (formData.get('productName') as string) ||
+      uploadedFiles[0].fileName.replace(/\.[^/.]+$/, '');
+
+    // Create product record (use first file as primary)
+    const primary = uploadedFiles[0];
     const { data: product, error: productError } = await supabase
       .from('products')
       .insert({
-        name: file.name.replace(/\.[^/.]+$/, ''),
+        name: productName,
         description: null,
-        file_url: urlData.publicUrl,
-        file_name: fileName,
-        status: 'pending'
+        file_url: primary.publicUrl,
+        file_name: primary.storageFileName,
+        status: 'pending',
       })
       .select()
       .single();
@@ -66,10 +104,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to create product record' }, { status: 500 });
     }
 
-    // Trigger async analysis with locale
-    const base64 = Buffer.from(fileBytes).toString('base64');
-    
-    // Start async analysis (fire and forget)
+    // Insert product_files records
+    const fileRecords = uploadedFiles.map((f, i) => ({
+      product_id: product.id,
+      file_url: f.publicUrl,
+      file_name: f.storageFileName,
+      mime_type: f.mimeType,
+      is_primary: i === 0,
+    }));
+
+    const { error: filesError } = await supabase
+      .from('product_files')
+      .insert(fileRecords);
+
+    if (filesError) {
+      console.error('product_files insert error:', filesError);
+      // Non-fatal — product was already created
+    }
+
+    // Trigger async analysis with primary file
+    const base64 = Buffer.from(primary.fileBytes).toString('base64');
     const baseUrl = request.nextUrl.origin;
     fetch(`${baseUrl}/api/analyze`, {
       method: 'POST',
@@ -77,18 +131,18 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         productId: product.id,
         fileBase64: base64,
-        mimeType,
-        fileName: file.name,
-        locale  // ← pass locale to analysis pipeline
-      })
+        mimeType: primary.mimeType,
+        fileName: primary.fileName,
+        locale,
+      }),
     }).catch(console.error);
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       product,
-      message: 'File uploaded. Analysis started.'
+      filesUploaded: uploadedFiles.length,
+      message: `${uploadedFiles.length} file(s) uploaded. Analysis started.`,
     });
-
   } catch (error) {
     console.error('Upload error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
