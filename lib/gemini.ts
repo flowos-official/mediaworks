@@ -99,8 +99,10 @@ export async function synthesizeResearch(
 	productInfo: ProductInfo,
 	searchResults: Record<string, string>,
 ): Promise<ResearchOutput> {
-	// Use gemini-3.1-pro-preview for deeper analysis
-	const model = genAI.getGenerativeModel({ model: "gemini-3.1-pro-preview" });
+	// Use gemini-3.1-pro-preview for deeper analysis, fall back to gemini-3-flash-preview on 503
+	const modelName = "gemini-3.1-pro-preview";
+	const fallbackModelName = "gemini-3-flash-preview";
+	const model = genAI.getGenerativeModel({ model: modelName });
 
 	const prompt = `You are a home shopping marketing research analyst specializing in Japan market expansion. Based on the product information and web search results, generate a comprehensive research report.
 
@@ -179,7 +181,20 @@ IMPORTANT:
 - Provide 3-5 items for influencers and content_ideas
 - Return only valid JSON, no markdown.`;
 
-	const result = await model.generateContent(prompt);
+	let result;
+	try {
+		result = await model.generateContent(prompt);
+	} catch (err: unknown) {
+		// 503 fallback to flash model
+		const msg = err instanceof Error ? err.message : String(err);
+		if (msg.includes('503') || msg.includes('Service Unavailable') || msg.includes('high demand')) {
+			console.warn(`[gemini] ${modelName} unavailable, falling back to ${fallbackModelName}`);
+			const fallbackModel = genAI.getGenerativeModel({ model: fallbackModelName });
+			result = await fallbackModel.generateContent(prompt);
+		} else {
+			throw err;
+		}
+	}
 	const text = result.response.text().trim();
 	const jsonMatch = text.match(/\{[\s\S]*\}/);
 	if (!jsonMatch) throw new Error("Failed to synthesize research");
