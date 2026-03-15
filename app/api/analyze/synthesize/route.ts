@@ -54,31 +54,29 @@ export async function POST(request: NextRequest) {
 		console.log(`[${productId}] Synthesizing research with gemini-3.1-pro...`);
 		const research = await synthesizeResearch(productInfo, searchResults);
 
-		// Step 3: Save research results
+		// Step 3: Save research results (delete + insert to avoid upsert constraint issues)
+		await supabase.from("research_results").delete().eq("product_id", productId);
 		const { error: researchError } = await supabase
 			.from("research_results")
-			.upsert(
-				{
-					product_id: productId,
-					marketability_score: research.marketability_score,
-					marketability_description: research.marketability_description,
-					demographics: research.demographics,
-					seasonality: research.seasonality,
-					cogs_estimate: research.cogs_estimate,
-					influencers: research.influencers,
-					content_ideas: research.content_ideas,
-					competitor_analysis: research.competitor_analysis,
-					recommended_price_range: research.recommended_price_range,
-					broadcast_scripts: research.broadcast_scripts,
-					japan_export_fit_score: research.japan_export_fit_score,
-					raw_json: {
-						product_info: productInfo,
-						search_results: searchResults,
-						research,
-					},
+			.insert({
+				product_id: productId,
+				marketability_score: research.marketability_score,
+				marketability_description: research.marketability_description,
+				demographics: research.demographics,
+				seasonality: research.seasonality,
+				cogs_estimate: research.cogs_estimate,
+				influencers: research.influencers,
+				content_ideas: research.content_ideas,
+				competitor_analysis: research.competitor_analysis,
+				recommended_price_range: research.recommended_price_range,
+				broadcast_scripts: research.broadcast_scripts,
+				japan_export_fit_score: research.japan_export_fit_score,
+				raw_json: {
+					product_info: productInfo,
+					search_results: searchResults,
+					research,
 				},
-				{ onConflict: "product_id" },
-			);
+			});
 
 		if (researchError) {
 			throw researchError;
