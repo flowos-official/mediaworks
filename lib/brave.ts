@@ -1,6 +1,10 @@
-const BRAVE_API_KEY = process.env.BRAVE_SEARCH_API_KEY!;
+const BRAVE_API_KEY = process.env.BRAVE_SEARCH_API_KEY;
 
 async function braveSearch(query: string): Promise<string> {
+	if (!BRAVE_API_KEY) {
+		return "Search unavailable (no API key)";
+	}
+
 	const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=5`;
 
 	const res = await fetch(url, {
@@ -12,7 +16,8 @@ async function braveSearch(query: string): Promise<string> {
 	});
 
 	if (!res.ok) {
-		console.error("Brave search failed:", res.status);
+		// 402 = quota exhausted, fall back gracefully
+		console.warn(`Brave search failed: ${res.status} — using Gemini-only analysis`);
 		return "Search unavailable";
 	}
 
