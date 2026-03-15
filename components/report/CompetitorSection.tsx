@@ -7,7 +7,7 @@ interface Competitor {
 	name: string;
 	price: string;
 	platform: string;
-	difference: string;
+	key_difference: string;
 }
 
 interface CompetitorSectionProps {
@@ -54,7 +54,7 @@ export default function CompetitorSection({
 									</Badge>
 								</div>
 								<p className="text-sm text-gray-600">{comp.price}</p>
-								<p className="text-xs text-gray-500 mt-1">{comp.difference}</p>
+								<p className="text-xs text-gray-500 mt-1">{comp.key_difference}</p>
 							</div>
 						</div>
 					))}

@@ -46,7 +46,7 @@ export interface ResearchOutput {
 		name: string;
 		price: string;
 		platform: string;
-		difference: string;
+		key_difference: string;
 	}>;
 	recommended_price_range: string;
 	broadcast_scripts: {
@@ -159,7 +159,7 @@ Generate a JSON response with these exact fields:
       "name": "<competitor product name>",
       "price": "<price in USD or JPY>",
       "platform": "<where it's sold — Amazon, Rakuten, etc>",
-      "difference": "<key difference from our product>"
+      "key_difference": "<key difference from our product>"
     }
   ],
   "recommended_price_range": "<recommended retail price range for Japan home shopping, e.g., '¥3,980-5,980'>",
@@ -174,7 +174,7 @@ Generate a JSON response with these exact fields:
 IMPORTANT:
 - Provide exactly 3 competitor products in competitor_analysis
 - recommended_price_range should be based on Japan home shopping market pricing (in JPY)
-- broadcast_scripts should be written in Korean (한국어) as these are for Korean home shopping hosts
+- broadcast_scripts should be written in Japanese (日本語) as these are for Japan home shopping broadcasts
 - japan_export_fit_score should consider: Japan consumer preferences, regulatory requirements, market demand, cultural fit
 - Provide 3-5 items for influencers and content_ideas
 - Return only valid JSON, no markdown.`;
