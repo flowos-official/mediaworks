@@ -1,3 +1,4 @@
+import { rakutenRankingSearch, formatRakutenRanking } from "@/lib/rakuten";
 const BRAVE_API_KEY = process.env.BRAVE_SEARCH_API_KEY;
 
 async function braveSearch(query: string): Promise<string> {
@@ -79,18 +80,27 @@ export async function runProductResearch(
 		},
 	];
 
-	// Run searches in parallel
-	const results = await Promise.allSettled(
-		queries.map(async ({ key, query }) => {
-			const result = await braveSearch(query);
-			return { key, result };
-		}),
-	);
+	// Run Brave searches + Rakuten ranking in parallel
+	const [braveResults, rakutenResult] = await Promise.all([
+		Promise.allSettled(
+			queries.map(async ({ key, query }) => {
+				const result = await braveSearch(query);
+				return { key, result };
+			}),
+		),
+		rakutenRankingSearch(productName).catch(() => ({ items: [] })),
+	]);
 
-	for (const r of results) {
+	for (const r of braveResults) {
 		if (r.status === "fulfilled") {
 			searches[r.value.key] = r.value.result;
 		}
+	}
+
+	// Add Rakuten ranking data if available
+	const rakutenFormatted = formatRakutenRanking(rakutenResult);
+	if (rakutenFormatted) {
+		searches["rakuten_ranking"] = rakutenFormatted;
 	}
 
 	return searches;

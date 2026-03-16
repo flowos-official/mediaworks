@@ -5,6 +5,18 @@
     },
     "app/api/analyze/route.ts": {
       "maxDuration": 120
+    },
+    "app/api/cron/daily-refresh/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/recommend/route.ts": {
+      "maxDuration": 60
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/daily-refresh",
+      "schedule": "0 9 * * *"
+    }
+  ]
 }
