@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import Navbar from '@/components/Navbar';
 import FileUpload from '@/components/FileUpload';
 import ProductList from '@/components/ProductList';
-import { Sparkles, Wand2, Loader2, TrendingUp } from 'lucide-react';
+import { Sparkles, Wand2, Loader2, TrendingUp, ExternalLink } from 'lucide-react';
 import type { ProductRecommendation } from '@/app/api/recommend/route';
 
 const CATEGORIES = ['美容・スキンケア', '健康食品', 'キッチン用品', 'ファッション', '生活雑貨', '電気機器', 'フィットネス', 'その他'];
@@ -110,7 +110,7 @@ function AIRecommendSection() {
                 </span>
               </div>
               <p className="text-xs text-gray-600 mb-3 leading-relaxed">{rec.reason}</p>
-              <div className="space-y-1.5 text-[11px] text-gray-500">
+              <div className="space-y-1.5 text-[11px] text-gray-500 mb-3">
                 <div className="flex items-center gap-1.5">
                   <TrendingUp size={11} />
                   <span>수요: {rec.estimated_demand}</span>
@@ -120,6 +120,22 @@ function AIRecommendSection() {
                   <span className="font-semibold text-gray-700">{rec.estimated_price_jpy}</span>
                 </div>
               </div>
+              {rec.sources && rec.sources.length > 0 && (
+                <div className="border-t border-gray-100 pt-2.5 space-y-1">
+                  {rec.sources.map((src, si) => (
+                    <a
+                      key={si}
+                      href={src.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-[10px] text-blue-500 hover:text-blue-700 hover:underline truncate"
+                    >
+                      <ExternalLink size={9} className="shrink-0" />
+                      <span className="truncate">{src.title || src.url}</span>
+                    </a>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
