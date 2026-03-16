@@ -11,6 +11,10 @@ import ContentIdeasSection from '@/components/report/ContentIdeasSection';
 import CompetitorSection from '@/components/report/CompetitorSection';
 import BroadcastScriptSection from '@/components/report/BroadcastScriptSection';
 import JapanExportSection from '@/components/report/JapanExportSection';
+import DistributionChannelSection from '@/components/report/DistributionChannelSection';
+import PricingStrategySection from '@/components/report/PricingStrategySection';
+import MarketingStrategySection from '@/components/report/MarketingStrategySection';
+import KoreaMarketSection from '@/components/report/KoreaMarketSection';
 import PdfDownload from '@/components/report/PdfDownload';
 import { ArrowLeft, Package, Calendar } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -138,6 +142,26 @@ export default async function ProductReportPage({
             {/* Broadcast Scripts */}
             {research.broadcast_scripts && (
               <BroadcastScriptSection scripts={research.broadcast_scripts} />
+            )}
+
+            {/* Distribution Channels */}
+            {research.distribution_channels && research.distribution_channels.length > 0 && (
+              <DistributionChannelSection channels={research.distribution_channels} />
+            )}
+
+            {/* Pricing Strategy */}
+            {research.pricing_strategy && (
+              <PricingStrategySection pricingStrategy={research.pricing_strategy} />
+            )}
+
+            {/* Marketing Strategy */}
+            {research.marketing_strategy && research.marketing_strategy.length > 0 && (
+              <MarketingStrategySection strategies={research.marketing_strategy} />
+            )}
+
+            {/* Korea Market */}
+            {research.korea_market_fit && (
+              <KoreaMarketSection koreaMarket={research.korea_market_fit} />
             )}
           </div>
         )}

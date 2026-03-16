@@ -55,6 +55,55 @@ export interface ResearchOutput {
 		min5: string;
 	};
 	japan_export_fit_score: number;
+	// Extended analysis sections
+	distribution_channels?: Array<{
+		channel_name: string;
+		channel_type: string;
+		primary_age_group: string;
+		fit_score: number;
+		reason: string;
+		monthly_visitors?: string;
+		commission_rate?: string;
+	}>;
+	pricing_strategy?: {
+		channel_pricing: Array<{
+			channel: string;
+			benchmark_price: string;
+			recommended_price: string;
+			estimated_margin_pct: number;
+			reason: string;
+		}>;
+		bep_analysis: {
+			estimated_cogs_per_unit: string;
+			fixed_cost_assumption: string;
+			bep_units_per_channel: Array<{
+				channel: string;
+				bep_units: number;
+				bep_revenue: string;
+			}>;
+			summary: string;
+		};
+	};
+	marketing_strategy?: Array<{
+		strategy_name: string;
+		type: string;
+		estimated_cost: string;
+		expected_reach: string;
+		efficiency_score: number;
+		steps: string[];
+		best_for_channels: string[];
+	}>;
+	korea_market_fit?: {
+		fit_score: number;
+		target_products: string[];
+		recommended_channels: Array<{
+			channel_name: string;
+			target_age: string;
+			strategy: string;
+			estimated_entry_cost: string;
+		}>;
+		korean_consumer_insight: string;
+	};
 }
 
 export async function extractProductInfo(
@@ -171,11 +220,73 @@ Generate a JSON response with these exact fields:
     "sec60": "<60-second home shopping broadcast script in Korean>",
     "min5": "<5-minute detailed home shopping broadcast script in Korean with host cues>"
   },
-  "japan_export_fit_score": <number 0-100, how well this product fits Japan market>
+  "japan_export_fit_score": <number 0-100, how well this product fits Japan market>,
+  "distribution_channels": [
+    {
+      "channel_name": "<e.g. Rakuten, Amazon JP, QVC Japan, TikTok Shop JP, NHK World Shopping>",
+      "channel_type": "<EC | TV홈쇼핑 | SNS커머스 | 오프라인>",
+      "primary_age_group": "<e.g. 40-60代女性>",
+      "fit_score": <0-100>,
+      "reason": "<why this channel fits the product in Japanese>",
+      "monthly_visitors": "<optional, e.g. 月間5,000万人>",
+      "commission_rate": "<optional, e.g. 10-15%>"
+    }
+  ],
+  "pricing_strategy": {
+    "channel_pricing": [
+      {
+        "channel": "<channel name>",
+        "benchmark_price": "<competitor avg price, e.g. ¥3,980>",
+        "recommended_price": "<our recommended price, e.g. ¥4,980>",
+        "estimated_margin_pct": <margin percentage number>,
+        "reason": "<why this price makes sense>"
+      }
+    ],
+    "bep_analysis": {
+      "estimated_cogs_per_unit": "<e.g. ¥1,200>",
+      "fixed_cost_assumption": "<e.g. 初期固定費 ¥500,000>",
+      "bep_units_per_channel": [
+        {
+          "channel": "<channel name>",
+          "bep_units": <integer>,
+          "bep_revenue": "<e.g. ¥498,000>"
+        }
+      ],
+      "summary": "<BEP analysis summary in Japanese>"
+    }
+  },
+  "marketing_strategy": [
+    {
+      "strategy_name": "<strategy name>",
+      "type": "<SNS | インフルエンサー | PR | SEO | イベント>",
+      "estimated_cost": "<e.g. ¥50,000-200,000/月>",
+      "expected_reach": "<e.g. 50,000 impressions/月>",
+      "efficiency_score": <0-100>,
+      "steps": ["<step 1>", "<step 2>", "<step 3>"],
+      "best_for_channels": ["<channel1>", "<channel2>"]
+    }
+  ],
+  "korea_market_fit": {
+    "fit_score": <0-100>,
+    "target_products": ["<product variant 1>", "<product variant 2>"],
+    "recommended_channels": [
+      {
+        "channel_name": "<e.g. 쿠팡, 네이버스마트스토어, 올리브영, 무신사>",
+        "target_age": "<e.g. 20-30대 여성>",
+        "strategy": "<entry strategy in Korean>",
+        "estimated_entry_cost": "<e.g. 월 100만원>"
+      }
+    ],
+    "korean_consumer_insight": "<Korean consumer characteristics analysis in Korean>"
+  }
 }
 
 IMPORTANT:
 - Provide exactly 3 competitor products in competitor_analysis
+- Provide 4-6 distribution_channels relevant to Japan market
+- Provide 3-4 channel_pricing entries in pricing_strategy
+- Provide 3-5 marketing_strategy items sorted by efficiency_score desc
+- korea_market_fit should analyze Korea-specific consumer patterns and channels
 - recommended_price_range should be based on Japan home shopping market pricing (in JPY)
 - broadcast_scripts should be written in Japanese (日本語) as these are for Japan home shopping broadcasts
 - japan_export_fit_score should consider: Japan consumer preferences, regulatory requirements, market demand, cultural fit
