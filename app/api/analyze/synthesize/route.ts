@@ -44,14 +44,12 @@ export async function POST(request: NextRequest) {
 			.eq("id", productId);
 
 		// Step 1: Run web research with Brave (includes Japan queries)
-		console.log(`[${productId}] Running web research (incl. Japan market)...`);
 		const searchResults = await runProductResearch(
 			productInfo.name,
 			productInfo.category,
 		);
 
 		// Step 2: Synthesize research with Gemini Pro
-		console.log(`[${productId}] Synthesizing research with gemini-3.1-pro...`);
 		const research = await synthesizeResearch(productInfo, searchResults);
 
 		// Step 3: Save research results (delete + insert to avoid upsert constraint issues)
@@ -71,6 +69,10 @@ export async function POST(request: NextRequest) {
 				recommended_price_range: research.recommended_price_range,
 				broadcast_scripts: research.broadcast_scripts,
 				japan_export_fit_score: research.japan_export_fit_score,
+				distribution_channels: research.distribution_channels,
+				pricing_strategy: research.pricing_strategy,
+				marketing_strategy: research.marketing_strategy,
+				korea_market_fit: research.korea_market_fit,
 				raw_json: {
 					product_info: productInfo,
 					search_results: searchResults,
@@ -88,7 +90,6 @@ export async function POST(request: NextRequest) {
 			.update({ status: "completed" })
 			.eq("id", productId);
 
-		console.log(`[${productId}] Synthesis completed`);
 		return NextResponse.json({ success: true });
 	} catch (error) {
 		console.error(`[${productId}] Synthesis failed:`, error);
