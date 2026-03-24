@@ -122,8 +122,28 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-size: 16px;
+    line-height: 1.5;
   }
   html {
     @apply font-sans;
+    -webkit-text-size-adjust: 100%;
+  }
+}
+
+/* Mobile readability — minimum 16px prevents iOS zoom on input focus */
+@media (max-width: 640px) {
+  body {
+    font-size: 16px;
+    line-height: 1.6;
+  }
+  h1 { font-size: 1.5rem; }
+  h2 { font-size: 1.25rem; }
+  h3 { font-size: 1.125rem; }
+  p, li, td, th, label, span, a {
+    font-size: 1rem;
+  }
+  input, textarea, select, button {
+    font-size: 16px; /* Prevents iOS auto-zoom */
   }
 }
