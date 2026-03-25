@@ -19,7 +19,7 @@ async function callGemini(prompt: string): Promise<string> {
 	const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
 	const resultPromise = model.generateContent(prompt);
 	const timeoutPromise = new Promise<never>((_, reject) =>
-		setTimeout(() => reject(new Error("Gemini timeout (50s)")), 50000),
+		setTimeout(() => reject(new Error("Gemini timeout (90s)")), 90000),
 	);
 	const result = await Promise.race([resultPromise, timeoutPromise]);
 	return result.response.text().trim();
@@ -931,11 +931,17 @@ Return a JSON object (no markdown) with this structure:
 ${buildSourcesSection(ctx)}`;
 }
 
+const EMPTY_PS: ProductSelectionOutput = { channel_product_matrix: [], portfolio_strategy: "" };
+const EMPTY_CS: ChannelStrategyOutput = { channels: [], launch_sequence: [] };
+const EMPTY_PM: PricingMarginOutput = { product_pricing: [], bep_analysis: [], margin_optimization: [] };
+const EMPTY_ME: MarketingExecutionOutput = { monthly_plans: [], content_calendar: [], influencer_plan: [], budget_summary: { total_6month: 0, by_channel: {}, by_type: {} } };
+const EMPTY_FP: FinancialProjectionOutput = { monthly_forecast: [], roi_timeline: [], scenarios: { conservative: { year1_revenue: 0, year1_profit: 0 }, moderate: { year1_revenue: 0, year1_profit: 0 }, aggressive: { year1_revenue: 0, year1_profit: 0 }, assumptions: [] } };
+
 function buildChannelStrategyPrompt(ctx: StrategyContext, priorOutputs: Record<string, unknown>): string {
-	const ps = priorOutputs.product_selection as ProductSelectionOutput;
+	const ps = (priorOutputs.product_selection as ProductSelectionOutput) ?? EMPTY_PS;
 
 	// Build structured tier1 summary with margin and revenue data
-	const tier1ByChannel = ps.channel_product_matrix.map((ch) => {
+	const tier1ByChannel = (ps?.channel_product_matrix ?? []).map((ch) => {
 		const productDetails = ch.tier1_products.map((tp) => {
 			const p = ctx.products.find((pr) => pr.code === tp.code);
 			const m = p ? ctx.computedMetrics[p.code] : null;
@@ -1019,8 +1025,8 @@ ${buildSourcesSection(ctx)}`;
 }
 
 function buildPricingMarginPrompt(ctx: StrategyContext, priorOutputs: Record<string, unknown>): string {
-	const ps = priorOutputs.product_selection as ProductSelectionOutput;
-	const cs = priorOutputs.channel_strategy as ChannelStrategyOutput;
+	const ps = (priorOutputs.product_selection as ProductSelectionOutput) ?? EMPTY_PS;
+	const cs = (priorOutputs.channel_strategy as ChannelStrategyOutput) ?? EMPTY_CS;
 
 	// Collect tier1 product codes across all channels
 	const tier1Codes = new Set<string>();
@@ -1139,9 +1145,9 @@ ${buildSourcesSection(ctx)}`;
 }
 
 function buildMarketingExecutionPrompt(ctx: StrategyContext, priorOutputs: Record<string, unknown>): string {
-	const ps = priorOutputs.product_selection as ProductSelectionOutput;
-	const cs = priorOutputs.channel_strategy as ChannelStrategyOutput;
-	const pm = priorOutputs.pricing_margin as PricingMarginOutput;
+	const ps = (priorOutputs.product_selection as ProductSelectionOutput) ?? EMPTY_PS;
+	const cs = (priorOutputs.channel_strategy as ChannelStrategyOutput) ?? EMPTY_CS;
+	const pm = (priorOutputs.pricing_margin as PricingMarginOutput) ?? EMPTY_PM;
 
 	// Aggregate demographics across ALL products (not just 5)
 	const demoAgg: Record<string, number> = {};
@@ -1265,9 +1271,9 @@ ${buildSourcesSection(ctx)}`;
 }
 
 function buildFinancialProjectionPrompt(ctx: StrategyContext, priorOutputs: Record<string, unknown>): string {
-	const cs = priorOutputs.channel_strategy as ChannelStrategyOutput;
-	const pm = priorOutputs.pricing_margin as PricingMarginOutput;
-	const me = priorOutputs.marketing_execution as MarketingExecutionOutput;
+	const cs = (priorOutputs.channel_strategy as ChannelStrategyOutput) ?? EMPTY_CS;
+	const pm = (priorOutputs.pricing_margin as PricingMarginOutput) ?? EMPTY_PM;
+	const me = (priorOutputs.marketing_execution as MarketingExecutionOutput) ?? EMPTY_ME;
 
 	// Compute weekly velocity trend (slope) from weeklyTrends
 	let weeklySlope = 0;
@@ -1387,9 +1393,9 @@ ${buildSourcesSection(ctx)}`;
 }
 
 function buildRiskContingencyPrompt(ctx: StrategyContext, priorOutputs: Record<string, unknown>): string {
-	const cs = priorOutputs.channel_strategy as ChannelStrategyOutput;
-	const pm = priorOutputs.pricing_margin as PricingMarginOutput;
-	const fp = priorOutputs.financial_projection as FinancialProjectionOutput;
+	const cs = (priorOutputs.channel_strategy as ChannelStrategyOutput) ?? EMPTY_CS;
+	const pm = (priorOutputs.pricing_margin as PricingMarginOutput) ?? EMPTY_PM;
+	const fp = (priorOutputs.financial_projection as FinancialProjectionOutput) ?? EMPTY_FP;
 
 	// Full competitive landscape and operations requirements from Skill 2
 	const channelDetailLines = cs.channels.map((ch) => {
