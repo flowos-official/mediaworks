@@ -35,6 +35,15 @@ export async function POST(request: NextRequest) {
 				controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
 			};
 
+			// Send heartbeat every 10s to prevent Vercel idle timeout
+			const heartbeat = setInterval(() => {
+				try {
+					controller.enqueue(encoder.encode(`: heartbeat\n\n`));
+				} catch {
+					clearInterval(heartbeat);
+				}
+			}, 10000);
+
 			try {
 				// Phase 1: Data fetch
 				send("progress", { skill: "data_fetch", status: "running", index: -1, total: 7 });
@@ -87,6 +96,7 @@ export async function POST(request: NextRequest) {
 			} catch (err) {
 				send("error", { message: err instanceof Error ? err.message : String(err) });
 			} finally {
+				clearInterval(heartbeat);
 				controller.close();
 			}
 		},
@@ -95,8 +105,9 @@ export async function POST(request: NextRequest) {
 	return new Response(stream, {
 		headers: {
 			"Content-Type": "text/event-stream",
-			"Cache-Control": "no-cache",
+			"Cache-Control": "no-cache, no-transform",
 			Connection: "keep-alive",
+			"X-Accel-Buffering": "no",
 		},
 	});
 }
