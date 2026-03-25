@@ -24,7 +24,8 @@
       "analyzing": "分析中",
       "completed": "完了",
       "failed": "エラー"
-    }
+    },
+    "analyzingMessage": "AI分析中... リロードしても続行されます"
   },
   "report": {
     "title": "リサーチレポート",
@@ -51,7 +52,54 @@
     "ageGroup": "年齢層",
     "gender": "性別",
     "interests": "関心事",
-    "income": "収入レベル"
+    "income": "収入レベル",
+    "back": "戻る",
+    "analyzingMessage": "AI分析中... リロードしても続行されます",
+    "competitor": {
+      "title": "競合商品分析",
+      "recommendedPrice": "推奨価格帯（日本ホームショッピング）:"
+    },
+    "distribution": {
+      "title": "流通チャネル分析",
+      "fitScore": "適合度",
+      "visitors": "訪問者:",
+      "commission": "手数料:"
+    },
+    "japanExport": {
+      "title": "日本輸出適合度",
+      "recommendedPrice": "推奨価格帯:",
+      "veryFit": "非常に適合",
+      "fit": "適合",
+      "average": "普通",
+      "unfit": "不適合"
+    },
+    "koreaMarket": {
+      "title": "韓国市場適合度",
+      "targetProducts": "韓国で人気の商品群",
+      "recommendedChannels": "推奨流通チャネル",
+      "entryCost": "初期費用:",
+      "consumerInsight": "韓国消費者インサイト"
+    },
+    "marketing": {
+      "title": "マーケティング戦略",
+      "sortedByEfficiency": "効率順",
+      "budget": "予算:",
+      "reach": "リーチ:",
+      "executionSteps": "実行ステップ",
+      "recommendedChannels": "推奨チャネル"
+    },
+    "pricing": {
+      "title": "価格戦略 + BEPシミュレーション",
+      "channelPricing": "チャネル別価格",
+      "bepAnalysis": "BEP分析",
+      "channel": "チャネル",
+      "benchmark": "ベンチマーク価格",
+      "recommended": "推奨価格",
+      "margin": "マージン",
+      "unitCost": "単位原価推定",
+      "fixedCost": "初期固定費仮定",
+      "bepUnits": "BEP: {count}個"
+    }
   },
   "gallery": {
     "title": "商品画像ギャラリー",

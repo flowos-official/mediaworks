@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -19,19 +20,20 @@ export default function CompetitorSection({
 	competitors,
 	recommendedPriceRange,
 }: CompetitorSectionProps) {
+	const t = useTranslations("report");
 	if (!competitors || competitors.length === 0) return null;
 
 	return (
 		<Card>
 			<CardContent className="p-6">
 				<h3 className="text-lg font-semibold text-gray-900 mb-4">
-					경쟁상품 분석
+					{t("competitor.title")}
 				</h3>
 
 				{recommendedPriceRange && (
 					<div className="mb-4 p-3 bg-blue-50 rounded-lg">
 						<p className="text-sm text-blue-800">
-							<span className="font-semibold">권장 가격대 (일본 홈쇼핑):</span>{" "}
+							<span className="font-semibold">{t("competitor.recommendedPrice")}</span>{" "}
 							{recommendedPriceRange}
 						</p>
 					</div>

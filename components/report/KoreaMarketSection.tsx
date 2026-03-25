@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Card, CardContent } from "@/components/ui/card";
 import { Flag } from "lucide-react";
 
@@ -17,15 +18,11 @@ interface KoreaMarketFit {
 	korean_consumer_insight: string;
 }
 
-function FitGauge({ score }: { score: number }) {
+function FitGauge({ score, label }: { score: number; label: string }) {
 	const color =
 		score >= 80 ? "bg-green-500" :
 		score >= 60 ? "bg-blue-500" :
 		score >= 40 ? "bg-yellow-500" : "bg-red-400";
-	const label =
-		score >= 80 ? "매우 적합" :
-		score >= 60 ? "적합" :
-		score >= 40 ? "보통" : "부적합";
 
 	return (
 		<div className="flex items-center gap-5">
@@ -60,26 +57,32 @@ interface KoreaMarketSectionProps {
 }
 
 export default function KoreaMarketSection({ koreaMarket }: KoreaMarketSectionProps) {
+	const t = useTranslations("report");
 	if (!koreaMarket) return null;
+
+	const fitLabel =
+		koreaMarket.fit_score >= 80 ? t("japanExport.veryFit") :
+		koreaMarket.fit_score >= 60 ? t("japanExport.fit") :
+		koreaMarket.fit_score >= 40 ? t("japanExport.average") : t("japanExport.unfit");
 
 	return (
 		<Card>
 			<CardContent className="p-6">
 				<div className="flex items-center gap-2 mb-5">
 					<Flag className="h-5 w-5 text-red-500" />
-					<h3 className="text-lg font-semibold text-gray-900">한국 시장 적합도</h3>
+					<h3 className="text-lg font-semibold text-gray-900">{t("koreaMarket.title")}</h3>
 				</div>
 
 				{/* Score gauge */}
 				<div className="mb-6">
-					<FitGauge score={koreaMarket.fit_score} />
+					<FitGauge score={koreaMarket.fit_score} label={fitLabel} />
 				</div>
 
 				{/* Target products */}
 				{koreaMarket.target_products?.length > 0 && (
 					<div className="mb-5">
 						<p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-							한국 선호 제품군
+							{t("koreaMarket.targetProducts")}
 						</p>
 						<div className="flex flex-wrap gap-2">
 							{koreaMarket.target_products.map((p, i) => (
@@ -98,7 +101,7 @@ export default function KoreaMarketSection({ koreaMarket }: KoreaMarketSectionPr
 				{koreaMarket.recommended_channels?.length > 0 && (
 					<div className="mb-5">
 						<p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
-							추천 유통채널
+							{t("koreaMarket.recommendedChannels")}
 						</p>
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 							{koreaMarket.recommended_channels.map((ch, i) => (
@@ -111,7 +114,7 @@ export default function KoreaMarketSection({ koreaMarket }: KoreaMarketSectionPr
 									</div>
 									<p className="text-xs text-gray-600 mb-2">{ch.strategy}</p>
 									<p className="text-[11px] text-gray-400">
-										초기 비용: {ch.estimated_entry_cost}
+										{t("koreaMarket.entryCost")} {ch.estimated_entry_cost}
 									</p>
 								</div>
 							))}
@@ -122,7 +125,7 @@ export default function KoreaMarketSection({ koreaMarket }: KoreaMarketSectionPr
 				{/* Consumer insight */}
 				{koreaMarket.korean_consumer_insight && (
 					<div className="bg-blue-50 rounded-xl p-4">
-						<p className="text-xs font-semibold text-blue-700 mb-1">한국 소비자 인사이트</p>
+						<p className="text-xs font-semibold text-blue-700 mb-1">{t("koreaMarket.consumerInsight")}</p>
 						<p className="text-sm text-blue-800 leading-relaxed">
 							{koreaMarket.korean_consumer_insight}
 						</p>

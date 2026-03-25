@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { DollarSign, TrendingUp } from 'lucide-react';
 import type { PricingMarginOutput } from '@/lib/md-strategy';
+import SourcesCited from './SourcesCited';
 
 interface Props {
 	data: PricingMarginOutput;
@@ -132,6 +133,7 @@ export default function PricingMarginSection({ data }: Props) {
 					</CardContent>
 				</Card>
 			)}
+			<SourcesCited sources={data.sources_cited} />
 		</div>
 	);
 }

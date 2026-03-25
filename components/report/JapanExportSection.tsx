@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface JapanExportSectionProps {
@@ -14,27 +15,24 @@ function getScoreColor(score: number): string {
 	return "text-red-600 bg-red-50";
 }
 
-function getScoreLabel(score: number): string {
-	if (score >= 80) return "매우 적합";
-	if (score >= 60) return "적합";
-	if (score >= 40) return "보통";
-	return "부적합";
-}
-
 export default function JapanExportSection({
 	score,
 	recommendedPriceRange,
 }: JapanExportSectionProps) {
+	const t = useTranslations("report");
 	if (score == null) return null;
 
 	const colorClass = getScoreColor(score);
-	const label = getScoreLabel(score);
+	const label =
+		score >= 80 ? t("japanExport.veryFit") :
+		score >= 60 ? t("japanExport.fit") :
+		score >= 40 ? t("japanExport.average") : t("japanExport.unfit");
 
 	return (
 		<Card>
 			<CardContent className="p-6">
 				<h3 className="text-lg font-semibold text-gray-900 mb-4">
-					일본 수출 적합도
+					{t("japanExport.title")}
 				</h3>
 
 				<div className="flex items-center gap-6">
@@ -49,7 +47,7 @@ export default function JapanExportSection({
 						<p className="text-lg font-semibold">{label}</p>
 						{recommendedPriceRange && (
 							<p className="text-sm text-gray-600 mt-1">
-								권장 가격대: {recommendedPriceRange}
+								{t("japanExport.recommendedPrice")} {recommendedPriceRange}
 							</p>
 						)}
 						<div className="mt-3 h-2 bg-gray-100 rounded-full overflow-hidden">

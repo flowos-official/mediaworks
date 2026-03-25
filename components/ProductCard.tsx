@@ -98,7 +98,7 @@ export default function ProductCard({ product }: ProductCardProps) {
 							<div className="h-full bg-blue-500 rounded-full animate-pulse w-2/3" />
 						</div>
 						<p className="text-xs text-gray-500 mt-2 text-center">
-							AI 분석 중... 새로고침해도 계속됩니다
+							{t("analyzingMessage")}
 						</p>
 					</div>
 				)}

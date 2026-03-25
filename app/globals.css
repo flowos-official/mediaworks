@@ -147,3 +147,17 @@
     font-size: 16px; /* Prevents iOS auto-zoom */
   }
 }
+
+/* PDF export mode — reveals all hidden tab/accordion content */
+.pdf-mode [data-pdf-tab] {
+  display: block !important;
+}
+.pdf-mode [data-pdf-accordion] {
+  display: block !important;
+}
+.pdf-mode [data-pdf-hide] {
+  display: none !important;
+}
+.pdf-mode .pdf-tab-label {
+  display: block !important;
+}

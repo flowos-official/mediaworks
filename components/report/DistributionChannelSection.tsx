@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp } from "lucide-react";
@@ -16,8 +17,11 @@ interface Channel {
 
 const TYPE_COLORS: Record<string, string> = {
 	"EC": "bg-blue-100 text-blue-800",
+	"TVホームショッピング": "bg-purple-100 text-purple-800",
 	"TV홈쇼핑": "bg-purple-100 text-purple-800",
+	"SNSコマース": "bg-pink-100 text-pink-800",
 	"SNS커머스": "bg-pink-100 text-pink-800",
+	"オフライン": "bg-orange-100 text-orange-800",
 	"오프라인": "bg-orange-100 text-orange-800",
 };
 
@@ -45,6 +49,7 @@ interface DistributionChannelSectionProps {
 }
 
 export default function DistributionChannelSection({ channels }: DistributionChannelSectionProps) {
+	const t = useTranslations("report");
 	if (!channels || channels.length === 0) return null;
 
 	const sorted = [...channels].sort((a, b) => b.fit_score - a.fit_score);
@@ -54,7 +59,7 @@ export default function DistributionChannelSection({ channels }: DistributionCha
 			<CardContent className="p-6">
 				<div className="flex items-center gap-2 mb-5">
 					<TrendingUp className="h-5 w-5 text-blue-500" />
-					<h3 className="text-lg font-semibold text-gray-900">유통채널 분석</h3>
+					<h3 className="text-lg font-semibold text-gray-900">{t("distribution.title")}</h3>
 				</div>
 				<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 					{sorted.map((ch, i) => (
@@ -75,7 +80,7 @@ export default function DistributionChannelSection({ channels }: DistributionCha
 							</div>
 							<div className="mb-3">
 								<div className="flex items-center justify-between text-xs text-gray-500 mb-1">
-									<span>적합도</span>
+									<span>{t("distribution.fitScore")}</span>
 								</div>
 								<ScoreBar score={ch.fit_score} />
 							</div>
@@ -83,10 +88,10 @@ export default function DistributionChannelSection({ channels }: DistributionCha
 							{(ch.monthly_visitors || ch.commission_rate) && (
 								<div className="flex gap-3 mt-3 text-[11px] text-gray-400">
 									{ch.monthly_visitors && (
-										<span>방문자: {ch.monthly_visitors}</span>
+										<span>{t("distribution.visitors")} {ch.monthly_visitors}</span>
 									)}
 									{ch.commission_rate && (
-										<span>수수료: {ch.commission_rate}</span>
+										<span>{t("distribution.commission")} {ch.commission_rate}</span>
 									)}
 								</div>
 							)}

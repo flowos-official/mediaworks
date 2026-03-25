@@ -43,7 +43,7 @@ export default function BroadcastScriptSection({
 					放送スクリプト
 				</h3>
 
-				<div className="flex items-center justify-between mb-4">
+				<div className="flex items-center justify-between mb-4" data-pdf-hide>
 					<div className="flex gap-2">
 						{TABS.map(({ key, label }) => (
 							<button
@@ -80,11 +80,20 @@ export default function BroadcastScriptSection({
 					</button>
 				</div>
 
-				<div className="bg-gray-50 rounded-lg p-4">
-					<p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
-						{scripts[activeTab] || "スクリプトがまだ生成されていません。"}
-					</p>
-				</div>
+				{TABS.map(({ key, label }) => (
+					<div
+						key={key}
+						className={`bg-gray-50 rounded-lg p-4 ${activeTab !== key ? "hidden" : ""} ${key !== TABS[0].key ? "mt-3" : ""}`}
+						data-pdf-tab={key}
+					>
+						<p className="hidden pdf-tab-label text-xs font-semibold text-blue-600 mb-2">
+							【{label}スクリプト】
+						</p>
+						<p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
+							{scripts[key] || "スクリプトがまだ生成されていません。"}
+						</p>
+					</div>
+				))}
 			</CardContent>
 		</Card>
 	);

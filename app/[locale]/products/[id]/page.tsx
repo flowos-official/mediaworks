@@ -54,7 +54,7 @@ export default async function ProductReportPage({
               className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
             >
               <ArrowLeft size={16} />
-              Back
+              {t("back")}
             </Link>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">{product.name}</h1>

@@ -24,7 +24,8 @@
       "analyzing": "Analyzing",
       "completed": "Completed",
       "failed": "Failed"
-    }
+    },
+    "analyzingMessage": "AI analysis in progress... Continues after refresh"
   },
   "report": {
     "title": "Research Report",
@@ -51,7 +52,54 @@
     "ageGroup": "Age Group",
     "gender": "Gender",
     "interests": "Interests",
-    "income": "Income Level"
+    "income": "Income Level",
+    "back": "Back",
+    "analyzingMessage": "AI analysis in progress... Continues after refresh",
+    "competitor": {
+      "title": "Competitor Analysis",
+      "recommendedPrice": "Recommended Price Range (Japan Home Shopping):"
+    },
+    "distribution": {
+      "title": "Distribution Channel Analysis",
+      "fitScore": "Fit Score",
+      "visitors": "Visitors:",
+      "commission": "Commission:"
+    },
+    "japanExport": {
+      "title": "Japan Export Fit Score",
+      "recommendedPrice": "Recommended Price Range:",
+      "veryFit": "Very Fit",
+      "fit": "Fit",
+      "average": "Average",
+      "unfit": "Unfit"
+    },
+    "koreaMarket": {
+      "title": "Korea Market Fit Score",
+      "targetProducts": "Preferred Product Categories",
+      "recommendedChannels": "Recommended Distribution Channels",
+      "entryCost": "Entry Cost:",
+      "consumerInsight": "Korean Consumer Insight"
+    },
+    "marketing": {
+      "title": "Marketing Strategy",
+      "sortedByEfficiency": "Sorted by Efficiency",
+      "budget": "Budget:",
+      "reach": "Reach:",
+      "executionSteps": "Execution Steps",
+      "recommendedChannels": "Recommended Channels"
+    },
+    "pricing": {
+      "title": "Pricing Strategy + BEP Simulation",
+      "channelPricing": "Channel Pricing",
+      "bepAnalysis": "BEP Analysis",
+      "channel": "Channel",
+      "benchmark": "Benchmark Price",
+      "recommended": "Recommended Price",
+      "margin": "Margin",
+      "unitCost": "Estimated Unit Cost",
+      "fixedCost": "Fixed Cost Assumption",
+      "bepUnits": "BEP: {count} units"
+    }
   },
   "gallery": {
     "title": "Product Image Gallery",

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ShieldAlert, AlertTriangle, CheckCircle } from 'lucide-react';
 import type { RiskContingencyOutput } from '@/lib/md-strategy';
+import SourcesCited from './SourcesCited';
 
 interface Props {
 	data: RiskContingencyOutput;
@@ -162,6 +163,7 @@ export default function RiskContingencySection({ data }: Props) {
 					</CardContent>
 				</Card>
 			)}
+			<SourcesCited sources={data.sources_cited} />
 		</div>
 	);
 }

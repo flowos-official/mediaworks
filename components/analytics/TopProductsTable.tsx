@@ -36,9 +36,13 @@ function formatShortDate(d: string | null | undefined): string {
 export default function TopProductsTable({
   products,
   onSelectProduct,
+  compact = false,
+  limit,
 }: {
   products: ProductRow[];
   onSelectProduct?: (code: string) => void;
+  compact?: boolean;
+  limit?: number;
 }) {
   const [sortKey, setSortKey] = useState<SortKey>('totalRevenue');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
@@ -66,14 +70,17 @@ export default function TopProductsTable({
     if (sortKey === 'firstDate') return dir * (a.firstDate ?? '').localeCompare(b.firstDate ?? '');
     return dir * (a[sortKey] - b[sortKey]);
   });
-  const totalPages = Math.ceil(sorted.length / perPage);
-  const paged = sorted.slice(page * perPage, (page + 1) * perPage);
+  const limited = limit ? sorted.slice(0, limit) : sorted;
+  const totalPages = limit ? 1 : Math.ceil(limited.length / perPage);
+  const paged = limit ? limited : limited.slice(page * perPage, (page + 1) * perPage);
 
   return (
     <Card className="border-gray-200">
       <CardHeader className="pb-2">
-        <CardTitle className="text-base font-semibold">商品ランキング</CardTitle>
-        <p className="text-xs text-gray-400">{products.length}商品</p>
+        <CardTitle className="text-base font-semibold">
+          {limit ? `商品ランキング Top ${limit}` : '商品ランキング'}
+        </CardTitle>
+        <p className="text-xs text-gray-400">{limit ? `${products.length}商品中 上位${limit}` : `${products.length}商品`}</p>
       </CardHeader>
       <CardContent className="p-0">
         <div className="overflow-x-auto">
@@ -90,7 +97,7 @@ export default function TopProductsTable({
                     商品名 <SortIcon col="name" />
                   </button>
                 </th>
-                <th className="text-left px-4 py-2.5 font-medium">カテゴリ</th>
+                {!compact && <th className="text-left px-4 py-2.5 font-medium">カテゴリ</th>}
                 {([
                   { key: 'totalRevenue' as const, label: '売上' },
                   { key: 'totalQuantity' as const, label: '数量' },
@@ -106,24 +113,28 @@ export default function TopProductsTable({
                     </button>
                   </th>
                 ))}
-                <th className="text-right px-4 py-2.5 font-medium">
-                  <button
-                    type="button"
-                    onClick={() => toggleSort('avgWeeklyQuantity')}
-                    className={`flex items-center gap-1 ml-auto ${sortKey === 'avgWeeklyQuantity' ? 'text-blue-600' : ''}`}
-                  >
-                    週平均 <SortIcon col="avgWeeklyQuantity" />
-                  </button>
-                </th>
-                <th className="text-center px-4 py-2.5 font-medium">
-                  <button
-                    type="button"
-                    onClick={() => toggleSort('firstDate')}
-                    className={`flex items-center gap-1 mx-auto ${sortKey === 'firstDate' ? 'text-blue-600' : ''}`}
-                  >
-                    期間 <SortIcon col="firstDate" />
-                  </button>
-                </th>
+                {!compact && (
+                  <th className="text-right px-4 py-2.5 font-medium">
+                    <button
+                      type="button"
+                      onClick={() => toggleSort('avgWeeklyQuantity')}
+                      className={`flex items-center gap-1 ml-auto ${sortKey === 'avgWeeklyQuantity' ? 'text-blue-600' : ''}`}
+                    >
+                      週平均 <SortIcon col="avgWeeklyQuantity" />
+                    </button>
+                  </th>
+                )}
+                {!compact && (
+                  <th className="text-center px-4 py-2.5 font-medium">
+                    <button
+                      type="button"
+                      onClick={() => toggleSort('firstDate')}
+                      className={`flex items-center gap-1 mx-auto ${sortKey === 'firstDate' ? 'text-blue-600' : ''}`}
+                    >
+                      期間 <SortIcon col="firstDate" />
+                    </button>
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -137,13 +148,15 @@ export default function TopProductsTable({
                   <td className="px-4 py-2.5 font-medium text-gray-900 max-w-[200px] truncate">
                     {p.name}
                   </td>
-                  <td className="px-4 py-2.5">
-                    {p.category && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">
-                        {p.category}
-                      </span>
-                    )}
-                  </td>
+                  {!compact && (
+                    <td className="px-4 py-2.5">
+                      {p.category && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">
+                          {p.category}
+                        </span>
+                      )}
+                    </td>
+                  )}
                   <td className="px-4 py-2.5 text-right font-mono text-xs">{formatYen(p.totalRevenue)}</td>
                   <td className="px-4 py-2.5 text-right font-mono text-xs">{p.totalQuantity.toLocaleString()}</td>
                   <td className="px-4 py-2.5 text-right">
@@ -159,14 +172,18 @@ export default function TopProductsTable({
                       {p.marginRate}%
                     </span>
                   </td>
-                  <td className="px-4 py-2.5 text-right font-mono text-xs text-gray-500">
-                    {p.avgWeeklyQuantity}/週
-                  </td>
-                  <td className="px-4 py-2.5 text-center font-mono text-[10px] text-gray-400 whitespace-nowrap">
-                    {p.firstDate && p.lastDate ? (
-                      `${formatShortDate(p.firstDate)}~${formatShortDate(p.lastDate)}`
-                    ) : '-'}
-                  </td>
+                  {!compact && (
+                    <td className="px-4 py-2.5 text-right font-mono text-xs text-gray-500">
+                      {p.avgWeeklyQuantity}/週
+                    </td>
+                  )}
+                  {!compact && (
+                    <td className="px-4 py-2.5 text-center font-mono text-[10px] text-gray-400 whitespace-nowrap">
+                      {p.firstDate && p.lastDate ? (
+                        `${formatShortDate(p.firstDate)}~${formatShortDate(p.lastDate)}`
+                      ) : '-'}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

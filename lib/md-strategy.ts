@@ -28,6 +28,42 @@ function parseJSON<T>(raw: string): T {
 }
 
 // ---------------------------------------------------------------------------
+// Brave Search (structured results with URLs)
+// ---------------------------------------------------------------------------
+
+export interface SearchSource {
+	title: string;
+	url: string;
+	description: string;
+	query: string;
+}
+
+const BRAVE_API_KEY = process.env.BRAVE_SEARCH_API_KEY;
+
+async function braveSearchStructured(query: string): Promise<SearchSource[]> {
+	if (!BRAVE_API_KEY) return [];
+	try {
+		const res = await fetch(
+			`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=5`,
+			{
+				headers: { Accept: "application/json", "Accept-Encoding": "gzip", "X-Subscription-Token": BRAVE_API_KEY },
+				signal: AbortSignal.timeout(4000),
+			},
+		);
+		if (!res.ok) return [];
+		const data = await res.json();
+		return (data.web?.results ?? []).slice(0, 5).map((r: { title?: string; url?: string; description?: string }) => ({
+			title: r.title ?? "",
+			url: r.url ?? "",
+			description: r.description ?? "",
+			query,
+		}));
+	} catch {
+		return [];
+	}
+}
+
+// ---------------------------------------------------------------------------
 // Strategy Context — all data needed by skills
 // ---------------------------------------------------------------------------
 
@@ -81,13 +117,35 @@ export interface StrategyContext {
 	products: EnrichedProduct[];
 	weeklyTrends: Array<{ weekStart: string; revenue: number; profit: number; quantity: number }>;
 	userGoal?: string;
+	// AI-recommended new products (from Brave search + Gemini)
+	recommendedProducts?: Array<{
+		name: string;
+		reason: string;
+		japan_fit_score: number;
+		estimated_demand: string;
+		supply_source: string;
+		estimated_price_jpy: string;
+	}>;
+	recommendCategory?: string;
+	recommendTargetMarket?: string;
+	// Web search sources for citation
+	searchSources: SearchSource[];
 }
 
 // ---------------------------------------------------------------------------
 // Fetch all data needed for strategy generation
 // ---------------------------------------------------------------------------
 
-export async function fetchStrategyContext(userGoal?: string): Promise<StrategyContext> {
+export interface RecommendInput {
+	category?: string;
+	targetMarket?: string;
+	priceRange?: string;
+}
+
+export async function fetchStrategyContext(
+	userGoal?: string,
+	recommend?: RecommendInput,
+): Promise<StrategyContext> {
 	const supabase = getServiceClient();
 
 	// Phase 1: Parallel fetch from all tables
@@ -229,6 +287,45 @@ export async function fetchStrategyContext(userGoal?: string): Promise<StrategyC
 		.map((w) => ({ weekStart: w.week_start, revenue: w.total_revenue, profit: w.total_gross_profit, quantity: w.total_quantity }))
 		.reverse();
 
+	// Brave Search for market intelligence (runs in parallel)
+	const searchQueries = [
+		recommend?.category ? `${recommend.category} EC 市場 日本 2026 トレンド` : "EC 拡大戦略 日本 2026",
+		recommend?.category ? `${recommend.category} Amazon 楽天 チャネル展開 成功事例` : "TV通販 EC展開 成功事例 日本",
+		"EC 越境 SNSコマース TikTok Shop 日本 市場規模",
+	];
+	const searchResults = await Promise.all(searchQueries.map((q) => braveSearchStructured(q)));
+	const searchSources = searchResults.flat();
+
+	// AI Recommend (optional — only if category/targetMarket provided)
+	let recommendedProducts: StrategyContext["recommendedProducts"];
+	let recommendCategory: string | undefined;
+	let recommendTargetMarket: string | undefined;
+
+	if (recommend?.category && recommend?.targetMarket) {
+		recommendCategory = recommend.category;
+		recommendTargetMarket = recommend.targetMarket;
+		try {
+			const prompt = `You are a Japan home shopping market expert. Recommend 5 specific NEW products for this category.
+
+Category: ${recommend.category}
+Target Market: ${recommend.targetMarket}
+${recommend.priceRange ? `Price Range: ${recommend.priceRange}` : ""}
+
+Return a JSON array of exactly 5 recommendations:
+[{"name":"<product name>","reason":"<why it fits Japan market>","japan_fit_score":<0-100>,"estimated_demand":"<e.g. 高>","supply_source":"<source>","estimated_price_jpy":"<e.g. ¥3,980-5,980>"}]
+
+Return only valid JSON, no markdown. All text in Japanese.`;
+			const raw = await callGemini(prompt);
+			const match = raw.match(/\[[\s\S]*\]/);
+			if (match) {
+				recommendedProducts = JSON.parse(match[0]);
+			}
+		} catch (err) {
+			console.error("[md-strategy] recommend failed:", err);
+			// Non-fatal — continue without recommendations
+		}
+	}
+
 	return {
 		annualMetrics: {
 			totalRevenue,
@@ -241,6 +338,10 @@ export async function fetchStrategyContext(userGoal?: string): Promise<StrategyC
 		products: enrichedProducts,
 		weeklyTrends,
 		userGoal,
+		recommendedProducts,
+		recommendCategory,
+		recommendTargetMarket,
+		searchSources,
 	};
 }
 
@@ -270,6 +371,7 @@ export interface ProductSelectionOutput {
 		}>;
 	}>;
 	portfolio_strategy: string;
+	sources_cited?: Array<{ index: number; title: string; url: string }>;
 }
 
 export interface ChannelStrategyOutput {
@@ -310,6 +412,7 @@ export interface ChannelStrategyOutput {
 		timeline: string;
 		rationale: string;
 	}>;
+	sources_cited?: Array<{ index: number; title: string; url: string }>;
 }
 
 export interface PricingMarginOutput {
@@ -340,6 +443,7 @@ export interface PricingMarginOutput {
 		bep_timeline: string;
 	}>;
 	margin_optimization: string[];
+	sources_cited?: Array<{ index: number; title: string; url: string }>;
 }
 
 export interface MarketingExecutionOutput {
@@ -375,6 +479,7 @@ export interface MarketingExecutionOutput {
 		by_channel: Record<string, number>;
 		by_type: Record<string, number>;
 	};
+	sources_cited?: Array<{ index: number; title: string; url: string }>;
 }
 
 export interface FinancialProjectionOutput {
@@ -404,6 +509,7 @@ export interface FinancialProjectionOutput {
 		aggressive: { year1_revenue: number; year1_profit: number };
 		assumptions: string[];
 	};
+	sources_cited?: Array<{ index: number; title: string; url: string }>;
 }
 
 export interface RiskContingencyOutput {
@@ -431,6 +537,7 @@ export interface RiskContingencyOutput {
 		criteria: string[];
 		decision_date: string;
 	}>;
+	sources_cited?: Array<{ index: number; title: string; url: string }>;
 }
 
 export interface FullStrategyResult {
@@ -490,7 +597,32 @@ function buildContextHeader(ctx: StrategyContext): string {
 - 取扱商品数: ${ctx.annualMetrics.productCount}
 
 === カテゴリ別実績 ===
-${catLines}`;
+${catLines}
+
+=== データ出典 ===
+- TV通販実績データ: テレビ東京ダイレクト販売実績 (2025-2026年, ${ctx.annualMetrics.weekCount}週間)
+- 商品台帳: 仕入原価・卸売率・メーカー情報
+- AI分析: 個別商品リサーチレポート (research_results)`;
+}
+
+function buildSourcesSection(ctx: StrategyContext): string {
+	if (ctx.searchSources.length === 0) return "";
+	const lines = ctx.searchSources
+		.map((s, i) => `[${i + 1}] ${s.title} — ${s.url}`)
+		.join("\n");
+	const searchData = ctx.searchSources
+		.slice(0, 15)
+		.map((s) => `- ${s.title}: ${s.description}`)
+		.join("\n");
+	return `
+=== 参考市場データ（Web検索）===
+${searchData}
+
+=== 出典リスト ===
+${lines}
+
+分析の根拠となる外部情報には、可能な限り出典を[1][2]のように番号で引用してください。
+引用した出典は "sources_cited" フィールドに [{index: 番号, title: "タイトル", url: "URL"}] として含めてください。`;
 }
 
 function buildProductLines(products: EnrichedProduct[], limit: number = 30): string {
@@ -525,15 +657,30 @@ function buildProductSelectionPrompt(ctx: StrategyContext): string {
 		? `\n=== ユーザーの目標 ===\n${ctx.userGoal}\n上記の目標を最優先に踏まえて商品選定を行ってください。\n`
 		: "";
 
+	// AI recommended products section (if available)
+	let recommendSection = "";
+	if (ctx.recommendedProducts && ctx.recommendedProducts.length > 0) {
+		const recLines = ctx.recommendedProducts
+			.map((p, i) => `${i + 1}. ${p.name} — 適合度${p.japan_fit_score}/100, 需要: ${p.estimated_demand}, 供給: ${p.supply_source}, 想定価格: ${p.estimated_price_jpy}\n   理由: ${p.reason}`)
+			.join("\n");
+		const catInfo = ctx.recommendCategory ? `カテゴリ: ${ctx.recommendCategory}` : "";
+		const mktInfo = ctx.recommendTargetMarket ? ` / ターゲット: ${ctx.recommendTargetMarket}` : "";
+		recommendSection = `\n=== AIが推薦する新規商品候補 ===${catInfo || mktInfo ? `\n(${catInfo}${mktInfo})` : ""}
+${recLines}
+
+上記のAI推薦商品も各チャネルへの投入候補として検討してください。既存実績商品と組み合わせて最適なポートフォリオを構成すること。
+推薦商品のcodeは "NEW-1", "NEW-2" 等で表記してください。\n`;
+	}
+
 	return `あなたはTV通販チャネルのMD（マーチャンダイザー）です。EC・SNS・D2C・越境ECへの商品展開を計画しています。
 
-以下のTV通販実績データに基づき、各チャネルに投入すべき商品を選定してください。
+以下のTV通販実績データとAI推薦商品に基づき、各チャネルに投入すべき商品を選定してください。
 ${userGoalSection}
 ${buildContextHeader(ctx)}
 
 === 商品実績データ（上位30商品、原価・メーカー・月次推移・AI分析含む） ===
 ${buildProductLines(ctx.products)}
-
+${recommendSection}
 === 対象チャネル ===
 1. Amazon Japan
 2. 楽天市場
@@ -563,8 +710,10 @@ Return a JSON object (no markdown) with this structure:
       "exclusions": [{"code": "商品コード", "name": "商品名", "reason": "不適合理由"}]
     }
   ],
-  "portfolio_strategy": "全体戦略"
-}`;
+  "portfolio_strategy": "全体戦略",
+  "sources_cited": [{"index": 1, "title": "出典タイトル", "url": "https://..."}]
+}
+${buildSourcesSection(ctx)}`;
 }
 
 function buildChannelStrategyPrompt(ctx: StrategyContext, priorOutputs: Record<string, unknown>): string {
@@ -607,8 +756,10 @@ Return a JSON object (no markdown) with this structure:
       "kpis": [{"metric": "", "target": "", "timeline": ""}]
     }
   ],
-  "launch_sequence": [{"phase": "", "channels": [], "timeline": "", "rationale": ""}]
-}`;
+  "launch_sequence": [{"phase": "", "channels": [], "timeline": "", "rationale": ""}],
+  "sources_cited": [{"index": 1, "title": "", "url": ""}]
+}
+${buildSourcesSection(ctx)}`;
 }
 
 function buildPricingMarginPrompt(ctx: StrategyContext, priorOutputs: Record<string, unknown>): string {
@@ -678,8 +829,10 @@ Return a JSON object (no markdown) with this structure:
   "bep_analysis": [
     {"channel": "", "fixed_costs": [{"item": "", "monthly": 0}], "variable_cost_per_unit": 0, "bep_units": 0, "bep_revenue": 0, "bep_timeline": ""}
   ],
-  "margin_optimization": ["具体的な改善提案"]
-}`;
+  "margin_optimization": ["具体的な改善提案"],
+  "sources_cited": [{"index": 1, "title": "", "url": ""}]
+}
+${buildSourcesSection(ctx)}`;
 }
 
 function buildMarketingExecutionPrompt(ctx: StrategyContext, priorOutputs: Record<string, unknown>): string {
@@ -733,8 +886,10 @@ Return a JSON object (no markdown) with this structure:
   "monthly_plans": [{"month": "2026年4月", "total_budget": 0, "activities": [{"channel": "", "activity": "", "budget": 0, "expected_impressions": "", "expected_conversions": "", "content_type": ""}]}],
   "content_calendar": [{"week": "Week1", "channel": "", "content_type": "", "topic": "", "product_focus": ""}],
   "influencer_plan": [{"tier": "micro", "count": 0, "budget_per_person": "", "selection_criteria": "", "expected_roi": "", "platform": ""}],
-  "budget_summary": {"total_6month": 0, "by_channel": {}, "by_type": {}}
-}`;
+  "budget_summary": {"total_6month": 0, "by_channel": {}, "by_type": {}},
+  "sources_cited": [{"index": 1, "title": "", "url": ""}]
+}
+${buildSourcesSection(ctx)}`;
 }
 
 function buildFinancialProjectionPrompt(ctx: StrategyContext, priorOutputs: Record<string, unknown>): string {
@@ -786,8 +941,10 @@ Return a JSON object (no markdown) with this structure:
 {
   "monthly_forecast": [{"month": "2026年4月", "by_channel": [{"channel": "", "revenue": 0, "cost": 0, "marketing_spend": 0, "net_profit": 0, "cumulative_profit": 0}], "total_revenue": 0, "total_profit": 0}],
   "roi_timeline": [{"channel": "", "total_investment": 0, "breakeven_month": "", "year1_roi_pct": 0, "year1_net_profit": 0}],
-  "scenarios": {"conservative": {"year1_revenue": 0, "year1_profit": 0}, "moderate": {"year1_revenue": 0, "year1_profit": 0}, "aggressive": {"year1_revenue": 0, "year1_profit": 0}, "assumptions": []}
-}`;
+  "scenarios": {"conservative": {"year1_revenue": 0, "year1_profit": 0}, "moderate": {"year1_revenue": 0, "year1_profit": 0}, "aggressive": {"year1_revenue": 0, "year1_profit": 0}, "assumptions": []},
+  "sources_cited": [{"index": 1, "title": "", "url": ""}]
+}
+${buildSourcesSection(ctx)}`;
 }
 
 function buildRiskContingencyPrompt(ctx: StrategyContext, priorOutputs: Record<string, unknown>): string {
@@ -829,8 +986,10 @@ Return a JSON object (no markdown) with this structure:
 {
   "risk_matrix": [{"channel": "", "risks": [{"risk": "", "category": "operational", "likelihood": "high", "impact": "high", "mitigation": [], "contingency_trigger": "", "contingency_action": ""}]}],
   "top_5_risks": [{"risk": "", "channel": "", "mitigation_playbook": [], "owner": "", "review_frequency": ""}],
-  "go_nogo_criteria": [{"channel": "", "criteria": [], "decision_date": ""}]
-}`;
+  "go_nogo_criteria": [{"channel": "", "criteria": [], "decision_date": ""}],
+  "sources_cited": [{"index": 1, "title": "", "url": ""}]
+}
+${buildSourcesSection(ctx)}`;
 }
 
 // ---------------------------------------------------------------------------

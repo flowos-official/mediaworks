@@ -128,6 +128,13 @@ export default function ProductDetailModal({
   const [images, setImages] = useState<ImageData[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
+  // Lock body scroll while modal is open
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
   useEffect(() => {
     setLoading(true);
     setError(null);

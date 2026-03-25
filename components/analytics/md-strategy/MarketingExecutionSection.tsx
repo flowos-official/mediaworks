@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Megaphone, Calendar, Users } from 'lucide-react';
 import type { MarketingExecutionOutput } from '@/lib/md-strategy';
+import SourcesCited from './SourcesCited';
 
 interface Props {
 	data: MarketingExecutionOutput;
@@ -178,6 +179,7 @@ export default function MarketingExecutionSection({ data }: Props) {
 					</CardContent>
 				</Card>
 			)}
+			<SourcesCited sources={data.sources_cited} />
 		</div>
 	);
 }

@@ -216,15 +216,15 @@ Generate a JSON response with these exact fields:
   ],
   "recommended_price_range": "<recommended retail price range for Japan home shopping, e.g., '¥3,980-5,980'>",
   "broadcast_scripts": {
-    "sec30": "<30-second home shopping broadcast script in Korean>",
-    "sec60": "<60-second home shopping broadcast script in Korean>",
-    "min5": "<5-minute detailed home shopping broadcast script in Korean with host cues>"
+    "sec30": "<30-second home shopping broadcast script in Japanese>",
+    "sec60": "<60-second home shopping broadcast script in Japanese>",
+    "min5": "<5-minute detailed home shopping broadcast script in Japanese with host cues>"
   },
   "japan_export_fit_score": <number 0-100, how well this product fits Japan market>,
   "distribution_channels": [
     {
       "channel_name": "<e.g. Rakuten, Amazon JP, QVC Japan, TikTok Shop JP, NHK World Shopping>",
-      "channel_type": "<EC | TV홈쇼핑 | SNS커머스 | 오프라인>",
+      "channel_type": "<EC | TVホームショッピング | SNSコマース | オフライン>",
       "primary_age_group": "<e.g. 40-60代女性>",
       "fit_score": <0-100>,
       "reason": "<why this channel fits the product in Japanese>",
@@ -271,13 +271,13 @@ Generate a JSON response with these exact fields:
     "target_products": ["<product variant 1>", "<product variant 2>"],
     "recommended_channels": [
       {
-        "channel_name": "<e.g. 쿠팡, 네이버스마트스토어, 올리브영, 무신사>",
-        "target_age": "<e.g. 20-30대 여성>",
-        "strategy": "<entry strategy in Korean>",
-        "estimated_entry_cost": "<e.g. 월 100만원>"
+        "channel_name": "<e.g. Coupang, Naver SmartStore, Olive Young, MUSINSA>",
+        "target_age": "<e.g. 20-30代女性>",
+        "strategy": "<entry strategy in Japanese>",
+        "estimated_entry_cost": "<e.g. 月100万ウォン>"
       }
     ],
-    "korean_consumer_insight": "<Korean consumer characteristics analysis in Korean>"
+    "korean_consumer_insight": "<Korean consumer characteristics analysis in Japanese>"
   }
 }
 

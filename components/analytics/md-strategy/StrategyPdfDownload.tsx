@@ -9,7 +9,7 @@ export default function StrategyPdfDownload() {
 	const handleDownload = async () => {
 		setLoading(true);
 		try {
-			const { default: html2canvas } = await import('html2canvas');
+			const { default: html2canvas } = await import('html2canvas-pro');
 			const { default: jsPDF } = await import('jspdf');
 
 			const element = document.getElementById('md-strategy-content');

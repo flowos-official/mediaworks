@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Megaphone, ChevronDown, ChevronUp } from "lucide-react";
@@ -18,11 +19,9 @@ interface MarketingStrategy {
 const TYPE_COLORS: Record<string, string> = {
 	"SNS": "bg-pink-100 text-pink-800",
 	"インフルエンサー": "bg-purple-100 text-purple-800",
-	"인플루언서": "bg-purple-100 text-purple-800",
 	"PR": "bg-blue-100 text-blue-800",
 	"SEO": "bg-green-100 text-green-800",
 	"イベント": "bg-orange-100 text-orange-800",
-	"이벤트": "bg-orange-100 text-orange-800",
 };
 
 function EfficiencyBar({ score }: { score: number }) {
@@ -45,6 +44,7 @@ interface MarketingStrategySectionProps {
 }
 
 export default function MarketingStrategySection({ strategies }: MarketingStrategySectionProps) {
+	const t = useTranslations("report");
 	if (!strategies || strategies.length === 0) return null;
 	const [expanded, setExpanded] = useState<number | null>(null);
 
@@ -55,8 +55,8 @@ export default function MarketingStrategySection({ strategies }: MarketingStrate
 			<CardContent className="p-6">
 				<div className="flex items-center gap-2 mb-5">
 					<Megaphone className="h-5 w-5 text-purple-500" />
-					<h3 className="text-lg font-semibold text-gray-900">마케팅 전략</h3>
-					<span className="text-xs text-gray-400 ml-auto">효율 순 정렬</span>
+					<h3 className="text-lg font-semibold text-gray-900">{t("marketing.title")}</h3>
+					<span className="text-xs text-gray-400 ml-auto">{t("marketing.sortedByEfficiency")}</span>
 				</div>
 				<div className="space-y-3">
 					{sorted.map((s, i) => (
@@ -75,49 +75,52 @@ export default function MarketingStrategySection({ strategies }: MarketingStrate
 											</Badge>
 										</div>
 										<div className="flex items-center gap-4 text-xs text-gray-500">
-											<span>예산: {s.estimated_cost}</span>
-											<span>도달: {s.expected_reach}</span>
+											<span>{t("marketing.budget")} {s.estimated_cost}</span>
+											<span>{t("marketing.reach")} {s.expected_reach}</span>
 										</div>
 										<div className="mt-2">
 											<EfficiencyBar score={s.efficiency_score} />
 										</div>
 									</div>
+									<span data-pdf-hide>
 									{expanded === i ? (
 										<ChevronUp className="h-4 w-4 text-gray-400 shrink-0 mt-1" />
 									) : (
 										<ChevronDown className="h-4 w-4 text-gray-400 shrink-0 mt-1" />
 									)}
+								</span>
 								</div>
 							</button>
-							{expanded === i && (
-								<div className="px-4 pb-4 border-t border-gray-100 pt-3 bg-gray-50/50">
-									{s.steps?.length > 0 && (
-										<div className="mb-3">
-											<p className="text-xs font-semibold text-gray-500 mb-2">실행 단계</p>
-											<ol className="space-y-1">
-												{s.steps.map((step, si) => (
-													<li key={si} className="flex items-start gap-2 text-xs text-gray-600">
-														<span className="font-bold text-gray-400 shrink-0">{si + 1}.</span>
-														{step}
-													</li>
-												))}
-											</ol>
+							<div
+								className={`px-4 pb-4 border-t border-gray-100 pt-3 bg-gray-50/50 ${expanded !== i ? "hidden" : ""}`}
+								data-pdf-accordion
+							>
+								{s.steps?.length > 0 && (
+									<div className="mb-3">
+										<p className="text-xs font-semibold text-gray-500 mb-2">{t("marketing.executionSteps")}</p>
+										<ol className="space-y-1">
+											{s.steps.map((step, si) => (
+												<li key={si} className="flex items-start gap-2 text-xs text-gray-600">
+													<span className="font-bold text-gray-400 shrink-0">{si + 1}.</span>
+													{step}
+												</li>
+											))}
+										</ol>
+									</div>
+								)}
+								{s.best_for_channels?.length > 0 && (
+									<div>
+										<p className="text-xs font-semibold text-gray-500 mb-1.5">{t("marketing.recommendedChannels")}</p>
+										<div className="flex flex-wrap gap-1">
+											{s.best_for_channels.map((ch) => (
+												<span key={ch} className="text-[10px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+													{ch}
+												</span>
+											))}
 										</div>
-									)}
-									{s.best_for_channels?.length > 0 && (
-										<div>
-											<p className="text-xs font-semibold text-gray-500 mb-1.5">추천 채널</p>
-											<div className="flex flex-wrap gap-1">
-												{s.best_for_channels.map((ch) => (
-													<span key={ch} className="text-[10px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
-														{ch}
-													</span>
-												))}
-											</div>
-										</div>
-									)}
-								</div>
-							)}
+									</div>
+								)}
+							</div>
 						</div>
 					))}
 				</div>

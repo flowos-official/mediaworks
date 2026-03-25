@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Package, TrendingUp, TrendingDown, Minus, ShieldX } from 'lucide-react';
+import SourcesCited from './SourcesCited';
 import type { ProductSelectionOutput } from '@/lib/md-strategy';
 
 interface Props {
@@ -126,6 +127,8 @@ export default function ProductSelectionSection({ data }: Props) {
 					</CardContent>
 				</Card>
 			))}
+
+			<SourcesCited sources={data.sources_cited} />
 		</div>
 	);
 }

@@ -33,6 +33,9 @@ export default function RevenueTrendChart({
   period: 'weekly' | 'monthly';
 }) {
   const [showProfit, setShowProfit] = useState(true);
+  const [showCost, setShowCost] = useState(false);
+
+  const chartData = data.map((d) => ({ ...d, cost: d.revenue - d.profit }));
 
   return (
     <Card className="border-gray-200">
@@ -49,6 +52,15 @@ export default function RevenueTrendChart({
             >
               粗利表示
             </button>
+            <button
+              type="button"
+              onClick={() => setShowCost(!showCost)}
+              className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
+                showCost ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-500'
+              }`}
+            >
+              原価表示
+            </button>
           </div>
         </div>
         <p className="text-xs text-gray-400">
@@ -58,7 +70,7 @@ export default function RevenueTrendChart({
       <CardContent>
         <div className="h-72">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
+            <AreaChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
               <defs>
                 <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.15} />
@@ -67,6 +79,10 @@ export default function RevenueTrendChart({
                 <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#22c55e" stopOpacity={0.15} />
                   <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="colorCost" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#f97316" stopOpacity={0.15} />
+                  <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -83,17 +99,20 @@ export default function RevenueTrendChart({
                 width={55}
               />
               <Tooltip
-                formatter={(value: unknown, name: unknown) => [
-                  `¥${Number(value).toLocaleString()}`,
-                  name === 'revenue' ? '売上' : '粗利',
-                ]}
+                formatter={(value: unknown, name: unknown) => {
+                  const labels: Record<string, string> = { revenue: '売上', profit: '粗利', cost: '原価' };
+                  return [`¥${Number(value).toLocaleString()}`, labels[name as string] ?? name];
+                }}
                 labelFormatter={(label) =>
                   period === 'weekly' ? `Week: ${label}` : `Month: ${label}`
                 }
                 contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}
               />
               <Legend
-                formatter={(value) => (value === 'revenue' ? '売上' : '粗利')}
+                formatter={(value) => {
+                  const labels: Record<string, string> = { revenue: '売上', profit: '粗利', cost: '原価' };
+                  return labels[value] ?? value;
+                }}
                 wrapperStyle={{ fontSize: 12 }}
               />
               <Area
@@ -109,6 +128,15 @@ export default function RevenueTrendChart({
                   dataKey="profit"
                   stroke="#22c55e"
                   fill="url(#colorProfit)"
+                  strokeWidth={2}
+                />
+              )}
+              {showCost && (
+                <Area
+                  type="monotone"
+                  dataKey="cost"
+                  stroke="#f97316"
+                  fill="url(#colorCost)"
                   strokeWidth={2}
                 />
               )}

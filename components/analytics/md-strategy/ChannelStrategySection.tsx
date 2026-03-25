@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Store, ChevronDown, ChevronUp, Target } from 'lucide-react';
 import type { ChannelStrategyOutput } from '@/lib/md-strategy';
+import SourcesCited from './SourcesCited';
 
 interface Props {
 	data: ChannelStrategyOutput;
@@ -208,6 +209,7 @@ export default function ChannelStrategySection({ data }: Props) {
 						</Card>
 					);
 				})}
+			<SourcesCited sources={data.sources_cited} />
 		</div>
 	);
 }

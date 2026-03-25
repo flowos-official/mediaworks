@@ -8,6 +8,7 @@ import {
 	BarChart, Bar, Legend,
 } from 'recharts';
 import type { FinancialProjectionOutput } from '@/lib/md-strategy';
+import SourcesCited from './SourcesCited';
 
 interface Props {
 	data: FinancialProjectionOutput;
@@ -182,6 +183,7 @@ export default function FinancialProjectionSection({ data }: Props) {
 					)}
 				</CardContent>
 			</Card>
+			<SourcesCited sources={data.sources_cited} />
 		</div>
 	);
 }

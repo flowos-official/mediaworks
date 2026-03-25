@@ -189,3 +189,18 @@ export type AnnualSummary = {
   product_count: number;
   margin_rate: number;
 };
+
+export type MdStrategy = {
+  id: string;
+  user_goal: string | null;
+  category: string | null;
+  target_market: string | null;
+  price_range: string | null;
+  product_selection: Record<string, unknown> | null;
+  channel_strategy: Record<string, unknown> | null;
+  pricing_margin: Record<string, unknown> | null;
+  marketing_execution: Record<string, unknown> | null;
+  financial_projection: Record<string, unknown> | null;
+  risk_contingency: Record<string, unknown> | null;
+  created_at: string;
+};
