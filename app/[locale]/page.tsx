@@ -12,6 +12,7 @@ const CATEGORIES = ['美容・スキンケア', '健康食品', 'キッチン用
 const MARKETS = ['日本全国', '40-60代女性', '20-30代女性', '男女共用'];
 
 function AIRecommendSection() {
+  const t = useTranslations('recommend');
   const [category, setCategory] = useState('美容・スキンケア');
   const [targetMarket, setTargetMarket] = useState('40-60代女性');
   const [priceRange, setPriceRange] = useState('');
@@ -48,15 +49,15 @@ function AIRecommendSection() {
     <section className="mb-16">
       <div className="flex items-center gap-2 mb-6">
         <Wand2 size={20} className="text-purple-600" />
-        <h2 className="text-xl font-semibold text-gray-900">AI 제품 추천</h2>
-        <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">Gemini 기반</span>
+        <h2 className="text-xl font-semibold text-gray-900">{t('sectionTitle')}</h2>
+        <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{t('poweredBy')}</span>
       </div>
 
       {/* Filter bar */}
       <div className="bg-white border border-gray-200 rounded-2xl p-5 mb-5">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">카테고리</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">{t('category')}</label>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
@@ -66,7 +67,7 @@ function AIRecommendSection() {
             </select>
           </div>
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">타겟 시장</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">{t('targetMarket')}</label>
             <select
               value={targetMarket}
               onChange={(e) => setTargetMarket(e.target.value)}
@@ -76,12 +77,12 @@ function AIRecommendSection() {
             </select>
           </div>
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">가격대 (선택)</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">{t('priceRange')}</label>
             <input
               type="text"
               value={priceRange}
               onChange={(e) => setPriceRange(e.target.value)}
-              placeholder="예: ¥3,000-8,000"
+              placeholder={t('priceRangePlaceholder')}
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
             />
           </div>
@@ -93,7 +94,7 @@ function AIRecommendSection() {
           className="flex items-center gap-2 px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-60"
         >
           {loading ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
-          {loading ? '분석 중...' : 'AI 추천 받기'}
+          {loading ? t('generating') : t('generate')}
         </button>
         {error && <p className="text-red-500 text-sm mt-3">{error}</p>}
       </div>
@@ -113,10 +114,10 @@ function AIRecommendSection() {
               <div className="space-y-1.5 text-[11px] text-gray-500 mb-3">
                 <div className="flex items-center gap-1.5">
                   <TrendingUp size={11} />
-                  <span>수요: {rec.estimated_demand}</span>
+                  <span>{t('demand')}: {rec.estimated_demand}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>공급: {rec.supply_source}</span>
+                  <span>{t('supply')}: {rec.supply_source}</span>
                   <span className="font-semibold text-gray-700">{rec.estimated_price_jpy}</span>
                 </div>
               </div>
@@ -146,6 +147,7 @@ function AIRecommendSection() {
 
 export default function HomePage() {
   const t = useTranslations('home');
+  const tr = useTranslations('recommend');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [activeTab, setActiveTab] = useState<'upload' | 'recommend'>('upload');
 
@@ -182,7 +184,7 @@ export default function HomePage() {
                 }`}
               >
                 {tab === 'upload' ? <Sparkles size={14} /> : <Wand2 size={14} />}
-                {tab === 'upload' ? '제품 분석' : 'AI 추천'}
+                {tab === 'upload' ? tr('tabUpload') : tr('tabRecommend')}
               </button>
             ))}
           </div>

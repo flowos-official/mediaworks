@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
 import LanguageSwitcher from './LanguageSwitcher';
-import { BarChart3 } from 'lucide-react';
+import { BarChart3, ImageIcon } from 'lucide-react';
 
 export default function Navbar() {
   const t = useTranslations('nav');
@@ -23,6 +23,20 @@ export default function Navbar() {
               className="text-sm text-gray-600 hover:text-gray-900 font-medium"
             >
               {t('home')}
+            </Link>
+            <Link
+              href={`/${locale}/analytics`}
+              className="text-sm text-gray-600 hover:text-gray-900 font-medium flex items-center gap-1"
+            >
+              <BarChart3 size={14} />
+              {t('analytics')}
+            </Link>
+            <Link
+              href={`/${locale}/gallery`}
+              className="text-sm text-gray-600 hover:text-gray-900 font-medium flex items-center gap-1"
+            >
+              <ImageIcon size={14} />
+              {t('gallery')}
             </Link>
             <LanguageSwitcher />
           </div>

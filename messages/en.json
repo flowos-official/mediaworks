@@ -2,7 +2,9 @@
   "nav": {
     "home": "Home",
     "products": "Products",
-    "reports": "Reports"
+    "reports": "Reports",
+    "analytics": "Analytics",
+    "gallery": "Gallery"
   },
   "home": {
     "title": "MediaWorks",
@@ -50,6 +52,54 @@
     "gender": "Gender",
     "interests": "Interests",
     "income": "Income Level"
+  },
+  "gallery": {
+    "title": "Product Image Gallery",
+    "subtitle": "Browse product images from taicho files",
+    "searchPlaceholder": "Search by product name...",
+    "noImages": "No images found",
+    "uploadButton": "Upload Taicho",
+    "uploadTitle": "Upload Taicho File",
+    "uploadDescription": "Upload an Excel taicho file (.xlsx/.xlsm) to auto-extract product data and images",
+    "productCode": "Product Code",
+    "productCodePlaceholder": "e.g. 260213",
+    "selectFile": "Choose File",
+    "uploading": "Processing...",
+    "uploadSuccess": "Upload complete",
+    "uploadError": "An error occurred",
+    "images": "images",
+    "allSheets": "All Sheets",
+    "close": "Close"
+  },
+  "recommend": {
+    "tabUpload": "Product Analysis",
+    "tabRecommend": "AI Recommend",
+    "sectionTitle": "AI Product Recommendations",
+    "poweredBy": "Powered by Gemini",
+    "category": "Category",
+    "targetMarket": "Target Market",
+    "priceRange": "Price Range (optional)",
+    "priceRangePlaceholder": "e.g. ¥3,000-8,000",
+    "generate": "Get AI Recommendations",
+    "generating": "Analyzing...",
+    "demand": "Demand",
+    "supply": "Supply"
+  },
+  "mdStrategy": {
+    "title": "MD Strategy Planner",
+    "subtitle": "6 specialized AI skills analyze sequentially to generate data-driven business strategy",
+    "generate": "Generate MD Strategy",
+    "generating": "AI analyzing...",
+    "goalLabel": "Strategy Direction / Goal (optional)",
+    "goalPlaceholder": "e.g. Target ¥10M monthly sales on Rakuten & Amazon / Reach younger audience via TikTok",
+    "dataFetch": "Data Fetch",
+    "productSelection": "Product Selection",
+    "channelStrategy": "Channel Strategy",
+    "pricingMargin": "Pricing & Margin",
+    "marketingExecution": "Marketing Execution",
+    "financialProjection": "Financial Projection",
+    "riskContingency": "Risk & Contingency",
+    "downloadPdf": "Download Strategy PDF"
   },
   "language": {
     "en": "English",

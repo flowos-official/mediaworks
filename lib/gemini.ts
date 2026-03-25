@@ -300,3 +300,136 @@ IMPORTANT:
 
 	return JSON.parse(jsonMatch[0]) as ResearchOutput;
 }
+
+// ---------------------------------------------------------------------------
+// Expansion Strategy Analysis
+// ---------------------------------------------------------------------------
+
+export interface ExpansionInput {
+	topProducts: Array<{
+		code: string;
+		name: string;
+		category: string | null;
+		totalRevenue: number;
+		totalProfit: number;
+		totalQuantity: number;
+		marginRate: number;
+		avgWeeklyQty: number;
+		weekCount: number;
+	}>;
+	categorySummary: Record<string, { revenue: number; quantity: number }>;
+	overallRevenue: number;
+	overallProfit: number;
+	overallMarginRate: number;
+	weekCount: number;
+	userGoal?: string;
+}
+
+export interface RecommendedProduct {
+	name: string;
+	tv_revenue: string;
+	margin: string;
+	weekly_avg: number;
+	fit_reason: string;
+}
+
+export interface ExpansionAnalysisResult {
+	channel_recommendations: Array<{
+		channel: string;
+		fit_score: number;
+		reasoning: string;
+		estimated_market_size: string;
+		recommended_products: RecommendedProduct[];
+		entry_difficulty: string;
+	}>;
+	product_channel_fit: Array<{
+		product: string;
+		best_channels: string[];
+		reasoning: string;
+	}>;
+	entry_strategy: Array<{
+		channel: string;
+		steps: string[];
+		timeline: string;
+		initial_investment: string;
+	}>;
+	risk_assessment: Array<{
+		channel: string;
+		risks: string[];
+		mitigation: string;
+	}>;
+	summary: string;
+}
+
+export async function analyzeExpansionStrategy(
+	input: ExpansionInput,
+): Promise<ExpansionAnalysisResult> {
+	const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
+
+	const productLines = input.topProducts
+		.map(
+			(p, i) =>
+				`${i + 1}. ${p.name} [${p.category ?? "分類なし"}] — 総売上: ¥${p.totalRevenue.toLocaleString()}, 粗利率: ${p.marginRate}%, 週平均${p.avgWeeklyQty}個, ${p.weekCount}週間販売`,
+		)
+		.join("\n");
+
+	const categoryLines = Object.entries(input.categorySummary)
+		.sort(([, a], [, b]) => b.revenue - a.revenue)
+		.map(([cat, d]) => `  - ${cat}: ¥${d.revenue.toLocaleString()} (${d.quantity.toLocaleString()}個)`)
+		.join("\n");
+
+	const userGoalSection = input.userGoal
+		? `\n=== ユーザーの目標 ===\n${input.userGoal}\n\n上記の目標を最優先に踏まえて分析してください。目標に関連するチャネルをより重点的に分析してください。\n`
+		: "";
+
+	const prompt = `あなたはTV通販（テレビ東京ダイレクト）の販売チャネル拡大戦略コンサルタントです。
+
+以下の実績データに基づき、TV通販以外のチャネルへの拡大戦略を分析してください。
+${userGoalSection}
+=== 全体実績サマリー ===
+- 総売上: ¥${input.overallRevenue.toLocaleString()}
+- 総粗利: ¥${input.overallProfit.toLocaleString()}
+- 粗利率: ${input.overallMarginRate}%
+- 集計期間: ${input.weekCount}週間 (2025-2026年)
+
+=== カテゴリ別売上 ===
+${categoryLines}
+
+=== 上位15商品実績 ===
+${productLines}
+
+=== 分析対象チャネル ===
+1. Amazon Japan
+2. 楽天市場
+3. Yahoo!ショッピング
+4. TikTok Shop Japan
+5. Instagram Shopping
+6. 越境EC（韓国：Coupang / 東南アジア：Shopee, Lazada）
+7. 自社EC（D2C）
+
+=== 分析ルール ===
+IMPORTANT: 各チャネルの推奨商品には、必ず上記の「上位15商品実績」から具体的な数値（売上、粗利率、週平均販売数）を引用してください。
+根拠のない推奨は行わないでください。推奨理由には「TV通販で週平均○○個、粗利率○○%の実績があるため」のように必ずデータを引用すること。
+
+各チャネルについて、以下を日本語で分析してください：
+- 上記商品との適合度（0-100スコア）
+- 最適な商品の選定理由（必ず売上データを引用）
+- 参入戦略ステップ
+- リスク評価
+
+Return a JSON object (no markdown) with this structure:
+{
+  "channel_recommendations": [{"channel": "", "fit_score": 0, "reasoning": "", "estimated_market_size": "", "recommended_products": [{"name": "", "tv_revenue": "¥○○万", "margin": "○○%", "weekly_avg": 0, "fit_reason": ""}], "entry_difficulty": ""}],
+  "product_channel_fit": [{"product": "", "best_channels": [], "reasoning": ""}],
+  "entry_strategy": [{"channel": "", "steps": [], "timeline": "", "initial_investment": ""}],
+  "risk_assessment": [{"channel": "", "risks": [], "mitigation": ""}],
+  "summary": ""
+}`;
+
+	const result = await model.generateContent(prompt);
+	const text = result.response.text().trim();
+	const jsonMatch = text.match(/\{[\s\S]*\}/);
+	if (!jsonMatch) throw new Error("Failed to generate expansion analysis");
+
+	return JSON.parse(jsonMatch[0]) as ExpansionAnalysisResult;
+}

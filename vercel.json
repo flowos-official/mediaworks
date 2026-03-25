@@ -11,6 +11,15 @@
     },
     "app/api/recommend/route.ts": {
       "maxDuration": 60
+    },
+    "app/api/analytics/expansion/route.ts": {
+      "maxDuration": 120
+    },
+    "app/api/products/upload-taicho/route.ts": {
+      "maxDuration": 120
+    },
+    "app/api/analytics/md-strategy/route.ts": {
+      "maxDuration": 300
     }
   },
   "crons": [

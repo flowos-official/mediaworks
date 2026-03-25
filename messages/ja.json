@@ -2,7 +2,9 @@
   "nav": {
     "home": "ホーム",
     "products": "商品",
-    "reports": "レポート"
+    "reports": "レポート",
+    "analytics": "売上分析",
+    "gallery": "商品画像"
   },
   "home": {
     "title": "MediaWorks",
@@ -50,6 +52,54 @@
     "gender": "性別",
     "interests": "関心事",
     "income": "収入レベル"
+  },
+  "gallery": {
+    "title": "商品画像ギャラリー",
+    "subtitle": "台帳ファイルの商品画像を一覧表示",
+    "searchPlaceholder": "商品名で検索...",
+    "noImages": "画像がありません",
+    "uploadButton": "台帳アップロード",
+    "uploadTitle": "台帳ファイルアップロード",
+    "uploadDescription": "Excel台帳ファイル(.xlsx/.xlsm)をアップロードして商品データと画像を自動抽出",
+    "productCode": "商品コード",
+    "productCodePlaceholder": "例: 260213",
+    "selectFile": "ファイルを選択",
+    "uploading": "処理中...",
+    "uploadSuccess": "アップロード完了",
+    "uploadError": "エラーが発生しました",
+    "images": "枚",
+    "allSheets": "全シート",
+    "close": "閉じる"
+  },
+  "recommend": {
+    "tabUpload": "商品分析",
+    "tabRecommend": "AI 推薦",
+    "sectionTitle": "AI 商品推薦",
+    "poweredBy": "Gemini 搭載",
+    "category": "カテゴリ",
+    "targetMarket": "ターゲット市場",
+    "priceRange": "価格帯（任意）",
+    "priceRangePlaceholder": "例: ¥3,000-8,000",
+    "generate": "AI 推薦を取得",
+    "generating": "分析中...",
+    "demand": "需要",
+    "supply": "供給"
+  },
+  "mdStrategy": {
+    "title": "MD戦略プランナー",
+    "subtitle": "6つの専門AIスキルが順次分析し、データに基づく詳細な事業戦略を生成します",
+    "generate": "MD戦略を生成",
+    "generating": "AI分析中...",
+    "goalLabel": "戦略の方向性・目標（任意）",
+    "goalPlaceholder": "例: 楽天・Amazonで月商1000万を目指したい / TikTokで若年層にリーチしたい",
+    "dataFetch": "データ取得",
+    "productSelection": "商品選定",
+    "channelStrategy": "チャネル戦略",
+    "pricingMargin": "価格・マージン戦略",
+    "marketingExecution": "マーケティング実行計画",
+    "financialProjection": "収益予測",
+    "riskContingency": "リスク・対策",
+    "downloadPdf": "PDF戦略書ダウンロード"
   },
   "language": {
     "en": "English",
