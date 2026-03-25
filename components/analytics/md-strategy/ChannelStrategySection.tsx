@@ -49,12 +49,12 @@ export default function ChannelStrategySection({ data }: Props) {
 			</div>
 
 			{/* Launch sequence */}
-			{data.launch_sequence.length > 0 && (
+			{(data.launch_sequence ?? []).length > 0 && (
 				<Card className="border-purple-200 bg-purple-50/20">
 					<CardContent className="p-4">
 						<span className="text-[10px] font-semibold text-purple-600 uppercase tracking-wide">展開ロードマップ</span>
 						<div className="mt-2 space-y-2">
-							{data.launch_sequence.map((phase, i) => (
+							{(data.launch_sequence ?? []).map((phase, i) => (
 								<div key={i} className="flex items-start gap-3">
 									<div className="bg-purple-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] shrink-0 mt-0.5">
 										{i + 1}
@@ -79,7 +79,7 @@ export default function ChannelStrategySection({ data }: Props) {
 			)}
 
 			{/* Channel cards */}
-			{data.channels
+			{(data.channels ?? [])
 				.sort((a, b) => b.fit_score - a.fit_score)
 				.map((ch) => {
 					const isExpanded = expandedChannel === ch.name;
@@ -116,21 +116,21 @@ export default function ChannelStrategySection({ data }: Props) {
 											<div><span className="text-gray-500">アカウント種別:</span> <span className="font-medium">{ch.entry_requirements.account_type}</span></div>
 											<div><span className="text-gray-500">セットアップ期間:</span> <span className="font-medium">{ch.entry_requirements.setup_timeline}</span></div>
 										</div>
-										{ch.entry_requirements.required_documents.length > 0 && (
+										{(ch.entry_requirements?.required_documents ?? []).length > 0 && (
 											<div className="mt-2">
 												<span className="text-[10px] text-gray-500">必要書類:</span>
 												<ul className="mt-0.5 space-y-0.5">
-													{ch.entry_requirements.required_documents.map((doc, i) => (
+													{(ch.entry_requirements?.required_documents ?? []).map((doc, i) => (
 														<li key={i} className="text-xs text-gray-700">• {doc}</li>
 													))}
 												</ul>
 											</div>
 										)}
-										{ch.entry_requirements.initial_costs.length > 0 && (
+										{(ch.entry_requirements?.initial_costs ?? []).length > 0 && (
 											<div className="mt-2">
 												<span className="text-[10px] text-gray-500">初期費用:</span>
 												<div className="mt-0.5 space-y-0.5">
-													{ch.entry_requirements.initial_costs.map((c, i) => (
+													{(ch.entry_requirements?.initial_costs ?? []).map((c, i) => (
 														<div key={i} className="flex justify-between text-xs">
 															<span className="text-gray-700">{c.item}</span>
 															<span className="font-mono font-medium">{c.cost}</span>
@@ -148,9 +148,9 @@ export default function ChannelStrategySection({ data }: Props) {
 											<div><span className="text-gray-500">月額費用:</span> <span className="font-medium font-mono">{ch.fee_structure.monthly_fee}</span></div>
 											<div><span className="text-gray-500">最低広告額:</span> <span className="font-medium font-mono">{ch.fee_structure.advertising_minimum}</span></div>
 										</div>
-										{ch.fee_structure.fulfillment_options.length > 0 && (
+										{(ch.fee_structure?.fulfillment_options ?? []).length > 0 && (
 											<div className="flex flex-wrap gap-1 mt-2">
-												{ch.fee_structure.fulfillment_options.map((opt) => (
+												{(ch.fee_structure?.fulfillment_options ?? []).map((opt) => (
 													<Badge key={opt} variant="outline" className="text-[9px]">{opt}</Badge>
 												))}
 											</div>
@@ -162,7 +162,7 @@ export default function ChannelStrategySection({ data }: Props) {
 										<div className="text-xs space-y-1">
 											<div><span className="text-gray-500">競合数:</span> {ch.competitive_landscape.competitor_count}</div>
 											<div><span className="text-gray-500">価格帯:</span> {ch.competitive_landscape.price_range}</div>
-											<div><span className="text-gray-500">主要プレーヤー:</span> {ch.competitive_landscape.dominant_players.join(', ')}</div>
+											<div><span className="text-gray-500">主要プレーヤー:</span> {(ch.competitive_landscape?.dominant_players ?? []).join(', ')}</div>
 											<div className="mt-1 bg-amber-50 px-2 py-1.5 rounded border border-amber-100">
 												<span className="text-[10px] font-semibold text-amber-700">差別化機会:</span>
 												<p className="text-gray-700 mt-0.5">{ch.competitive_landscape.differentiation_opportunity}</p>
@@ -176,11 +176,11 @@ export default function ChannelStrategySection({ data }: Props) {
 											<div><span className="text-gray-500">在庫モデル:</span> {ch.operations_requirements.inventory_model}</div>
 											<div><span className="text-gray-500">CS体制:</span> {ch.operations_requirements.cs_requirements}</div>
 											<div><span className="text-gray-500">更新頻度:</span> {ch.operations_requirements.update_frequency}</div>
-											{ch.operations_requirements.content_requirements.length > 0 && (
+											{(ch.operations_requirements?.content_requirements ?? []).length > 0 && (
 												<div>
 													<span className="text-gray-500">コンテンツ要件:</span>
 													<ul className="mt-0.5 space-y-0.5">
-														{ch.operations_requirements.content_requirements.map((r, i) => (
+														{(ch.operations_requirements?.content_requirements ?? []).map((r, i) => (
 															<li key={i} className="text-gray-700">• {r}</li>
 														))}
 													</ul>
@@ -190,10 +190,10 @@ export default function ChannelStrategySection({ data }: Props) {
 									</DetailBlock>
 
 									{/* KPIs */}
-									{ch.kpis.length > 0 && (
+									{(ch.kpis ?? []).length > 0 && (
 										<DetailBlock title="目標KPI">
 											<div className="space-y-1.5">
-												{ch.kpis.map((kpi, i) => (
+												{(ch.kpis ?? []).map((kpi, i) => (
 													<div key={i} className="flex items-center gap-2 text-xs">
 														<Target size={10} className="text-indigo-500 shrink-0" />
 														<span className="text-gray-700 font-medium">{kpi.metric}:</span>

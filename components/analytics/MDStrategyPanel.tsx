@@ -11,6 +11,7 @@ import StrategyHistory from './md-strategy/StrategyHistory';
 import ProductSelectionSection from './md-strategy/ProductSelectionSection';
 import type {
 	SkillName,
+	ParsedGoal,
 	ProductSelectionOutput,
 	ChannelStrategyOutput,
 	PricingMarginOutput,
@@ -187,6 +188,7 @@ const MARKETS = ['指定なし', '日本全国', '40-60代女性', '20-30代女�
 type SkillStatus = 'pending' | 'running' | 'complete' | 'error';
 
 interface SkillResults {
+	goal_analysis?: ParsedGoal | null;
 	product_selection?: ProductSelectionOutput;
 	channel_strategy?: ChannelStrategyOutput;
 	pricing_margin?: PricingMarginOutput;
@@ -196,6 +198,7 @@ interface SkillResults {
 }
 
 const INITIAL_STATUSES: Record<SkillName, SkillStatus> = {
+	goal_analysis: 'pending',
 	product_selection: 'pending',
 	channel_strategy: 'pending',
 	pricing_margin: 'pending',
@@ -340,6 +343,7 @@ export default function MDStrategyPanel() {
 			const data = await res.json();
 
 			setSavedResults({
+				goal_analysis: data.goal_analysis ?? undefined,
 				product_selection: data.product_selection ?? undefined,
 				channel_strategy: data.channel_strategy ?? undefined,
 				pricing_margin: data.pricing_margin ?? undefined,
@@ -367,7 +371,15 @@ export default function MDStrategyPanel() {
 	};
 
 	const isRunning = status === 'running';
-	const hasGeneratedResults = Object.keys(skillResults).length > 0;
+	// Check if we have any renderable skill results (excluding goal_analysis which has no UI section)
+	const hasGeneratedResults = !!(
+		skillResults.product_selection ||
+		skillResults.channel_strategy ||
+		skillResults.pricing_margin ||
+		skillResults.marketing_execution ||
+		skillResults.financial_projection ||
+		skillResults.risk_contingency
+	);
 
 	return (
 		<div className="space-y-6">
@@ -375,7 +387,7 @@ export default function MDStrategyPanel() {
 			<div className="flex items-center gap-2">
 				<Target size={18} className="text-blue-600" />
 				<h3 className="text-lg font-semibold text-gray-900">チャネル拡大戦略</h3>
-				<span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">6-Skill AI</span>
+				<span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">7-Skill AI</span>
 			</div>
 
 			{/* === FORM VIEW === */}
@@ -420,7 +432,7 @@ export default function MDStrategyPanel() {
 
 							<div className="flex items-center justify-between pt-1">
 								<p className="text-[10px] text-gray-400">
-									6つの専門スキル（商品選定→チャネル戦略→価格設計→マーケ計画→収益予測→リスク対策）が順次分析します
+									7つの専門スキル（目標分析→商品選定→チャネル戦略→価格設計→マーケ計画→収益予測→リスク対策）が順次分析します
 								</p>
 								<button
 									type="button"

@@ -37,10 +37,10 @@ export async function POST(request: NextRequest) {
 
 			try {
 				// Phase 1: Data fetch
-				send("progress", { skill: "data_fetch", status: "running", index: -1, total: 6 });
+				send("progress", { skill: "data_fetch", status: "running", index: -1, total: 7 });
 				const recommend = category && targetMarket ? { category, targetMarket, priceRange } : undefined;
 				const context = await fetchStrategyContext(userGoal || undefined, recommend);
-				send("progress", { skill: "data_fetch", status: "complete", index: -1, total: 6 });
+				send("progress", { skill: "data_fetch", status: "complete", index: -1, total: 7 });
 
 				// Phase 2: Skill pipeline
 				const result = await runStrategyOrchestrator(context, (event: ProgressEvent) => {

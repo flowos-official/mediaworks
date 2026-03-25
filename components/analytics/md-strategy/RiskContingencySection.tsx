@@ -48,7 +48,7 @@ export default function RiskContingencySection({ data }: Props) {
 			</div>
 
 			{/* Top 5 Risks */}
-			{data.top_5_risks.length > 0 && (
+			{(data.top_5_risks ?? []).length > 0 && (
 				<Card className="border-red-200 bg-red-50/20">
 					<CardHeader className="pb-2">
 						<CardTitle className="text-sm font-semibold flex items-center gap-1.5 text-red-700">
@@ -56,7 +56,7 @@ export default function RiskContingencySection({ data }: Props) {
 						</CardTitle>
 					</CardHeader>
 					<CardContent className="space-y-3">
-						{data.top_5_risks.map((risk, i) => (
+						{(data.top_5_risks ?? []).map((risk, i) => (
 							<div key={i} className="bg-white rounded-lg border border-red-100 p-3">
 								<div className="flex items-start gap-2 mb-2">
 									<span className="bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] shrink-0 mt-0.5">{i + 1}</span>
@@ -71,7 +71,7 @@ export default function RiskContingencySection({ data }: Props) {
 								<div className="ml-7">
 									<span className="text-[10px] font-semibold text-gray-500 uppercase">対応プレイブック</span>
 									<ol className="mt-1 space-y-0.5">
-										{risk.mitigation_playbook.map((step, j) => (
+										{(risk.mitigation_playbook ?? []).map((step, j) => (
 											<li key={j} className="text-xs text-gray-700 flex gap-2">
 												<span className="text-gray-400 font-mono shrink-0">{j + 1}.</span>
 												{step}
@@ -86,13 +86,13 @@ export default function RiskContingencySection({ data }: Props) {
 			)}
 
 			{/* Risk matrix per channel */}
-			{data.risk_matrix.map((ch) => (
+			{(data.risk_matrix ?? []).map((ch) => (
 				<Card key={ch.channel} className="border-gray-200">
 					<CardHeader className="pb-2">
 						<CardTitle className="text-sm font-bold">{ch.channel}</CardTitle>
 					</CardHeader>
 					<CardContent className="space-y-2">
-						{ch.risks.map((risk, i) => (
+						{(ch.risks ?? []).map((risk, i) => (
 							<div key={i} className="border border-gray-100 rounded-lg p-2.5">
 								<div className="flex items-center gap-2 mb-1.5">
 									<span className="text-xs font-medium text-gray-900 flex-1">{risk.risk}</span>
@@ -106,10 +106,10 @@ export default function RiskContingencySection({ data }: Props) {
 								</div>
 
 								{/* Mitigation */}
-								{risk.mitigation.length > 0 && (
+								{(risk.mitigation ?? []).length > 0 && (
 									<div className="text-xs text-gray-600 mb-1">
-										{risk.mitigation.map((m, j) => (
-											<span key={j}>• {m}{j < risk.mitigation.length - 1 ? ' ' : ''}</span>
+										{(risk.mitigation ?? []).map((m, j) => (
+											<span key={j}>• {m}{j < (risk.mitigation ?? []).length - 1 ? ' ' : ''}</span>
 										))}
 									</div>
 								)}
@@ -134,7 +134,7 @@ export default function RiskContingencySection({ data }: Props) {
 			))}
 
 			{/* Go/No-Go Criteria */}
-			{data.go_nogo_criteria.length > 0 && (
+			{(data.go_nogo_criteria ?? []).length > 0 && (
 				<Card className="border-gray-200">
 					<CardHeader className="pb-2">
 						<CardTitle className="text-sm font-semibold flex items-center gap-1.5">
@@ -142,7 +142,7 @@ export default function RiskContingencySection({ data }: Props) {
 						</CardTitle>
 					</CardHeader>
 					<CardContent className="space-y-3">
-						{data.go_nogo_criteria.map((gnc) => (
+						{(data.go_nogo_criteria ?? []).map((gnc) => (
 							<div key={gnc.channel} className="border border-gray-100 rounded-lg p-3">
 								<div className="flex items-center justify-between mb-2">
 									<span className="font-semibold text-sm text-gray-900">{gnc.channel}</span>
@@ -151,7 +151,7 @@ export default function RiskContingencySection({ data }: Props) {
 									</span>
 								</div>
 								<ul className="space-y-0.5">
-									{gnc.criteria.map((c, i) => (
+									{(gnc.criteria ?? []).map((c, i) => (
 										<li key={i} className="text-xs text-gray-700 flex gap-2">
 											<span className="text-emerald-500 shrink-0">✓</span>
 											{c}

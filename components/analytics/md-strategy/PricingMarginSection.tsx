@@ -26,7 +26,7 @@ export default function PricingMarginSection({ data }: Props) {
 			</div>
 
 			{/* Product pricing table per product */}
-			{data.product_pricing.map((pp) => (
+			{(data.product_pricing ?? []).map((pp) => (
 				<Card key={pp.product_code} className="border-gray-200">
 					<CardHeader className="pb-2">
 						<CardTitle className="text-sm font-bold">{pp.product_name}</CardTitle>
@@ -50,7 +50,7 @@ export default function PricingMarginSection({ data }: Props) {
 									</tr>
 								</thead>
 								<tbody>
-									{pp.channel_pricing.map((cp) => (
+									{(pp.channel_pricing ?? []).map((cp) => (
 										<tr key={cp.channel} className="border-b border-gray-50 hover:bg-gray-50/50">
 											<td className="px-2 py-2 font-medium text-gray-800">{cp.channel}</td>
 											<td className="px-2 py-2 text-right font-mono font-medium">¥{cp.recommended_price.toLocaleString()}</td>
@@ -76,7 +76,7 @@ export default function PricingMarginSection({ data }: Props) {
 			))}
 
 			{/* BEP Analysis */}
-			{data.bep_analysis.length > 0 && (
+			{(data.bep_analysis ?? []).length > 0 && (
 				<Card className="border-emerald-200 bg-emerald-50/20">
 					<CardHeader className="pb-2">
 						<CardTitle className="text-sm font-semibold flex items-center gap-1.5 text-emerald-700">
@@ -84,7 +84,7 @@ export default function PricingMarginSection({ data }: Props) {
 						</CardTitle>
 					</CardHeader>
 					<CardContent className="space-y-3">
-						{data.bep_analysis.map((bep) => (
+						{(data.bep_analysis ?? []).map((bep) => (
 							<div key={bep.channel} className="bg-white rounded-lg border border-emerald-100 p-3">
 								<div className="flex items-center justify-between mb-2">
 									<span className="font-semibold text-sm text-gray-900">{bep.channel}</span>
@@ -104,9 +104,9 @@ export default function PricingMarginSection({ data }: Props) {
 										<span className="font-medium">{bep.bep_timeline}</span>
 									</div>
 								</div>
-								{bep.fixed_costs.length > 0 && (
+								{(bep.fixed_costs ?? []).length > 0 && (
 									<div className="text-[10px] text-gray-500">
-										固定費: {bep.fixed_costs.map((fc) => `${fc.item} ¥${fc.monthly.toLocaleString()}/月`).join(' + ')}
+										固定費: {(bep.fixed_costs ?? []).map((fc) => `${fc.item} ¥${fc.monthly.toLocaleString()}/月`).join(' + ')}
 									</div>
 								)}
 							</div>
@@ -116,14 +116,14 @@ export default function PricingMarginSection({ data }: Props) {
 			)}
 
 			{/* Margin optimization tips */}
-			{data.margin_optimization.length > 0 && (
+			{(data.margin_optimization ?? []).length > 0 && (
 				<Card className="border-gray-200">
 					<CardHeader className="pb-2">
 						<CardTitle className="text-sm font-semibold">マージン改善提案</CardTitle>
 					</CardHeader>
 					<CardContent>
 						<ul className="space-y-1">
-							{data.margin_optimization.map((tip, i) => (
+							{(data.margin_optimization ?? []).map((tip, i) => (
 								<li key={i} className="text-xs text-gray-700 flex gap-2">
 									<span className="text-emerald-500 shrink-0">●</span>
 									{tip}

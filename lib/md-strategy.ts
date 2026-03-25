@@ -17,7 +17,11 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 async function callGemini(prompt: string): Promise<string> {
 	const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
-	const result = await model.generateContent(prompt);
+	const resultPromise = model.generateContent(prompt);
+	const timeoutPromise = new Promise<never>((_, reject) =>
+		setTimeout(() => reject(new Error("Gemini timeout (50s)")), 50000),
+	);
+	const result = await Promise.race([resultPromise, timeoutPromise]);
 	return result.response.text().trim();
 }
 
@@ -61,6 +65,126 @@ async function braveSearchStructured(query: string): Promise<SearchSource[]> {
 	} catch {
 		return [];
 	}
+}
+
+// ---------------------------------------------------------------------------
+// Channel Reference Table (hardcoded facts — no Gemini lookup needed)
+// ---------------------------------------------------------------------------
+
+const CHANNEL_REFERENCE = [
+	{ name: "Amazon Japan", commission: "8-15%", monthlyFee: "¥4,900", fulfillment: "FBA: ¥500-1,000/個", initialCost: "¥10-30万", setupTime: "2-4週間" },
+	{ name: "楽天市場", commission: "3.5-7%", monthlyFee: "¥19,500-100,000", fulfillment: "RSL or 自社出荷", initialCost: "¥30-100万", setupTime: "1-2ヶ月" },
+	{ name: "Yahoo!ショッピング", commission: "3-5%", monthlyFee: "無料", fulfillment: "自社出荷", initialCost: "¥5-15万", setupTime: "1-2週間" },
+	{ name: "TikTok Shop Japan", commission: "5-8%", monthlyFee: "無料", fulfillment: "自社出荷", initialCost: "¥5-10万", setupTime: "2-4週間" },
+	{ name: "Instagram Shopping", commission: "5%", monthlyFee: "無料", fulfillment: "自社出荷", initialCost: "¥3-5万", setupTime: "1-2週間" },
+	{ name: "越境EC (Coupang/Shopee)", commission: "10-15%", monthlyFee: "変動", fulfillment: "現地倉庫", initialCost: "¥50-200万", setupTime: "2-3ヶ月" },
+	{ name: "自社EC (D2C)", commission: "決済3-4%", monthlyFee: "¥10,000-50,000", fulfillment: "自社出荷", initialCost: "¥50-300万", setupTime: "2-4ヶ月" },
+] as const;
+
+// ---------------------------------------------------------------------------
+// Category mapping for filtering
+// ---------------------------------------------------------------------------
+
+const CATEGORY_MAPPING: Record<string, string[]> = {
+	"美容・スキンケア": ["美容・運動", "化粧品"],
+	"健康食品": ["食品"],
+	"キッチン用品": ["キッチン"],
+	"ファッション": ["アパレル", "靴・バッグ"],
+	"生活雑貨": ["家電・雑貨", "掃除・洗濯"],
+	"電気機器": ["家電・雑貨"],
+	"フィットネス": ["美容・運動", "医療機器"],
+	"その他": ["その他", "寝具", "宝飾", "防災・防犯", "ゴルフ"],
+};
+
+// ---------------------------------------------------------------------------
+// Parsed Goal (Skill 0 output)
+// ---------------------------------------------------------------------------
+
+export interface ParsedGoal {
+	primary_objective: string;
+	target_channels: string[];
+	target_revenue?: string;
+	target_audience?: string;
+	budget_constraint?: string;
+	timeline?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Computed Metrics (pre-computed for each product)
+// ---------------------------------------------------------------------------
+
+interface ComputedMetrics {
+	tvUnitPrice: number;
+	monthlyGrowthRate: number;
+	trajectory: "growing" | "stable" | "declining";
+	ecMarginAfterFees: number;
+	seasonalPeak: string;
+	seasonalLow: string;
+	skuCount: number;
+	priceRange: string;
+	hasEcPresence: boolean;
+}
+
+function computeMetrics(p: EnrichedProduct): ComputedMetrics {
+	const tvUnitPrice = p.totalQuantity > 0 ? Math.round(p.totalRevenue / p.totalQuantity) : 0;
+
+	// Monthly growth rate: % change over last 3 months
+	let monthlyGrowthRate = 0;
+	if (p.monthlyTrend.length >= 3) {
+		const recent3 = p.monthlyTrend.slice(-3);
+		const first = recent3[0].revenue;
+		const last = recent3[2].revenue;
+		if (first > 0) monthlyGrowthRate = Math.round(((last - first) / first) * 10000) / 100;
+	}
+
+	let trajectory: "growing" | "stable" | "declining" = "stable";
+	if (monthlyGrowthRate > 10) trajectory = "growing";
+	else if (monthlyGrowthRate < -10) trajectory = "declining";
+
+	// EC margin after 15% commission (only calculate if actual cost_price exists)
+	let ecMarginAfterFees = 0;
+	if (p.costPrice != null && tvUnitPrice > 0) {
+		ecMarginAfterFees = Math.round(((tvUnitPrice - p.costPrice - tvUnitPrice * 0.15) / tvUnitPrice) * 10000) / 100;
+	} else if (tvUnitPrice > 0 && p.marginRate > 0) {
+		// Approximate: assume TV margin minus 15% EC fee
+		ecMarginAfterFees = Math.round((p.marginRate - 15) * 100) / 100;
+	}
+
+	// Seasonality peak and low
+	let seasonalPeak = "-";
+	let seasonalLow = "-";
+	if (p.research?.seasonality) {
+		const entries = Object.entries(p.research.seasonality);
+		if (entries.length > 0) {
+			entries.sort((a, b) => b[1] - a[1]);
+			seasonalPeak = entries.slice(0, 2).map(([m]) => m).join(", ");
+			seasonalLow = entries.slice(-2).map(([m]) => m).join(", ");
+		}
+	}
+
+	// SKU info
+	const skuCount = p.skus?.length ?? 0;
+	let priceRange = "-";
+	if (p.skus?.length) {
+		const prices = p.skus.filter((s) => s.price_incl).map((s) => s.price_incl!);
+		if (prices.length > 0) {
+			priceRange = `¥${Math.min(...prices).toLocaleString()}〜¥${Math.max(...prices).toLocaleString()}`;
+		}
+	}
+
+	const hasEcPresence = p.salesChannels?.ec ?? false;
+
+	return {
+		tvUnitPrice,
+		monthlyGrowthRate,
+		trajectory,
+		ecMarginAfterFees,
+		seasonalPeak,
+		seasonalLow,
+		skuCount,
+		priceRange,
+		hasEcPresence,
+	};
 }
 
 // ---------------------------------------------------------------------------
@@ -130,6 +254,10 @@ export interface StrategyContext {
 	recommendTargetMarket?: string;
 	// Web search sources for citation
 	searchSources: SearchSource[];
+	// Pre-computed metrics per product (indexed by product code)
+	computedMetrics: Record<string, ComputedMetrics>;
+	// Parsed user goal (from Skill 0)
+	parsedGoal?: ParsedGoal;
 }
 
 // ---------------------------------------------------------------------------
@@ -140,6 +268,14 @@ export interface RecommendInput {
 	category?: string;
 	targetMarket?: string;
 	priceRange?: string;
+}
+
+function parsePriceRange(priceRange: string): { min: number; max: number } | null {
+	// Parse strings like "¥3,000-8,000" or "¥3000〜8000"
+	const cleaned = priceRange.replace(/[¥,、]/g, "").replace(/〜/g, "-");
+	const match = cleaned.match(/(\d+)\s*[-–]\s*(\d+)/);
+	if (!match) return null;
+	return { min: parseInt(match[1], 10), max: parseInt(match[2], 10) };
 }
 
 export async function fetchStrategyContext(
@@ -176,9 +312,39 @@ export async function fetchStrategyContext(
 		productMap[key].weekCount += row.week_count ?? 0;
 	}
 
-	const sortedProducts = Object.values(productMap)
+	let sortedProducts = Object.values(productMap)
 		.map((p) => ({ ...p, marginRate: p.totalRevenue > 0 ? Math.round((p.totalProfit / p.totalRevenue) * 10000) / 100 : 0, avgWeeklyQty: p.weekCount > 0 ? Math.round(p.totalQuantity / p.weekCount) : 0 }))
 		.sort((a, b) => b.totalRevenue - a.totalRevenue);
+
+	// --- Category filtering when recommend.category is provided ---
+	if (recommend?.category) {
+		const salesCategories = CATEGORY_MAPPING[recommend.category] ?? [];
+		if (salesCategories.length > 0) {
+			const matched = sortedProducts.filter((p) => p.category && salesCategories.includes(p.category));
+			const unmatched = sortedProducts.filter((p) => !p.category || !salesCategories.includes(p.category));
+			if (matched.length >= 5) {
+				sortedProducts = matched;
+			} else {
+				// Include unmatched to fill up, but matched ones come first
+				sortedProducts = [...matched, ...unmatched];
+			}
+		}
+	}
+
+	// --- Price range filtering by TV unit price ---
+	if (recommend?.priceRange) {
+		const range = parsePriceRange(recommend.priceRange);
+		if (range) {
+			const priceFiltered = sortedProducts.filter((p) => {
+				const unitPrice = p.totalQuantity > 0 ? Math.round(p.totalRevenue / p.totalQuantity) : 0;
+				return unitPrice >= range.min && unitPrice <= range.max;
+			});
+			// Only apply filter if it leaves enough products
+			if (priceFiltered.length >= 5) {
+				sortedProducts = priceFiltered;
+			}
+		}
+	}
 
 	const top30Codes = sortedProducts.slice(0, 30).map((p) => p.code);
 
@@ -221,13 +387,23 @@ export async function fetchStrategyContext(
 		catMap[c.category].productCount += c.product_count ?? 0;
 	}
 
-	const categoryBreakdown = Object.entries(catMap)
+	let categoryBreakdown = Object.entries(catMap)
 		.map(([category, d]) => ({
 			category,
 			...d,
 			marginRate: d.revenue > 0 ? Math.round((d.profit / d.revenue) * 10000) / 100 : 0,
 		}))
 		.sort((a, b) => b.revenue - a.revenue);
+
+	// Filter categoryBreakdown to prioritize matching categories
+	if (recommend?.category) {
+		const salesCategories = CATEGORY_MAPPING[recommend.category] ?? [];
+		if (salesCategories.length > 0) {
+			const matchedCats = categoryBreakdown.filter((c) => salesCategories.includes(c.category));
+			const unmatchedCats = categoryBreakdown.filter((c) => !salesCategories.includes(c.category));
+			categoryBreakdown = [...matchedCats, ...unmatchedCats];
+		}
+	}
 
 	// Annual totals
 	const annuals = (annualResult.data ?? []) as AnnualSummary[];
@@ -281,6 +457,12 @@ export async function fetchStrategyContext(
 			research,
 		};
 	});
+
+	// Compute metrics for each enriched product
+	const computedMetricsMap: Record<string, ComputedMetrics> = {};
+	for (const p of enrichedProducts) {
+		computedMetricsMap[p.code] = computeMetrics(p);
+	}
 
 	// Weekly trends
 	const weeklyTrends = ((weeklyTotalResult.data ?? []) as SalesWeeklyTotal[])
@@ -342,6 +524,7 @@ Return only valid JSON, no markdown. All text in Japanese.`;
 		recommendCategory,
 		recommendTargetMarket,
 		searchSources,
+		computedMetrics: computedMetricsMap,
 	};
 }
 
@@ -541,6 +724,7 @@ export interface RiskContingencyOutput {
 }
 
 export interface FullStrategyResult {
+	goal_analysis?: ParsedGoal | null;
 	product_selection: ProductSelectionOutput;
 	channel_strategy: ChannelStrategyOutput;
 	pricing_margin: PricingMarginOutput;
@@ -554,6 +738,7 @@ export interface FullStrategyResult {
 // ---------------------------------------------------------------------------
 
 export type SkillName =
+	| "goal_analysis"
 	| "product_selection"
 	| "channel_strategy"
 	| "pricing_margin"
@@ -562,6 +747,7 @@ export type SkillName =
 	| "risk_contingency";
 
 export const SKILL_META: Record<SkillName, { label: string; labelJa: string }> = {
+	goal_analysis: { label: "Goal Analysis", labelJa: "目標分析" },
 	product_selection: { label: "Product Selection", labelJa: "商品選定" },
 	channel_strategy: { label: "Channel Strategy", labelJa: "チャネル戦略" },
 	pricing_margin: { label: "Pricing & Margin", labelJa: "価格・マージン戦略" },
@@ -580,29 +766,26 @@ export interface ProgressEvent {
 }
 
 // ---------------------------------------------------------------------------
-// Prompt Builders
+// Helper: format helpers for prompts
 // ---------------------------------------------------------------------------
 
-function buildContextHeader(ctx: StrategyContext): string {
-	const catLines = ctx.categoryBreakdown
-		.slice(0, 12)
-		.map((c) => `  - ${c.category}: 売上¥${c.revenue.toLocaleString()} / 粗利率${c.marginRate}% / ${c.quantity.toLocaleString()}個 / ${c.productCount}商品`)
-		.join("\n");
+function formatYen(n: number): string {
+	return `¥${n.toLocaleString()}`;
+}
 
-	return `=== TV通販（テレビ東京ダイレクト）全体実績 ===
-- 総売上: ¥${ctx.annualMetrics.totalRevenue.toLocaleString()}
-- 総粗利: ¥${ctx.annualMetrics.totalProfit.toLocaleString()}
-- 粗利率: ${ctx.annualMetrics.marginRate}%
-- 集計期間: ${ctx.annualMetrics.weekCount}週間 (2025-2026年)
-- 取扱商品数: ${ctx.annualMetrics.productCount}
-
-=== カテゴリ別実績 ===
-${catLines}
-
-=== データ出典 ===
-- TV通販実績データ: テレビ東京ダイレクト販売実績 (2025-2026年, ${ctx.annualMetrics.weekCount}週間)
-- 商品台帳: 仕入原価・卸売率・メーカー情報
-- AI分析: 個別商品リサーチレポート (research_results)`;
+function buildGoalSection(parsedGoal?: ParsedGoal): string {
+	if (!parsedGoal) return "";
+	const lines = [
+		`\n=== 目標分析結果（Skill 0） ===`,
+		`- 主要目的: ${parsedGoal.primary_objective}`,
+		`- 対象チャネル: ${parsedGoal.target_channels.join(", ")}`,
+	];
+	if (parsedGoal.target_revenue) lines.push(`- 目標売上: ${parsedGoal.target_revenue}`);
+	if (parsedGoal.target_audience) lines.push(`- ターゲット層: ${parsedGoal.target_audience}`);
+	if (parsedGoal.budget_constraint) lines.push(`- 予算制約: ${parsedGoal.budget_constraint}`);
+	if (parsedGoal.timeline) lines.push(`- タイムライン: ${parsedGoal.timeline}`);
+	lines.push(`\n上記の目標を全ての分析で最優先に考慮してください。\n`);
+	return lines.join("\n");
 }
 
 function buildSourcesSection(ctx: StrategyContext): string {
@@ -615,6 +798,7 @@ function buildSourcesSection(ctx: StrategyContext): string {
 		.map((s) => `- ${s.title}: ${s.description}`)
 		.join("\n");
 	return `
+[SOURCES — 出典]
 === 参考市場データ（Web検索）===
 ${searchData}
 
@@ -625,39 +809,54 @@ ${lines}
 引用した出典は "sources_cited" フィールドに [{index: 番号, title: "タイトル", url: "URL"}] として含めてください。`;
 }
 
-function buildProductLines(products: EnrichedProduct[], limit: number = 30): string {
-	return products
-		.slice(0, limit)
-		.map((p, i) => {
-			const parts = [
-				`${i + 1}. ${p.name} [${p.category ?? "分類なし"}]`,
-				`  売上: ¥${p.totalRevenue.toLocaleString()} / 粗利率: ${p.marginRate}% / 週平均${p.avgWeeklyQty}個 / ${p.weekCount}週`,
-			];
-			if (p.costPrice != null) parts.push(`  原価: ¥${p.costPrice.toLocaleString()} / 卸売率: ${p.wholesaleRate ?? "不明"}%`);
-			if (p.manufacturer) parts.push(`  メーカー: ${p.manufacturer}${p.manufacturerCountry ? ` (${p.manufacturerCountry})` : ""}`);
-			if (p.monthlyTrend.length >= 3) {
-				const recent3 = p.monthlyTrend.slice(-3);
-				const trendStr = recent3.map((m) => `${m.month}: ¥${m.revenue.toLocaleString()}`).join(" → ");
-				parts.push(`  直近3ヶ月推移: ${trendStr}`);
-			}
-			if (p.research) {
-				parts.push(`  AI市場性スコア: ${p.research.marketabilityScore}/100`);
-				if (p.research.competitors.length > 0) {
-					const compStr = p.research.competitors.slice(0, 2).map((c) => `${c.name}(${c.platform}, ${c.price})`).join(", ");
-					parts.push(`  競合: ${compStr}`);
-				}
-			}
-			return parts.join("\n");
-		})
-		.join("\n\n");
+function buildChannelReferenceTable(): string {
+	const header = `| チャネル | 手数料 | 月額費用 | フルフィルメント | 初期費用 | セットアップ期間 |`;
+	const sep = `|---|---|---|---|---|---|`;
+	const rows = CHANNEL_REFERENCE.map((ch) =>
+		`| ${ch.name} | ${ch.commission} | ${ch.monthlyFee} | ${ch.fulfillment} | ${ch.initialCost} | ${ch.setupTime} |`
+	).join("\n");
+	return `${header}\n${sep}\n${rows}`;
 }
 
-function buildProductSelectionPrompt(ctx: StrategyContext): string {
-	const userGoalSection = ctx.userGoal
-		? `\n=== ユーザーの目標 ===\n${ctx.userGoal}\n上記の目標を最優先に踏まえて商品選定を行ってください。\n`
-		: "";
+// ---------------------------------------------------------------------------
+// Skill 0: Goal Analysis
+// ---------------------------------------------------------------------------
 
-	// AI recommended products section (if available)
+async function runGoalAnalysis(userGoal: string): Promise<ParsedGoal> {
+	const prompt = `You are a business strategy analyst. Parse the following user goal into structured components.
+
+User Goal: ${userGoal}
+
+Return a JSON object (no markdown) with this structure:
+{
+  "primary_objective": "主要な目的を1文で",
+  "target_channels": ["対象チャネル名のリスト"],
+  "target_revenue": "目標売上（言及されている場合）",
+  "target_audience": "ターゲット層（言及されている場合）",
+  "budget_constraint": "予算制約（言及されている場合）",
+  "timeline": "タイムライン（言及されている場合）"
+}
+
+IMPORTANT: すべてのテキストフィールドは日本語で記述してください。言及されていないフィールドはnullにしてください。`;
+
+	const raw = await callGemini(prompt);
+	return parseJSON<ParsedGoal>(raw);
+}
+
+// ---------------------------------------------------------------------------
+// Prompt Builders (rewritten with DATA-first, TASK-last structure)
+// ---------------------------------------------------------------------------
+
+function buildProductSelectionPrompt(ctx: StrategyContext): string {
+	// Build Markdown table for products with pre-computed metrics
+	const tableHeader = `| # | 商品名 | カテゴリ | 年売上 | 粗利率 | 週平均 | 3M成長率 | TV単価 | 原価 | EC15%後マージン | EC既存 | 季節ピーク |`;
+	const tableSep = `|---|---|---|---|---|---|---|---|---|---|---|---|`;
+	const tableRows = ctx.products.slice(0, 30).map((p, i) => {
+		const m = ctx.computedMetrics[p.code];
+		return `| ${i + 1} | ${p.name} | ${p.category ?? "分類なし"} | ${formatYen(p.totalRevenue)} | ${p.marginRate}% | ${p.avgWeeklyQty}個 | ${m.monthlyGrowthRate > 0 ? "+" : ""}${m.monthlyGrowthRate}% | ${formatYen(m.tvUnitPrice)} | ${p.costPrice != null ? formatYen(p.costPrice) : "不明"} | ${m.ecMarginAfterFees}% | ${m.hasEcPresence ? "○" : "×"} | ${m.seasonalPeak} |`;
+	}).join("\n");
+
+	// AI recommended products section
 	let recommendSection = "";
 	if (ctx.recommendedProducts && ctx.recommendedProducts.length > 0) {
 		const recLines = ctx.recommendedProducts
@@ -668,35 +867,51 @@ function buildProductSelectionPrompt(ctx: StrategyContext): string {
 		recommendSection = `\n=== AIが推薦する新規商品候補 ===${catInfo || mktInfo ? `\n(${catInfo}${mktInfo})` : ""}
 ${recLines}
 
-上記のAI推薦商品も各チャネルへの投入候補として検討してください。既存実績商品と組み合わせて最適なポートフォリオを構成すること。
 推薦商品のcodeは "NEW-1", "NEW-2" 等で表記してください。\n`;
 	}
 
-	return `あなたはTV通販チャネルのMD（マーチャンダイザー）です。EC・SNS・D2C・越境ECへの商品展開を計画しています。
+	return `[ROLE] あなたはTV通販チャネルのMD（マーチャンダイザー）です。EC・SNS・D2C・越境ECへの商品展開を計画しています。
+${buildGoalSection(ctx.parsedGoal)}
+[DATA — 構造化データ]
 
-以下のTV通販実績データとAI推薦商品に基づき、各チャネルに投入すべき商品を選定してください。
-${userGoalSection}
-${buildContextHeader(ctx)}
+=== TV通販（テレビ東京ダイレクト）全体実績 ===
+- 総売上: ${formatYen(ctx.annualMetrics.totalRevenue)}
+- 総粗利: ${formatYen(ctx.annualMetrics.totalProfit)}
+- 粗利率: ${ctx.annualMetrics.marginRate}%
+- 集計期間: ${ctx.annualMetrics.weekCount}週間 (2025-2026年)
+- 取扱商品数: ${ctx.annualMetrics.productCount}
 
-=== 商品実績データ（上位30商品、原価・メーカー・月次推移・AI分析含む） ===
-${buildProductLines(ctx.products)}
+=== カテゴリ別実績 ===
+${ctx.categoryBreakdown.slice(0, 12).map((c) => `- ${c.category}: 売上${formatYen(c.revenue)} / 粗利率${c.marginRate}% / ${c.quantity.toLocaleString()}個 / ${c.productCount}商品`).join("\n")}
+
+=== 商品実績データ（上位30商品） ===
+${tableHeader}
+${tableSep}
+${tableRows}
+
+=== チャネル基本情報 ===
+${buildChannelReferenceTable()}
 ${recommendSection}
-=== 対象チャネル ===
-1. Amazon Japan
-2. 楽天市場
-3. Yahoo!ショッピング
-4. TikTok Shop Japan
-5. Instagram Shopping
-6. 越境EC（Coupang韓国 / Shopee東南アジア）
-7. 自社EC（D2C）
+[FRAMEWORK — 分析基準]
 
-=== 選定ルール ===
-- tier1_products: 各チャネルに最初に投入すべき商品（3-5品）。必ず売上・粗利率・月次推移データを引用して根拠を示すこと。
-- tier2_products: 第2弾として投入する商品（2-3品）。
+商品選定の判定基準:
+- tier1 (即投入): 粗利率 ≥ 30% AND EC15%後マージン ≥ 15% AND (trajectory=growing OR 週平均 ≥ 10個)
+- tier2 (第2弾): 粗利率 ≥ 25% AND EC15%後マージン ≥ 10%
+- exclusion (除外): EC15%後マージン < 5% OR trajectory=declining AND 粗利率 < 20%
+- EC既存商品(○)は優先的にtier1に含める（販売実績があるため）
+- 季節性を考慮: ピーク月の2ヶ月前にtier1投入を推奨
+- カテゴリバランス: 1チャネルに同カテゴリ3品以上を避ける
+- 推薦商品(NEW-*)は既存実績商品と組み合わせてポートフォリオに含める
+
+[TASK — 分析指示]
+
+各チャネルに投入すべき商品を選定してください。
+- tier1_products: 各チャネル3-5品。必ず上記テーブルの数値を引用して根拠を示すこと。
+- tier2_products: 各チャネル2-3品。
 - exclusions: そのチャネルに不適合な商品とその理由。
-- monthly_trajectory: 直近3ヶ月の売上推移から growing/stable/declining を判定。
-- margin_headroom: 原価データがある商品は「原価¥X、EC手数料Y%でも粗利Z%確保可能」のように計算。
-- portfolio_strategy: 全体のポートフォリオ戦略（カテゴリバランス、季節性、価格帯分散）を記述。
+- monthly_trajectory: 3M成長率から growing/stable/declining を判定。
+- margin_headroom: 「原価¥X、EC手数料Y%でも粗利Z%確保可能」のように計算結果を記載。
+- portfolio_strategy: 全体のポートフォリオ戦略。
 
 IMPORTANT: すべてのテキストフィールドは日本語で記述してください。
 
@@ -718,29 +933,70 @@ ${buildSourcesSection(ctx)}`;
 
 function buildChannelStrategyPrompt(ctx: StrategyContext, priorOutputs: Record<string, unknown>): string {
 	const ps = priorOutputs.product_selection as ProductSelectionOutput;
-	const productSelectionSummary = ps.channel_product_matrix
-		.map((ch) => `${ch.channel}: tier1=${ch.tier1_products.map((p) => p.name).join(", ")}`)
+
+	// Build structured tier1 summary with margin and revenue data
+	const tier1ByChannel = ps.channel_product_matrix.map((ch) => {
+		const productDetails = ch.tier1_products.map((tp) => {
+			const p = ctx.products.find((pr) => pr.code === tp.code);
+			const m = p ? ctx.computedMetrics[p.code] : null;
+			return `    - ${tp.name} [${tp.code}]: margin_headroom=${tp.margin_headroom}, trajectory=${tp.monthly_trajectory}${p ? `, 年売上${formatYen(p.totalRevenue)}` : ""}${m ? `, EC後マージン${m.ecMarginAfterFees}%` : ""}`;
+		}).join("\n");
+		return `  ${ch.channel}:\n${productDetails}`;
+	}).join("\n");
+
+	// Aggregate distribution channel fit_scores from research
+	const channelFitAgg: Record<string, { totalScore: number; count: number }> = {};
+	for (const p of ctx.products) {
+		if (!p.research?.distributionChannels) continue;
+		for (const dc of p.research.distributionChannels) {
+			if (!channelFitAgg[dc.channel_name]) channelFitAgg[dc.channel_name] = { totalScore: 0, count: 0 };
+			channelFitAgg[dc.channel_name].totalScore += dc.fit_score;
+			channelFitAgg[dc.channel_name].count += 1;
+		}
+	}
+	const fitScoreLines = Object.entries(channelFitAgg)
+		.map(([ch, d]) => `- ${ch}: 平均適合度 ${Math.round(d.totalScore / d.count)}/100 (${d.count}商品から)`)
 		.join("\n");
 
-	return `あなたはEC・SNSコマース専門の戦略コンサルタントです。TV通販MDが各チャネルへ展開する際の詳細な進出戦略を策定してください。
+	return `[ROLE] あなたはEC・SNSコマース専門の戦略コンサルタントです。TV通販MDが各チャネルへ展開する際の詳細な進出戦略を策定してください。
+${buildGoalSection(ctx.parsedGoal)}
+[DATA — 構造化データ]
 
-${buildContextHeader(ctx)}
+=== TV通販全体実績 ===
+- 総売上: ${formatYen(ctx.annualMetrics.totalRevenue)}
+- 粗利率: ${ctx.annualMetrics.marginRate}%
+- 取扱商品数: ${ctx.annualMetrics.productCount}
 
-=== 商品選定結果（前ステップ） ===
-${productSelectionSummary}
+=== チャネル基本情報（事実データ — 調査不要） ===
+${buildChannelReferenceTable()}
+
+=== 商品選定結果（Skill 1） ===
+${tier1ByChannel}
 ポートフォリオ戦略: ${ps.portfolio_strategy}
 
-=== 各チャネルについて以下を詳細に分析 ===
-1. Amazon Japan / 2. 楽天市場 / 3. Yahoo!ショッピング / 4. TikTok Shop / 5. Instagram Shopping / 6. 越境EC / 7. 自社EC
+=== AI分析による各チャネル適合度（全商品集計） ===
+${fitScoreLines || "（チャネル適合度データなし）"}
 
-各チャネルについて:
-- priority: immediate（即時開始）/ 3month / 6month / 12month
-- entry_requirements: アカウント種別、必要書類、セットアップ期間、初期費用（具体的な金額）
-- fee_structure: 販売手数料率、月額費用、フルフィルメント選択肢、最低広告出稿額
-- competitive_landscape: 類似商品の競合数、価格帯、主要プレーヤー、差別化機会
-- operations_requirements: 在庫モデル（FBA/自社出荷等）、CS体制、コンテンツ要件、更新頻度
-- kpis: 各チャネルの目標KPI（具体的な数値目標と達成期限）
-- launch_sequence: フェーズ分けした展開順序と根拠
+[PRIOR — 前ステップ分析結果]
+- Skill 1（商品選定）: ${ps.channel_product_matrix.length}チャネルに商品を配分済み
+- tier1商品合計: ${ps.channel_product_matrix.reduce((s, ch) => s + ch.tier1_products.length, 0)}品
+
+[FRAMEWORK — 分析基準]
+
+チャネル優先度の判定:
+- immediate: 初期費用 ≤ ¥30万 AND 既にEC実績あり AND tier1商品3品以上
+- 3month: 初期費用 ≤ ¥50万 AND セットアップ1ヶ月以内
+- 6month: 初期費用 ≤ ¥100万 OR 特殊な準備が必要
+- 12month: 越境EC等、大規模投資・現地拠点が必要
+
+KPI目標設定基準:
+- 月間売上目標 = TV通販の同商品売上 × EC転換率（初月5%, 3ヶ月後15%, 6ヶ月後25%）
+- CVR目標: Amazon 3-5%, 楽天 2-4%, Yahoo 2-3%, SNS 1-2%
+
+[TASK — 分析指示]
+
+7チャネルそれぞれについて詳細な進出戦略を策定してください。
+上記のチャネル基本情報テーブルの数値を活用し、具体的な費用・期間を記載すること。
 
 IMPORTANT: すべてのテキストフィールドは日本語で記述してください。数字は具体的な金額・数値で記載すること。
 
@@ -773,49 +1029,96 @@ function buildPricingMarginPrompt(ctx: StrategyContext, priorOutputs: Record<str
 	}
 
 	const tier1Products = ctx.products.filter((p) => tier1Codes.has(p.code));
-	const productPricingData = tier1Products
-		.map((p) => {
-			const tvPrice = p.totalQuantity > 0 ? Math.round(p.totalRevenue / p.totalQuantity) : 0;
-			const lines = [`${p.name} [${p.code}]: TV単価¥${tvPrice.toLocaleString()}`];
-			if (p.costPrice != null) lines.push(`  原価: ¥${p.costPrice.toLocaleString()}`);
-			if (p.wholesaleRate != null) lines.push(`  卸売率: ${p.wholesaleRate}%`);
-			if (p.research?.competitors.length) {
-				lines.push(`  競合価格: ${p.research.competitors.map((c) => `${c.name}=${c.price}`).join(", ")}`);
-			}
-			if (p.skus?.length) {
-				const priceRange = p.skus.filter((s) => s.price_incl).map((s) => s.price_incl!);
-				if (priceRange.length) lines.push(`  SKU価格帯: ¥${Math.min(...priceRange).toLocaleString()}〜¥${Math.max(...priceRange).toLocaleString()}`);
-			}
-			return lines.join("\n");
-		})
-		.join("\n\n");
 
-	const channelFees = cs.channels
-		.map((ch) => `${ch.name}: 手数料${ch.fee_structure.commission_rate}, 月額${ch.fee_structure.monthly_fee}`)
+	// Build pre-computed BEP table for each tier1 product x channel
+	const bepTableHeader = `| 商品名 | チャネル | TV単価 | 原価 | 手数料率 | 手数料額 | 粗利/個 | BEP(個/月) |`;
+	const bepTableSep = `|---|---|---|---|---|---|---|---|`;
+	const bepRows: string[] = [];
+
+	for (const p of tier1Products) {
+		const m = ctx.computedMetrics[p.code];
+		const costPrice = p.costPrice ?? Math.round(m.tvUnitPrice * (1 - (p.marginRate / 100)));
+
+		for (const ch of CHANNEL_REFERENCE) {
+			// Parse min commission rate
+			const commMatch = ch.commission.match(/(\d+(?:\.\d+)?)/);
+			const commRate = commMatch ? parseFloat(commMatch[1]) / 100 : 0.10;
+			const commAmount = Math.round(m.tvUnitPrice * commRate);
+			const grossMarginPerUnit = m.tvUnitPrice - costPrice - commAmount;
+
+			// Estimate fixed costs from channel reference (use midpoint of range)
+			const fixedNums = [...ch.initialCost.matchAll(/(\d+)/g)].map((m) => parseInt(m[1], 10));
+			const fixedMidpoint = fixedNums.length >= 2 ? (fixedNums[0] + fixedNums[1]) / 2 : fixedNums[0] ?? 5;
+			const monthlyFixedEstimate = fixedMidpoint * 10000 / 6; // Amortize over 6 months
+			const monthlyFeeMatch = ch.monthlyFee.match(/(\d[\d,]*)/);
+			const monthlyFee = monthlyFeeMatch ? parseInt(monthlyFeeMatch[1].replace(/,/g, ""), 10) : 0;
+			const totalMonthlyFixed = Math.round(monthlyFixedEstimate + monthlyFee);
+
+			const bepUnits = grossMarginPerUnit > 0 ? Math.ceil(totalMonthlyFixed / grossMarginPerUnit) : 9999;
+
+			bepRows.push(`| ${p.name.slice(0, 15)} | ${ch.name} | ${formatYen(m.tvUnitPrice)} | ${formatYen(costPrice)} | ${(commRate * 100).toFixed(1)}% | ${formatYen(commAmount)} | ${formatYen(grossMarginPerUnit)} | ${bepUnits} |`);
+		}
+	}
+
+	// Product pricing data table
+	const pricingTableHeader = `| 商品名 | コード | TV単価 | 原価 | 卸売率 | 粗利率 | SKU価格帯 | 競合価格 |`;
+	const pricingTableSep = `|---|---|---|---|---|---|---|---|`;
+	const pricingRows = tier1Products.map((p) => {
+		const m = ctx.computedMetrics[p.code];
+		const compPrices = p.research?.competitors?.slice(0, 2).map((c) => `${c.name}=${c.price}`).join(", ") || "-";
+		return `| ${p.name.slice(0, 20)} | ${p.code} | ${formatYen(m.tvUnitPrice)} | ${p.costPrice != null ? formatYen(p.costPrice) : "不明"} | ${p.wholesaleRate ?? "不明"}% | ${p.marginRate}% | ${m.priceRange} | ${compPrices} |`;
+	}).join("\n");
+
+	// Channel fee summary from Skill 2
+	const channelFeeLines = cs.channels
+		.map((ch) => `- ${ch.name}: 手数料${ch.fee_structure.commission_rate}, 月額${ch.fee_structure.monthly_fee}, フルフィルメント: ${ch.fee_structure.fulfillment_options.join("/")}`)
 		.join("\n");
 
-	return `あなたはEC事業の価格戦略スペシャリストです。TV通販商品のEC展開における最適価格を設計してください。
+	return `[ROLE] あなたはEC事業の価格戦略スペシャリストです。TV通販商品のEC展開における最適価格とマージン構造を設計してください。
+${buildGoalSection(ctx.parsedGoal)}
+[DATA — 構造化データ]
 
 === 対象商品の原価・価格データ ===
-${productPricingData}
+${pricingTableHeader}
+${pricingTableSep}
+${pricingRows}
 
-=== チャネル手数料構造 ===
-${channelFees}
+=== チャネル手数料構造（Skill 2確定値） ===
+${channelFeeLines}
 
-=== 分析要件 ===
-各商品×各チャネルの組み合わせについて:
-- recommended_price: EC販売推奨価格（競合価格・原価・手数料を考慮）
-- competitor_benchmark: 競合の平均価格帯
-- channel_fees: そのチャネルの手数料（販売手数料+フルフィルメント費等）
-- net_margin_pct / net_margin_yen: 手数料控除後の純粋な粗利（率と金額）
-- reasoning: なぜこの価格が最適か
+=== サーバー事前計算: BEP分析テーブル ===
+以下はサーバーサイドで計算済みの損益分岐点です。この数値を検証し、戦略的な推奨価格を提案してください。
+（固定費は初期費用の6ヶ月按分 + 月額費用で概算）
 
-BEP分析:
-- 各チャネルの固定費（月額費用、広告費、人件費等）を列挙
-- 変動費（原価+手数料）から損益分岐販売数を算出
-- 損益分岐達成の見込み期間
+${bepTableHeader}
+${bepTableSep}
+${bepRows.join("\n")}
 
-IMPORTANT: すべてのテキストフィールドは日本語で記述。計算は実際の原価データに基づくこと。
+[PRIOR — 前ステップ分析結果]
+- Skill 1（商品選定）: tier1商品 ${tier1Products.length}品を対象
+- Skill 2（チャネル戦略）: ${cs.channels.length}チャネルの手数料構造確定
+
+[FRAMEWORK — 分析基準]
+
+価格設定の判定基準:
+- EC販売価格 = TV単価の90-110%（TV視聴者との価格矛盾を避ける）
+- 最低マージン: 手数料控除後 ≥ 15%（これ未満は撤退検討）
+- 競合ベンチマーク: 競合価格の±10%以内を推奨
+- BEP達成目標: 3ヶ月以内 = 優良、6ヶ月以内 = 許容、6ヶ月超 = 要再検討
+
+BEP検証ルール:
+- 上記テーブルの計算値を確認し、非現実的な場合は修正理由を明記
+- 広告費(月額¥50,000-200,000)を固定費に追加した場合のBEPも考慮
+
+[TASK — 分析指示]
+
+1. 各商品×各チャネルの最適EC販売価格を設計
+2. 上記BEPテーブルの検証と、広告費込みの実践的BEP算出
+3. マージン最適化の具体的提案
+
+計算結果をそのまま使うのではなく、競合価格・市場感覚を加味して戦略的な推奨価格を提案すること。
+
+IMPORTANT: すべてのテキストフィールドは日本語で記述。
 
 Return a JSON object (no markdown) with this structure:
 {
@@ -840,26 +1143,75 @@ function buildMarketingExecutionPrompt(ctx: StrategyContext, priorOutputs: Recor
 	const cs = priorOutputs.channel_strategy as ChannelStrategyOutput;
 	const pm = priorOutputs.pricing_margin as PricingMarginOutput;
 
-	const channelPriorities = cs.channels
-		.map((ch) => `${ch.name} (${ch.priority}): 適合度${ch.fit_score}, 広告最低額${ch.fee_structure.advertising_minimum}`)
+	// Aggregate demographics across ALL products (not just 5)
+	const demoAgg: Record<string, number> = {};
+	const genderAgg: Record<string, number> = {};
+	const interestAgg: Record<string, number> = {};
+	let demoCount = 0;
+	for (const p of ctx.products) {
+		if (!p.research?.demographics) continue;
+		demoCount++;
+		const d = p.research.demographics;
+		if (d.age_group) demoAgg[d.age_group] = (demoAgg[d.age_group] ?? 0) + 1;
+		if (d.gender) genderAgg[d.gender] = (genderAgg[d.gender] ?? 0) + 1;
+		for (const interest of d.interests ?? []) {
+			interestAgg[interest] = (interestAgg[interest] ?? 0) + 1;
+		}
+	}
+	const demoSummary = demoCount > 0
+		? `年齢層: ${Object.entries(demoAgg).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}(${v}商品)`).join(", ")}
+性別: ${Object.entries(genderAgg).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}(${v}商品)`).join(", ")}
+主要関心事: ${Object.entries(interestAgg).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([k, v]) => `${k}(${v})`).join(", ")}
+(${demoCount}商品のデータから集計)`
+		: "（デモグラフィクスデータなし）";
+
+	// Aggregate marketing strategies by type with counts and avg efficiency
+	const stratAgg: Record<string, { count: number; totalEfficiency: number; examples: string[] }> = {};
+	for (const p of ctx.products) {
+		if (!p.research?.marketingStrategy) continue;
+		for (const s of p.research.marketingStrategy) {
+			if (!stratAgg[s.type]) stratAgg[s.type] = { count: 0, totalEfficiency: 0, examples: [] };
+			stratAgg[s.type].count++;
+			stratAgg[s.type].totalEfficiency += s.efficiency_score;
+			if (stratAgg[s.type].examples.length < 3) stratAgg[s.type].examples.push(s.strategy_name);
+		}
+	}
+	const stratLines = Object.entries(stratAgg)
+		.sort((a, b) => b[1].count - a[1].count)
+		.map(([type, d]) => `- ${type}: ${d.count}回推奨, 平均効率${Math.round(d.totalEfficiency / d.count)}/100, 例: ${d.examples.join(", ")}`)
 		.join("\n");
 
-	const tier1Summary = ps.channel_product_matrix
-		.map((ch) => `${ch.channel}: ${ch.tier1_products.map((p) => p.name).join(", ")}`)
-		.join("\n");
-
-	// Gather research-based marketing insights
-	const marketingInsights = ctx.products
-		.filter((p) => p.research?.marketingStrategy?.length)
-		.slice(0, 5)
-		.map((p) => `${p.name}: ${p.research!.marketingStrategy.map((s) => `${s.strategy_name}(効率${s.efficiency_score})`).join(", ")}`)
-		.join("\n");
+	// Pricing data from Skill 3 for budget grounding
+	const pricingSummary = pm.product_pricing.slice(0, 5).map((pp) => {
+		const avgMargin = pp.channel_pricing.length > 0
+			? Math.round(pp.channel_pricing.reduce((s, cp) => s + cp.net_margin_yen, 0) / pp.channel_pricing.length)
+			: 0;
+		return `- ${pp.product_name}: 平均粗利/個 ${formatYen(avgMargin)}`;
+	}).join("\n");
 
 	const bepSummary = pm.bep_analysis
-		.map((b) => `${b.channel}: 損益分岐${b.bep_units}個/月, 達成見込${b.bep_timeline}`)
+		.map((b) => `- ${b.channel}: 損益分岐${b.bep_units}個/月, 達成見込${b.bep_timeline}`)
 		.join("\n");
 
-	return `あなたはEC・SNSマーケティングの実行プランナーです。TV通販からのEC展開における6ヶ月間の具体的なマーケティング実行計画を策定してください。
+	// Channel priorities
+	const channelPriorities = cs.channels
+		.map((ch) => `- ${ch.name} (${ch.priority}): 適合度${ch.fit_score}, 広告最低額${ch.fee_structure.advertising_minimum}`)
+		.join("\n");
+
+	// Tier1 product lineup
+	const tier1Summary = ps.channel_product_matrix
+		.map((ch) => `- ${ch.channel}: ${ch.tier1_products.map((p) => p.name).join(", ")}`)
+		.join("\n");
+
+	return `[ROLE] あなたはEC・SNSマーケティングの実行プランナーです。TV通販からのEC展開における6ヶ月間の具体的なマーケティング実行計画を策定してください。
+${buildGoalSection(ctx.parsedGoal)}
+[DATA — 構造化データ]
+
+=== ターゲット顧客プロファイル（全商品集計） ===
+${demoSummary}
+
+=== AI分析によるマーケティング戦略推奨（全商品集計） ===
+${stratLines || "（マーケティング戦略データなし）"}
 
 === チャネル優先度・広告要件 ===
 ${channelPriorities}
@@ -867,17 +1219,37 @@ ${channelPriorities}
 === 商品ラインナップ ===
 ${tier1Summary}
 
-=== AI分析によるマーケティング示唆 ===
-${marketingInsights || "（個別商品のAI分析データなし）"}
+=== 商品別粗利データ（Skill 3） ===
+${pricingSummary}
 
-=== 損益分岐目標 ===
+=== 損益分岐目標（Skill 3） ===
 ${bepSummary}
 
-=== 策定要件 ===
-- monthly_plans: 6ヶ月分の月別計画。各月のアクティビティに具体的な予算（¥）、想定インプレッション数、想定コンバージョン数を記載。
-- content_calendar: 最初の2ヶ月（8週）の週別コンテンツ計画。チャネル・コンテンツ種類・テーマ・フォーカス商品を記載。
-- influencer_plan: ティア別（mega/macro/micro）のインフルエンサー施策。人数・1人あたり予算・選定基準・想定ROI。
-- budget_summary: 6ヶ月間の総予算と、チャネル別・施策種別（広告/コンテンツ/インフルエンサー/PR）の内訳。
+[PRIOR — 前ステップ分析結果]
+- Skill 1（商品選定）: ${ps.channel_product_matrix.length}チャネルに商品を配分
+- Skill 2（チャネル戦略）: launch_sequence = ${cs.launch_sequence.map((ls) => `${ls.phase}(${ls.channels.join(",")})`).join(" → ")}
+- Skill 3（価格戦略）: 全商品の価格・BEP確定済み
+
+[FRAMEWORK — 分析基準]
+
+予算配分の判定基準:
+- 月間マーケティング予算 = 目標月間売上 × 15-25%（立ち上げ期は25%、安定期は15%）
+- チャネル別配分: immediate チャネルに60%, 3month チャネルに30%, その他10%
+- 施策別配分: 広告40%, コンテンツ制作25%, インフルエンサー25%, PR10%
+- BEP達成に必要な最低広告費を下回らないこと
+
+インフルエンサー予算目安:
+- mega (100万+フォロワー): ¥500,000-2,000,000/件
+- macro (10-100万): ¥100,000-500,000/件
+- micro (1-10万): ¥10,000-100,000/件
+
+[TASK — 分析指示]
+
+6ヶ月間の具体的なマーケティング実行計画を策定してください。
+- monthly_plans: 各月のアクティビティに具体的な予算（¥）、想定インプレッション数、想定コンバージョン数を記載。
+- content_calendar: 最初の2ヶ月（8週）の週別コンテンツ計画。
+- influencer_plan: ティア別施策。
+- budget_summary: 6ヶ月間の総予算と内訳。
 
 IMPORTANT: すべて日本語で記述。金額は¥で表記。具体的な数値目標を含めること。
 
@@ -897,43 +1269,110 @@ function buildFinancialProjectionPrompt(ctx: StrategyContext, priorOutputs: Reco
 	const pm = priorOutputs.pricing_margin as PricingMarginOutput;
 	const me = priorOutputs.marketing_execution as MarketingExecutionOutput;
 
+	// Compute weekly velocity trend (slope) from weeklyTrends
+	let weeklySlope = 0;
+	if (ctx.weeklyTrends.length >= 4) {
+		const recent = ctx.weeklyTrends.slice(-12);
+		const n = recent.length;
+		const xMean = (n - 1) / 2;
+		const yMean = recent.reduce((s, w) => s + w.revenue, 0) / n;
+		let numerator = 0;
+		let denominator = 0;
+		for (let i = 0; i < n; i++) {
+			numerator += (i - xMean) * (recent[i].revenue - yMean);
+			denominator += (i - xMean) ** 2;
+		}
+		weeklySlope = denominator > 0 ? Math.round(numerator / denominator) : 0;
+	}
+
+	// Product baseline data: avgWeeklyQty for EC conversion projections
+	const productBaselines = ctx.products.slice(0, 10).map((p) => {
+		const m = ctx.computedMetrics[p.code];
+		return `- ${p.name}: TV週平均${p.avgWeeklyQty}個, TV単価${formatYen(m.tvUnitPrice)}, 推移=${m.trajectory}`;
+	}).join("\n");
+
+	// Channel costs from Skill 2
 	const channelCosts = cs.channels.map((ch) => {
 		const bep = pm.bep_analysis.find((b) => b.channel === ch.name);
-		return `${ch.name}: 初期投資=${ch.entry_requirements.initial_costs.map((c) => `${c.item}:${c.cost}`).join("+")}` +
-			(bep ? `, BEP=${bep.bep_units}個/月` : "");
+		return `- ${ch.name} (${ch.priority}): 初期投資=${ch.entry_requirements.initial_costs.map((c) => `${c.item}:${c.cost}`).join("+")}` +
+			(bep ? `, BEP=${bep.bep_units}個/月, BEP達成=${bep.bep_timeline}` : "");
 	}).join("\n");
 
+	// Pricing summary from Skill 3
 	const pricingSummary = pm.product_pricing.slice(0, 5).map((pp) => {
-		const chPrices = pp.channel_pricing.map((cp) => `${cp.channel}:¥${cp.recommended_price}(粗利${cp.net_margin_pct}%)`).join(", ");
-		return `${pp.product_name}: ${chPrices}`;
+		const chPrices = pp.channel_pricing.map((cp) => `${cp.channel}:${formatYen(cp.recommended_price)}(粗利${cp.net_margin_pct}%)`).join(", ");
+		return `- ${pp.product_name}: ${chPrices}`;
 	}).join("\n");
 
-	const marketingBudget = `6ヶ月総額: ¥${me.budget_summary.total_6month.toLocaleString()}\n` +
-		Object.entries(me.budget_summary.by_channel).map(([ch, amt]) => `  ${ch}: ¥${amt.toLocaleString()}`).join("\n");
+	// Marketing budget from Skill 4
+	const marketingBudget = `6ヶ月総額: ${formatYen(me.budget_summary.total_6month)}\n` +
+		Object.entries(me.budget_summary.by_channel).map(([ch, amt]) => `  ${ch}: ${formatYen(amt)}`).join("\n");
 
-	// TV sales as baseline reference
-	const tvBaseline = `TV通販実績: 月平均売上¥${Math.round(ctx.annualMetrics.totalRevenue / Math.max(ctx.annualMetrics.weekCount / 4, 1)).toLocaleString()}`;
+	// Launch sequence from Skill 2
+	const launchSequence = cs.launch_sequence
+		.map((ls) => `- ${ls.phase}: ${ls.channels.join(", ")} (${ls.timeline}) — ${ls.rationale}`)
+		.join("\n");
 
-	return `あなたは事業計画の財務モデリング専門家です。TV通販からのEC展開における12ヶ月間の収益予測を作成してください。
+	// TV baseline
+	const monthlyAvgRevenue = Math.round(ctx.annualMetrics.totalRevenue / Math.max(ctx.annualMetrics.weekCount / 4, 1));
 
-=== 基礎データ ===
-${tvBaseline}
+	return `[ROLE] あなたは事業計画の財務モデリング専門家です。TV通販からのEC展開における12ヶ月間の収益予測を作成してください。
+${buildGoalSection(ctx.parsedGoal)}
+[DATA — 構造化データ]
 
-=== チャネル別コスト構造 ===
+=== TV通販ベースライン ===
+- 月平均売上: ${formatYen(monthlyAvgRevenue)}
+- 週次売上トレンド傾き: ${weeklySlope > 0 ? "+" : ""}${formatYen(weeklySlope)}/週（${weeklySlope > 0 ? "上昇傾向" : weeklySlope < 0 ? "下降傾向" : "横ばい"}）
+
+=== 商品別TV実績ベースライン ===
+${productBaselines}
+
+=== 前提条件テーブル ===
+| 項目 | 値 | 備考 |
+|---|---|---|
+| EC転換率（初月） | 5% | TV週平均販売数に対するEC販売比率 |
+| EC転換率（3ヶ月後） | 15% | 広告・SEO効果反映 |
+| EC転換率（6ヶ月後） | 25% | 安定期 |
+| EC転換率（12ヶ月後） | 35% | 成熟期 |
+| 月次成長率（立ち上げ期） | 15-25% | 1-3ヶ月目 |
+| 月次成長率（成長期） | 10-15% | 4-6ヶ月目 |
+| 月次成長率（安定期） | 5-8% | 7-12ヶ月目 |
+
+=== チャネル別コスト構造（Skill 2） ===
 ${channelCosts}
 
-=== 商品別チャネル価格・粗利 ===
+=== 商品別チャネル価格・粗利（Skill 3） ===
 ${pricingSummary}
 
-=== マーケティング予算 ===
+=== マーケティング予算（Skill 4） ===
 ${marketingBudget}
 
-=== 予測要件 ===
-- monthly_forecast: 12ヶ月分（2026年4月〜2027年3月）のチャネル別月次予測。売上・原価・マーケティング費・純利益・累積利益を記載。
-  - 初月は控えめ、段階的に成長するリアルな予測とすること。
-  - チャネルの立ち上げ順序（launch_sequence）を反映すること。
-- roi_timeline: チャネル別の総投資額・損益分岐月・1年目ROI%・1年目純利益。
-- scenarios: 保守的/中立/積極的の3シナリオ。各シナリオの前提条件を明記。
+=== 展開スケジュール（Skill 2） ===
+${launchSequence}
+
+[PRIOR — 前ステップ分析結果]
+- Skill 2: ${cs.channels.filter((c) => c.priority === "immediate").length}チャネルを即時展開、フェーズ展開計画確定
+- Skill 3: BEP分析完了、商品別チャネル価格確定
+- Skill 4: 6ヶ月マーケティング予算 ${formatYen(me.budget_summary.total_6month)}
+
+[FRAMEWORK — 分析基準]
+
+収益予測ルール:
+- 各チャネルはlaunch_sequenceに従って段階的に立ち上げ
+- 立ち上げ前のチャネルは売上ゼロ
+- 初月売上 = tier1商品のTV週平均 × 4週 × EC転換率5% × EC推奨価格
+- 成長率は前提条件テーブルに従う
+- マーケティング費はSkill 4の月別予算を使用
+- ROI = (年間純利益 - 総投資額) / 総投資額 × 100
+
+シナリオ分岐:
+- 保守的: EC転換率を50%に、成長率を-5%ずつ
+- 中立的: 前提条件テーブル通り
+- 積極的: EC転換率を150%に、成長率を+5%ずつ
+
+[TASK — 分析指示]
+
+12ヶ月間（2026年4月〜2027年3月）の収益予測を作成してください。
 
 IMPORTANT: すべて日本語で記述。金額はすべて日本円。
 
@@ -949,38 +1388,93 @@ ${buildSourcesSection(ctx)}`;
 
 function buildRiskContingencyPrompt(ctx: StrategyContext, priorOutputs: Record<string, unknown>): string {
 	const cs = priorOutputs.channel_strategy as ChannelStrategyOutput;
+	const pm = priorOutputs.pricing_margin as PricingMarginOutput;
 	const fp = priorOutputs.financial_projection as FinancialProjectionOutput;
 
-	const channelOverview = cs.channels.map((ch) => {
+	// Full competitive landscape and operations requirements from Skill 2
+	const channelDetailLines = cs.channels.map((ch) => {
 		const roi = fp.roi_timeline.find((r) => r.channel === ch.name);
-		return `${ch.name} (${ch.priority}): 適合度${ch.fit_score}, ` +
-			`初期投資${ch.entry_requirements.initial_costs.map((c) => c.cost).join("+")}` +
-			(roi ? `, 1年目ROI ${roi.year1_roi_pct}%` : "");
+		const bep = pm.bep_analysis.find((b) => b.channel === ch.name);
+		return `=== ${ch.name} (${ch.priority}) ===
+- 適合度: ${ch.fit_score}/100
+- 初期投資: ${ch.entry_requirements.initial_costs.map((c) => `${c.item}:${c.cost}`).join(", ")}
+- 手数料: ${ch.fee_structure.commission_rate}, 月額: ${ch.fee_structure.monthly_fee}
+- 競合環境: ${ch.competitive_landscape.competitor_count}社, 価格帯${ch.competitive_landscape.price_range}, 主要: ${ch.competitive_landscape.dominant_players.join(", ")}
+- 差別化機会: ${ch.competitive_landscape.differentiation_opportunity}
+- 運営: 在庫=${ch.operations_requirements.inventory_model}, CS=${ch.operations_requirements.cs_requirements}, コンテンツ=${ch.operations_requirements.content_requirements.join(", ")}
+- 更新頻度: ${ch.operations_requirements.update_frequency}
+${bep ? `- BEP: ${bep.bep_units}個/月, 達成見込: ${bep.bep_timeline}` : ""}
+${roi ? `- 1年目ROI: ${roi.year1_roi_pct}%, 純利益: ${formatYen(roi.year1_net_profit)}` : ""}`;
+	}).join("\n\n");
+
+	// Sunk cost calculations from channel entry costs
+	const sunkCostLines = cs.channels.map((ch) => {
+		const totalInitial = ch.entry_requirements.initial_costs
+			.map((c) => {
+				const match = c.cost.match(/(\d[\d,]*)/);
+				return match ? parseInt(match[1].replace(/,/g, ""), 10) : 0;
+			})
+			.reduce((s, v) => s + v, 0);
+		return `- ${ch.name}: 初期サンクコスト ≈ ${formatYen(totalInitial)}（回収不可）`;
 	}).join("\n");
 
+	// BEP thresholds for withdrawal criteria
+	const bepThresholds = pm.bep_analysis.map((b) => {
+		const monthlyFixedTotal = b.fixed_costs.reduce((s, f) => s + f.monthly, 0);
+		return `- ${b.channel}: BEP=${b.bep_units}個/月, 月間固定費=${formatYen(monthlyFixedTotal)}, 撤退検討ライン=BEPの50%未達が3ヶ月連続`;
+	}).join("\n");
+
+	// Scenarios
 	const scenarios = fp.scenarios;
 
-	return `あなたはEC事業のリスクマネジメント専門家です。TV通販からのEC展開における包括的なリスク分析と対策計画を策定してください。
+	return `[ROLE] あなたはEC事業のリスクマネジメント専門家です。TV通販からのEC展開における包括的なリスク分析と対策計画を策定してください。
+${buildGoalSection(ctx.parsedGoal)}
+[DATA — 構造化データ]
 
-=== チャネル展開概要 ===
-${channelOverview}
+=== チャネル別詳細データ（Skill 2 + Skill 3 + Skill 5） ===
+${channelDetailLines}
 
-=== 収益シナリオ ===
-- 保守的: 年間売上¥${scenarios.conservative.year1_revenue.toLocaleString()}, 利益¥${scenarios.conservative.year1_profit.toLocaleString()}
-- 中立的: 年間売上¥${scenarios.moderate.year1_revenue.toLocaleString()}, 利益¥${scenarios.moderate.year1_profit.toLocaleString()}
-- 積極的: 年間売上¥${scenarios.aggressive.year1_revenue.toLocaleString()}, 利益¥${scenarios.aggressive.year1_profit.toLocaleString()}
+=== サンクコスト一覧 ===
+${sunkCostLines}
+
+=== BEP撤退基準（Skill 3） ===
+${bepThresholds}
+
+=== 収益シナリオ（Skill 5） ===
+- 保守的: 年間売上${formatYen(scenarios.conservative.year1_revenue)}, 利益${formatYen(scenarios.conservative.year1_profit)}
+- 中立的: 年間売上${formatYen(scenarios.moderate.year1_revenue)}, 利益${formatYen(scenarios.moderate.year1_profit)}
+- 積極的: 年間売上${formatYen(scenarios.aggressive.year1_revenue)}, 利益${formatYen(scenarios.aggressive.year1_profit)}
 前提: ${scenarios.assumptions.join(", ")}
 
-=== 分析要件 ===
-- risk_matrix: 各チャネルのリスクを category（operational/financial/competitive/regulatory/market）別に列挙。
-  - likelihood（可能性）とimpact（影響度）をhigh/medium/lowで評価。
-  - mitigation: 予防策（複数）
-  - contingency_trigger: 発動条件（具体的な数値基準）
-  - contingency_action: 発動時の具体的アクション
-- top_5_risks: 全チャネル通じて最も重要なリスクTOP5と詳細な対応プレイブック。
-- go_nogo_criteria: 各チャネルの継続/撤退判断基準と判断期日。
+[PRIOR — 前ステップ分析結果]
+- Skill 2: 競合環境・運営要件が各チャネルで確定
+- Skill 3: BEP閾値と損益分岐達成見込を確認済み
+- Skill 5: 3シナリオの収益予測完了、ROIタイムライン確定
 
-IMPORTANT: すべて日本語で記述。抽象的な表現は避け、「月間売上¥X未満が3ヶ月続いた場合」のように具体的な基準で記述すること。
+[FRAMEWORK — 分析基準]
+
+リスク評価基準:
+- likelihood × impact でスコアリング (high=3, medium=2, low=1)
+- スコア6以上 = top_5_risksに含める
+- 各チャネル最低3リスクを識別
+
+撤退判断基準:
+- BEPの50%未達が3ヶ月連続 → 撤退検討
+- 累積損失がサンクコストの200%超過 → 即座に撤退協議
+- 競合の大幅値下げ（30%以上）でマージン確保不可 → 価格戦略見直し or 撤退
+
+Go/No-Go判断:
+- 各チャネルの継続判断は3ヶ月後、6ヶ月後に実施
+- 判断基準は具体的な数値で（「月間売上¥X未満が3ヶ月続いた場合」等）
+
+[TASK — 分析指示]
+
+包括的なリスク分析と対策計画を策定してください。
+- risk_matrix: 各チャネルのリスクをcategory別に列挙。具体的な数値基準を含めること。
+- top_5_risks: 全チャネル通じて最も重要なリスクTOP5と詳細な対応プレイブック。
+- go_nogo_criteria: 各チャネルの継続/撤退判断基準と判断期日。サンクコストとBEPを踏まえた具体的な基準。
+
+IMPORTANT: すべて日本語で記述。抽象的な表現は避け、具体的な数値基準で記述すること。
 
 Return a JSON object (no markdown) with this structure:
 {
@@ -999,6 +1493,7 @@ ${buildSourcesSection(ctx)}`;
 type PromptBuilder = (ctx: StrategyContext, priorOutputs: Record<string, unknown>) => string;
 
 const SKILL_PIPELINE: Array<{ name: SkillName; buildPrompt: PromptBuilder }> = [
+	{ name: "goal_analysis", buildPrompt: () => "" }, // handled specially in orchestrator
 	{ name: "product_selection", buildPrompt: (ctx) => buildProductSelectionPrompt(ctx) },
 	{ name: "channel_strategy", buildPrompt: buildChannelStrategyPrompt },
 	{ name: "pricing_margin", buildPrompt: buildPricingMarginPrompt },
@@ -1018,6 +1513,20 @@ export async function runStrategyOrchestrator(
 		onProgress({ skill: skill.name, status: "running", index: i, total: SKILL_PIPELINE.length });
 
 		try {
+			if (skill.name === "goal_analysis") {
+				// Skill 0: Goal Analysis — only runs if userGoal is provided
+				if (context.userGoal) {
+					const parsedGoal = await runGoalAnalysis(context.userGoal);
+					context.parsedGoal = parsedGoal;
+					outputs.goal_analysis = parsedGoal;
+					onProgress({ skill: skill.name, status: "complete", index: i, total: SKILL_PIPELINE.length, data: parsedGoal });
+				} else {
+					outputs.goal_analysis = null;
+					onProgress({ skill: skill.name, status: "complete", index: i, total: SKILL_PIPELINE.length, data: null });
+				}
+				continue;
+			}
+
 			const prompt = skill.buildPrompt(context, outputs);
 			const raw = await callGemini(prompt);
 			const parsed = parseJSON(raw);

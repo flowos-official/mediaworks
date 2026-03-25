@@ -12,6 +12,7 @@ interface Props {
 }
 
 const SKILL_ORDER: SkillName[] = [
+	'goal_analysis',
 	'product_selection',
 	'channel_strategy',
 	'pricing_margin',

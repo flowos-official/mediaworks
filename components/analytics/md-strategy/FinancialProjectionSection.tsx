@@ -29,7 +29,8 @@ function roiColor(pct: number): string {
 
 export default function FinancialProjectionSection({ data }: Props) {
 	// Prepare chart data
-	const chartData = data.monthly_forecast.map((mf) => ({
+	const monthlyForecast = data.monthly_forecast ?? [];
+	const chartData = monthlyForecast.map((mf) => ({
 		month: mf.month.replace('2026年', '').replace('2027年', "'27 "),
 		revenue: Math.round(mf.total_revenue / 10000),
 		profit: Math.round(mf.total_profit / 10000),
@@ -37,14 +38,14 @@ export default function FinancialProjectionSection({ data }: Props) {
 
 	// Channel breakdown for stacked chart
 	const allChannels = new Set<string>();
-	for (const mf of data.monthly_forecast) {
-		for (const ch of mf.by_channel) allChannels.add(ch.channel);
+	for (const mf of monthlyForecast) {
+		for (const ch of (mf.by_channel ?? [])) allChannels.add(ch.channel);
 	}
 	const channelColors = ['#3b82f6', '#8b5cf6', '#f59e0b', '#10b981', '#ef4444', '#ec4899', '#06b6d4'];
 
-	const stackedData = data.monthly_forecast.map((mf) => {
+	const stackedData = monthlyForecast.map((mf) => {
 		const row: Record<string, string | number> = { month: mf.month.replace('2026年', '').replace('2027年', "'27 ") };
-		for (const ch of mf.by_channel) {
+		for (const ch of (mf.by_channel ?? [])) {
 			row[ch.channel] = Math.round(ch.revenue / 10000);
 		}
 		return row;
@@ -106,7 +107,7 @@ export default function FinancialProjectionSection({ data }: Props) {
 			)}
 
 			{/* ROI Timeline */}
-			{data.roi_timeline.length > 0 && (
+			{(data.roi_timeline ?? []).length > 0 && (
 				<Card className="border-gray-200">
 					<CardHeader className="pb-2">
 						<CardTitle className="text-sm font-semibold flex items-center gap-1.5">
@@ -115,7 +116,7 @@ export default function FinancialProjectionSection({ data }: Props) {
 					</CardHeader>
 					<CardContent>
 						<div className="space-y-2">
-							{data.roi_timeline
+							{(data.roi_timeline ?? [])
 								.sort((a, b) => b.year1_roi_pct - a.year1_roi_pct)
 								.map((roi) => (
 									<div key={roi.channel} className="bg-gray-50 rounded-lg px-3 py-2.5">
@@ -147,6 +148,7 @@ export default function FinancialProjectionSection({ data }: Props) {
 			)}
 
 			{/* Scenarios */}
+			{data.scenarios && (
 			<Card className="border-blue-200 bg-blue-50/20">
 				<CardHeader className="pb-2">
 					<CardTitle className="text-sm font-semibold text-blue-700">シナリオ分析</CardTitle>
@@ -157,7 +159,7 @@ export default function FinancialProjectionSection({ data }: Props) {
 							{ label: '保守的', data: data.scenarios.conservative, color: 'border-gray-300 bg-gray-50' },
 							{ label: '中立的', data: data.scenarios.moderate, color: 'border-blue-300 bg-blue-50' },
 							{ label: '積極的', data: data.scenarios.aggressive, color: 'border-green-300 bg-green-50' },
-						].map((s) => (
+						].filter((s) => s.data).map((s) => (
 							<div key={s.label} className={`rounded-lg border p-3 text-center ${s.color}`}>
 								<span className="text-[10px] font-semibold text-gray-500 uppercase">{s.label}</span>
 								<div className="mt-1">
@@ -171,11 +173,11 @@ export default function FinancialProjectionSection({ data }: Props) {
 							</div>
 						))}
 					</div>
-					{data.scenarios.assumptions.length > 0 && (
+					{(data.scenarios.assumptions ?? []).length > 0 && (
 						<div>
 							<span className="text-[10px] text-gray-500 font-semibold">前提条件:</span>
 							<ul className="mt-0.5 space-y-0.5">
-								{data.scenarios.assumptions.map((a, i) => (
+								{(data.scenarios.assumptions ?? []).map((a, i) => (
 									<li key={i} className="text-[10px] text-gray-600">• {a}</li>
 								))}
 							</ul>
@@ -183,6 +185,7 @@ export default function FinancialProjectionSection({ data }: Props) {
 					)}
 				</CardContent>
 			</Card>
+			)}
 			<SourcesCited sources={data.sources_cited} />
 		</div>
 	);

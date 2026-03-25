@@ -54,20 +54,20 @@ export default function ProductSelectionSection({ data }: Props) {
 			</Card>
 
 			{/* Channel-product matrix */}
-			{data.channel_product_matrix.map((ch) => (
+			{(data.channel_product_matrix ?? []).map((ch) => (
 				<Card key={ch.channel} className="border-gray-200">
 					<CardHeader className="pb-2">
 						<CardTitle className="text-base font-bold">{ch.channel}</CardTitle>
 					</CardHeader>
 					<CardContent className="space-y-4 pt-0">
 						{/* Tier 1 */}
-						{ch.tier1_products.length > 0 && (
+						{(ch.tier1_products ?? []).length > 0 && (
 							<div>
 								<div className="flex items-center gap-2 mb-2">
 									<Badge className="bg-blue-600 text-white text-[10px]">Tier 1 — 即時投入</Badge>
 								</div>
 								<div className="space-y-2">
-									{ch.tier1_products.map((p) => (
+									{(ch.tier1_products ?? []).map((p) => (
 										<div key={p.code} className="bg-white border border-blue-100 rounded-lg px-3 py-2.5">
 											<div className="flex items-center justify-between mb-1">
 												<span className="font-semibold text-sm text-gray-900">{p.name}</span>
@@ -91,13 +91,13 @@ export default function ProductSelectionSection({ data }: Props) {
 						)}
 
 						{/* Tier 2 */}
-						{ch.tier2_products.length > 0 && (
+						{(ch.tier2_products ?? []).length > 0 && (
 							<div>
 								<div className="flex items-center gap-2 mb-2">
 									<Badge variant="secondary" className="text-[10px]">Tier 2 — 第2弾</Badge>
 								</div>
 								<div className="space-y-1.5">
-									{ch.tier2_products.map((p) => (
+									{(ch.tier2_products ?? []).map((p) => (
 										<div key={p.code} className="bg-gray-50 rounded-lg px-3 py-2">
 											<span className="font-medium text-sm text-gray-800">{p.name}</span>
 											<p className="text-xs text-gray-500 mt-0.5">{p.reason}</p>
@@ -108,14 +108,14 @@ export default function ProductSelectionSection({ data }: Props) {
 						)}
 
 						{/* Exclusions */}
-						{ch.exclusions.length > 0 && (
+						{(ch.exclusions ?? []).length > 0 && (
 							<div>
 								<div className="flex items-center gap-1.5 mb-1.5">
 									<ShieldX size={12} className="text-red-400" />
 									<span className="text-[10px] font-semibold text-red-500 uppercase">不適合商品</span>
 								</div>
 								<div className="space-y-1">
-									{ch.exclusions.map((p) => (
+									{(ch.exclusions ?? []).map((p) => (
 										<div key={p.code} className="flex items-start gap-2 text-xs text-gray-500">
 											<span className="text-red-400">-</span>
 											<span><span className="text-gray-700">{p.name}</span>: {p.reason}</span>

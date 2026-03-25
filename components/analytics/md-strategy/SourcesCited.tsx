@@ -12,14 +12,26 @@ interface Props {
 	sources?: Source[];
 }
 
+function isSafeUrl(url: string): boolean {
+	try {
+		const parsed = new URL(url);
+		return parsed.protocol === 'https:' || parsed.protocol === 'http:';
+	} catch {
+		return false;
+	}
+}
+
 export default function SourcesCited({ sources }: Props) {
 	if (!sources || sources.length === 0) return null;
+
+	const safeSources = sources.filter((s) => isSafeUrl(s.url));
+	if (safeSources.length === 0) return null;
 
 	return (
 		<div className="border-t border-gray-100 pt-3 mt-4">
 			<span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">出典</span>
 			<div className="mt-1 space-y-0.5">
-				{sources.map((s) => (
+				{safeSources.map((s) => (
 					<a
 						key={s.index}
 						href={s.url}

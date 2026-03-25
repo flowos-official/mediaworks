@@ -34,6 +34,7 @@ export default function MarketingExecutionSection({ data }: Props) {
 			</div>
 
 			{/* Budget summary */}
+			{data.budget_summary && (
 			<Card className="border-orange-200 bg-orange-50/20">
 				<CardContent className="p-4">
 					<span className="text-[10px] font-semibold text-orange-600 uppercase tracking-wide">6ヶ月間予算サマリー</span>
@@ -43,11 +44,11 @@ export default function MarketingExecutionSection({ data }: Props) {
 					</div>
 
 					{/* By channel */}
-					{Object.keys(data.budget_summary.by_channel).length > 0 && (
+					{Object.keys(data.budget_summary.by_channel ?? {}).length > 0 && (
 						<div className="mt-3">
 							<span className="text-[10px] text-gray-500 block mb-1">チャネル別</span>
 							<div className="flex flex-wrap gap-1.5">
-								{Object.entries(data.budget_summary.by_channel)
+								{Object.entries(data.budget_summary.by_channel ?? {})
 									.sort(([, a], [, b]) => b - a)
 									.map(([ch, amt]) => (
 										<span key={ch} className="text-[10px] px-2 py-0.5 bg-white border border-orange-200 rounded-full">
@@ -59,11 +60,11 @@ export default function MarketingExecutionSection({ data }: Props) {
 					)}
 
 					{/* By type */}
-					{Object.keys(data.budget_summary.by_type).length > 0 && (
+					{Object.keys(data.budget_summary.by_type ?? {}).length > 0 && (
 						<div className="mt-2">
 							<span className="text-[10px] text-gray-500 block mb-1">施策別</span>
 							<div className="flex flex-wrap gap-1.5">
-								{Object.entries(data.budget_summary.by_type)
+								{Object.entries(data.budget_summary.by_type ?? {})
 									.sort(([, a], [, b]) => b - a)
 									.map(([type, amt]) => (
 										<span key={type} className="text-[10px] px-2 py-0.5 bg-white border border-gray-200 rounded-full">
@@ -75,9 +76,10 @@ export default function MarketingExecutionSection({ data }: Props) {
 					)}
 				</CardContent>
 			</Card>
+			)}
 
 			{/* Monthly plans */}
-			{data.monthly_plans.length > 0 && (
+			{(data.monthly_plans ?? []).length > 0 && (
 				<Card className="border-gray-200">
 					<CardHeader className="pb-2">
 						<CardTitle className="text-sm font-semibold flex items-center gap-1.5">
@@ -85,7 +87,7 @@ export default function MarketingExecutionSection({ data }: Props) {
 						</CardTitle>
 					</CardHeader>
 					<CardContent className="space-y-3">
-						{data.monthly_plans.map((mp) => (
+						{(data.monthly_plans ?? []).map((mp) => (
 							<div key={mp.month} className="border border-gray-100 rounded-lg p-3">
 								<div className="flex items-center justify-between mb-2">
 									<span className="font-semibold text-sm text-gray-900">{mp.month}</span>
@@ -94,7 +96,7 @@ export default function MarketingExecutionSection({ data }: Props) {
 									</span>
 								</div>
 								<div className="space-y-1.5">
-									{mp.activities.map((act, i) => (
+									{(mp.activities ?? []).map((act, i) => (
 										<div key={i} className="flex items-start gap-2 text-xs">
 											<Badge variant="outline" className="text-[9px] shrink-0">{act.channel}</Badge>
 											<div className="flex-1">
@@ -115,7 +117,7 @@ export default function MarketingExecutionSection({ data }: Props) {
 			)}
 
 			{/* Content calendar */}
-			{data.content_calendar.length > 0 && (
+			{(data.content_calendar ?? []).length > 0 && (
 				<Card className="border-gray-200">
 					<CardHeader className="pb-2">
 						<CardTitle className="text-sm font-semibold">コンテンツカレンダー（8週間）</CardTitle>
@@ -133,7 +135,7 @@ export default function MarketingExecutionSection({ data }: Props) {
 									</tr>
 								</thead>
 								<tbody>
-									{data.content_calendar.map((cc, i) => (
+									{(data.content_calendar ?? []).map((cc, i) => (
 										<tr key={i} className="border-b border-gray-50">
 											<td className="px-2 py-1.5 text-gray-500 font-mono">{cc.week}</td>
 											<td className="px-2 py-1.5">{cc.channel}</td>
@@ -152,7 +154,7 @@ export default function MarketingExecutionSection({ data }: Props) {
 			)}
 
 			{/* Influencer plan */}
-			{data.influencer_plan.length > 0 && (
+			{(data.influencer_plan ?? []).length > 0 && (
 				<Card className="border-gray-200">
 					<CardHeader className="pb-2">
 						<CardTitle className="text-sm font-semibold flex items-center gap-1.5">
@@ -161,7 +163,7 @@ export default function MarketingExecutionSection({ data }: Props) {
 					</CardHeader>
 					<CardContent>
 						<div className="space-y-2">
-							{data.influencer_plan.map((ip, i) => (
+							{(data.influencer_plan ?? []).map((ip, i) => (
 								<div key={i} className="bg-gray-50 rounded-lg px-3 py-2.5">
 									<div className="flex items-center gap-2 mb-1">
 										<Badge className={`text-[10px] ${tierColor(ip.tier)}`}>{ip.tier}</Badge>
