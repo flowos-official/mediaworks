@@ -17,7 +17,6 @@ export async function POST(request: NextRequest) {
 			.eq("id", productId);
 
 		// Step 1: Extract product info with Gemini (fast — typically <30s)
-		console.log(`[${productId}] Extracting product info...`);
 		const productInfo = await extractProductInfo(fileBase64, mimeType, fileName);
 
 		// Update product name, description, and metadata — status: extracted
@@ -46,7 +45,6 @@ export async function POST(request: NextRequest) {
 			console.error(`[${productId}] Failed to trigger synthesize:`, err);
 		});
 
-		console.log(`[${productId}] Extraction done, synthesis triggered async`);
 		return NextResponse.json({
 			success: true,
 			productInfo,
