@@ -73,7 +73,12 @@ export async function POST(request: NextRequest) {
 
       const fileBuffer = await file.arrayBuffer();
       const fileBytes = new Uint8Array(fileBuffer);
-      const storageFileName = `${Date.now()}-${file.name}`;
+      const ext = file.name.match(/\.[^.]+$/)?.[0] ?? '';
+      const safeName = file.name
+        .replace(/\.[^.]+$/, '')
+        .replace(/[^a-zA-Z0-9_-]/g, '_')
+        .slice(0, 80);
+      const storageFileName = `${Date.now()}-${safeName}${ext}`;
 
       const { error: storageError } = await supabase.storage
         .from('product-files')
