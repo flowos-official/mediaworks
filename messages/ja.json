@@ -63,7 +63,12 @@
       "title": "流通チャネル分析",
       "fitScore": "適合度",
       "visitors": "訪問者:",
-      "commission": "手数料:"
+      "commission": "手数料:",
+      "tvShopping": "TV通販",
+      "ec": "EC・オンラインモール",
+      "sns": "SNSコマース",
+      "other": "その他チャネル",
+      "visitSite": "サイトを見る"
     },
     "japanExport": {
       "title": "日本輸出適合度",
@@ -87,6 +92,17 @@
       "reach": "リーチ:",
       "executionSteps": "実行ステップ",
       "recommendedChannels": "推奨チャネル"
+    },
+    "liveCommerce": {
+      "title": "ライブコマース戦略",
+      "platforms": "プラットフォーム適合度",
+      "scripts": "ライブ配信スクリプト",
+      "instagramLive": "Instagram Live",
+      "tiktokLive": "TikTok Live",
+      "youtubeLive": "YouTube Live",
+      "talkingPoints": "商品トーキングポイント",
+      "engagementTips": "エンゲージメント向上Tips",
+      "productAngle": "推奨プレゼン切り口"
     },
     "pricing": {
       "title": "価格戦略 + BEPシミュレーション",

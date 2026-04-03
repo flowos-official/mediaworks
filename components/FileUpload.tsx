@@ -23,6 +23,11 @@ const ACCEPTED = [
   'image/webp',
 ];
 
+const ACCEPTED_EXTENSIONS = new Set([
+  '.pdf', '.ppt', '.pptx', '.doc', '.docx', '.xls', '.xlsx',
+  '.jpg', '.jpeg', '.png', '.gif', '.webp',
+]);
+
 export default function FileUpload({ onUploadComplete }: FileUploadProps) {
   const t = useTranslations('home');
   const locale = useLocale();
@@ -34,7 +39,11 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFiles = useCallback(async (fileList: FileList | File[]) => {
-    const files = Array.from(fileList).filter((f) => ACCEPTED.includes(f.type));
+    const files = Array.from(fileList).filter((f) => {
+      if (ACCEPTED.includes(f.type)) return true;
+      const ext = f.name.match(/\.[^.]+$/)?.[0]?.toLowerCase();
+      return ext ? ACCEPTED_EXTENSIONS.has(ext) : false;
+    });
 
     if (files.length === 0) {
       setStatus('error');

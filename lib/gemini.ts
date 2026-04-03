@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { buildChannelReferencePrompt } from "@/lib/tv-channels";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -64,6 +65,8 @@ export interface ResearchOutput {
 		reason: string;
 		monthly_visitors?: string;
 		commission_rate?: string;
+		url?: string;
+		broadcaster?: string;
 	}>;
 	pricing_strategy?: {
 		channel_pricing: Array<{
@@ -103,6 +106,23 @@ export interface ResearchOutput {
 			estimated_entry_cost: string;
 		}>;
 		korean_consumer_insight: string;
+	};
+	live_commerce?: {
+		platforms: Array<{
+			platform_name: string;
+			platform_type: string;
+			target_audience: string;
+			fit_score: number;
+			reason: string;
+		}>;
+		scripts: {
+			instagram_live: string;
+			tiktok_live: string;
+			youtube_live: string;
+		};
+		talking_points: string[];
+		engagement_tips: string[];
+		recommended_products_angle: string;
 	};
 }
 
@@ -164,6 +184,8 @@ ${Object.entries(searchResults)
 		.map(([key, val]) => `## ${key}\n${val}`)
 		.join("\n\n")}
 
+${buildChannelReferencePrompt()}
+
 Generate a JSON response with these exact fields:
 {
   "marketability_score": <number 0-100>,
@@ -223,13 +245,15 @@ Generate a JSON response with these exact fields:
   "japan_export_fit_score": <number 0-100, how well this product fits Japan market>,
   "distribution_channels": [
     {
-      "channel_name": "<e.g. Rakuten, Amazon JP, QVC Japan, TikTok Shop JP, NHK World Shopping>",
-      "channel_type": "<EC | TVホームショッピング | SNSコマース | オフライン>",
+      "channel_name": "<channel name>",
+      "channel_type": "<TV通販 | EC | SNSコマース | カタログ通販 | クラウドファンディング | オフライン>",
       "primary_age_group": "<e.g. 40-60代女性>",
       "fit_score": <0-100>,
       "reason": "<why this channel fits the product in Japanese>",
       "monthly_visitors": "<optional, e.g. 月間5,000万人>",
-      "commission_rate": "<optional, e.g. 10-15%>"
+      "commission_rate": "<optional, e.g. 10-15%>",
+      "url": "<channel URL>",
+      "broadcaster": "<TV broadcaster name, if applicable>"
     }
   ],
   "pricing_strategy": {
@@ -278,14 +302,34 @@ Generate a JSON response with these exact fields:
       }
     ],
     "korean_consumer_insight": "<Korean consumer characteristics analysis in Japanese>"
+  },
+  "live_commerce": {
+    "platforms": [
+      {
+        "platform_name": "<e.g. Instagram Live, TikTok Live, YouTube Live, 楽天ROOM LIVE>",
+        "platform_type": "<SNS | EC連携 | 独自プラットフォーム>",
+        "target_audience": "<e.g. 20-30代女性、美容・ファッション関心層>",
+        "fit_score": <0-100>,
+        "reason": "<why this platform fits the product, in Japanese>"
+      }
+    ],
+    "scripts": {
+      "instagram_live": "<3-5 minute Instagram Live script in Japanese with host cues, product demo timing, CTA>",
+      "tiktok_live": "<3-5 minute TikTok Live script in Japanese, fast-paced, trend-aware, with engagement hooks>",
+      "youtube_live": "<5-10 minute YouTube Live script in Japanese, detailed product review style, with Q&A prompts>"
+    },
+    "talking_points": ["<key selling point 1>", "<key selling point 2>", "<key selling point 3>", "<key selling point 4>", "<key selling point 5>"],
+    "engagement_tips": ["<tip for boosting live viewer engagement 1>", "<tip 2>", "<tip 3>"],
+    "recommended_products_angle": "<the best angle/narrative for presenting this product in live commerce, in Japanese>"
   }
 }
 
 IMPORTANT:
 - Provide exactly 3 competitor products in competitor_analysis
-- Provide 4-6 distribution_channels relevant to Japan market
+- Provide 10-15 distribution_channels. MUST include ALL 10 Japanese TV shopping channels listed above with individual fit_score for each. Also include 3-5 EC/other channels.
 - Provide 3-4 channel_pricing entries in pricing_strategy
 - Provide 3-5 marketing_strategy items sorted by efficiency_score desc
+- live_commerce should include 3-4 platform analyses, scripts for each major platform, and 5 talking points
 - korea_market_fit should analyze Korea-specific consumer patterns and channels
 - recommended_price_range should be based on Japan home shopping market pricing (in JPY)
 - broadcast_scripts should be written in Japanese (日本語) as these are for Japan home shopping broadcasts

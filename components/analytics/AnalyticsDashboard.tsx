@@ -159,6 +159,7 @@ export default function AnalyticsDashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <ProductMixChart
               data={(overview as { categoryBreakdown: Parameters<typeof ProductMixChart>[0]['data'] }).categoryBreakdown ?? []}
+              products={(products?.products as { code: string; name: string; category: string | null; totalRevenue: number; totalQuantity: number }[]) ?? []}
             />
             <MarginAnalysisChart
               products={(products.products as Parameters<typeof MarginAnalysisChart>[0]['products'])}

@@ -24,5 +24,14 @@ export async function GET(
     .eq('product_id', id)
     .single();
 
-  return NextResponse.json({ product, research });
+  // Merge extended fields from raw_json.research (distribution_channels, live_commerce, etc.)
+  // These fields may not have dedicated DB columns but are stored in raw_json
+  let mergedResearch = research;
+  if (research?.raw_json?.research) {
+    const { raw_json, ...dbFields } = research;
+    const rawResearch = raw_json.research as Record<string, unknown>;
+    mergedResearch = { ...rawResearch, ...dbFields, raw_json };
+  }
+
+  return NextResponse.json({ product, research: mergedResearch });
 }

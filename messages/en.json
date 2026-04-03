@@ -63,7 +63,12 @@
       "title": "Distribution Channel Analysis",
       "fitScore": "Fit Score",
       "visitors": "Visitors:",
-      "commission": "Commission:"
+      "commission": "Commission:",
+      "tvShopping": "TV Shopping",
+      "ec": "EC / Online Marketplace",
+      "sns": "SNS Commerce",
+      "other": "Other Channels",
+      "visitSite": "Visit Site"
     },
     "japanExport": {
       "title": "Japan Export Fit Score",
@@ -87,6 +92,17 @@
       "reach": "Reach:",
       "executionSteps": "Execution Steps",
       "recommendedChannels": "Recommended Channels"
+    },
+    "liveCommerce": {
+      "title": "Live Commerce Strategy",
+      "platforms": "Platform Fit Analysis",
+      "scripts": "Live Streaming Scripts",
+      "instagramLive": "Instagram Live",
+      "tiktokLive": "TikTok Live",
+      "youtubeLive": "YouTube Live",
+      "talkingPoints": "Product Talking Points",
+      "engagementTips": "Engagement Tips",
+      "productAngle": "Recommended Product Angle"
     },
     "pricing": {
       "title": "Pricing Strategy + BEP Simulation",

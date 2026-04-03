@@ -15,6 +15,7 @@ import DistributionChannelSection from '@/components/report/DistributionChannelS
 import PricingStrategySection from '@/components/report/PricingStrategySection';
 import MarketingStrategySection from '@/components/report/MarketingStrategySection';
 import KoreaMarketSection from '@/components/report/KoreaMarketSection';
+import LiveCommerceSection from '@/components/report/LiveCommerceSection';
 import PdfDownload from '@/components/report/PdfDownload';
 import { ArrowLeft, Package, Calendar } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -162,6 +163,11 @@ export default async function ProductReportPage({
             {/* Korea Market */}
             {research.korea_market_fit && (
               <KoreaMarketSection koreaMarket={research.korea_market_fit} />
+            )}
+
+            {/* Live Commerce */}
+            {research.live_commerce && (
+              <LiveCommerceSection data={research.live_commerce} />
             )}
           </div>
         )}
