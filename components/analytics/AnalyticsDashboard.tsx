@@ -12,7 +12,10 @@ import MarginAnalysisChart from './MarginAnalysisChart';
 import MDStrategyPanel from './MDStrategyPanel';
 import ProductDetailModal from './ProductDetailModal';
 
-type Tab = 'overview' | 'products' | 'expansion';
+import dynamic from 'next/dynamic';
+const LiveCommercePanel = dynamic(() => import('./LiveCommercePanel'), { ssr: false });
+
+type Tab = 'overview' | 'products' | 'expansion' | 'live-commerce';
 
 export default function AnalyticsDashboard() {
   const tg = useTranslations('gallery');
@@ -99,6 +102,7 @@ export default function AnalyticsDashboard() {
     { key: 'overview', label: '概要' },
     { key: 'products', label: '商品分析' },
     { key: 'expansion', label: '拡大戦略' },
+    { key: 'live-commerce', label: 'ライブコマース' },
   ];
 
   return (
@@ -122,7 +126,7 @@ export default function AnalyticsDashboard() {
           ))}
         </div>
 
-        {activeTab !== 'expansion' && (
+        {activeTab !== 'expansion' && activeTab !== 'live-commerce' && (
           <DateRangeFilter
             years={[2025, 2026]}
             selectedYears={selectedYears}
@@ -141,7 +145,7 @@ export default function AnalyticsDashboard() {
       )}
 
       {/* Loading */}
-      {loading && activeTab !== 'expansion' && (
+      {loading && activeTab !== 'expansion' && activeTab !== 'live-commerce' && (
         <div className="flex items-center justify-center py-20">
           <Loader2 size={24} className="animate-spin text-blue-600" />
           <span className="ml-2 text-sm text-gray-500">データ読み込み中...</span>
@@ -194,6 +198,9 @@ export default function AnalyticsDashboard() {
 
       {/* Expansion tab — now powered by MD Strategy orchestrator */}
       {activeTab === 'expansion' && <MDStrategyPanel />}
+
+      {/* Live Commerce tab */}
+      {activeTab === 'live-commerce' && <LiveCommercePanel />}
 
       {/* Taicho Upload Modal */}
       {showTaicho && (

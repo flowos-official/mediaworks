@@ -20,6 +20,9 @@
     },
     "app/api/analytics/md-strategy/route.ts": {
       "maxDuration": 300
+    },
+    "app/api/analytics/live-commerce/route.ts": {
+      "maxDuration": 300
     }
   },
   "crons": [

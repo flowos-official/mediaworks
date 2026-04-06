@@ -20,6 +20,52 @@ type ProductData = {
   totalQuantity: number;
 };
 
+type CustomTooltipProps = {
+  active?: boolean;
+  payload?: { name?: string; value?: number }[];
+  products: ProductData[];
+};
+
+function CategoryTooltip({ active, payload, products }: CustomTooltipProps) {
+  if (!active || !payload || !payload[0]) return null;
+
+  const category = payload[0].name ?? '';
+  const revenue = payload[0].value ?? 0;
+  const topProducts = products
+    .filter((p) => p.category === category)
+    .sort((a, b) => b.totalRevenue - a.totalRevenue);
+  const top10 = topProducts.slice(0, 10);
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 shadow-lg p-3 text-xs max-w-[280px]">
+      <div className="flex items-center justify-between gap-4 mb-2 pb-2 border-b border-gray-100">
+        <span className="font-semibold text-gray-800">{category}</span>
+        <span className="font-mono text-gray-600">&yen;{formatYenShort(revenue)}</span>
+      </div>
+      {top10.length > 0 ? (
+        <div className="space-y-1">
+          {top10.map((p, i) => (
+            <div key={p.code} className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="w-4 text-right text-gray-400 font-mono flex-shrink-0">{i + 1}</span>
+                <span className="text-gray-700 truncate">{p.name}</span>
+              </div>
+              <span className="font-mono text-gray-500 flex-shrink-0">&yen;{formatYenShort(p.totalRevenue)}</span>
+            </div>
+          ))}
+          {topProducts.length > 10 && (
+            <div className="text-[10px] text-gray-400 pl-5 pt-0.5">
+              +{topProducts.length - 10}件
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="text-gray-400">データなし</div>
+      )}
+    </div>
+  );
+}
+
 const COLORS = [
   '#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6',
   '#06b6d4', '#ec4899', '#f97316', '#14b8a6', '#6366f1',
@@ -83,10 +129,7 @@ export default function ProductMixChart({
                   <Cell key={entry.category} fill={COLORS[i % COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip
-                formatter={(value: unknown, name: unknown) => [`¥${formatYenShort(Number(value))}`, String(name)]}
-                contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}
-              />
+              <Tooltip content={<CategoryTooltip products={products} />} />
             </PieChart>
           </ResponsiveContainer>
         </div>

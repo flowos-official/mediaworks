@@ -1,0 +1,530 @@
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+// ---------------------------------------------------------------------------
+// Gemini client
+// ---------------------------------------------------------------------------
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+
+async function callGemini(prompt: string): Promise<string> {
+	const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
+	const resultPromise = model.generateContent(prompt);
+	const timeoutPromise = new Promise<never>((_, reject) =>
+		setTimeout(() => reject(new Error("Gemini timeout (90s)")), 90000),
+	);
+	const result = await Promise.race([resultPromise, timeoutPromise]);
+	return result.response.text().trim();
+}
+
+function parseJSON<T>(raw: string): T {
+	const match = raw.match(/\{[\s\S]*\}/);
+	if (!match) throw new Error("Failed to parse JSON from Gemini response");
+	return JSON.parse(match[0]) as T;
+}
+
+// ---------------------------------------------------------------------------
+// Brave Search
+// ---------------------------------------------------------------------------
+
+export interface SearchSource {
+	title: string;
+	url: string;
+	description: string;
+	query: string;
+}
+
+const BRAVE_API_KEY = process.env.BRAVE_SEARCH_API_KEY;
+
+async function braveSearch(query: string): Promise<SearchSource[]> {
+	if (!BRAVE_API_KEY) return [];
+	try {
+		const res = await fetch(
+			`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=5`,
+			{
+				headers: { Accept: "application/json", "Accept-Encoding": "gzip", "X-Subscription-Token": BRAVE_API_KEY },
+				signal: AbortSignal.timeout(4000),
+			},
+		);
+		if (!res.ok) return [];
+		const data = await res.json();
+		return (data.web?.results ?? []).slice(0, 5).map((r: { title?: string; url?: string; description?: string }) => ({
+			title: r.title ?? "",
+			url: r.url ?? "",
+			description: r.description ?? "",
+			query,
+		}));
+	} catch {
+		return [];
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Platform Reference Table
+// ---------------------------------------------------------------------------
+
+export const PLATFORM_REFERENCE = [
+	{ name: "TikTok Live", commission: "2-8%", minFollowers: "1,000+", demographics: "10-30代", avgViewers: "100-10,000", entryDifficulty: "中" },
+	{ name: "Instagram Live", commission: "5%", minFollowers: "制限なし", demographics: "20-40代女性", avgViewers: "50-5,000", entryDifficulty: "低" },
+	{ name: "YouTube Live", commission: "0% (Super Chat 30%)", minFollowers: "50+", demographics: "全年齢", avgViewers: "50-50,000", entryDifficulty: "中" },
+	{ name: "楽天ROOM LIVE", commission: "楽天手数料に含む", minFollowers: "制限なし", demographics: "30-50代", avgViewers: "50-2,000", entryDifficulty: "低" },
+	{ name: "Yahoo!ショッピング LIVE", commission: "Yahoo!手数料に含む", minFollowers: "出店者のみ", demographics: "30-50代", avgViewers: "50-1,000", entryDifficulty: "中" },
+] as const;
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+export type LCSkillName =
+	| "goal_analysis"
+	| "market_research"
+	| "platform_analysis"
+	| "content_strategy"
+	| "execution_plan"
+	| "risk_analysis";
+
+export const LC_SKILL_META: Record<LCSkillName, { label: string; labelJa: string }> = {
+	goal_analysis: { label: "Goal Analysis", labelJa: "目標分析" },
+	market_research: { label: "Market Research", labelJa: "市場調査" },
+	platform_analysis: { label: "Platform Analysis", labelJa: "プラットフォーム分析" },
+	content_strategy: { label: "Content Strategy", labelJa: "コンテンツ戦略" },
+	execution_plan: { label: "Execution Plan", labelJa: "実行ロードマップ" },
+	risk_analysis: { label: "Risk Analysis", labelJa: "リスク分析" },
+};
+
+export interface LCProgressEvent {
+	skill: LCSkillName | "data_fetch";
+	status: "running" | "complete" | "error";
+	index: number;
+	total: number;
+	data?: unknown;
+	error?: string;
+}
+
+export interface ParsedGoal {
+	primary_objective: string;
+	target_platforms: string[];
+	budget_range?: string;
+	timeline?: string;
+	target_audience?: string;
+}
+
+export interface MarketResearchOutput {
+	market_size: string;
+	growth_rate: string;
+	key_trends: Array<{ trend: string; description: string }>;
+	major_players: Array<{ name: string; platform: string; description: string }>;
+	consumer_behavior: string;
+	market_outlook: string;
+	sources_referenced: number[];
+}
+
+export interface PlatformAnalysisOutput {
+	platforms: Array<{
+		name: string;
+		fit_score: number;
+		user_base: string;
+		commission_structure: string;
+		strengths: string[];
+		weaknesses: string[];
+		success_cases: Array<{ brand: string; description: string; result: string }>;
+		recommended_products: string[];
+		entry_steps: string[];
+	}>;
+	comparison_summary: string;
+	recommended_priority: string[];
+}
+
+export interface ContentStrategyOutput {
+	platforms: Array<{
+		name: string;
+		broadcast_format: string;
+		optimal_times: string[];
+		frequency: string;
+		host_style: string;
+		content_ideas: Array<{ title: string; description: string; format: string }>;
+		engagement_tactics: string[];
+		sample_script_outline: string;
+	}>;
+	cross_platform_strategy: string;
+}
+
+export interface ExecutionPlanOutput {
+	phases: Array<{
+		phase: string;
+		period: string;
+		objectives: string[];
+		actions: Array<{ action: string; owner: string; deadline: string }>;
+		budget: string;
+		kpis: Array<{ metric: string; target: string }>;
+	}>;
+	total_investment: string;
+	staffing: Array<{ role: string; type: string; timing: string }>;
+	tools_and_services: Array<{ name: string; purpose: string; cost: string }>;
+}
+
+export interface RiskAnalysisOutput {
+	risks: Array<{
+		category: string;
+		description: string;
+		severity: "high" | "medium" | "low";
+		probability: "high" | "medium" | "low";
+		mitigation: string;
+	}>;
+	contingency_plans: Array<{ scenario: string; response: string }>;
+	success_factors: string[];
+}
+
+export interface FullLCStrategyResult {
+	goal_analysis: ParsedGoal | null;
+	market_research: MarketResearchOutput;
+	platform_analysis: PlatformAnalysisOutput;
+	content_strategy: ContentStrategyOutput;
+	execution_plan: ExecutionPlanOutput;
+	risk_analysis: RiskAnalysisOutput;
+}
+
+// ---------------------------------------------------------------------------
+// Search Queries
+// ---------------------------------------------------------------------------
+
+const STATIC_QUERIES = [
+	"日本 ライブコマース 市場規模 2025 2026",
+	"ライブコマース プラットフォーム 比較 日本",
+	"TikTok Live 日本 売上 成功事例",
+	"Instagram ライブ販売 日本 戦略",
+	"YouTube Live ショッピング 日本",
+	"楽天ROOM LIVE 出店 手数料",
+];
+
+function buildDynamicQueries(goal: ParsedGoal): string[] {
+	const queries: string[] = [];
+	for (const platform of goal.target_platforms.slice(0, 2)) {
+		queries.push(`${platform} ライブコマース 日本 攻略`);
+	}
+	return queries;
+}
+
+export interface LCContext {
+	userGoal?: string;
+	targetPlatforms?: string[];
+	parsedGoal?: ParsedGoal;
+	searchSources: SearchSource[];
+	searchSummary: string;
+}
+
+export async function fetchLCContext(
+	userGoal?: string,
+	targetPlatforms?: string[],
+): Promise<LCContext> {
+	const allQueries = [...STATIC_QUERIES];
+	const searchResults = await Promise.all(allQueries.map((q) => braveSearch(q)));
+	const allSources = searchResults.flat();
+
+	const searchSummary = allSources
+		.map((s, i) => `[${i + 1}] ${s.title}\n${s.description}\n(${s.url})`)
+		.join("\n\n");
+
+	return {
+		userGoal,
+		targetPlatforms,
+		searchSources: allSources,
+		searchSummary,
+	};
+}
+
+// ---------------------------------------------------------------------------
+// Skill 0: Goal Analysis
+// ---------------------------------------------------------------------------
+
+async function runGoalAnalysis(userGoal: string): Promise<ParsedGoal> {
+	const prompt = `あなたはライブコマース戦略コンサルタントです。以下のユーザー目標を構造化してください。
+
+ユーザー入力: "${userGoal}"
+
+以下のJSON形式で出力:
+{
+  "primary_objective": "<主な目的を1-2文で>",
+  "target_platforms": ["<プラットフォーム名>"],
+  "budget_range": "<予算範囲（言及がなければnull）>",
+  "timeline": "<タイムライン（言及がなければnull）>",
+  "target_audience": "<ターゲット層（言及がなければnull）>"
+}
+
+注意:
+- target_platformsが明示されていない場合はTikTok Live, Instagram Live, YouTube Liveをデフォルトで含める
+- 全てのテキストは日本語で出力`;
+
+	const raw = await callGemini(prompt);
+	return parseJSON<ParsedGoal>(raw);
+}
+
+// ---------------------------------------------------------------------------
+// Skill pipeline definition
+// ---------------------------------------------------------------------------
+
+interface SkillDef {
+	name: LCSkillName;
+	buildPrompt: (ctx: LCContext, outputs: Record<string, unknown>) => string;
+}
+
+function formatPlatformRef(): string {
+	return PLATFORM_REFERENCE.map((p) =>
+		`- ${p.name}: 手数料${p.commission}, フォロワー条件${p.minFollowers}, 主な層${p.demographics}, 視聴者数${p.avgViewers}, 参入難易度${p.entryDifficulty}`
+	).join("\n");
+}
+
+function goalSection(ctx: LCContext): string {
+	if (!ctx.parsedGoal) return "";
+	const g = ctx.parsedGoal;
+	return `
+=== ユーザー目標 ===
+- 主な目的: ${g.primary_objective}
+- 対象プラットフォーム: ${g.target_platforms.join(", ")}
+${g.budget_range ? `- 予算: ${g.budget_range}` : ""}
+${g.timeline ? `- タイムライン: ${g.timeline}` : ""}
+${g.target_audience ? `- ターゲット層: ${g.target_audience}` : ""}
+上記の目標を全ての分析で最優先に考慮してください。
+`;
+}
+
+const SKILL_PIPELINE: SkillDef[] = [
+	{
+		name: "goal_analysis",
+		buildPrompt: () => "",
+	},
+	{
+		name: "market_research",
+		buildPrompt: (ctx) => `あなたは日本のライブコマース市場の専門アナリストです。
+以下のウェブ検索結果に基づき、日本のライブコマース市場を分析してください。
+
+=== ウェブ検索結果 ===
+${ctx.searchSummary}
+
+${goalSection(ctx)}
+
+以下のJSON形式で出力:
+{
+  "market_size": "<日本のライブコマース市場規模>",
+  "growth_rate": "<年間成長率>",
+  "key_trends": [{"trend": "<トレンド名>", "description": "<説明>"}],
+  "major_players": [{"name": "<企業/人物名>", "platform": "<プラットフォーム>", "description": "<概要>"}],
+  "consumer_behavior": "<日本の消費者のライブコマースに対する行動特性>",
+  "market_outlook": "<今後の市場見通し>",
+  "sources_referenced": [<使用したソースの番号>]
+}
+
+注意:
+- key_trendsは5-8個
+- major_playersは5-10個
+- 全てのテキストは日本語で出力
+- ウェブ検索結果を根拠として活用し、sources_referencedで番号を記載`,
+	},
+	{
+		name: "platform_analysis",
+		buildPrompt: (ctx, outputs) => `あなたは日本のライブコマースプラットフォーム専門家です。
+以下の情報に基づき、各プラットフォームの詳細分析を行ってください。
+
+=== プラットフォーム基本情報 ===
+${formatPlatformRef()}
+
+=== 市場調査結果 ===
+${JSON.stringify(outputs.market_research ?? {}, null, 2)}
+
+=== ウェブ検索結果 ===
+${ctx.searchSummary}
+
+${goalSection(ctx)}
+
+以下のJSON形式で出力:
+{
+  "platforms": [
+    {
+      "name": "<プラットフォーム名>",
+      "fit_score": <0-100>,
+      "user_base": "<ユーザー層の詳細>",
+      "commission_structure": "<手数料体系の詳細>",
+      "strengths": ["<強み1>", "<強み2>"],
+      "weaknesses": ["<弱み1>", "<弱み2>"],
+      "success_cases": [{"brand": "<ブランド名>", "description": "<取り組み内容>", "result": "<成果>"}],
+      "recommended_products": ["<このプラットフォームに適した商品カテゴリ>"],
+      "entry_steps": ["<参入ステップ1>", "<ステップ2>"]
+    }
+  ],
+  "comparison_summary": "<プラットフォーム比較の総括>",
+  "recommended_priority": ["<優先度順のプラットフォーム名>"]
+}
+
+注意:
+- 5つのプラットフォーム全てを分析
+- success_casesは各プラットフォーム1-3個
+- 全てのテキストは日本語`,
+	},
+	{
+		name: "content_strategy",
+		buildPrompt: (ctx, outputs) => `あなたはライブコマースのコンテンツ戦略プランナーです。
+以下の分析結果に基づき、プラットフォーム別のコンテンツ戦略を策定してください。
+
+=== プラットフォーム分析結果 ===
+${JSON.stringify(outputs.platform_analysis ?? {}, null, 2)}
+
+${goalSection(ctx)}
+
+以下のJSON形式で出力:
+{
+  "platforms": [
+    {
+      "name": "<プラットフォーム名>",
+      "broadcast_format": "<推奨配信フォーマット>",
+      "optimal_times": ["<最適配信時間帯>"],
+      "frequency": "<推奨配信頻度>",
+      "host_style": "<推奨ホストスタイル>",
+      "content_ideas": [{"title": "<企画名>", "description": "<詳細>", "format": "<形式>"}],
+      "engagement_tactics": ["<エンゲージメント施策>"],
+      "sample_script_outline": "<サンプルスクリプトの流れ（300-500文字）>"
+    }
+  ],
+  "cross_platform_strategy": "<クロスプラットフォーム連携戦略>"
+}
+
+注意:
+- 推奨順上位3-5プラットフォームを対象
+- content_ideasは各プラットフォーム3-5個
+- engagement_tacticsは各プラットフォーム3-5個
+- sample_script_outlineは実践的な内容
+- 全てのテキストは日本語`,
+	},
+	{
+		name: "execution_plan",
+		buildPrompt: (ctx, outputs) => `あなたはライブコマース事業の実行計画策定の専門家です。
+以下の全分析結果に基づき、具体的な実行ロードマップを策定してください。
+
+=== 市場調査 ===
+${JSON.stringify(outputs.market_research ?? {}, null, 2)}
+
+=== プラットフォーム分析 ===
+${JSON.stringify(outputs.platform_analysis ?? {}, null, 2)}
+
+=== コンテンツ戦略 ===
+${JSON.stringify(outputs.content_strategy ?? {}, null, 2)}
+
+${goalSection(ctx)}
+
+以下のJSON形式で出力:
+{
+  "phases": [
+    {
+      "phase": "<フェーズ名>",
+      "period": "<期間>",
+      "objectives": ["<目標>"],
+      "actions": [{"action": "<アクション>", "owner": "<担当>", "deadline": "<期限>"}],
+      "budget": "<予算>",
+      "kpis": [{"metric": "<KPI名>", "target": "<目標値>"}]
+    }
+  ],
+  "total_investment": "<初年度総投資額>",
+  "staffing": [{"role": "<役割>", "type": "<正社員/業務委託/パート>", "timing": "<採用時期>"}],
+  "tools_and_services": [{"name": "<ツール名>", "purpose": "<用途>", "cost": "<月額費用>"}]
+}
+
+注意:
+- 3-4フェーズ（準備期、立ち上げ期、成長期、拡大期）
+- actionsは各フェーズ3-5個
+- kpisは各フェーズ2-4個
+- 全てのテキストは日本語
+- 具体的な数字を含める`,
+	},
+	{
+		name: "risk_analysis",
+		buildPrompt: (ctx, outputs) => `あなたはライブコマース事業のリスク管理専門家です。
+以下の全分析結果に基づき、リスク分析と対策を策定してください。
+
+=== 実行計画 ===
+${JSON.stringify(outputs.execution_plan ?? {}, null, 2)}
+
+=== プラットフォーム分析 ===
+${JSON.stringify(outputs.platform_analysis ?? {}, null, 2)}
+
+${goalSection(ctx)}
+
+以下のJSON形式で出力:
+{
+  "risks": [
+    {
+      "category": "<リスクカテゴリ: 市場/運営/技術/法規制/財務/競合>",
+      "description": "<リスク内容>",
+      "severity": "<high/medium/low>",
+      "probability": "<high/medium/low>",
+      "mitigation": "<軽減策>"
+    }
+  ],
+  "contingency_plans": [{"scenario": "<最悪のシナリオ>", "response": "<対応策>"}],
+  "success_factors": ["<成功の重要要因>"]
+}
+
+注意:
+- risksは8-12個
+- contingency_plansは3-5個
+- success_factorsは5-7個
+- 全てのテキストは日本語`,
+	},
+];
+
+// ---------------------------------------------------------------------------
+// Orchestrator
+// ---------------------------------------------------------------------------
+
+export async function runLCOrchestrator(
+	context: LCContext,
+	onProgress: (event: LCProgressEvent) => void,
+): Promise<FullLCStrategyResult> {
+	const outputs: Record<string, unknown> = {};
+
+	for (let i = 0; i < SKILL_PIPELINE.length; i++) {
+		const skill = SKILL_PIPELINE[i];
+		onProgress({ skill: skill.name, status: "running", index: i, total: SKILL_PIPELINE.length });
+
+		try {
+			if (skill.name === "goal_analysis") {
+				if (context.userGoal) {
+					const parsedGoal = await runGoalAnalysis(context.userGoal);
+					context.parsedGoal = parsedGoal;
+					outputs.goal_analysis = parsedGoal;
+
+					// Run dynamic queries based on parsed goal
+					const dynamicQueries = buildDynamicQueries(parsedGoal);
+					if (dynamicQueries.length > 0) {
+						const dynamicResults = await Promise.all(dynamicQueries.map((q) => braveSearch(q)));
+						const newSources = dynamicResults.flat();
+						context.searchSources.push(...newSources);
+						context.searchSummary += "\n\n" + newSources
+							.map((s, idx) => `[${context.searchSources.length - newSources.length + idx + 1}] ${s.title}\n${s.description}\n(${s.url})`)
+							.join("\n\n");
+					}
+
+					onProgress({ skill: skill.name, status: "complete", index: i, total: SKILL_PIPELINE.length, data: parsedGoal });
+				} else {
+					const defaultGoal: ParsedGoal = {
+						primary_objective: "日本市場でのライブコマース事業参入の全体戦略策定",
+						target_platforms: context.targetPlatforms ?? ["TikTok Live", "Instagram Live", "YouTube Live"],
+					};
+					context.parsedGoal = defaultGoal;
+					outputs.goal_analysis = defaultGoal;
+					onProgress({ skill: skill.name, status: "complete", index: i, total: SKILL_PIPELINE.length, data: defaultGoal });
+				}
+				continue;
+			}
+
+			const prompt = skill.buildPrompt(context, outputs);
+			const raw = await callGemini(prompt);
+			const parsed = parseJSON(raw);
+			outputs[skill.name] = parsed;
+			onProgress({ skill: skill.name, status: "complete", index: i, total: SKILL_PIPELINE.length, data: parsed });
+		} catch (err) {
+			const message = err instanceof Error ? err.message : String(err);
+			onProgress({ skill: skill.name, status: "error", index: i, total: SKILL_PIPELINE.length, error: message });
+			outputs[skill.name] = {};
+		}
+	}
+
+	return outputs as unknown as FullLCStrategyResult;
+}
