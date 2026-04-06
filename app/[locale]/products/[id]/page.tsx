@@ -16,6 +16,7 @@ import PricingStrategySection from '@/components/report/PricingStrategySection';
 import MarketingStrategySection from '@/components/report/MarketingStrategySection';
 import KoreaMarketSection from '@/components/report/KoreaMarketSection';
 import LiveCommerceSection from '@/components/report/LiveCommerceSection';
+import ResearchSourcesSection from "@/components/report/ResearchSourcesSection";
 import PdfDownload from '@/components/report/PdfDownload';
 import { ArrowLeft, Package, Calendar } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -168,6 +169,13 @@ export default async function ProductReportPage({
             {/* Live Commerce */}
             {research.live_commerce && (
               <LiveCommerceSection data={research.live_commerce} />
+            )}
+
+            {/* Research Sources */}
+            {research.raw_json?.search_results && (
+              <ResearchSourcesSection
+                searchResults={research.raw_json.search_results as Record<string, string>}
+              />
             )}
           </div>
         )}

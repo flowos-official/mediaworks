@@ -25,7 +25,14 @@
       "completed": "完了",
       "failed": "エラー"
     },
-    "analyzingMessage": "AI分析中... リロードしても続行されます"
+    "analyzingMessage": "AI分析中... リロードしても続行されます",
+    "search": {
+      "placeholder": "商品名・説明で検索...",
+      "allStatuses": "すべて",
+      "resultCount": "{count}件の商品",
+      "filteredCount": "{filtered}件 / {total}件",
+      "noResults": "条件に合う商品がありません"
+    }
   },
   "report": {
     "title": "リサーチレポート",
@@ -80,6 +87,27 @@
       "showEvidence": "根拠を表示",
       "hideEvidence": "根拠を非表示",
       "noEvidence": "データ不足"
+    },
+    "researchSources": {
+      "title": "リサーチソース",
+      "totalSources": "{count}件のソース",
+      "count": "{count}件",
+      "categories": {
+        "market_overview": "市場概要",
+        "target_demographics": "ターゲット層",
+        "seasonality": "季節性・需要",
+        "cogs_alibaba": "原価・仕入れ",
+        "influencers": "インフルエンサー",
+        "content_marketing": "コンテンツマーケティング",
+        "japan_market": "日本市場",
+        "japan_price": "日本価格帯",
+        "japan_reviews": "日本レビュー",
+        "tv_shopping_hit_products": "TV通販ヒット商品",
+        "tv_shopping_similar": "TV通販類似商品",
+        "tv_shopping_viewer_demographics": "TV通販視聴者層",
+        "tv_shopping_market_data": "TV通販市場データ",
+        "rakuten_ranking": "楽天ランキング"
+      }
     },
     "japanExport": {
       "title": "日本輸出適合度",

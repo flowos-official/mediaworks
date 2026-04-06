@@ -25,7 +25,14 @@
       "completed": "Completed",
       "failed": "Failed"
     },
-    "analyzingMessage": "AI analysis in progress... Continues after refresh"
+    "analyzingMessage": "AI analysis in progress... Continues after refresh",
+    "search": {
+      "placeholder": "Search by name or description...",
+      "allStatuses": "All",
+      "resultCount": "{count} products",
+      "filteredCount": "{filtered} / {total}",
+      "noResults": "No products match your criteria"
+    }
   },
   "report": {
     "title": "Research Report",
@@ -80,6 +87,27 @@
       "showEvidence": "Show Evidence",
       "hideEvidence": "Hide Evidence",
       "noEvidence": "Insufficient Data"
+    },
+    "researchSources": {
+      "title": "Research Sources",
+      "totalSources": "{count} sources",
+      "count": "{count}",
+      "categories": {
+        "market_overview": "Market Overview",
+        "target_demographics": "Target Demographics",
+        "seasonality": "Seasonality & Demand",
+        "cogs_alibaba": "COGS & Sourcing",
+        "influencers": "Influencers",
+        "content_marketing": "Content Marketing",
+        "japan_market": "Japan Market",
+        "japan_price": "Japan Pricing",
+        "japan_reviews": "Japan Reviews",
+        "tv_shopping_hit_products": "TV Shopping Hit Products",
+        "tv_shopping_similar": "TV Shopping Similar Products",
+        "tv_shopping_viewer_demographics": "TV Shopping Viewer Demographics",
+        "tv_shopping_market_data": "TV Shopping Market Data",
+        "rakuten_ranking": "Rakuten Ranking"
+      }
     },
     "japanExport": {
       "title": "Japan Export Fit Score",
