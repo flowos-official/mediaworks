@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
 		);
 
 		// Step 2: Synthesize research with Gemini Pro
-		console.log(`[${productId}] Synthesizing research with gemini-3.1-pro...`);
+		console.log(`[${productId}] Synthesizing research with gemini-3-flash-preview...`);
 		const research = await synthesizeResearch(productInfo, searchResults);
 
 		// Step 3: Save research results (delete + insert to avoid upsert constraint issues)

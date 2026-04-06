@@ -14,6 +14,7 @@ async function braveSearch(query: string): Promise<string> {
 			"Accept-Encoding": "gzip",
 			"X-Subscription-Token": BRAVE_API_KEY,
 		},
+		signal: AbortSignal.timeout(10000),
 	});
 
 	if (!res.ok) {
@@ -77,6 +78,23 @@ export async function runProductResearch(
 		{
 			key: "japan_reviews",
 			query: `${productName} Amazon Japan レビュー 評価`,
+		},
+		// TV shopping specific queries
+		{
+			key: "tv_shopping_hit_products",
+			query: `${productCategory} テレビ通販 ヒット商品 売れ筋 2024 2025`,
+		},
+		{
+			key: "tv_shopping_similar",
+			query: `${productName} ${productCategory} ショップチャンネル QVC 日テレポシュレ 通販`,
+		},
+		{
+			key: "tv_shopping_viewer_demographics",
+			query: `テレビ通販 視聴者 購買層 年齢 ${productCategory}`,
+		},
+		{
+			key: "tv_shopping_market_data",
+			query: `${productCategory} テレビショッピング 市場規模 売上 通販新聞`,
 		},
 	];
 

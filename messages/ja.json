@@ -67,8 +67,19 @@
       "tvShopping": "TV通販",
       "ec": "EC・オンラインモール",
       "sns": "SNSコマース",
+      "media": "メディア・情報ソース",
       "other": "その他チャネル",
-      "visitSite": "サイトを見る"
+      "visitSite": "サイトを見る",
+      "evidence": "エビデンス",
+      "evidenceCount": "件のソース",
+      "similarProducts": "類似販売商品",
+      "demographicMatch": "視聴者マッチ",
+      "categoryTrackRecord": "カテゴリ実績",
+      "pricePointFit": "価格適合度",
+      "presentationFit": "実演適合度",
+      "showEvidence": "根拠を表示",
+      "hideEvidence": "根拠を非表示",
+      "noEvidence": "データ不足"
     },
     "japanExport": {
       "title": "日本輸出適合度",
