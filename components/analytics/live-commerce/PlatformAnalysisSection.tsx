@@ -2,12 +2,20 @@
 
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Monitor, ChevronDown, ChevronUp, Star } from 'lucide-react';
+import { Monitor, ChevronDown, ChevronUp, Star, Package, ExternalLink } from 'lucide-react';
 import type { PlatformAnalysisOutput } from '@/lib/live-commerce-strategy';
 
 interface Props {
 	data: PlatformAnalysisOutput;
 }
+
+const EXTERNAL_SEARCH_URLS: Record<string, (keyword: string) => string> = {
+	"楽天ROOM LIVE": (k) => `https://search.rakuten.co.jp/search/mall/${encodeURIComponent(k)}/`,
+	"Yahoo!ショッピング LIVE": (k) => `https://shopping.yahoo.co.jp/search?p=${encodeURIComponent(k)}`,
+	"TikTok Live": (k) => `https://www.tiktok.com/search?q=${encodeURIComponent(k)}`,
+	"Instagram Live": (k) => `https://www.instagram.com/explore/tags/${encodeURIComponent(k.replace(/\s+/g, ''))}/`,
+	"YouTube Live": (k) => `https://www.youtube.com/results?search_query=${encodeURIComponent(k)}`,
+};
 
 function scoreColor(score: number): string {
 	if (score >= 80) return 'text-green-700 bg-green-50 border-green-200';
@@ -119,6 +127,55 @@ export default function PlatformAnalysisSection({ data }: Props) {
 															</li>
 														))}
 													</ol>
+												</div>
+											)}
+
+											{/* Our recommended products */}
+											{(platform.our_recommended_products ?? []).length > 0 && (
+												<div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+													<div className="flex items-center gap-1.5 mb-2">
+														<Package size={12} className="text-blue-600" />
+														<span className="text-[10px] font-semibold text-blue-700 uppercase">自社おすすめ商品</span>
+													</div>
+													<div className="space-y-1.5">
+														{platform.our_recommended_products.map((p) => (
+															<div key={p.code} className="bg-white rounded px-2 py-1.5 border border-blue-100">
+																<div className="flex items-center gap-2">
+																	<span className="text-[9px] font-mono text-blue-500">{p.code}</span>
+																	<span className="text-xs font-medium text-gray-800">{p.name}</span>
+																</div>
+																<p className="text-[11px] text-gray-500 mt-0.5">{p.reason}</p>
+															</div>
+														))}
+													</div>
+												</div>
+											)}
+
+											{/* External search links */}
+											{(platform.search_keywords ?? []).length > 0 && (
+												<div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+													<div className="flex items-center gap-1.5 mb-2">
+														<ExternalLink size={12} className="text-gray-600" />
+														<span className="text-[10px] font-semibold text-gray-600 uppercase">外部で商品を検索</span>
+													</div>
+													<div className="flex flex-wrap gap-1.5">
+														{platform.search_keywords.map((keyword) => {
+															const buildUrl = EXTERNAL_SEARCH_URLS[platform.name];
+															if (!buildUrl) return null;
+															return (
+																<a
+																	key={keyword}
+																	href={buildUrl(keyword)}
+																	target="_blank"
+																	rel="noopener noreferrer"
+																	className="inline-flex items-center gap-1 text-[11px] px-2 py-1 bg-white border border-gray-200 rounded-lg text-gray-700 hover:border-blue-300 hover:text-blue-700 transition-colors"
+																>
+																	<ExternalLink size={9} />
+																	{keyword}
+																</a>
+															);
+														})}
+													</div>
 												</div>
 											)}
 										</div>

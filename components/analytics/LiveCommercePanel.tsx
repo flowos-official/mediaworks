@@ -336,6 +336,9 @@ export default function LiveCommercePanel() {
 									}
 									break;
 								}
+								case 'sources':
+									setSearchSources(payload.sources ?? []);
+									break;
 								case 'skill_result': {
 									const skill = payload.skill as LCSkillName;
 									setSkillStatuses((prev) => ({ ...prev, [skill]: 'complete' }));

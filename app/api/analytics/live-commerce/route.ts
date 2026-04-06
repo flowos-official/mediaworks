@@ -44,6 +44,7 @@ export async function POST(request: NextRequest) {
 				send("progress", { skill: "data_fetch", status: "running", index: -1, total: 6 });
 				const context = await fetchLCContext(userGoal || undefined, targetPlatforms);
 				send("progress", { skill: "data_fetch", status: "complete", index: -1, total: 6 });
+				send("sources", { sources: context.searchSources });
 
 				const result = await runLCOrchestrator(context, (event: LCProgressEvent) => {
 					if (event.status === "complete" && event.data) {

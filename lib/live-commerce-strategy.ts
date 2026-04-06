@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { getServiceClient } from "@/lib/supabase";
 
 // ---------------------------------------------------------------------------
 // Gemini client
@@ -129,6 +130,8 @@ export interface PlatformAnalysisOutput {
 		success_cases: Array<{ brand: string; description: string; result: string }>;
 		recommended_products: string[];
 		entry_steps: string[];
+		our_recommended_products: Array<{ code: string; name: string; reason: string }>;
+		search_keywords: string[];
 	}>;
 	comparison_summary: string;
 	recommended_priority: string[];
@@ -204,22 +207,35 @@ function buildDynamicQueries(goal: ParsedGoal): string[] {
 	return queries;
 }
 
+export interface LCProduct {
+	code: string;
+	name: string;
+	category: string | null;
+	totalRevenue: number;
+	totalQuantity: number;
+	marginRate: number;
+}
+
 export interface LCContext {
 	userGoal?: string;
 	targetPlatforms?: string[];
 	parsedGoal?: ParsedGoal;
 	searchSources: SearchSource[];
 	searchSummary: string;
+	products: LCProduct[];
 }
 
 export async function fetchLCContext(
 	userGoal?: string,
 	targetPlatforms?: string[],
 ): Promise<LCContext> {
-	const allQueries = [...STATIC_QUERIES];
-	const searchResults = await Promise.all(allQueries.map((q) => braveSearch(q)));
-	const allSources = searchResults.flat();
+	// Run search queries and DB fetch in parallel
+	const [searchResults, productResult] = await Promise.all([
+		Promise.all(STATIC_QUERIES.map((q) => braveSearch(q))),
+		fetchTopProducts(),
+	]);
 
+	const allSources = searchResults.flat();
 	const searchSummary = allSources
 		.map((s, i) => `[${i + 1}] ${s.title}\n${s.description}\n(${s.url})`)
 		.join("\n\n");
@@ -229,7 +245,46 @@ export async function fetchLCContext(
 		targetPlatforms,
 		searchSources: allSources,
 		searchSummary,
+		products: productResult,
 	};
+}
+
+async function fetchTopProducts(): Promise<LCProduct[]> {
+	try {
+		const supabase = getServiceClient();
+		const { data } = await supabase
+			.from("product_summaries")
+			.select("product_code, product_name, category, total_revenue, total_quantity, margin_rate")
+			.order("total_revenue", { ascending: false })
+			.limit(30);
+
+		if (!data) return [];
+
+		// Merge across years by product_code
+		const map = new Map<string, LCProduct>();
+		for (const row of data) {
+			const existing = map.get(row.product_code);
+			if (existing) {
+				existing.totalRevenue += row.total_revenue ?? 0;
+				existing.totalQuantity += row.total_quantity ?? 0;
+			} else {
+				map.set(row.product_code, {
+					code: row.product_code,
+					name: row.product_name,
+					category: row.category,
+					totalRevenue: row.total_revenue ?? 0,
+					totalQuantity: row.total_quantity ?? 0,
+					marginRate: row.margin_rate ?? 0,
+				});
+			}
+		}
+
+		return [...map.values()]
+			.sort((a, b) => b.totalRevenue - a.totalRevenue)
+			.slice(0, 20);
+	} catch {
+		return [];
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -321,7 +376,14 @@ ${goalSection(ctx)}
 	},
 	{
 		name: "platform_analysis",
-		buildPrompt: (ctx, outputs) => `あなたは日本のライブコマースプラットフォーム専門家です。
+		buildPrompt: (ctx, outputs) => {
+			const productList = ctx.products.length > 0
+				? `\n=== 自社商品データ（売上上位） ===\n${ctx.products.map((p) =>
+					`- ${p.name} (${p.code}): カテゴリ${p.category ?? "不明"}, 売上¥${p.totalRevenue.toLocaleString()}, 数量${p.totalQuantity}, 粗利率${p.marginRate}%`
+				).join("\n")}\n`
+				: "";
+
+			return `あなたは日本のライブコマースプラットフォーム専門家です。
 以下の情報に基づき、各プラットフォームの詳細分析を行ってください。
 
 === プラットフォーム基本情報 ===
@@ -332,7 +394,7 @@ ${JSON.stringify(outputs.market_research ?? {}, null, 2)}
 
 === ウェブ検索結果 ===
 ${ctx.searchSummary}
-
+${productList}
 ${goalSection(ctx)}
 
 以下のJSON形式で出力:
@@ -347,7 +409,9 @@ ${goalSection(ctx)}
       "weaknesses": ["<弱み1>", "<弱み2>"],
       "success_cases": [{"brand": "<ブランド名>", "description": "<取り組み内容>", "result": "<成果>"}],
       "recommended_products": ["<このプラットフォームに適した商品カテゴリ>"],
-      "entry_steps": ["<参入ステップ1>", "<ステップ2>"]
+      "entry_steps": ["<参入ステップ1>", "<ステップ2>"],
+      "our_recommended_products": [{"code": "<自社商品コード>", "name": "<商品名>", "reason": "<このプラットフォームに適している理由>"}],
+      "search_keywords": ["<このプラットフォームで検索すべきキーワード>"]
     }
   ],
   "comparison_summary": "<プラットフォーム比較の総括>",
@@ -357,7 +421,10 @@ ${goalSection(ctx)}
 注意:
 - 5つのプラットフォーム全てを分析
 - success_casesは各プラットフォーム1-3個
-- 全てのテキストは日本語`,
+- our_recommended_productsは自社商品データから各プラットフォームに最適な商品を1-5個選択（自社商品データがない場合は空配列）
+- search_keywordsは各プラットフォームで商品を探すための検索キーワード3-5個
+- 全てのテキストは日本語`;
+		},
 	},
 	{
 		name: "content_strategy",
