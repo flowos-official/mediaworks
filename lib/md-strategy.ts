@@ -1710,8 +1710,15 @@ function buildRiskContingencyPrompt(ctx: StrategyContext, priorOutputs: Record<s
 	const pm = (priorOutputs.pricing_margin as PricingMarginOutput) ?? EMPTY_PM;
 	const fp = (priorOutputs.financial_projection as FinancialProjectionOutput) ?? EMPTY_FP;
 
-	// Full competitive landscape and operations requirements from Skill 2
-	const channelDetailLines = cs.channels.map((ch) => {
+	// Focus risk analysis on top 4 priority channels only — analyzing all 7
+	// makes Gemini generate too much and the step takes too long.
+	const priorityRank: Record<string, number> = { immediate: 0, "3month": 1, "6month": 2, "12month": 3 };
+	const focusedChannels = [...cs.channels]
+		.sort((a, b) => (priorityRank[a.priority] ?? 9) - (priorityRank[b.priority] ?? 9) || b.fit_score - a.fit_score)
+		.slice(0, 4);
+
+	// Compact channel detail (top 4 only)
+	const channelDetailLines = focusedChannels.map((ch) => {
 		const roi = fp.roi_timeline.find((r) => r.channel === ch.name);
 		const bep = pm.bep_analysis.find((b) => b.channel === ch.name);
 		return `=== ${ch.name} (${ch.priority}) ===
@@ -1726,22 +1733,25 @@ ${bep ? `- BEP: ${bep.bep_units}個/月, 達成見込: ${bep.bep_timeline}` : ""
 ${roi ? `- 1年目ROI: ${roi.year1_roi_pct}%, 純利益: ${formatYen(roi.year1_net_profit)}` : ""}`;
 	}).join("\n\n");
 
-	// Sunk cost calculations from channel entry costs
-	const sunkCostLines = cs.channels.map((ch) => {
+	// Sunk cost calculations (top 4 only)
+	const sunkCostLines = focusedChannels.map((ch) => {
 		const totalInitial = ch.entry_requirements.initial_costs
 			.map((c) => {
 				const match = c.cost.match(/(\d[\d,]*)/);
 				return match ? parseInt(match[1].replace(/,/g, ""), 10) : 0;
 			})
 			.reduce((s, v) => s + v, 0);
-		return `- ${ch.name}: 初期サンクコスト ≈ ${formatYen(totalInitial)}（回収不可）`;
+		return `- ${ch.name}: 初期サンクコスト ≈ ${formatYen(totalInitial)}`;
 	}).join("\n");
 
-	// BEP thresholds for withdrawal criteria
-	const bepThresholds = pm.bep_analysis.map((b) => {
-		const monthlyFixedTotal = b.fixed_costs.reduce((s, f) => s + f.monthly, 0);
-		return `- ${b.channel}: BEP=${b.bep_units}個/月, 月間固定費=${formatYen(monthlyFixedTotal)}, 撤退検討ライン=BEPの50%未達が3ヶ月連続`;
-	}).join("\n");
+	// BEP thresholds (top 4 only)
+	const focusedChannelNames = new Set(focusedChannels.map((c) => c.name));
+	const bepThresholds = pm.bep_analysis
+		.filter((b) => focusedChannelNames.has(b.channel))
+		.map((b) => {
+			const monthlyFixedTotal = b.fixed_costs.reduce((s, f) => s + f.monthly, 0);
+			return `- ${b.channel}: BEP=${b.bep_units}個/月, 月間固定費=${formatYen(monthlyFixedTotal)}`;
+		}).join("\n");
 
 	// Scenarios
 	const scenarios = fp.scenarios;
@@ -1770,39 +1780,25 @@ ${bepThresholds}
 - Skill 3: BEP閾値と損益分岐達成見込を確認済み
 - Skill 5: 3シナリオの収益予測完了、ROIタイムライン確定
 
-[FRAMEWORK — 分析基準]
+[FRAMEWORK]
+- リスク評価: likelihood × impact (high=3/medium=2/low=1)
+- 撤退検討: BEPの50%未達が3ヶ月連続 / 累積損失がサンクコスト200%超
+- Go/No-Go判断は3ヶ月後・6ヶ月後
 
-リスク評価基準:
-- likelihood × impact でスコアリング (high=3, medium=2, low=1)
-- スコア6以上 = top_5_risksに含める
-- 各チャネル最低3リスクを識別
+[TASK]
+上記の優先${focusedChannels.length}チャネルについて、簡潔だが具体的なリスク分析を策定。
+- risk_matrix: 各チャネル最大3リスクのみ。
+- top_5_risks: 全体TOP5のみ。playbookは3ステップ以内。
+- go_nogo_criteria: 各チャネル1セットのみ。
 
-撤退判断基準:
-- BEPの50%未達が3ヶ月連続 → 撤退検討
-- 累積損失がサンクコストの200%超過 → 即座に撤退協議
-- 競合の大幅値下げ（30%以上）でマージン確保不可 → 価格戦略見直し or 撤退
+すべて日本語、具体的な数値基準で。出力は簡潔に。
 
-Go/No-Go判断:
-- 各チャネルの継続判断は3ヶ月後、6ヶ月後に実施
-- 判断基準は具体的な数値で（「月間売上¥X未満が3ヶ月続いた場合」等）
-
-[TASK — 分析指示]
-
-包括的なリスク分析と対策計画を策定してください。
-- risk_matrix: 各チャネルのリスクをcategory別に列挙。具体的な数値基準を含めること。
-- top_5_risks: 全チャネル通じて最も重要なリスクTOP5と詳細な対応プレイブック。
-- go_nogo_criteria: 各チャネルの継続/撤退判断基準と判断期日。サンクコストとBEPを踏まえた具体的な基準。
-
-IMPORTANT: すべて日本語で記述。抽象的な表現は避け、具体的な数値基準で記述すること。
-
-Return a JSON object (no markdown) with this structure:
+Return a JSON object (no markdown):
 {
-  "risk_matrix": [{"channel": "", "risks": [{"risk": "", "category": "operational", "likelihood": "high", "impact": "high", "mitigation": [], "contingency_trigger": "", "contingency_action": ""}]}],
-  "top_5_risks": [{"risk": "", "channel": "", "mitigation_playbook": [], "owner": "", "review_frequency": ""}],
-  "go_nogo_criteria": [{"channel": "", "criteria": [], "decision_date": ""}],
-  "sources_cited": [{"index": 1, "title": "", "url": ""}]
-}
-${buildSourcesSection(ctx)}`;
+  "risk_matrix": [{"channel":"","risks":[{"risk":"","category":"","likelihood":"high|medium|low","impact":"high|medium|low","mitigation":[],"contingency_trigger":"","contingency_action":""}]}],
+  "top_5_risks": [{"risk":"","channel":"","mitigation_playbook":[],"owner":"","review_frequency":""}],
+  "go_nogo_criteria": [{"channel":"","criteria":[],"decision_date":""}]
+}`;
 }
 
 // ---------------------------------------------------------------------------
