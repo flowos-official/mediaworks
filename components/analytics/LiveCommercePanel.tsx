@@ -446,6 +446,16 @@ function LCListView({ locale, router }: { locale: string; router: ReturnType<typ
 			const reader = streamRes.body.getReader();
 			const decoder = new TextDecoder();
 			let buffer = '';
+			let sawSentinel = false;
+
+			const handleSentinel = (data: { strategyId?: string; generatedAt?: string } | undefined) => {
+				sawSentinel = true;
+				setStatus('complete');
+				setHistoryRefresh((n) => n + 1);
+				if (data?.strategyId) {
+					router.push(`/${locale}/analytics/live-commerce/${data.strategyId}`);
+				}
+			};
 
 			while (true) {
 				const { done, value } = await reader.read();
@@ -463,12 +473,7 @@ function LCListView({ locale, router }: { locale: string; router: ReturnType<typ
 
 						// final completion sentinel
 						if (skill === 'data_fetch' && event.index === 999 && eventStatus === 'complete') {
-							const data = event.data as { strategyId?: string; generatedAt?: string } | undefined;
-							setStatus('complete');
-							setHistoryRefresh((n) => n + 1);
-							if (data?.strategyId) {
-								router.push(`/${locale}/analytics/live-commerce/${data.strategyId}`);
-							}
+							handleSentinel(event.data as { strategyId?: string; generatedAt?: string } | undefined);
 							continue;
 						}
 
@@ -487,6 +492,28 @@ function LCListView({ locale, router }: { locale: string; router: ReturnType<typ
 							if (event.error) setError(String(event.error));
 						}
 					} catch { /* skip */ }
+				}
+			}
+
+			// Fallback: stream closed without sentinel — workflow may still be running.
+			if (!sawSentinel) {
+				console.log('[lc-panel] stream closed without sentinel — falling back to status polling');
+				for (let attempt = 0; attempt < 120; attempt++) {
+					await new Promise((r) => setTimeout(r, 5000));
+					try {
+						const sres = await fetch(`/api/analytics/live-commerce/run/${runId}/status`);
+						if (!sres.ok) continue;
+						const sdata = await sres.json() as { status: string; returnValue?: { strategyId?: string; generatedAt?: string } };
+						if (sdata.status === 'completed') {
+							handleSentinel(sdata.returnValue);
+							break;
+						}
+						if (sdata.status === 'failed' || sdata.status === 'cancelled') {
+							setError(`Workflow ${sdata.status}`);
+							setStatus('error');
+							break;
+						}
+					} catch { /* keep polling */ }
 				}
 			}
 		} catch (err) {

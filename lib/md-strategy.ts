@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { getServiceClient } from "@/lib/supabase";
 import { rakutenItemSearch, rakutenRankingSearch } from "@/lib/rakuten";
 import type {
@@ -14,28 +14,170 @@ import type {
 // Gemini client
 // ---------------------------------------------------------------------------
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+// Lazy SDK init — avoid top-level construction (workflow sandbox safety).
+let _genAI: GoogleGenAI | null = null;
+function getGenAI(): GoogleGenAI {
+	if (!_genAI) _genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+	return _genAI;
+}
+
+// Gemini 3 family only. Flash-preview is the default; pro-preview is the high-quality
+// fallback when flash is overloaded (503). Ref: https://ai.google.dev/gemini-api/docs/gemini-3
+const GEMINI_MODELS = ["gemini-3-flash-preview", "gemini-3.1-pro-preview"];
+
+function isRetryableGeminiError(err: unknown): boolean {
+	if (!(err instanceof Error)) return false;
+	const msg = err.message;
+	// Network/quota/overload + our own first-chunk/hard timeouts (which abort the fetch).
+	return (
+		msg.includes("503") ||
+		msg.includes("429") ||
+		msg.includes("500") ||
+		msg.includes("502") ||
+		msg.includes("504") ||
+		msg.includes("overloaded") ||
+		msg.includes("Service Unavailable") ||
+		msg.includes("UNAVAILABLE") ||
+		msg.includes("aborted") ||
+		msg.includes("timeout") ||
+		msg.includes("ECONNRESET") ||
+		msg.includes("ETIMEDOUT")
+	);
+}
+
+async function callGeminiOnce(modelName: string, prompt: string): Promise<string> {
+	// Gemini 3 with thinking mode does significant server-side thinking BEFORE streaming
+	// any output. For large prompts (product_selection, channel_strategy) the first byte
+	// can take 30-90s. Keep first-chunk watchdog generous to avoid false aborts.
+	const HARD_TIMEOUT_MS = 240_000;
+	const FIRST_CHUNK_MS = 120_000;
+	const startTs = Date.now();
+	const controller = new AbortController();
+	const hardTimer = setTimeout(
+		() => controller.abort(new Error(`Gemini hard timeout ${HARD_TIMEOUT_MS}ms`)),
+		HARD_TIMEOUT_MS,
+	);
+	let firstChunkTimer: ReturnType<typeof setTimeout> | null = setTimeout(
+		() => controller.abort(new Error(`Gemini first-chunk timeout ${FIRST_CHUNK_MS}ms`)),
+		FIRST_CHUNK_MS,
+	);
+	// Minimal thinking for flash (fast first byte), medium for pro (quality fallback).
+	const thinkingLevel = modelName.includes("pro") ? ThinkingLevel.LOW : ThinkingLevel.MINIMAL;
+	try {
+		const stream = await getGenAI().models.generateContentStream({
+			model: modelName,
+			contents: prompt,
+			config: {
+				thinkingConfig: { thinkingLevel },
+				abortSignal: controller.signal,
+			},
+		});
+		let text = "";
+		let chunks = 0;
+		for await (const chunk of stream) {
+			if (firstChunkTimer) { clearTimeout(firstChunkTimer); firstChunkTimer = null; }
+			const t = chunk.text ?? "";
+			text += t;
+			chunks++;
+			if (chunks % 20 === 0) {
+				console.log(`[gemini ${modelName}] streamed ${chunks} chunks (${text.length} chars) at ${Math.round((Date.now() - startTs) / 1000)}s`);
+			}
+		}
+		console.log(`[gemini ${modelName}] stream complete: ${chunks} chunks, ${text.length} chars in ${Math.round((Date.now() - startTs) / 1000)}s`);
+		return text.trim();
+	} finally {
+		clearTimeout(hardTimer);
+		if (firstChunkTimer) clearTimeout(firstChunkTimer);
+	}
+}
+
+function isModelUnavailableError(err: unknown): boolean {
+	if (!(err instanceof Error)) return false;
+	const msg = err.message;
+	return msg.includes("404") || msg.includes("Not Found") || msg.includes("no longer available") || msg.includes("not found");
+}
 
 async function callGemini(prompt: string): Promise<string> {
-	const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
-	const streamPromise = (async () => {
-		const result = await model.generateContentStream(prompt);
-		let text = "";
-		for await (const chunk of result.stream) {
-			text += chunk.text();
+	let lastErr: unknown = null;
+	for (const modelName of GEMINI_MODELS) {
+		let modelDead = false;
+		for (let attempt = 0; attempt < 3; attempt++) {
+			try {
+				return await callGeminiOnce(modelName, prompt);
+			} catch (err) {
+				lastErr = err;
+				if (isModelUnavailableError(err)) {
+					// Model gone — retry same model is pointless, jump to next model.
+					console.warn(`[gemini] model ${modelName} unavailable (${(err as Error).message}) — skipping to next.`);
+					modelDead = true;
+					break;
+				}
+				if (!isRetryableGeminiError(err)) {
+					// Hard error (auth, prompt too long, invalid key) — don't try other models either.
+					throw err;
+				}
+				const delayMs = 2000 * Math.pow(2, attempt);
+				console.warn(`[gemini ${modelName}] attempt ${attempt + 1}/3 failed (retryable): ${(err as Error).message}. Retrying in ${delayMs}ms.`);
+				await new Promise((r) => setTimeout(r, delayMs));
+			}
 		}
-		return text.trim();
-	})();
-	const timeoutPromise = new Promise<never>((_, reject) =>
-		setTimeout(() => reject(new Error("Gemini timeout (90s)")), 90000),
-	);
-	return await Promise.race([streamPromise, timeoutPromise]);
+		if (!modelDead) {
+			console.warn(`[gemini] model ${modelName} exhausted retries — falling back to next model.`);
+		}
+	}
+	throw lastErr instanceof Error ? lastErr : new Error("All Gemini models failed");
 }
 
 function parseJSON<T>(raw: string): T {
-	const match = raw.match(/\{[\s\S]*\}/);
-	if (!match) throw new Error("Failed to parse JSON from Gemini response");
-	return JSON.parse(match[0]) as T;
+	// Strip markdown code fences (```json ... ``` or ``` ... ```) that fallback models often add.
+	let cleaned = raw.trim();
+	const fenceMatch = cleaned.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/);
+	if (fenceMatch) cleaned = fenceMatch[1].trim();
+	// Try direct parse first.
+	try {
+		return JSON.parse(cleaned) as T;
+	} catch { /* fall through to extraction */ }
+	// Extract first JSON object OR array from the text.
+	const objStart = cleaned.indexOf("{");
+	const arrStart = cleaned.indexOf("[");
+	let start = -1;
+	let openCh = "";
+	let closeCh = "";
+	if (objStart === -1 && arrStart === -1) {
+		throw new Error(`Failed to parse JSON from Gemini response (no { or [). Head: ${cleaned.slice(0, 200)}`);
+	}
+	if (arrStart === -1 || (objStart !== -1 && objStart < arrStart)) {
+		start = objStart; openCh = "{"; closeCh = "}";
+	} else {
+		start = arrStart; openCh = "["; closeCh = "]";
+	}
+	// Walk forward tracking nesting to find the matching close (handles strings/escapes).
+	let depth = 0;
+	let inString = false;
+	let escape = false;
+	let end = -1;
+	for (let i = start; i < cleaned.length; i++) {
+		const ch = cleaned[i];
+		if (escape) { escape = false; continue; }
+		if (ch === "\\") { escape = true; continue; }
+		if (ch === '"') { inString = !inString; continue; }
+		if (inString) continue;
+		if (ch === openCh) depth++;
+		else if (ch === closeCh) {
+			depth--;
+			if (depth === 0) { end = i; break; }
+		}
+	}
+	if (end === -1) {
+		throw new Error(`Failed to parse JSON from Gemini response (unbalanced ${openCh}). Head: ${cleaned.slice(0, 200)}`);
+	}
+	const slice = cleaned.slice(start, end + 1);
+	try {
+		return JSON.parse(slice) as T;
+	} catch (err) {
+		const msg = err instanceof Error ? err.message : String(err);
+		throw new Error(`Failed to parse JSON: ${msg}. Slice head: ${slice.slice(0, 200)}`);
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -286,8 +428,6 @@ export interface StrategyContext {
 			risks: string[];
 		};
 	}>;
-	// Pending discovery promise (parallelized with goal_analysis skill)
-	recommendedProductsPromise?: Promise<StrategyContext["recommendedProducts"]>;
 	recommendCategory?: string;
 	recommendTargetMarket?: string;
 	// Web search sources for citation
@@ -332,6 +472,10 @@ export interface DiscoverInput {
 	// Exclude items already discovered in prior batches (for re-discover)
 	excludeUrls?: string[];
 	excludeNames?: string[];
+	// Optional free-form analysis summary to guide curation (from prior workflow skills).
+	// Included in the Gemini curation prompt so the final recommendations reflect
+	// the full strategy (channel mix, pricing, marketing angles, risks, etc.).
+	analysisContext?: string;
 }
 
 export type DiscoveredProduct = NonNullable<StrategyContext["recommendedProducts"]>[number];
@@ -501,8 +645,12 @@ export async function discoverNewProducts(
 		: `content_angle: 商品ページ/CM/SNS投稿の訴求アングル（ビフォーアフター、専門家推薦、季節企画等）`;
 	const roleLabel = isLC ? "ライブコマース事業MD" : "TV通販・EC事業MD";
 
-	const prompt = `あなたは日本の${roleLabel}です。下記の (1) TV自社販売シグナル と (2) 日本市場トレンド情報 の両方を根拠に、楽天/Webから検索された実在商品プールから「日本の消費者に今売れる/関心が高い」新商品を5つ選定し、各商品の販売戦略まで策定してください。
+	const analysisBlock = input.analysisContext && input.analysisContext.trim().length > 0
+		? `\n=== (0) 事前分析結果 (Goal分析・チャネル戦略・価格戦略・マーケ・リスク等のサマリー) ===\nこの戦略フレームワークに沿って新商品を選定すること。\n${input.analysisContext}\n`
+		: "";
 
+	const prompt = `あなたは日本の${roleLabel}です。下記の (1) TV自社販売シグナル と (2) 日本市場トレンド情報 の両方を根拠に、楽天/Webから検索された実在商品プールから「日本の消費者に今売れる/関心が高い」新商品を5つ選定し、各商品の販売戦略まで策定してください。
+${analysisBlock}
 === (1) TV自社販売シグナル ===
 ${signalText}
 
@@ -581,12 +729,12 @@ All text in Japanese. すべての sales_strategy フィールドを必ず埋め
 		console.log(`[discover] calling Gemini for curation (prompt length=${prompt.length})`);
 		const raw = await callGemini(prompt);
 		console.log(`[discover] Gemini raw response length=${raw.length}, head="${raw.slice(0, 120).replace(/\n/g, ' ')}"`);
-		const match = raw.match(/\[[\s\S]*\]/);
-		if (!match) {
-			console.warn(`[discover] no JSON array found in Gemini response`);
+		// Use the robust parseJSON helper — handles markdown fences, arrays, nested braces.
+		const parsed = parseJSON<NonNullable<StrategyContext["recommendedProducts"]>>(raw);
+		if (!Array.isArray(parsed)) {
+			console.warn(`[discover] Gemini response is not an array (got ${typeof parsed})`);
 			return undefined;
 		}
-		const parsed = JSON.parse(match[0]) as NonNullable<StrategyContext["recommendedProducts"]>;
 		console.log(`[discover] parsed ${parsed.length} items from Gemini`);
 
 		// Sanity-pass: drop items whose source_url isn't actually in the pool (anti-hallucination)
@@ -807,20 +955,8 @@ export async function fetchStrategyContext(
 	// to drive REAL Rakuten + Brave searches, then Gemini curates 5 from the actual pool.
 	const recommendCategory = recommend?.category;
 	const recommendTargetMarket = recommend?.targetMarket;
-	// Kick off discovery in parallel — orchestrator will await it just before product_selection.
-	const recommendedProductsPromise = discoverNewProducts({
-		context: "home_shopping",
-		topCategoryNames: categoryBreakdown.slice(0, 3).map((c) => c.category),
-		explicitCategory: recommend?.category,
-		targetMarket: recommend?.targetMarket,
-		priceRange: recommend?.priceRange,
-		userGoal,
-		tvProductNames: enrichedProducts.map((p) => p.name),
-		tvMarginRate: totalRevenue > 0 ? Math.round((totalProfit / totalRevenue) * 10000) / 100 : 0,
-	}).catch((err) => {
-		console.error("[discover] background promise failed:", err);
-		return undefined;
-	});
+	// Discovery is deferred to a FINAL workflow step so it can use all prior skill
+	// outputs as analysisContext. fetchStrategyContext no longer kicks it off.
 
 	return {
 		annualMetrics: {
@@ -834,7 +970,6 @@ export async function fetchStrategyContext(
 		products: enrichedProducts,
 		weeklyTrends,
 		userGoal,
-		recommendedProductsPromise,
 		recommendCategory,
 		recommendTargetMarket,
 		searchSources,
@@ -1081,7 +1216,7 @@ export const SKILL_META: Record<SkillName, { label: string; labelJa: string }> =
 };
 
 export interface ProgressEvent {
-	skill: SkillName | "data_fetch";
+	skill: SkillName | "data_fetch" | "new_product_discovery";
 	status: "running" | "complete" | "error";
 	index: number;
 	total: number;
@@ -1880,10 +2015,6 @@ export async function runStrategyOrchestrator(
 				continue;
 			}
 
-			if (skill.name === "product_selection" && context.recommendedProductsPromise) {
-				context.recommendedProducts = await context.recommendedProductsPromise;
-				context.recommendedProductsPromise = undefined;
-			}
 			const prompt = skill.buildPrompt(context, outputs);
 			const raw = await callGemini(prompt);
 			const parsed = parseJSON<Record<string, unknown>>(raw);

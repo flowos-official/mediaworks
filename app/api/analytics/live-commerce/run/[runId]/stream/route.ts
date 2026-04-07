@@ -2,7 +2,8 @@ import { NextRequest } from "next/server";
 import { getRun } from "workflow/api";
 import type { LCProgressEvent } from "@/lib/live-commerce-strategy";
 
-export const maxDuration = 300;
+// 6 sequential Gemini steps × ~60s + overhead. See md-strategy stream route comment.
+export const maxDuration = 800;
 
 export async function GET(
 	_request: NextRequest,

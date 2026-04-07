@@ -2,7 +2,10 @@ import { NextRequest } from "next/server";
 import { getRun } from "workflow/api";
 import type { ProgressEvent } from "@/lib/md-strategy";
 
-export const maxDuration = 300;
+// 7 sequential Gemini steps × ~60s + overhead → must exceed Vercel default.
+// Fluid Compute supports up to 800s; the workflow itself runs durably,
+// only the client HTTP connection needs to stay open.
+export const maxDuration = 800;
 
 // GET: NDJSON stream of progress events for a workflow run.
 // The client reads line-by-line, parses each line as JSON, and updates UI.

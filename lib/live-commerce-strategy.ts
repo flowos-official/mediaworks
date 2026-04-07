@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { getServiceClient } from "@/lib/supabase";
 import { discoverNewProducts, type DiscoveredProduct, type DiscoveryBatch } from "@/lib/md-strategy";
 
@@ -6,28 +6,135 @@ import { discoverNewProducts, type DiscoveredProduct, type DiscoveryBatch } from
 // Gemini client
 // ---------------------------------------------------------------------------
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+// Lazy SDK init — see md-strategy.ts for rationale (workflow sandbox safety).
+let _genAI: GoogleGenAI | null = null;
+function getGenAI(): GoogleGenAI {
+	if (!_genAI) _genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+	return _genAI;
+}
+
+// Gemini 3 family only. Flash-preview default, pro-preview fallback.
+// Ref: https://ai.google.dev/gemini-api/docs/gemini-3
+const GEMINI_MODELS = ["gemini-3-flash-preview", "gemini-3.1-pro-preview"];
+
+function isRetryableGeminiError(err: unknown): boolean {
+	if (!(err instanceof Error)) return false;
+	const msg = err.message;
+	return (
+		msg.includes("503") || msg.includes("429") || msg.includes("500") || msg.includes("502") || msg.includes("504") ||
+		msg.includes("overloaded") || msg.includes("Service Unavailable") || msg.includes("UNAVAILABLE") ||
+		msg.includes("aborted") || msg.includes("timeout") || msg.includes("ECONNRESET") || msg.includes("ETIMEDOUT")
+	);
+}
+
+async function callGeminiOnce(modelName: string, prompt: string): Promise<string> {
+	const HARD_TIMEOUT_MS = 240_000;
+	const FIRST_CHUNK_MS = 120_000;
+	const startTs = Date.now();
+	const controller = new AbortController();
+	const hardTimer = setTimeout(
+		() => controller.abort(new Error(`Gemini hard timeout ${HARD_TIMEOUT_MS}ms`)),
+		HARD_TIMEOUT_MS,
+	);
+	let firstChunkTimer: ReturnType<typeof setTimeout> | null = setTimeout(
+		() => controller.abort(new Error(`Gemini first-chunk timeout ${FIRST_CHUNK_MS}ms`)),
+		FIRST_CHUNK_MS,
+	);
+	const thinkingLevel = modelName.includes("pro") ? ThinkingLevel.LOW : ThinkingLevel.MINIMAL;
+	try {
+		const stream = await getGenAI().models.generateContentStream({
+			model: modelName,
+			contents: prompt,
+			config: {
+				thinkingConfig: { thinkingLevel },
+				abortSignal: controller.signal,
+			},
+		});
+		let text = "";
+		let chunks = 0;
+		for await (const chunk of stream) {
+			if (firstChunkTimer) { clearTimeout(firstChunkTimer); firstChunkTimer = null; }
+			const t = chunk.text ?? "";
+			text += t;
+			chunks++;
+			if (chunks % 20 === 0) {
+				console.log(`[gemini-lc ${modelName}] streamed ${chunks} chunks (${text.length} chars) at ${Math.round((Date.now() - startTs) / 1000)}s`);
+			}
+		}
+		console.log(`[gemini-lc ${modelName}] stream complete: ${chunks} chunks, ${text.length} chars in ${Math.round((Date.now() - startTs) / 1000)}s`);
+		return text.trim();
+	} finally {
+		clearTimeout(hardTimer);
+		if (firstChunkTimer) clearTimeout(firstChunkTimer);
+	}
+}
+
+function isModelUnavailableError(err: unknown): boolean {
+	if (!(err instanceof Error)) return false;
+	const msg = err.message;
+	return msg.includes("404") || msg.includes("Not Found") || msg.includes("no longer available") || msg.includes("not found");
+}
 
 async function callGemini(prompt: string): Promise<string> {
-	const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
-	const streamPromise = (async () => {
-		const result = await model.generateContentStream(prompt);
-		let text = "";
-		for await (const chunk of result.stream) {
-			text += chunk.text();
+	let lastErr: unknown = null;
+	for (const modelName of GEMINI_MODELS) {
+		let modelDead = false;
+		for (let attempt = 0; attempt < 3; attempt++) {
+			try {
+				return await callGeminiOnce(modelName, prompt);
+			} catch (err) {
+				lastErr = err;
+				if (isModelUnavailableError(err)) {
+					console.warn(`[gemini-lc] model ${modelName} unavailable (${(err as Error).message}) — skipping to next.`);
+					modelDead = true;
+					break;
+				}
+				if (!isRetryableGeminiError(err)) throw err;
+				const delayMs = 2000 * Math.pow(2, attempt);
+				console.warn(`[gemini-lc ${modelName}] attempt ${attempt + 1}/3 failed (retryable): ${(err as Error).message}. Retrying in ${delayMs}ms.`);
+				await new Promise((r) => setTimeout(r, delayMs));
+			}
 		}
-		return text.trim();
-	})();
-	const timeoutPromise = new Promise<never>((_, reject) =>
-		setTimeout(() => reject(new Error("Gemini timeout (90s)")), 90000),
-	);
-	return await Promise.race([streamPromise, timeoutPromise]);
+		if (!modelDead) {
+			console.warn(`[gemini-lc] model ${modelName} exhausted retries — falling back to next model.`);
+		}
+	}
+	throw lastErr instanceof Error ? lastErr : new Error("All Gemini models failed");
 }
 
 function parseJSON<T>(raw: string): T {
-	const match = raw.match(/\{[\s\S]*\}/);
-	if (!match) throw new Error("Failed to parse JSON from Gemini response");
-	return JSON.parse(match[0]) as T;
+	let cleaned = raw.trim();
+	const fenceMatch = cleaned.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/);
+	if (fenceMatch) cleaned = fenceMatch[1].trim();
+	try { return JSON.parse(cleaned) as T; } catch { /* fallthrough */ }
+	const objStart = cleaned.indexOf("{");
+	const arrStart = cleaned.indexOf("[");
+	if (objStart === -1 && arrStart === -1) {
+		throw new Error(`Failed to parse JSON (no { or [). Head: ${cleaned.slice(0, 200)}`);
+	}
+	let start: number, openCh: string, closeCh: string;
+	if (arrStart === -1 || (objStart !== -1 && objStart < arrStart)) {
+		start = objStart; openCh = "{"; closeCh = "}";
+	} else {
+		start = arrStart; openCh = "["; closeCh = "]";
+	}
+	let depth = 0, inString = false, escape = false, end = -1;
+	for (let i = start; i < cleaned.length; i++) {
+		const ch = cleaned[i];
+		if (escape) { escape = false; continue; }
+		if (ch === "\\") { escape = true; continue; }
+		if (ch === '"') { inString = !inString; continue; }
+		if (inString) continue;
+		if (ch === openCh) depth++;
+		else if (ch === closeCh) { depth--; if (depth === 0) { end = i; break; } }
+	}
+	if (end === -1) throw new Error(`Failed to parse JSON (unbalanced ${openCh}). Head: ${cleaned.slice(0, 200)}`);
+	const slice = cleaned.slice(start, end + 1);
+	try { return JSON.parse(slice) as T; }
+	catch (err) {
+		const msg = err instanceof Error ? err.message : String(err);
+		throw new Error(`Failed to parse JSON: ${msg}. Slice head: ${slice.slice(0, 200)}`);
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -100,7 +207,7 @@ export const LC_SKILL_META: Record<LCSkillName, { label: string; labelJa: string
 };
 
 export interface LCProgressEvent {
-	skill: LCSkillName | "data_fetch";
+	skill: LCSkillName | "data_fetch" | "new_product_discovery";
 	status: "running" | "complete" | "error";
 	index: number;
 	total: number;
@@ -234,7 +341,9 @@ export interface LCContext {
 	searchSummary: string;
 	products: LCProduct[];
 	recommendedProducts?: DiscoveredProduct[];
-	recommendedProductsPromise?: Promise<DiscoveredProduct[] | undefined>;
+	// Signals derived at fetch time, consumed by the final discovery step.
+	topCategoryNames?: string[];
+	avgMarginRate?: number;
 }
 
 export async function fetchLCContext(
@@ -296,24 +405,16 @@ export async function fetchLCContext(
 		? Math.round(productResult.reduce((s, p) => s + p.marginRate, 0) / productResult.length)
 		: 0;
 
-	const recommendedProductsPromise = discoverNewProducts({
-		context: "live_commerce",
-		topCategoryNames,
-		userGoal,
-		tvProductNames: productResult.map((p) => p.name),
-		tvMarginRate: avgMarginRate,
-	}).catch((err) => {
-		console.error("[live-commerce] discovery failed:", err);
-		return undefined;
-	});
-
+	// Discovery is deferred to a final workflow step (after all analysis skills run).
 	return {
 		userGoal,
 		targetPlatforms,
 		searchSources: allSources,
 		searchSummary,
 		products: productResult,
-		recommendedProductsPromise,
+		// Expose derived signals for the final discovery step.
+		topCategoryNames,
+		avgMarginRate,
 	};
 }
 
@@ -696,10 +797,6 @@ export async function runLCOrchestrator(
 				continue;
 			}
 
-			if (skill.name === "platform_analysis" && context.recommendedProductsPromise) {
-				context.recommendedProducts = await context.recommendedProductsPromise;
-				context.recommendedProductsPromise = undefined;
-			}
 			const prompt = skill.buildPrompt(context, outputs);
 			const raw = await callGemini(prompt);
 			const parsed = parseJSON<Record<string, unknown>>(raw);

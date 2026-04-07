@@ -435,6 +435,7 @@ function ListView({ locale, router }: { locale: string; router: ReturnType<typeo
 			const reader = streamRes.body.getReader();
 			const decoder = new TextDecoder();
 			let buffer = '';
+			let sawSentinel = false;
 
 			while (true) {
 				const { done, value } = await reader.read();
@@ -447,10 +448,39 @@ function ListView({ locale, router }: { locale: string; router: ReturnType<typeo
 					if (!trimmed) continue;
 					try {
 						const event = JSON.parse(trimmed);
+						if (event?.skill === 'data_fetch' && event?.index === 999 && event?.status === 'complete') {
+							sawSentinel = true;
+						}
 						handleWorkflowEvent(event);
 					} catch {
 						// skip malformed line
 					}
+				}
+			}
+
+			// Fallback: stream closed without completion sentinel — workflow may still be
+			// running durably in background. Poll status endpoint until complete.
+			if (!sawSentinel) {
+				console.log('[md-panel] stream closed without sentinel — falling back to status polling');
+				for (let attempt = 0; attempt < 120; attempt++) {
+					await new Promise((r) => setTimeout(r, 5000));
+					try {
+						const sres = await fetch(`/api/analytics/md-strategy/run/${runId}/status`);
+						if (!sres.ok) continue;
+						const sdata = await sres.json() as { status: string; returnValue?: { strategyId?: string; generatedAt?: string } };
+						if (sdata.status === 'completed') {
+							handleWorkflowEvent({
+								skill: 'data_fetch', index: 999, status: 'complete',
+								data: { complete: true, ...sdata.returnValue },
+							});
+							break;
+						}
+						if (sdata.status === 'failed' || sdata.status === 'cancelled') {
+							setError(`Workflow ${sdata.status}`);
+							setStatus('error');
+							break;
+						}
+					} catch { /* keep polling */ }
 				}
 			}
 		} catch (err) {
