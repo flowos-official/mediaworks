@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter, useParams } from 'next/navigation';
+import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Rocket, AlertTriangle, Target, Database, ArrowLeft } from 'lucide-react';
 import {
@@ -28,6 +30,27 @@ const MarketingExecutionSection = dynamic(() => import('./md-strategy/MarketingE
 const FinancialProjectionSection = dynamic(() => import('./md-strategy/FinancialProjectionSection'), { ssr: false });
 const RiskContingencySection = dynamic(() => import('./md-strategy/RiskContingencySection'), { ssr: false });
 const StrategyPdfDownload = dynamic(() => import('./md-strategy/StrategyPdfDownload'), { ssr: false });
+
+// ---------------------------------------------------------------------------
+// Public types
+// ---------------------------------------------------------------------------
+
+export interface SavedStrategyData {
+	id: string;
+	created_at: string;
+	goal_analysis?: ParsedGoal | null;
+	product_selection?: ProductSelectionOutput;
+	channel_strategy?: ChannelStrategyOutput;
+	pricing_margin?: PricingMarginOutput;
+	marketing_execution?: MarketingExecutionOutput;
+	financial_projection?: FinancialProjectionOutput;
+	risk_contingency?: RiskContingencyOutput;
+}
+
+interface MDStrategyPanelProps {
+	mode: 'list' | 'detail';
+	initialData?: SavedStrategyData;
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -142,10 +165,10 @@ function DataPreview() {
 // Shared: Skill results renderer
 // ---------------------------------------------------------------------------
 
-function SkillResultsView({ results, generatedAt, onBack, strategyId, onRediscover, rediscovering }: {
+function SkillResultsView({ results, generatedAt, backHref, strategyId, onRediscover, rediscovering }: {
 	results: SkillResults;
 	generatedAt?: string | null;
-	onBack: () => void;
+	backHref: string;
 	strategyId?: string | null;
 	onRediscover?: (focus: string) => Promise<void>;
 	rediscovering?: boolean;
@@ -155,11 +178,14 @@ function SkillResultsView({ results, generatedAt, onBack, strategyId, onRediscov
 
 	return (
 		<>
-			{/* Back button */}
-			<button type="button" onClick={onBack} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors mb-2">
+			{/* Back link */}
+			<Link
+				href={backHref}
+				className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors mb-2 w-fit"
+			>
 				<ArrowLeft size={14} />
 				一覧に戻る
-			</button>
+			</Link>
 
 			<div id="md-strategy-content" className="space-y-8">
 				{(results.product_selection?.discovered_new_products?.length ?? 0) > 0 && (
@@ -224,10 +250,98 @@ const INITIAL_STATUSES: Record<SkillName, SkillStatus> = {
 // Main component
 // ---------------------------------------------------------------------------
 
-export default function MDStrategyPanel() {
-	// View mode: form (input + history), generating (SSE in progress + results), saved (loaded from DB)
-	const [viewMode, setViewMode] = useState<'form' | 'generating' | 'saved'>('form');
+export default function MDStrategyPanel({ mode, initialData }: MDStrategyPanelProps) {
+	const router = useRouter();
+	const { locale } = useParams<{ locale: string }>();
+	const listHref = `/${locale}/analytics/expansion`;
 
+	if (mode === 'detail' && initialData) {
+		return <DetailView initialData={initialData} backHref={listHref} />;
+	}
+
+	return <ListView locale={locale} router={router} />;
+}
+
+// ---------------------------------------------------------------------------
+// DetailView — saved strategy from initialData (SSR)
+// ---------------------------------------------------------------------------
+
+function DetailView({ initialData, backHref }: { initialData: SavedStrategyData; backHref: string }) {
+	const [savedResults, setSavedResults] = useState<SkillResults>({
+		goal_analysis: initialData.goal_analysis ?? undefined,
+		product_selection: initialData.product_selection,
+		channel_strategy: initialData.channel_strategy,
+		pricing_margin: initialData.pricing_margin,
+		marketing_execution: initialData.marketing_execution,
+		financial_projection: initialData.financial_projection,
+		risk_contingency: initialData.risk_contingency,
+	});
+	const [error, setError] = useState<string | null>(null);
+	const [rediscovering, setRediscovering] = useState(false);
+
+	const handleRediscover = useCallback(async (focus: string) => {
+		setRediscovering(true);
+		setError(null);
+		try {
+			const res = await fetch(`/api/analytics/md-strategy/${initialData.id}/rediscover`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ focus: focus || undefined }),
+			});
+			const data = await res.json();
+			if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+
+			setSavedResults((prev) => {
+				const ps = prev.product_selection;
+				if (!ps) return prev;
+				return {
+					...prev,
+					product_selection: {
+						...ps,
+						discovered_new_products: data.batch.products,
+						discovery_history: data.discovery_history,
+					},
+				};
+			});
+		} catch (err) {
+			setError(err instanceof Error ? err.message : String(err));
+		} finally {
+			setRediscovering(false);
+		}
+	}, [initialData.id]);
+
+	return (
+		<div className="space-y-6">
+			<div className="flex items-center gap-2">
+				<Target size={18} className="text-blue-600" />
+				<h3 className="text-lg font-semibold text-gray-900">チャネル拡大戦略</h3>
+				<span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">7-Skill AI</span>
+			</div>
+
+			{error && (
+				<div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+					<AlertTriangle size={14} />
+					{error}
+				</div>
+			)}
+
+			<SkillResultsView
+				results={savedResults}
+				generatedAt={initialData.created_at}
+				backHref={backHref}
+				strategyId={initialData.id}
+				onRediscover={handleRediscover}
+				rediscovering={rediscovering}
+			/>
+		</div>
+	);
+}
+
+// ---------------------------------------------------------------------------
+// ListView — form + history + in-place generation
+// ---------------------------------------------------------------------------
+
+function ListView({ locale, router }: { locale: string; router: ReturnType<typeof useRouter> }) {
 	// Input state
 	const [userGoal, setUserGoal] = useState('');
 	const [category, setCategory] = useState('指定なし');
@@ -240,28 +354,61 @@ export default function MDStrategyPanel() {
 	const [skillStatuses, setSkillStatuses] = useState<Record<SkillName, SkillStatus>>({ ...INITIAL_STATUSES });
 	const [skillResults, setSkillResults] = useState<SkillResults>({});
 	const [error, setError] = useState<string | null>(null);
-	const [generatedAt, setGeneratedAt] = useState<string | null>(null);
-	const [currentStrategyId, setCurrentStrategyId] = useState<string | null>(null);
-	const [rediscovering, setRediscovering] = useState(false);
-
-	// Saved strategy view state
-	const [savedResults, setSavedResults] = useState<SkillResults>({});
-	const [savedAt, setSavedAt] = useState<string | null>(null);
-	const [loadingStrategy, setLoadingStrategy] = useState(false);
 
 	// History refresh trigger
 	const [historyRefresh, setHistoryRefresh] = useState(0);
 
-	// --- Generate new strategy ---
+	const isRunning = status === 'running';
+
+	// R2: block hard navigation (refresh/close) while generating
+	useEffect(() => {
+		if (!isRunning) return;
+		const handler = (e: BeforeUnloadEvent) => {
+			e.preventDefault();
+			e.returnValue = '';
+		};
+		window.addEventListener('beforeunload', handler);
+		return () => window.removeEventListener('beforeunload', handler);
+	}, [isRunning]);
+
+	const handleWorkflowEvent = useCallback((event: Record<string, unknown>) => {
+		const skill = event.skill as string;
+		const eventStatus = event.status as 'running' | 'complete' | 'error';
+
+		// Final completion sentinel
+		if (skill === 'data_fetch' && event.index === 999 && eventStatus === 'complete') {
+			const data = event.data as { complete?: boolean; strategyId?: string; generatedAt?: string } | undefined;
+			setStatus('complete');
+			setHistoryRefresh((n) => n + 1);
+			// R2: navigate to detail URL on successful generation
+			if (data?.strategyId) {
+				router.push(`/${locale}/analytics/expansion/${data.strategyId}`);
+			}
+			return;
+		}
+
+		if (skill === 'data_fetch') {
+			setDataFetchStatus(eventStatus === 'complete' ? 'complete' : 'running');
+			return;
+		}
+
+		if (eventStatus === 'running') {
+			setSkillStatuses((prev) => ({ ...prev, [skill]: 'running' }));
+		} else if (eventStatus === 'complete') {
+			setSkillStatuses((prev) => ({ ...prev, [skill]: 'complete' }));
+			setSkillResults((prev) => ({ ...prev, [skill as SkillName]: event.data }));
+		} else if (eventStatus === 'error') {
+			setSkillStatuses((prev) => ({ ...prev, [skill]: 'error' }));
+			if (event.error) setError(String(event.error));
+		}
+	}, [locale, router]);
+
 	const handleGenerate = useCallback(async () => {
-		setViewMode('generating');
 		setStatus('running');
 		setError(null);
 		setSkillResults({});
 		setSkillStatuses({ ...INITIAL_STATUSES });
 		setDataFetchStatus('pending');
-		setGeneratedAt(null);
-		setCurrentStrategyId(null);
 
 		try {
 			const startRes = await fetch('/api/analytics/md-strategy', {
@@ -310,125 +457,12 @@ export default function MDStrategyPanel() {
 			setError(err instanceof Error ? err.message : String(err));
 			setStatus('error');
 		}
-	}, [userGoal, category, targetMarket, priceRange]);
+	}, [userGoal, category, targetMarket, priceRange, handleWorkflowEvent]);
 
-	const handleWorkflowEvent = (event: Record<string, unknown>) => {
-		const skill = event.skill as string;
-		const status = event.status as 'running' | 'complete' | 'error';
-
-		// Final completion sentinel: skill === 'data_fetch', index === 999, data has { complete, strategyId }
-		if (skill === 'data_fetch' && event.index === 999 && status === 'complete') {
-			const data = event.data as { complete?: boolean; strategyId?: string; generatedAt?: string } | undefined;
-			setStatus('complete');
-			if (data?.generatedAt) setGeneratedAt(data.generatedAt);
-			if (data?.strategyId) setCurrentStrategyId(data.strategyId);
-			setHistoryRefresh((n) => n + 1);
-			return;
-		}
-
-		if (skill === 'data_fetch') {
-			setDataFetchStatus(status === 'complete' ? 'complete' : 'running');
-			return;
-		}
-
-		if (status === 'running') {
-			setSkillStatuses((prev) => ({ ...prev, [skill]: 'running' }));
-		} else if (status === 'complete') {
-			if (skill === 'product_selection') {
-				const data = event.data as { discovered_new_products?: unknown[]; discovery_history?: unknown[] } | undefined;
-				console.log('[md-panel] received product_selection:', {
-					discoveredLength: data?.discovered_new_products?.length ?? 0,
-					historyLength: data?.discovery_history?.length ?? 0,
-				});
-			}
-			setSkillStatuses((prev) => ({ ...prev, [skill]: 'complete' }));
-			setSkillResults((prev) => ({ ...prev, [skill as SkillName]: event.data }));
-		} else if (status === 'error') {
-			setSkillStatuses((prev) => ({ ...prev, [skill]: 'error' }));
-			if (event.error) setError(String(event.error));
-		}
+	const handleViewSaved = (id: string) => {
+		router.push(`/${locale}/analytics/expansion/${id}`);
 	};
 
-	// --- Load saved strategy ---
-	const handleViewSaved = async (id: string) => {
-		setLoadingStrategy(true);
-		setError(null);
-		try {
-			const res = await fetch(`/api/analytics/md-strategy/${id}`);
-			if (!res.ok) throw new Error('Failed to load strategy');
-			const data = await res.json();
-
-			setSavedResults({
-				goal_analysis: data.goal_analysis ?? undefined,
-				product_selection: data.product_selection ?? undefined,
-				channel_strategy: data.channel_strategy ?? undefined,
-				pricing_margin: data.pricing_margin ?? undefined,
-				marketing_execution: data.marketing_execution ?? undefined,
-				financial_projection: data.financial_projection ?? undefined,
-				risk_contingency: data.risk_contingency ?? undefined,
-			});
-			setSavedAt(data.created_at);
-			setCurrentStrategyId(id);
-			setViewMode('saved');
-		} catch (err) {
-			setError(err instanceof Error ? err.message : String(err));
-		} finally {
-			setLoadingStrategy(false);
-		}
-	};
-
-	// --- Back to form ---
-	const handleBackToForm = () => {
-		setViewMode('form');
-		setStatus('idle');
-		setSkillResults({});
-		setSavedResults({});
-		setSavedAt(null);
-		setGeneratedAt(null);
-		setCurrentStrategyId(null);
-	};
-
-	// --- Re-discover new products on the current strategy ---
-	const handleRediscover = useCallback(async (focus: string) => {
-		if (!currentStrategyId) return;
-		setRediscovering(true);
-		setError(null);
-		try {
-			const res = await fetch(`/api/analytics/md-strategy/${currentStrategyId}/rediscover`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ focus: focus || undefined }),
-			});
-			const data = await res.json();
-			if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-
-			// Merge into whichever results view is active
-			const updater = (prev: SkillResults): SkillResults => {
-				const ps = prev.product_selection;
-				if (!ps) return prev;
-				return {
-					...prev,
-					product_selection: {
-						...ps,
-						discovered_new_products: data.batch.products,
-						discovery_history: data.discovery_history,
-					},
-				};
-			};
-			if (viewMode === 'saved') {
-				setSavedResults(updater);
-			} else {
-				setSkillResults(updater);
-			}
-		} catch (err) {
-			setError(err instanceof Error ? err.message : String(err));
-		} finally {
-			setRediscovering(false);
-		}
-	}, [currentStrategyId, viewMode]);
-
-	const isRunning = status === 'running';
-	// Check if we have any renderable skill results (excluding goal_analysis which has no UI section)
 	const hasGeneratedResults = !!(
 		skillResults.product_selection ||
 		skillResults.channel_strategy ||
@@ -447,118 +481,105 @@ export default function MDStrategyPanel() {
 				<span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">7-Skill AI</span>
 			</div>
 
-			{/* === FORM VIEW === */}
-			{viewMode === 'form' && (
-				<>
-					<Card className="border-gray-200">
-						<CardContent className="p-4 space-y-3">
-							<div>
-								<label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">
-									拡大の目標・方向性 (任意)
-								</label>
-								<textarea
-									value={userGoal}
-									onChange={(e) => setUserGoal(e.target.value)}
-									placeholder="例: 楽天・Amazonで月商1000万を目指したい / TikTokで若年層にリーチしたい / 韓国Coupangへの越境ECを検討中"
-									rows={3}
-									className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none"
-								/>
-							</div>
+			{/* Form (always visible in list view) */}
+			<Card className="border-gray-200">
+				<CardContent className="p-4 space-y-3">
+					<div>
+						<label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">
+							拡大の目標・方向性 (任意)
+						</label>
+						<textarea
+							value={userGoal}
+							onChange={(e) => setUserGoal(e.target.value)}
+							placeholder="例: 楽天・Amazonで月商1000万を目指したい / TikTokで若年層にリーチしたい / 韓国Coupangへの越境ECを検討中"
+							rows={3}
+							disabled={isRunning}
+							className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none disabled:bg-gray-50"
+						/>
+					</div>
 
-							<div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-								<div>
-									<label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1 block">カテゴリ</label>
-									<select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
-										{CATEGORIES.map((c) => <option key={c}>{c}</option>)}
-									</select>
-								</div>
-								<div>
-									<label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1 block">ターゲット市場</label>
-									<select value={targetMarket} onChange={(e) => setTargetMarket(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
-										{MARKETS.map((m) => <option key={m}>{m}</option>)}
-									</select>
-								</div>
-								<div>
-									<label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1 block">価格帯（任意）</label>
-									<input type="text" value={priceRange} onChange={(e) => setPriceRange(e.target.value)} placeholder="例: ¥3,000-8,000" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
-								</div>
-							</div>
-							<p className="text-[10px] text-gray-400">
-								カテゴリとターゲット市場を指定すると、AI推薦商品も戦略に組み込まれます（指定なしでも分析可能）
-							</p>
-
-							<div className="flex items-center justify-between pt-1">
-								<p className="text-[10px] text-gray-400">
-									7つの専門スキル（目標分析→商品選定→チャネル戦略→価格設計→マーケ計画→収益予測→リスク対策）が順次分析します
-								</p>
-								<button
-									type="button"
-									onClick={handleGenerate}
-									className="flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors shrink-0"
-								>
-									<Rocket size={14} />
-									拡大戦略を分析
-								</button>
-							</div>
-						</CardContent>
-					</Card>
-
-					<DataPreview />
-
-					{/* Strategy history */}
-					<StrategyHistory onView={handleViewSaved} refreshKey={historyRefresh} />
-
-					{/* Loading saved strategy */}
-					{loadingStrategy && (
-						<div className="flex items-center gap-2 py-4 text-sm text-gray-500">
-							<Loader2 size={14} className="animate-spin" />
-							戦略データを読み込み中...
+					<div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+						<div>
+							<label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1 block">カテゴリ</label>
+							<select value={category} onChange={(e) => setCategory(e.target.value)} disabled={isRunning} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:bg-gray-50">
+								{CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+							</select>
 						</div>
-					)}
+						<div>
+							<label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1 block">ターゲット市場</label>
+							<select value={targetMarket} onChange={(e) => setTargetMarket(e.target.value)} disabled={isRunning} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:bg-gray-50">
+								{MARKETS.map((m) => <option key={m}>{m}</option>)}
+							</select>
+						</div>
+						<div>
+							<label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1 block">価格帯（任意）</label>
+							<input type="text" value={priceRange} onChange={(e) => setPriceRange(e.target.value)} disabled={isRunning} placeholder="例: ¥3,000-8,000" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:bg-gray-50" />
+						</div>
+					</div>
+					<p className="text-[10px] text-gray-400">
+						カテゴリとターゲット市場を指定すると、AI推薦商品も戦略に組み込まれます（指定なしでも分析可能）
+					</p>
+
+					<div className="flex items-center justify-between pt-1">
+						<p className="text-[10px] text-gray-400">
+							7つの専門スキル（目標分析→商品選定→チャネル戦略→価格設計→マーケ計画→収益予測→リスク対策）が順次分析します
+						</p>
+						<button
+							type="button"
+							onClick={handleGenerate}
+							disabled={isRunning}
+							className="flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+						>
+							{isRunning ? <Loader2 size={14} className="animate-spin" /> : <Rocket size={14} />}
+							{isRunning ? '分析中...' : '拡大戦略を分析'}
+						</button>
+					</div>
+				</CardContent>
+			</Card>
+
+			{/* Generation error */}
+			{error && (
+				<div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+					<AlertTriangle size={14} />
+					{error}
+				</div>
+			)}
+
+			{/* Generation in progress */}
+			{isRunning && (
+				<>
+					<div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
+						<AlertTriangle size={12} />
+						分析中はタブを離れたりページを閉じたりしないでください（中断されます）
+					</div>
+					<StrategyProgress skillStatuses={skillStatuses} dataFetchStatus={dataFetchStatus} />
 				</>
 			)}
 
-			{/* === GENERATING VIEW === */}
-			{viewMode === 'generating' && (
-				<>
-					{/* Error */}
-					{error && (
-						<div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-							<AlertTriangle size={14} />
-							{error}
-							<button type="button" onClick={handleBackToForm} className="ml-auto text-xs underline">戻る</button>
-						</div>
-					)}
-
-					{/* Progress */}
-					{isRunning && (
-						<StrategyProgress skillStatuses={skillStatuses} dataFetchStatus={dataFetchStatus} />
-					)}
-
-					{/* Results (progressive + complete) */}
-					{hasGeneratedResults && (
-						<SkillResultsView
-							results={skillResults}
-							generatedAt={generatedAt}
-							onBack={handleBackToForm}
-							strategyId={currentStrategyId}
-							onRediscover={handleRediscover}
-							rediscovering={rediscovering}
+			{/* In-progress partial results (before navigation to detail) */}
+			{isRunning && hasGeneratedResults && (
+				<div id="md-strategy-content" className="space-y-8">
+					{(skillResults.product_selection?.discovered_new_products?.length ?? 0) > 0 && (
+						<DiscoveredProductsHero
+							products={skillResults.product_selection!.discovered_new_products!}
+							contextLabel="ホームショッピング / EC"
+							history={skillResults.product_selection?.discovery_history}
 						/>
 					)}
-				</>
+					{skillResults.product_selection && <ProductSelectionSection data={skillResults.product_selection} />}
+					{skillResults.channel_strategy && <ChannelStrategySection data={skillResults.channel_strategy} />}
+					{skillResults.pricing_margin && <PricingMarginSection data={skillResults.pricing_margin} />}
+					{skillResults.marketing_execution && <MarketingExecutionSection data={skillResults.marketing_execution} />}
+					{skillResults.financial_projection && <FinancialProjectionSection data={skillResults.financial_projection} />}
+					{skillResults.risk_contingency && <RiskContingencySection data={skillResults.risk_contingency} />}
+				</div>
 			)}
 
-			{/* === SAVED VIEW === */}
-			{viewMode === 'saved' && (
-				<SkillResultsView
-					results={savedResults}
-					generatedAt={savedAt}
-					onBack={handleBackToForm}
-					strategyId={currentStrategyId}
-					onRediscover={handleRediscover}
-					rediscovering={rediscovering}
-				/>
+			{!isRunning && (
+				<>
+					<DataPreview />
+					<StrategyHistory onView={handleViewSaved} refreshKey={historyRefresh} />
+				</>
 			)}
 		</div>
 	);

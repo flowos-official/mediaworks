@@ -1,14 +1,40 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Lazy singletons — never construct Supabase clients at module load time, otherwise
+// Supabase auth's setInterval-based token refresh runs at import time and crashes
+// inside the Vercel Workflow sandbox (which forbids setTimeout/setInterval).
+let _supabase: SupabaseClient | null = null;
+let _serviceClient: SupabaseClient | null = null;
 
-export function getServiceClient() {
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-  return createClient(supabaseUrl, serviceKey);
+export function getSupabase(): SupabaseClient {
+  if (!_supabase) {
+    _supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+  }
+  return _supabase;
 }
+
+export function getServiceClient(): SupabaseClient {
+  if (!_serviceClient) {
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    _serviceClient = createClient(supabaseUrl, serviceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+  }
+  return _serviceClient;
+}
+
+// Backwards-compat proxy: lets existing `import { supabase } from '@/lib/supabase'`
+// work without eager construction. Methods are forwarded on first access.
+export const supabase = new Proxy({} as SupabaseClient, {
+  get(_target, prop) {
+    return Reflect.get(getSupabase(), prop, getSupabase());
+  },
+}) as SupabaseClient;
 
 export type Product = {
   id: string;

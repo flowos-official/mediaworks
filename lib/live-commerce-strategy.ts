@@ -252,16 +252,45 @@ export async function fetchLCContext(
 		.map((s, i) => `[${i + 1}] ${s.title}\n${s.description}\n(${s.url})`)
 		.join("\n\n");
 
-	// Derive top categories from existing products to drive new-product discovery
-	const categoryRevenue: Record<string, number> = {};
-	for (const p of productResult) {
-		const cat = p.category ?? "その他";
-		categoryRevenue[cat] = (categoryRevenue[cat] ?? 0) + p.totalRevenue;
+	// Derive top categories from category_summaries (same source as MD) for reliability.
+	// Falls back to product-derived categories if the table is empty.
+	let topCategoryNames: string[] = [];
+	try {
+		const supabase = getServiceClient();
+		const { data: catRows } = await supabase
+			.from("category_summaries")
+			.select("category, total_revenue")
+			.in("year", [2025, 2026]);
+		if (catRows && catRows.length > 0) {
+			const catMap: Record<string, number> = {};
+			for (const row of catRows as Array<{ category: string; total_revenue: number | null }>) {
+				catMap[row.category] = (catMap[row.category] ?? 0) + (row.total_revenue ?? 0);
+			}
+			topCategoryNames = Object.entries(catMap)
+				.sort(([, a], [, b]) => b - a)
+				.slice(0, 3)
+				.map(([cat]) => cat);
+		}
+	} catch (err) {
+		console.warn("[live-commerce] category_summaries query failed:", err);
 	}
-	const topCategoryNames = Object.entries(categoryRevenue)
-		.sort(([, a], [, b]) => b - a)
-		.slice(0, 3)
-		.map(([cat]) => cat);
+	if (topCategoryNames.length === 0) {
+		// Fallback: derive from product_summaries
+		const categoryRevenue: Record<string, number> = {};
+		for (const p of productResult) {
+			const cat = p.category ?? "その他";
+			categoryRevenue[cat] = (categoryRevenue[cat] ?? 0) + p.totalRevenue;
+		}
+		topCategoryNames = Object.entries(categoryRevenue)
+			.sort(([, a], [, b]) => b - a)
+			.slice(0, 3)
+			.map(([cat]) => cat);
+	}
+	// Final fallback: hardcoded common JP live-commerce categories so discovery never returns empty
+	if (topCategoryNames.length === 0) {
+		topCategoryNames = ["美容", "健康食品", "キッチン家電"];
+	}
+	console.log(`[live-commerce] topCategoryNames=${JSON.stringify(topCategoryNames)}`);
 
 	const avgMarginRate = productResult.length > 0
 		? Math.round(productResult.reduce((s, p) => s + p.marginRate, 0) / productResult.length)

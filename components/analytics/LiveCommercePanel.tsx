@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import { useRouter, useParams } from 'next/navigation';
+import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, Radio, AlertTriangle, ArrowLeft, ExternalLink, CheckCircle, Circle } from 'lucide-react';
 import type {
@@ -21,6 +23,27 @@ const PlatformAnalysisSection = dynamic(() => import('./live-commerce/PlatformAn
 const ContentStrategySection = dynamic(() => import('./live-commerce/ContentStrategySection'), { ssr: false });
 const ExecutionPlanSection = dynamic(() => import('./live-commerce/ExecutionPlanSection'), { ssr: false });
 const RiskAnalysisSection = dynamic(() => import('./live-commerce/RiskAnalysisSection'), { ssr: false });
+
+// ---------------------------------------------------------------------------
+// Public types
+// ---------------------------------------------------------------------------
+
+export interface SavedLCData {
+	id: string;
+	created_at: string;
+	goal_analysis?: ParsedGoal | null;
+	market_research?: MarketResearchOutput;
+	platform_analysis?: PlatformAnalysisOutput;
+	content_strategy?: ContentStrategyOutput;
+	execution_plan?: ExecutionPlanOutput;
+	risk_analysis?: RiskAnalysisOutput;
+	search_sources?: Array<{ title: string; url: string }>;
+}
+
+interface LiveCommercePanelProps {
+	mode: 'list' | 'detail';
+	initialData?: SavedLCData;
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -226,20 +249,23 @@ function LCHistory({ onView, refreshKey }: { onView: (id: string) => void; refre
 // Results view
 // ---------------------------------------------------------------------------
 
-function ResultsView({ results, sources, generatedAt, onBack, strategyId, onRediscover, rediscovering }: {
+function ResultsView({ results, sources, generatedAt, backHref, strategyId, onRediscover, rediscovering }: {
 	results: SkillResults;
 	sources?: Array<{ title: string; url: string }>;
 	generatedAt?: string | null;
-	onBack: () => void;
+	backHref: string;
 	strategyId?: string | null;
 	onRediscover?: (focus: string) => Promise<void>;
 	rediscovering?: boolean;
 }) {
 	return (
 		<>
-			<button type="button" onClick={onBack} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors mb-2">
+			<Link
+				href={backHref}
+				className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors mb-2 w-fit"
+			>
 				<ArrowLeft size={14} />一覧に戻る
-			</button>
+			</Link>
 			<div id="lc-strategy-content" className="space-y-8">
 				{(results.platform_analysis?.discovered_new_products?.length ?? 0) > 0 && (
 					<DiscoveredProductsHero
@@ -268,8 +294,97 @@ function ResultsView({ results, sources, generatedAt, onBack, strategyId, onRedi
 // Main component
 // ---------------------------------------------------------------------------
 
-export default function LiveCommercePanel() {
-	const [viewMode, setViewMode] = useState<'form' | 'generating' | 'saved'>('form');
+export default function LiveCommercePanel({ mode, initialData }: LiveCommercePanelProps) {
+	const router = useRouter();
+	const { locale } = useParams<{ locale: string }>();
+	const listHref = `/${locale}/analytics/live-commerce`;
+
+	if (mode === 'detail' && initialData) {
+		return <LCDetailView initialData={initialData} backHref={listHref} />;
+	}
+
+	return <LCListView locale={locale} router={router} />;
+}
+
+// ---------------------------------------------------------------------------
+// DetailView
+// ---------------------------------------------------------------------------
+
+function LCDetailView({ initialData, backHref }: { initialData: SavedLCData; backHref: string }) {
+	const [savedResults, setSavedResults] = useState<SkillResults>({
+		goal_analysis: initialData.goal_analysis ?? undefined,
+		market_research: initialData.market_research,
+		platform_analysis: initialData.platform_analysis,
+		content_strategy: initialData.content_strategy,
+		execution_plan: initialData.execution_plan,
+		risk_analysis: initialData.risk_analysis,
+	});
+	const [error, setError] = useState<string | null>(null);
+	const [rediscovering, setRediscovering] = useState(false);
+
+	const handleRediscover = useCallback(async (focus: string) => {
+		setRediscovering(true);
+		setError(null);
+		try {
+			const res = await fetch(`/api/analytics/live-commerce/${initialData.id}/rediscover`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ focus: focus || undefined }),
+			});
+			const data = await res.json();
+			if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+
+			setSavedResults((prev) => {
+				const pa = prev.platform_analysis;
+				if (!pa) return prev;
+				return {
+					...prev,
+					platform_analysis: {
+						...pa,
+						discovered_new_products: data.batch.products,
+						discovery_history: data.discovery_history,
+					},
+				};
+			});
+		} catch (err) {
+			setError(err instanceof Error ? err.message : String(err));
+		} finally {
+			setRediscovering(false);
+		}
+	}, [initialData.id]);
+
+	return (
+		<div className="space-y-6">
+			<div className="flex items-center gap-2">
+				<Radio size={18} className="text-pink-600" />
+				<h3 className="text-lg font-semibold text-gray-900">ライブコマース戦略</h3>
+				<span className="text-[10px] px-2 py-0.5 rounded-full bg-pink-100 text-pink-700 font-medium">6-Skill AI</span>
+			</div>
+
+			{error && (
+				<div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+					<AlertTriangle size={14} />{error}
+				</div>
+			)}
+
+			<ResultsView
+				results={savedResults}
+				sources={initialData.search_sources}
+				generatedAt={initialData.created_at}
+				backHref={backHref}
+				strategyId={initialData.id}
+				onRediscover={handleRediscover}
+				rediscovering={rediscovering}
+			/>
+		</div>
+	);
+}
+
+// ---------------------------------------------------------------------------
+// ListView
+// ---------------------------------------------------------------------------
+
+function LCListView({ locale, router }: { locale: string; router: ReturnType<typeof useRouter> }) {
 	const [userGoal, setUserGoal] = useState('');
 	const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
 
@@ -279,15 +394,20 @@ export default function LiveCommercePanel() {
 	const [skillResults, setSkillResults] = useState<SkillResults>({});
 	const [searchSources, setSearchSources] = useState<Array<{ title: string; url: string }>>([]);
 	const [error, setError] = useState<string | null>(null);
-	const [generatedAt, setGeneratedAt] = useState<string | null>(null);
-	const [currentStrategyId, setCurrentStrategyId] = useState<string | null>(null);
-	const [rediscovering, setRediscovering] = useState(false);
-
-	const [savedResults, setSavedResults] = useState<SkillResults>({});
-	const [savedSources, setSavedSources] = useState<Array<{ title: string; url: string }>>([]);
-	const [savedAt, setSavedAt] = useState<string | null>(null);
-	const [loadingStrategy, setLoadingStrategy] = useState(false);
 	const [historyRefresh, setHistoryRefresh] = useState(0);
+
+	const isRunning = status === 'running';
+
+	// R2: block hard navigation while generating
+	useEffect(() => {
+		if (!isRunning) return;
+		const handler = (e: BeforeUnloadEvent) => {
+			e.preventDefault();
+			e.returnValue = '';
+		};
+		window.addEventListener('beforeunload', handler);
+		return () => window.removeEventListener('beforeunload', handler);
+	}, [isRunning]);
 
 	const togglePlatform = (p: string) => {
 		setSelectedPlatforms((prev) =>
@@ -296,15 +416,12 @@ export default function LiveCommercePanel() {
 	};
 
 	const handleGenerate = useCallback(async () => {
-		setViewMode('generating');
 		setStatus('running');
 		setError(null);
 		setSkillResults({});
 		setSkillStatuses({ ...INITIAL_STATUSES });
 		setDataFetchStatus('pending');
-		setGeneratedAt(null);
 		setSearchSources([]);
-		setCurrentStrategyId(null);
 
 		try {
 			const startRes = await fetch('/api/analytics/live-commerce', {
@@ -342,35 +459,30 @@ export default function LiveCommercePanel() {
 					try {
 						const event = JSON.parse(trimmed) as Record<string, unknown>;
 						const skill = event.skill as string;
-						const status = event.status as 'running' | 'complete' | 'error';
+						const eventStatus = event.status as 'running' | 'complete' | 'error';
 
 						// final completion sentinel
-						if (skill === 'data_fetch' && event.index === 999 && status === 'complete') {
+						if (skill === 'data_fetch' && event.index === 999 && eventStatus === 'complete') {
 							const data = event.data as { strategyId?: string; generatedAt?: string } | undefined;
 							setStatus('complete');
-							if (data?.generatedAt) setGeneratedAt(data.generatedAt);
-							if (data?.strategyId) setCurrentStrategyId(data.strategyId);
 							setHistoryRefresh((n) => n + 1);
+							if (data?.strategyId) {
+								router.push(`/${locale}/analytics/live-commerce/${data.strategyId}`);
+							}
 							continue;
 						}
 
 						if (skill === 'data_fetch') {
-							setDataFetchStatus(status === 'complete' ? 'complete' : 'running');
+							setDataFetchStatus(eventStatus === 'complete' ? 'complete' : 'running');
 							continue;
 						}
 
-						if (status === 'running') {
+						if (eventStatus === 'running') {
 							setSkillStatuses((prev) => ({ ...prev, [skill]: 'running' }));
-						} else if (status === 'complete') {
-							if (skill === 'platform_analysis') {
-								const data = event.data as { discovered_new_products?: unknown[] } | undefined;
-								console.log('[lc-panel] received platform_analysis:', {
-									discoveredLength: data?.discovered_new_products?.length ?? 0,
-								});
-							}
+						} else if (eventStatus === 'complete') {
 							setSkillStatuses((prev) => ({ ...prev, [skill]: 'complete' }));
 							setSkillResults((prev) => ({ ...prev, [skill as LCSkillName]: event.data }));
-						} else if (status === 'error') {
+						} else if (eventStatus === 'error') {
 							setSkillStatuses((prev) => ({ ...prev, [skill]: 'error' }));
 							if (event.error) setError(String(event.error));
 						}
@@ -381,82 +493,12 @@ export default function LiveCommercePanel() {
 			setError(err instanceof Error ? err.message : String(err));
 			setStatus('error');
 		}
-	}, [userGoal, selectedPlatforms]);
+	}, [userGoal, selectedPlatforms, locale, router]);
 
-	const handleViewSaved = async (id: string) => {
-		setLoadingStrategy(true);
-		setError(null);
-		try {
-			const res = await fetch(`/api/analytics/live-commerce/${id}`);
-			if (!res.ok) throw new Error('Failed to load strategy');
-			const data = await res.json();
-			setSavedResults({
-				goal_analysis: data.goal_analysis ?? undefined,
-				market_research: data.market_research ?? undefined,
-				platform_analysis: data.platform_analysis ?? undefined,
-				content_strategy: data.content_strategy ?? undefined,
-				execution_plan: data.execution_plan ?? undefined,
-				risk_analysis: data.risk_analysis ?? undefined,
-			});
-			setSavedSources(data.search_sources ?? []);
-			setSavedAt(data.created_at);
-			setCurrentStrategyId(id);
-			setViewMode('saved');
-		} catch (err) {
-			setError(err instanceof Error ? err.message : String(err));
-		} finally {
-			setLoadingStrategy(false);
-		}
+	const handleViewSaved = (id: string) => {
+		router.push(`/${locale}/analytics/live-commerce/${id}`);
 	};
 
-	const handleBackToForm = () => {
-		setViewMode('form');
-		setStatus('idle');
-		setSkillResults({});
-		setSavedResults({});
-		setSavedAt(null);
-		setGeneratedAt(null);
-		setCurrentStrategyId(null);
-	};
-
-	const handleRediscover = useCallback(async (focus: string) => {
-		if (!currentStrategyId) return;
-		setRediscovering(true);
-		setError(null);
-		try {
-			const res = await fetch(`/api/analytics/live-commerce/${currentStrategyId}/rediscover`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ focus: focus || undefined }),
-			});
-			const data = await res.json();
-			if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-
-			const updater = (prev: SkillResults): SkillResults => {
-				const pa = prev.platform_analysis;
-				if (!pa) return prev;
-				return {
-					...prev,
-					platform_analysis: {
-						...pa,
-						discovered_new_products: data.batch.products,
-						discovery_history: data.discovery_history,
-					},
-				};
-			};
-			if (viewMode === 'saved') {
-				setSavedResults(updater);
-			} else {
-				setSkillResults(updater);
-			}
-		} catch (err) {
-			setError(err instanceof Error ? err.message : String(err));
-		} finally {
-			setRediscovering(false);
-		}
-	}, [currentStrategyId, viewMode]);
-
-	const isRunning = status === 'running';
 	const hasResults = !!(
 		skillResults.market_research || skillResults.platform_analysis ||
 		skillResults.content_strategy || skillResults.execution_plan || skillResults.risk_analysis
@@ -470,92 +512,97 @@ export default function LiveCommercePanel() {
 				<span className="text-[10px] px-2 py-0.5 rounded-full bg-pink-100 text-pink-700 font-medium">6-Skill AI</span>
 			</div>
 
-			{/* === FORM VIEW === */}
-			{viewMode === 'form' && (
-				<>
-					<Card className="border-gray-200">
-						<CardContent className="p-4 space-y-3">
-							<div>
-								<label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">
-									ライブコマースの目標・方向性 (任意)
-								</label>
-								<textarea
-									value={userGoal}
-									onChange={(e) => setUserGoal(e.target.value)}
-									placeholder="例: TikTok Liveを中心に月商1000万円を目指したい / Instagram Liveで美容商品の販売を始めたい"
-									rows={3}
-									className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-300 resize-none"
-								/>
-							</div>
+			<Card className="border-gray-200">
+				<CardContent className="p-4 space-y-3">
+					<div>
+						<label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">
+							ライブコマースの目標・方向性 (任意)
+						</label>
+						<textarea
+							value={userGoal}
+							onChange={(e) => setUserGoal(e.target.value)}
+							placeholder="例: TikTok Liveを中心に月商1000万円を目指したい / Instagram Liveで美容商品の販売を始めたい"
+							rows={3}
+							disabled={isRunning}
+							className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-300 resize-none disabled:bg-gray-50"
+						/>
+					</div>
 
-							<div>
-								<label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">
-									対象プラットフォーム (任意・複数選択可)
-								</label>
-								<div className="flex flex-wrap gap-2">
-									{PLATFORMS.map((p) => (
-										<button
-											key={p}
-											type="button"
-											onClick={() => togglePlatform(p)}
-											className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
-												selectedPlatforms.includes(p)
-													? 'bg-pink-50 border-pink-300 text-pink-700 font-medium'
-													: 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
-											}`}
-										>
-											{p}
-										</button>
-									))}
-								</div>
-							</div>
-
-							<div className="flex items-center justify-between pt-1">
-								<p className="text-[10px] text-gray-400">
-									6つの専門スキル（目標分析→市場調査→プラットフォーム分析→コンテンツ戦略→実行計画→リスク分析）が順次分析します
-								</p>
+					<div>
+						<label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">
+							対象プラットフォーム (任意・複数選択可)
+						</label>
+						<div className="flex flex-wrap gap-2">
+							{PLATFORMS.map((p) => (
 								<button
+									key={p}
 									type="button"
-									onClick={handleGenerate}
-									className="flex items-center gap-2 px-5 py-2 bg-pink-600 hover:bg-pink-700 text-white text-sm font-semibold rounded-lg transition-colors shrink-0"
+									onClick={() => togglePlatform(p)}
+									disabled={isRunning}
+									className={`px-3 py-1.5 text-xs rounded-lg border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+										selectedPlatforms.includes(p)
+											? 'bg-pink-50 border-pink-300 text-pink-700 font-medium'
+											: 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
+									}`}
 								>
-									<Radio size={14} />
-									ライブコマース戦略を分析
+									{p}
 								</button>
-							</div>
-						</CardContent>
-					</Card>
-
-					<LCHistory onView={handleViewSaved} refreshKey={historyRefresh} />
-
-					{loadingStrategy && (
-						<div className="flex items-center gap-2 py-4 text-sm text-gray-500">
-							<Loader2 size={14} className="animate-spin" />戦略データを読み込み中...
+							))}
 						</div>
-					)}
-				</>
+					</div>
+
+					<div className="flex items-center justify-between pt-1">
+						<p className="text-[10px] text-gray-400">
+							6つの専門スキル（目標分析→市場調査→プラットフォーム分析→コンテンツ戦略→実行計画→リスク分析）が順次分析します
+						</p>
+						<button
+							type="button"
+							onClick={handleGenerate}
+							disabled={isRunning}
+							className="flex items-center gap-2 px-5 py-2 bg-pink-600 hover:bg-pink-700 text-white text-sm font-semibold rounded-lg transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+						>
+							{isRunning ? <Loader2 size={14} className="animate-spin" /> : <Radio size={14} />}
+							{isRunning ? '分析中...' : 'ライブコマース戦略を分析'}
+						</button>
+					</div>
+				</CardContent>
+			</Card>
+
+			{error && (
+				<div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+					<AlertTriangle size={14} />{error}
+				</div>
 			)}
 
-			{/* === GENERATING VIEW === */}
-			{viewMode === 'generating' && (
+			{isRunning && (
 				<>
-					{error && (
-						<div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-							<AlertTriangle size={14} />{error}
-							<button type="button" onClick={handleBackToForm} className="ml-auto text-xs underline">戻る</button>
-						</div>
-					)}
-					{isRunning && <LCProgress skillStatuses={skillStatuses} dataFetchStatus={dataFetchStatus} />}
-					{hasResults && (
-						<ResultsView results={skillResults} sources={searchSources} generatedAt={generatedAt} onBack={handleBackToForm} strategyId={currentStrategyId} onRediscover={handleRediscover} rediscovering={rediscovering} />
-					)}
+					<div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
+						<AlertTriangle size={12} />
+						分析中はタブを離れたりページを閉じたりしないでください（中断されます）
+					</div>
+					<LCProgress skillStatuses={skillStatuses} dataFetchStatus={dataFetchStatus} />
 				</>
 			)}
 
-			{/* === SAVED VIEW === */}
-			{viewMode === 'saved' && (
-				<ResultsView results={savedResults} sources={savedSources} generatedAt={savedAt} onBack={handleBackToForm} strategyId={currentStrategyId} onRediscover={handleRediscover} rediscovering={rediscovering} />
+			{isRunning && hasResults && (
+				<div id="lc-strategy-content" className="space-y-8">
+					{(skillResults.platform_analysis?.discovered_new_products?.length ?? 0) > 0 && (
+						<DiscoveredProductsHero
+							products={skillResults.platform_analysis!.discovered_new_products!}
+							contextLabel="ライブコマース"
+							history={skillResults.platform_analysis?.discovery_history}
+						/>
+					)}
+					{skillResults.market_research && <MarketOverviewSection data={skillResults.market_research} />}
+					{skillResults.platform_analysis && <PlatformAnalysisSection data={skillResults.platform_analysis} />}
+					{skillResults.content_strategy && <ContentStrategySection data={skillResults.content_strategy} />}
+					{skillResults.execution_plan && <ExecutionPlanSection data={skillResults.execution_plan} />}
+					{skillResults.risk_analysis && <RiskAnalysisSection data={skillResults.risk_analysis} />}
+					<SourcesCited sources={searchSources} />
+				</div>
 			)}
+
+			{!isRunning && <LCHistory onView={handleViewSaved} refreshKey={historyRefresh} />}
 		</div>
 	);
 }

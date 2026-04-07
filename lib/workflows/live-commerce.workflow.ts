@@ -31,9 +31,13 @@ async function runSkillStep(
 	priorOutputs: Record<string, unknown>,
 ): Promise<unknown> {
 	"use step";
-	console.log(`[lc-workflow] running skill=${skillName}`);
+	console.log(`[lc-workflow] running skill=${skillName} | ctx.recommendedProducts=${context.recommendedProducts?.length ?? "undefined"}`);
 	const ctx: LCContext = parsedGoal ? { ...context, parsedGoal } : context;
 	const result = await runLCSkill(skillName, ctx, priorOutputs);
+	if (skillName === "platform_analysis") {
+		const pa = result as { discovered_new_products?: unknown[] } | undefined;
+		console.log(`[lc-workflow] platform_analysis result.discovered_new_products=${pa?.discovered_new_products?.length ?? "undefined"}`);
+	}
 	console.log(`[lc-workflow] skill=${skillName} complete`);
 	return result;
 }
