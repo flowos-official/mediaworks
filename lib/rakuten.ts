@@ -10,6 +10,7 @@ export type RakutenItem = {
 	itemName: string;
 	itemPrice: number;
 	itemCaption: string;
+	itemUrl: string;
 	shopName: string;
 	reviewCount: number;
 	reviewAverage: number;
@@ -68,6 +69,7 @@ export async function rakutenRankingSearch(
 					itemName: String(item.itemName ?? ""),
 					itemPrice: Number(item.itemPrice ?? 0),
 					itemCaption: String(item.itemCaption ?? "").slice(0, 200),
+					itemUrl: String(item.itemUrl ?? ""),
 					shopName: String(item.shopName ?? ""),
 					reviewCount: Number(item.reviewCount ?? 0),
 					reviewAverage: Number(item.reviewAverage ?? 0),
@@ -83,6 +85,74 @@ export async function rakutenRankingSearch(
 		};
 	} catch (err) {
 		console.warn("[rakuten] Ranking fetch failed (non-fatal):", err instanceof Error ? err.message : String(err));
+		return { items: [] };
+	}
+}
+
+/**
+ * Search Rakuten Ichiba items by keyword with social-proof sorting.
+ * Uses IchibaItem/Search API (different from Ranking) which supports:
+ * - keyword filter
+ * - sort options: -reviewCount (most reviewed), -reviewAverage (highest rated),
+ *   -updateTimestamp (newest), -itemPrice / +itemPrice
+ *
+ * Returns items that are actually popular (high review count) — better proxy
+ * for "Japan consumer interest" than the cumulative sales Ranking API.
+ */
+const RAKUTEN_SEARCH_API = "https://app.rakuten.co.jp/services/api/IchibaItem/Search/20170706";
+
+export async function rakutenItemSearch(
+	keyword: string,
+	sort: "-reviewCount" | "-reviewAverage" | "-updateTimestamp" = "-reviewCount",
+	limit = 10,
+): Promise<RakutenRankingResult> {
+	const applicationId = process.env.RAKUTEN_APPLICATION_ID;
+	if (!applicationId || !keyword.trim()) {
+		return { items: [] };
+	}
+
+	try {
+		const params = new URLSearchParams({
+			applicationId,
+			format: "json",
+			keyword: keyword.trim(),
+			sort,
+			hits: String(Math.min(limit, 30)),
+			hasReviewFlag: "1", // require items that have at least one review
+		});
+
+		const res = await fetch(`${RAKUTEN_SEARCH_API}?${params}`, {
+			signal: AbortSignal.timeout(5000),
+		});
+		if (!res.ok) {
+			console.warn(`[rakuten search] API returned ${res.status}`);
+			return { items: [] };
+		}
+
+		const data = await res.json();
+		const rawItems: RakutenItem[] = (data.Items ?? []).map(
+			(entry: Record<string, unknown>, idx: number) => {
+				// Defensive: support both v1 (Item / item wrapping) and v2 (flat) responses
+				const item = (entry.Item ?? entry.item ?? entry) as Record<string, unknown>;
+				return {
+					rank: idx + 1,
+					itemName: String(item.itemName ?? ""),
+					itemPrice: Number(item.itemPrice ?? 0),
+					itemCaption: String(item.itemCaption ?? "").slice(0, 200),
+					itemUrl: String(item.itemUrl ?? ""),
+					shopName: String(item.shopName ?? ""),
+					reviewCount: Number(item.reviewCount ?? 0),
+					reviewAverage: Number(item.reviewAverage ?? 0),
+					genreId: String(item.genreId ?? ""),
+				};
+			},
+		);
+
+		// Client-side enforce minimum social proof (≥5 reviews)
+		const items = rawItems.filter((it) => it.itemName && it.reviewCount >= 5);
+		return { items };
+	} catch (err) {
+		console.warn("[rakuten search] fetch failed (non-fatal):", err instanceof Error ? err.message : String(err));
 		return { items: [] };
 	}
 }

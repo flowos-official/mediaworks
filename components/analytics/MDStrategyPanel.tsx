@@ -9,6 +9,7 @@ import {
 import StrategyProgress from './md-strategy/StrategyProgress';
 import StrategyHistory from './md-strategy/StrategyHistory';
 import ProductSelectionSection from './md-strategy/ProductSelectionSection';
+import DiscoveredProductsHero from './DiscoveredProductsHero';
 import type {
 	SkillName,
 	ParsedGoal,
@@ -141,10 +142,13 @@ function DataPreview() {
 // Shared: Skill results renderer
 // ---------------------------------------------------------------------------
 
-function SkillResultsView({ results, generatedAt, onBack }: {
+function SkillResultsView({ results, generatedAt, onBack, strategyId, onRediscover, rediscovering }: {
 	results: SkillResults;
 	generatedAt?: string | null;
 	onBack: () => void;
+	strategyId?: string | null;
+	onRediscover?: (focus: string) => Promise<void>;
+	rediscovering?: boolean;
 }) {
 	const hasAny = Object.keys(results).length > 0;
 	if (!hasAny) return null;
@@ -158,6 +162,15 @@ function SkillResultsView({ results, generatedAt, onBack }: {
 			</button>
 
 			<div id="md-strategy-content" className="space-y-8">
+				{results.product_selection?.discovered_new_products && (
+					<DiscoveredProductsHero
+						products={results.product_selection.discovered_new_products}
+						contextLabel="ホームショッピング / EC"
+						history={results.product_selection.discovery_history}
+						onRediscover={strategyId ? onRediscover : undefined}
+						rediscovering={rediscovering}
+					/>
+				)}
 				{results.product_selection && <ProductSelectionSection data={results.product_selection} />}
 				{results.channel_strategy && <ChannelStrategySection data={results.channel_strategy} />}
 				{results.pricing_margin && <PricingMarginSection data={results.pricing_margin} />}
@@ -228,6 +241,8 @@ export default function MDStrategyPanel() {
 	const [skillResults, setSkillResults] = useState<SkillResults>({});
 	const [error, setError] = useState<string | null>(null);
 	const [generatedAt, setGeneratedAt] = useState<string | null>(null);
+	const [currentStrategyId, setCurrentStrategyId] = useState<string | null>(null);
+	const [rediscovering, setRediscovering] = useState(false);
 
 	// Saved strategy view state
 	const [savedResults, setSavedResults] = useState<SkillResults>({});
@@ -246,6 +261,7 @@ export default function MDStrategyPanel() {
 		setSkillStatuses({ ...INITIAL_STATUSES });
 		setDataFetchStatus('pending');
 		setGeneratedAt(null);
+		setCurrentStrategyId(null);
 
 		try {
 			const res = await fetch('/api/analytics/md-strategy', {
@@ -324,6 +340,7 @@ export default function MDStrategyPanel() {
 			case 'complete':
 				setStatus('complete');
 				setGeneratedAt(payload.generatedAt as string);
+				if (payload.strategyId) setCurrentStrategyId(payload.strategyId as string);
 				setHistoryRefresh((n) => n + 1); // refresh history list
 				break;
 			case 'error':
@@ -352,6 +369,7 @@ export default function MDStrategyPanel() {
 				risk_contingency: data.risk_contingency ?? undefined,
 			});
 			setSavedAt(data.created_at);
+			setCurrentStrategyId(id);
 			setViewMode('saved');
 		} catch (err) {
 			setError(err instanceof Error ? err.message : String(err));
@@ -368,7 +386,47 @@ export default function MDStrategyPanel() {
 		setSavedResults({});
 		setSavedAt(null);
 		setGeneratedAt(null);
+		setCurrentStrategyId(null);
 	};
+
+	// --- Re-discover new products on the current strategy ---
+	const handleRediscover = useCallback(async (focus: string) => {
+		if (!currentStrategyId) return;
+		setRediscovering(true);
+		setError(null);
+		try {
+			const res = await fetch(`/api/analytics/md-strategy/${currentStrategyId}/rediscover`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ focus: focus || undefined }),
+			});
+			const data = await res.json();
+			if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+
+			// Merge into whichever results view is active
+			const updater = (prev: SkillResults): SkillResults => {
+				const ps = prev.product_selection;
+				if (!ps) return prev;
+				return {
+					...prev,
+					product_selection: {
+						...ps,
+						discovered_new_products: data.batch.products,
+						discovery_history: data.discovery_history,
+					},
+				};
+			};
+			if (viewMode === 'saved') {
+				setSavedResults(updater);
+			} else {
+				setSkillResults(updater);
+			}
+		} catch (err) {
+			setError(err instanceof Error ? err.message : String(err));
+		} finally {
+			setRediscovering(false);
+		}
+	}, [currentStrategyId, viewMode]);
 
 	const isRunning = status === 'running';
 	// Check if we have any renderable skill results (excluding goal_analysis which has no UI section)
@@ -484,6 +542,9 @@ export default function MDStrategyPanel() {
 							results={skillResults}
 							generatedAt={generatedAt}
 							onBack={handleBackToForm}
+							strategyId={currentStrategyId}
+							onRediscover={handleRediscover}
+							rediscovering={rediscovering}
 						/>
 					)}
 				</>
@@ -495,6 +556,9 @@ export default function MDStrategyPanel() {
 					results={savedResults}
 					generatedAt={savedAt}
 					onBack={handleBackToForm}
+					strategyId={currentStrategyId}
+					onRediscover={handleRediscover}
+					rediscovering={rediscovering}
 				/>
 			)}
 		</div>

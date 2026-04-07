@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getServiceClient } from "@/lib/supabase";
+import { discoverNewProducts, type DiscoveredProduct, type DiscoveryBatch } from "@/lib/md-strategy";
 
 // ---------------------------------------------------------------------------
 // Gemini client
@@ -120,6 +121,9 @@ export interface MarketResearchOutput {
 }
 
 export interface PlatformAnalysisOutput {
+	// Newly discovered products from real Rakuten/Web search (injected by orchestrator)
+	discovered_new_products?: DiscoveredProduct[];
+	discovery_history?: DiscoveryBatch[];
 	platforms: Array<{
 		name: string;
 		fit_score: number;
@@ -223,6 +227,7 @@ export interface LCContext {
 	searchSources: SearchSource[];
 	searchSummary: string;
 	products: LCProduct[];
+	recommendedProducts?: DiscoveredProduct[];
 }
 
 export async function fetchLCContext(
@@ -240,12 +245,39 @@ export async function fetchLCContext(
 		.map((s, i) => `[${i + 1}] ${s.title}\n${s.description}\n(${s.url})`)
 		.join("\n\n");
 
+	// Derive top categories from existing products to drive new-product discovery
+	const categoryRevenue: Record<string, number> = {};
+	for (const p of productResult) {
+		const cat = p.category ?? "その他";
+		categoryRevenue[cat] = (categoryRevenue[cat] ?? 0) + p.totalRevenue;
+	}
+	const topCategoryNames = Object.entries(categoryRevenue)
+		.sort(([, a], [, b]) => b - a)
+		.slice(0, 3)
+		.map(([cat]) => cat);
+
+	const avgMarginRate = productResult.length > 0
+		? Math.round(productResult.reduce((s, p) => s + p.marginRate, 0) / productResult.length)
+		: 0;
+
+	const recommendedProducts = await discoverNewProducts({
+		context: "live_commerce",
+		topCategoryNames,
+		userGoal,
+		tvProductNames: productResult.map((p) => p.name),
+		tvMarginRate: avgMarginRate,
+	}).catch((err) => {
+		console.error("[live-commerce] discovery failed:", err);
+		return undefined;
+	});
+
 	return {
 		userGoal,
 		targetPlatforms,
 		searchSources: allSources,
 		searchSummary,
 		products: productResult,
+		recommendedProducts,
 	};
 }
 
@@ -383,6 +415,12 @@ ${goalSection(ctx)}
 				).join("\n")}\n`
 				: "";
 
+			const discoveredList = (ctx.recommendedProducts && ctx.recommendedProducts.length > 0)
+				? `\n=== 楽天/Web から発掘された新規実在商品 (TVシグナル基準) ===\n${ctx.recommendedProducts.map((p, i) =>
+					`${i + 1}. [${p.source}] ${p.name} — 適合度${p.japan_fit_score}/100, 想定価格${p.estimated_price_jpy}\n   出典: ${p.source_url}\n   シグナル根拠: ${p.signal_basis}`
+				).join("\n")}\nこれらは実在する商品です。ライブコマースで取り扱うべき新商品の候補としてプラットフォーム選定の参考にしてください。\n`
+				: "";
+
 			return `あなたは日本のライブコマースプラットフォーム専門家です。
 以下の情報に基づき、各プラットフォームの詳細分析を行ってください。
 
@@ -395,6 +433,7 @@ ${JSON.stringify(outputs.market_research ?? {}, null, 2)}
 === ウェブ検索結果 ===
 ${ctx.searchSummary}
 ${productList}
+${discoveredList}
 ${goalSection(ctx)}
 
 以下のJSON形式で出力:
@@ -583,7 +622,19 @@ export async function runLCOrchestrator(
 
 			const prompt = skill.buildPrompt(context, outputs);
 			const raw = await callGemini(prompt);
-			const parsed = parseJSON(raw);
+			const parsed = parseJSON<Record<string, unknown>>(raw);
+
+			// Inject discovered new products into platform_analysis output
+			// so the UI can render them as a top-level "発掘新商品" section.
+			if (skill.name === "platform_analysis" && context.recommendedProducts) {
+				const pa = parsed as unknown as PlatformAnalysisOutput;
+				pa.discovered_new_products = context.recommendedProducts;
+				pa.discovery_history = [{
+					generatedAt: new Date().toISOString(),
+					products: context.recommendedProducts,
+				}];
+			}
+
 			outputs[skill.name] = parsed;
 			onProgress({ skill: skill.name, status: "complete", index: i, total: SKILL_PIPELINE.length, data: parsed });
 		} catch (err) {

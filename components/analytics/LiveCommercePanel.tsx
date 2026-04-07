@@ -15,6 +15,7 @@ import type {
 import { LC_SKILL_META } from '@/lib/live-commerce-strategy';
 
 import dynamic from 'next/dynamic';
+import DiscoveredProductsHero from './DiscoveredProductsHero';
 const MarketOverviewSection = dynamic(() => import('./live-commerce/MarketOverviewSection'), { ssr: false });
 const PlatformAnalysisSection = dynamic(() => import('./live-commerce/PlatformAnalysisSection'), { ssr: false });
 const ContentStrategySection = dynamic(() => import('./live-commerce/ContentStrategySection'), { ssr: false });
@@ -225,11 +226,14 @@ function LCHistory({ onView, refreshKey }: { onView: (id: string) => void; refre
 // Results view
 // ---------------------------------------------------------------------------
 
-function ResultsView({ results, sources, generatedAt, onBack }: {
+function ResultsView({ results, sources, generatedAt, onBack, strategyId, onRediscover, rediscovering }: {
 	results: SkillResults;
 	sources?: Array<{ title: string; url: string }>;
 	generatedAt?: string | null;
 	onBack: () => void;
+	strategyId?: string | null;
+	onRediscover?: (focus: string) => Promise<void>;
+	rediscovering?: boolean;
 }) {
 	return (
 		<>
@@ -237,6 +241,15 @@ function ResultsView({ results, sources, generatedAt, onBack }: {
 				<ArrowLeft size={14} />一覧に戻る
 			</button>
 			<div id="lc-strategy-content" className="space-y-8">
+				{results.platform_analysis?.discovered_new_products && (
+					<DiscoveredProductsHero
+						products={results.platform_analysis.discovered_new_products}
+						contextLabel="ライブコマース"
+						history={results.platform_analysis.discovery_history}
+						onRediscover={strategyId ? onRediscover : undefined}
+						rediscovering={rediscovering}
+					/>
+				)}
 				{results.market_research && <MarketOverviewSection data={results.market_research} />}
 				{results.platform_analysis && <PlatformAnalysisSection data={results.platform_analysis} />}
 				{results.content_strategy && <ContentStrategySection data={results.content_strategy} />}
@@ -267,6 +280,8 @@ export default function LiveCommercePanel() {
 	const [searchSources, setSearchSources] = useState<Array<{ title: string; url: string }>>([]);
 	const [error, setError] = useState<string | null>(null);
 	const [generatedAt, setGeneratedAt] = useState<string | null>(null);
+	const [currentStrategyId, setCurrentStrategyId] = useState<string | null>(null);
+	const [rediscovering, setRediscovering] = useState(false);
 
 	const [savedResults, setSavedResults] = useState<SkillResults>({});
 	const [savedSources, setSavedSources] = useState<Array<{ title: string; url: string }>>([]);
@@ -289,6 +304,7 @@ export default function LiveCommercePanel() {
 		setDataFetchStatus('pending');
 		setGeneratedAt(null);
 		setSearchSources([]);
+		setCurrentStrategyId(null);
 
 		try {
 			const res = await fetch('/api/analytics/live-commerce', {
@@ -353,6 +369,7 @@ export default function LiveCommercePanel() {
 								case 'complete':
 									setStatus('complete');
 									setGeneratedAt(payload.generatedAt as string);
+									if (payload.strategyId) setCurrentStrategyId(payload.strategyId as string);
 									setHistoryRefresh((n) => n + 1);
 									break;
 								case 'error':
@@ -388,6 +405,7 @@ export default function LiveCommercePanel() {
 			});
 			setSavedSources(data.search_sources ?? []);
 			setSavedAt(data.created_at);
+			setCurrentStrategyId(id);
 			setViewMode('saved');
 		} catch (err) {
 			setError(err instanceof Error ? err.message : String(err));
@@ -403,7 +421,45 @@ export default function LiveCommercePanel() {
 		setSavedResults({});
 		setSavedAt(null);
 		setGeneratedAt(null);
+		setCurrentStrategyId(null);
 	};
+
+	const handleRediscover = useCallback(async (focus: string) => {
+		if (!currentStrategyId) return;
+		setRediscovering(true);
+		setError(null);
+		try {
+			const res = await fetch(`/api/analytics/live-commerce/${currentStrategyId}/rediscover`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ focus: focus || undefined }),
+			});
+			const data = await res.json();
+			if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+
+			const updater = (prev: SkillResults): SkillResults => {
+				const pa = prev.platform_analysis;
+				if (!pa) return prev;
+				return {
+					...prev,
+					platform_analysis: {
+						...pa,
+						discovered_new_products: data.batch.products,
+						discovery_history: data.discovery_history,
+					},
+				};
+			};
+			if (viewMode === 'saved') {
+				setSavedResults(updater);
+			} else {
+				setSkillResults(updater);
+			}
+		} catch (err) {
+			setError(err instanceof Error ? err.message : String(err));
+		} finally {
+			setRediscovering(false);
+		}
+	}, [currentStrategyId, viewMode]);
 
 	const isRunning = status === 'running';
 	const hasResults = !!(
@@ -496,14 +552,14 @@ export default function LiveCommercePanel() {
 					)}
 					{isRunning && <LCProgress skillStatuses={skillStatuses} dataFetchStatus={dataFetchStatus} />}
 					{hasResults && (
-						<ResultsView results={skillResults} sources={searchSources} generatedAt={generatedAt} onBack={handleBackToForm} />
+						<ResultsView results={skillResults} sources={searchSources} generatedAt={generatedAt} onBack={handleBackToForm} strategyId={currentStrategyId} onRediscover={handleRediscover} rediscovering={rediscovering} />
 					)}
 				</>
 			)}
 
 			{/* === SAVED VIEW === */}
 			{viewMode === 'saved' && (
-				<ResultsView results={savedResults} sources={savedSources} generatedAt={savedAt} onBack={handleBackToForm} />
+				<ResultsView results={savedResults} sources={savedSources} generatedAt={savedAt} onBack={handleBackToForm} strategyId={currentStrategyId} onRediscover={handleRediscover} rediscovering={rediscovering} />
 			)}
 		</div>
 	);

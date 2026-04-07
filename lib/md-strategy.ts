@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getServiceClient } from "@/lib/supabase";
+import { rakutenItemSearch } from "@/lib/rakuten";
 import type {
 	ProductSummary,
 	CategorySummary,
@@ -241,7 +242,7 @@ export interface StrategyContext {
 	products: EnrichedProduct[];
 	weeklyTrends: Array<{ weekStart: string; revenue: number; profit: number; quantity: number }>;
 	userGoal?: string;
-	// AI-recommended new products (from Brave search + Gemini)
+	// Newly-discovered products from real Rakuten/Brave searches, curated by Gemini
 	recommendedProducts?: Array<{
 		name: string;
 		reason: string;
@@ -249,6 +250,35 @@ export interface StrategyContext {
 		estimated_demand: string;
 		supply_source: string;
 		estimated_price_jpy: string;
+		source: "rakuten" | "web";
+		source_url: string;
+		signal_basis: string;
+		japan_market_fit: {
+			popularity_evidence: string;
+			trend_context: string;
+			why_japan_now: string;
+			review_signal?: string;
+		};
+		sales_strategy: {
+			positioning: string;
+			unique_value_prop: string;
+			target_segment: string;
+			key_selling_points: string[];
+			recommended_channels: Array<{
+				name: string;
+				priority: "primary" | "secondary";
+				rationale: string;
+			}>;
+			pricing_approach: string;
+			bundle_ideas: string[];
+			promo_hook: string;
+			launch_timing: string;
+			content_angle: string;
+			content_pillars: string[];
+			competitor_diff: string;
+			first_30_days: string[];
+			risks: string[];
+		};
 	}>;
 	recommendCategory?: string;
 	recommendTargetMarket?: string;
@@ -276,6 +306,267 @@ function parsePriceRange(priceRange: string): { min: number; max: number } | nul
 	const match = cleaned.match(/(\d+)\s*[-–]\s*(\d+)/);
 	if (!match) return null;
 	return { min: parseInt(match[1], 10), max: parseInt(match[2], 10) };
+}
+
+// ---------------------------------------------------------------------------
+// New Product Discovery (Rakuten + Brave → Gemini curation)
+// ---------------------------------------------------------------------------
+
+export interface DiscoverInput {
+	context: "home_shopping" | "live_commerce";
+	topCategoryNames: string[];
+	explicitCategory?: string;
+	targetMarket?: string;
+	priceRange?: string;
+	userGoal?: string;
+	tvProductNames: string[];
+	tvMarginRate: number;
+	// Exclude items already discovered in prior batches (for re-discover)
+	excludeUrls?: string[];
+	excludeNames?: string[];
+}
+
+export type DiscoveredProduct = NonNullable<StrategyContext["recommendedProducts"]>[number];
+
+type DiscoveryPoolItem = {
+	name: string;
+	price?: number;
+	source: "rakuten" | "web";
+	source_url: string;
+	snippet: string;
+	keyword: string;
+	reviewCount?: number;
+	reviewAverage?: number;
+};
+
+export async function discoverNewProducts(
+	input: DiscoverInput,
+): Promise<StrategyContext["recommendedProducts"]> {
+	// Build search keywords from TV signals
+	const keywords = Array.from(
+		new Set(
+			[input.explicitCategory, ...input.topCategoryNames]
+				.filter((s): s is string => !!s && s.trim().length > 0),
+		),
+	).slice(0, 4);
+
+	if (keywords.length === 0) return undefined;
+
+	// Run Rakuten Item Search (review-count sorted = popularity proxy) + Brave product search
+	// + Brave Japan market trend search (separate, used as context not as products)
+	const [rakutenResults, braveProductResults, braveTrendResults] = await Promise.all([
+		// Rakuten Item Search sorted by review count → real popular products
+		Promise.all(
+			keywords.map((kw) =>
+				rakutenItemSearch(kw, "-reviewCount", 10).catch(() => ({ items: [] })),
+			),
+		),
+		// Brave product discovery — Japanese popularity / new product keywords
+		Promise.all(
+			keywords.map((kw) =>
+				braveSearchStructured(`${kw} 売れ筋 人気 ランキング 2025 楽天 Amazon`).catch(() => []),
+			),
+		),
+		// Brave Japan market context — trend signals (NOT products, used as background for Gemini)
+		Promise.all([
+			braveSearchStructured(
+				`${keywords[0] ?? ""} 日本 トレンド 2025 ヒット商品 話題`,
+			).catch(() => []),
+			braveSearchStructured(
+				`日本 通販 売れ筋 ${keywords[0] ?? ""} 消費者 関心`,
+			).catch(() => []),
+		]),
+	]);
+
+	// Build dedup pool, filter out items resembling existing TV products
+	// or items already discovered in prior batches.
+	const seenUrls = new Set<string>(input.excludeUrls ?? []);
+	const tvNames = input.tvProductNames;
+	const isTvLike = (name: string) => {
+		const lower = name.toLowerCase();
+		return tvNames.some((tv) => {
+			const head = tv.slice(0, 8).toLowerCase();
+			return head.length >= 4 && lower.includes(head);
+		});
+	};
+	const excludeNameHeads = (input.excludeNames ?? [])
+		.map((n) => n.slice(0, 10).toLowerCase())
+		.filter((h) => h.length >= 4);
+	const isAlreadyDiscovered = (name: string) => {
+		if (excludeNameHeads.length === 0) return false;
+		const lower = name.toLowerCase();
+		return excludeNameHeads.some((head) => lower.includes(head));
+	};
+
+	const pool: DiscoveryPoolItem[] = [];
+	rakutenResults.forEach((r, i) => {
+		// Take top 6 per keyword (sorted by review count = social proof)
+		for (const item of r.items.slice(0, 6)) {
+			if (!item.itemUrl || seenUrls.has(item.itemUrl)) continue;
+			if (isTvLike(item.itemName)) continue;
+			if (isAlreadyDiscovered(item.itemName)) continue;
+			seenUrls.add(item.itemUrl);
+			pool.push({
+				name: item.itemName.slice(0, 80),
+				price: item.itemPrice,
+				source: "rakuten",
+				source_url: item.itemUrl,
+				snippet: item.itemCaption.slice(0, 140),
+				keyword: keywords[i],
+				reviewCount: item.reviewCount,
+				reviewAverage: item.reviewAverage,
+			});
+		}
+	});
+	braveProductResults.forEach((arr, i) => {
+		for (const s of arr.slice(0, 5)) {
+			if (!s.url || seenUrls.has(s.url)) continue;
+			if (isTvLike(s.title)) continue;
+			if (isAlreadyDiscovered(s.title)) continue;
+			seenUrls.add(s.url);
+			pool.push({
+				name: s.title.slice(0, 80),
+				source: "web",
+				source_url: s.url,
+				snippet: s.description.slice(0, 140),
+				keyword: keywords[i],
+			});
+		}
+	});
+
+	// Build Japan market context (trend signals — used as background, not products)
+	const marketContextLines: string[] = [];
+	braveTrendResults.flat().slice(0, 8).forEach((t) => {
+		if (!t.title) return;
+		marketContextLines.push(`- ${t.title}: ${t.description.slice(0, 120)}`);
+	});
+	const japanMarketContext = marketContextLines.length > 0
+		? marketContextLines.join("\n")
+		: "(市場トレンド情報を取得できませんでした)";
+
+	const cappedPool = pool.slice(0, 30);
+	if (cappedPool.length === 0) return undefined;
+
+	// Curate via Gemini — must pick from REAL pool only
+	// Surface review count + average so Gemini can read social proof signals
+	const poolText = cappedPool
+		.map((p, i) => {
+			const reviewBadge = p.reviewCount && p.reviewCount > 0
+				? ` ★${p.reviewAverage?.toFixed(1) ?? "?"} (レビュー${p.reviewCount}件)`
+				: "";
+			return `${i}. [${p.source}] ${p.name}${p.price ? ` (¥${p.price.toLocaleString()})` : ""}${reviewBadge} — keyword: ${p.keyword}\n   URL: ${p.source_url}\n   ${p.snippet}`;
+		})
+		.join("\n");
+
+	const signalText = [
+		`TVトップカテゴリ: ${input.topCategoryNames.join(", ")}`,
+		`TV平均粗利率: ${input.tvMarginRate}%`,
+		input.explicitCategory ? `指定カテゴリ: ${input.explicitCategory}` : "",
+		input.targetMarket ? `ターゲット市場: ${input.targetMarket}` : "",
+		input.priceRange ? `想定価格帯: ${input.priceRange}` : "",
+		input.userGoal ? `ユーザー目標: ${input.userGoal}` : "",
+	]
+		.filter(Boolean)
+		.join("\n");
+
+	const isLC = input.context === "live_commerce";
+	const channelGuidance = isLC
+		? `recommended_channels には次から3つ選ぶ: TikTok Live, Instagram Live, YouTube Live, 楽天ROOM LIVE, Yahoo!ショッピング LIVE`
+		: `recommended_channels には次から3つ選ぶ: Amazon Japan, 楽天市場, Yahoo!ショッピング, 自社EC (D2C), TV通販 (テレビ東京ダイレクト), TikTok Shop Japan`;
+	const contentAngleGuidance = isLC
+		? `content_angle: ライブ配信での演出アイデア（実演デモ、ホストのトークポイント、視聴者参加企画等）`
+		: `content_angle: 商品ページ/CM/SNS投稿の訴求アングル（ビフォーアフター、専門家推薦、季節企画等）`;
+	const roleLabel = isLC ? "ライブコマース事業MD" : "TV通販・EC事業MD";
+
+	const prompt = `あなたは日本の${roleLabel}です。下記の (1) TV自社販売シグナル と (2) 日本市場トレンド情報 の両方を根拠に、楽天/Webから検索された実在商品プールから「日本の消費者に今売れる/関心が高い」新商品を5つ選定し、各商品の販売戦略まで策定してください。
+
+=== (1) TV自社販売シグナル ===
+${signalText}
+
+=== (2) 日本市場トレンド情報 (Brave Web Search より) ===
+${japanMarketContext}
+
+=== (3) 検索された実在商品プール (${cappedPool.length}件) ===
+※ レビュー数/評価は楽天での実際の社会的証明 (popularity proxy) です
+${poolText}
+
+=== 厳守ルール ===
+- 必ず上記プールに存在する商品のみから選ぶこと。プールにない商品名を作らないこと。
+- source_url は提供されたURLを一字一句そのままコピー (絶対に変更しない)。
+- name は商品プールの name フィールドをそのまま使用。
+- カテゴリが偏らないように5商品を選定。
+- 各商品ごとに sales_strategy と japan_market_fit を必ず記入する。
+- ${channelGuidance}
+- ${contentAngleGuidance}
+
+=== japan_fit_score 採点ルール (0-100) ===
+以下の加点で算出すること。各カテゴリで該当する一段階のみ加点 (重複加点禁止):
+- 楽天レビュー数: ≥100件→+25 / 50-99件→+15 / 5-49件→+5 / それ以下→0
+- 楽天レビュー平均: ≥4.0→+20 / 3.5-3.9→+10 / それ未満→0
+- TVトップカテゴリ一致: 一致→+25 / 隣接→+10 / 不一致→0
+- 日本市場トレンド情報に関連語句あり: あり→+20 / なし→0
+- ユーザー目標/ターゲット市場合致: 合致→+10 / 不合致→0
+- 合計は必ず 0-100 の範囲に収めること (上限超えは100に丸める)
+
+=== japan_market_fit の記入指針 ===
+- popularity_evidence: 楽天レビュー数/評価、Web 検索結果から読み取れる人気度の具体的根拠 (数値ベースで記述)
+- trend_context: 上記「日本市場トレンド情報」のうち、この商品に関連するトレンドを引用
+- why_japan_now: なぜ今この商品が日本で売れるか (季節性/世代/世相/競合空白)
+- review_signal: 楽天レビュー数と評価がある場合、そのまま「★X.X (Y件)」形式で記述
+
+Return a JSON array of exactly 5 items (no markdown):
+[{
+  "name":"<プールから>",
+  "reason":"なぜTVシグナル + 日本市場トレンドに合致するか",
+  "japan_fit_score":0-100,
+  "estimated_demand":"高|中|低",
+  "supply_source":"楽天 or Webドメイン",
+  "estimated_price_jpy":"¥X-Y",
+  "source":"rakuten|web",
+  "source_url":"<プールからそのままコピー>",
+  "signal_basis":"TV自社シグナルとの紐付け",
+  "japan_market_fit": {
+    "popularity_evidence":"楽天レビュー数/評価やWeb検索から読み取れる人気の具体的根拠",
+    "trend_context":"日本市場トレンド情報からの引用 (情報なしの場合は「取得不可」と記載)",
+    "why_japan_now":"なぜ今この商品が日本で売れるか",
+    "review_signal":"★X.X (Y件) — レビュー情報がない場合はこのフィールド自体を省略すること (空文字や null 文字列にしない)"
+  },
+  "sales_strategy": {
+    "positioning":"市場でのポジショニング (1文)",
+    "unique_value_prop":"競合と比較した一文の独自価値提案",
+    "target_segment":"具体的なターゲット層 (年齢/性別/ライフスタイル/年収帯)",
+    "key_selling_points":["訴求ポイント1","訴求ポイント2","訴求ポイント3","訴求ポイント4"],
+    "recommended_channels":[
+      {"name":"チャネル名","priority":"primary","rationale":"なぜ最優先か"},
+      {"name":"チャネル名","priority":"secondary","rationale":"補助的役割"}
+    ],
+    "pricing_approach":"価格戦略 (バンドル/単品/サブスク/初回限定価格等の具体案)",
+    "bundle_ideas":["セット案1","セット案2"],
+    "promo_hook":"初動で使うプロモフック (キャッチコピー風)",
+    "launch_timing":"投入時期と理由 (季節/イベント/競合空白期)",
+    "content_angle":"コンテンツ訴求の切り口",
+    "content_pillars":["コンテンツの柱1","柱2","柱3"],
+    "competitor_diff":"主要競合と比べた差別化ポイント",
+    "first_30_days":["30日以内のアクション1","2","3","4"],
+    "risks":["懸念リスク1","リスク2"]
+  }
+}]
+
+All text in Japanese. すべての sales_strategy フィールドを必ず埋めること。`;
+
+	try {
+		const raw = await callGemini(prompt);
+		const match = raw.match(/\[[\s\S]*\]/);
+		if (!match) return undefined;
+		const parsed = JSON.parse(match[0]) as NonNullable<StrategyContext["recommendedProducts"]>;
+
+		// Sanity-pass: drop items whose source_url isn't actually in the pool (anti-hallucination)
+		const validUrls = new Set(cappedPool.map((p) => p.source_url).filter(Boolean));
+		return parsed.filter((p) => !!p.source_url && validUrls.has(p.source_url));
+	} catch (err) {
+		console.error("[md-strategy] discovery curation failed:", err);
+		return undefined;
+	}
 }
 
 export async function fetchStrategyContext(
@@ -478,35 +769,20 @@ export async function fetchStrategyContext(
 	const searchResults = await Promise.all(searchQueries.map((q) => braveSearchStructured(q)));
 	const searchSources = searchResults.flat();
 
-	// AI Recommend (optional — only if category/targetMarket provided)
-	let recommendedProducts: StrategyContext["recommendedProducts"];
-	let recommendCategory: string | undefined;
-	let recommendTargetMarket: string | undefined;
-
-	if (recommend?.category && recommend?.targetMarket) {
-		recommendCategory = recommend.category;
-		recommendTargetMarket = recommend.targetMarket;
-		try {
-			const prompt = `You are a Japan home shopping market expert. Recommend 5 specific NEW products for this category.
-
-Category: ${recommend.category}
-Target Market: ${recommend.targetMarket}
-${recommend.priceRange ? `Price Range: ${recommend.priceRange}` : ""}
-
-Return a JSON array of exactly 5 recommendations:
-[{"name":"<product name>","reason":"<why it fits Japan market>","japan_fit_score":<0-100>,"estimated_demand":"<e.g. 高>","supply_source":"<source>","estimated_price_jpy":"<e.g. ¥3,980-5,980>"}]
-
-Return only valid JSON, no markdown. All text in Japanese.`;
-			const raw = await callGemini(prompt);
-			const match = raw.match(/\[[\s\S]*\]/);
-			if (match) {
-				recommendedProducts = JSON.parse(match[0]);
-			}
-		} catch (err) {
-			console.error("[md-strategy] recommend failed:", err);
-			// Non-fatal — continue without recommendations
-		}
-	}
+	// New Product Discovery — uses TV signals (top categories, userGoal, optional explicit category)
+	// to drive REAL Rakuten + Brave searches, then Gemini curates 5 from the actual pool.
+	const recommendCategory = recommend?.category;
+	const recommendTargetMarket = recommend?.targetMarket;
+	const recommendedProducts = await discoverNewProducts({
+		context: "home_shopping",
+		topCategoryNames: categoryBreakdown.slice(0, 3).map((c) => c.category),
+		explicitCategory: recommend?.category,
+		targetMarket: recommend?.targetMarket,
+		priceRange: recommend?.priceRange,
+		userGoal,
+		tvProductNames: enrichedProducts.map((p) => p.name),
+		tvMarginRate: totalRevenue > 0 ? Math.round((totalProfit / totalRevenue) * 10000) / 100 : 0,
+	});
 
 	return {
 		annualMetrics: {
@@ -555,6 +831,16 @@ export interface ProductSelectionOutput {
 	}>;
 	portfolio_strategy: string;
 	sources_cited?: Array<{ index: number; title: string; url: string }>;
+	// Newly discovered products from real Rakuten/Web searches (injected by orchestrator)
+	discovered_new_products?: DiscoveredProduct[];
+	// History of all discovery batches (initial + re-discovers). Latest first.
+	discovery_history?: DiscoveryBatch[];
+}
+
+export interface DiscoveryBatch {
+	generatedAt: string;
+	focus?: string;
+	products: DiscoveredProduct[];
 }
 
 export interface ChannelStrategyOutput {
@@ -856,18 +1142,19 @@ function buildProductSelectionPrompt(ctx: StrategyContext): string {
 		return `| ${i + 1} | ${p.name} | ${p.category ?? "分類なし"} | ${formatYen(p.totalRevenue)} | ${p.marginRate}% | ${p.avgWeeklyQty}個 | ${m.monthlyGrowthRate > 0 ? "+" : ""}${m.monthlyGrowthRate}% | ${formatYen(m.tvUnitPrice)} | ${p.costPrice != null ? formatYen(p.costPrice) : "不明"} | ${m.ecMarginAfterFees}% | ${m.hasEcPresence ? "○" : "×"} | ${m.seasonalPeak} |`;
 	}).join("\n");
 
-	// AI recommended products section
+	// Newly discovered products (REAL items found via Rakuten/Web search)
 	let recommendSection = "";
 	if (ctx.recommendedProducts && ctx.recommendedProducts.length > 0) {
 		const recLines = ctx.recommendedProducts
-			.map((p, i) => `${i + 1}. ${p.name} — 適合度${p.japan_fit_score}/100, 需要: ${p.estimated_demand}, 供給: ${p.supply_source}, 想定価格: ${p.estimated_price_jpy}\n   理由: ${p.reason}`)
+			.map(
+				(p, i) =>
+					`${i + 1}. [${p.source}] ${p.name} — 適合度${p.japan_fit_score}/100, 需要: ${p.estimated_demand}, 想定価格: ${p.estimated_price_jpy}\n   出典: ${p.source_url}\n   シグナル根拠: ${p.signal_basis}\n   理由: ${p.reason}`,
+			)
 			.join("\n");
-		const catInfo = ctx.recommendCategory ? `カテゴリ: ${ctx.recommendCategory}` : "";
-		const mktInfo = ctx.recommendTargetMarket ? ` / ターゲット: ${ctx.recommendTargetMarket}` : "";
-		recommendSection = `\n=== AIが推薦する新規商品候補 ===${catInfo || mktInfo ? `\n(${catInfo}${mktInfo})` : ""}
+		recommendSection = `\n=== 楽天/Web から発掘された新規実在商品 (TVシグナル基準) ===
 ${recLines}
 
-推薦商品のcodeは "NEW-1", "NEW-2" 等で表記してください。\n`;
+これらは実在する商品です。チャネル割当時は code を "NEW-1", "NEW-2" のように振り、name は上記のままコピーしてください。\n`;
 	}
 
 	return `[ROLE] あなたはTV通販チャネルのMD（マーチャンダイザー）です。EC・SNS・D2C・越境ECへの商品展開を計画しています。
@@ -1535,7 +1822,19 @@ export async function runStrategyOrchestrator(
 
 			const prompt = skill.buildPrompt(context, outputs);
 			const raw = await callGemini(prompt);
-			const parsed = parseJSON(raw);
+			const parsed = parseJSON<Record<string, unknown>>(raw);
+
+			// Inject discovered new products into the product_selection output
+			// so the UI can render them as a top-level "発掘新商品" section.
+			if (skill.name === "product_selection" && context.recommendedProducts) {
+				const ps = parsed as unknown as ProductSelectionOutput;
+				ps.discovered_new_products = context.recommendedProducts;
+				ps.discovery_history = [{
+					generatedAt: new Date().toISOString(),
+					products: context.recommendedProducts,
+				}];
+			}
+
 			outputs[skill.name] = parsed;
 			onProgress({ skill: skill.name, status: "complete", index: i, total: SKILL_PIPELINE.length, data: parsed });
 		} catch (err) {
