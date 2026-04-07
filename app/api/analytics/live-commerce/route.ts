@@ -48,6 +48,10 @@ export async function POST(request: NextRequest) {
 
 				const result = await runLCOrchestrator(context, (event: LCProgressEvent) => {
 					if (event.status === "complete" && event.data) {
+						if (event.skill === "platform_analysis") {
+							const pa = event.data as { discovered_new_products?: unknown[] } | undefined;
+							console.log(`[sse-route lc] sending platform_analysis skill_result — discovered_new_products length=${pa?.discovered_new_products?.length ?? 0}`);
+						}
 						send("skill_result", { skill: event.skill, index: event.index, total: event.total, data: event.data });
 					} else if (event.status === "error") {
 						send("skill_error", { skill: event.skill, index: event.index, total: event.total, error: event.error });
@@ -55,6 +59,9 @@ export async function POST(request: NextRequest) {
 						send("progress", event);
 					}
 				});
+
+				const finalPa = result.platform_analysis as { discovered_new_products?: unknown[] } | undefined;
+				console.log(`[sse-route lc] inserting strategy — final platform_analysis.discovered_new_products length=${finalPa?.discovered_new_products?.length ?? 0}`);
 
 				let strategyId: string | null = null;
 				try {

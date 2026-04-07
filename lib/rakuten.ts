@@ -148,8 +148,10 @@ export async function rakutenItemSearch(
 			},
 		);
 
-		// Client-side enforce minimum social proof (≥5 reviews)
-		const items = rawItems.filter((it) => it.itemName && it.reviewCount >= 5);
+		// Drop items with no name; do NOT enforce review count threshold here —
+		// hasReviewFlag=1 already filters to items with at least 1 review.
+		const items = rawItems.filter((it) => it.itemName);
+		console.log(`[rakuten search] keyword="${keyword}" sort=${sort} → ${rawItems.length} raw, ${items.length} usable`);
 		return { items };
 	} catch (err) {
 		console.warn("[rakuten search] fetch failed (non-fatal):", err instanceof Error ? err.message : String(err));

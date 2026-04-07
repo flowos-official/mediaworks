@@ -626,13 +626,18 @@ export async function runLCOrchestrator(
 
 			// Inject discovered new products into platform_analysis output
 			// so the UI can render them as a top-level "発掘新商品" section.
-			if (skill.name === "platform_analysis" && context.recommendedProducts) {
-				const pa = parsed as unknown as PlatformAnalysisOutput;
-				pa.discovered_new_products = context.recommendedProducts;
-				pa.discovery_history = [{
-					generatedAt: new Date().toISOString(),
-					products: context.recommendedProducts,
-				}];
+			if (skill.name === "platform_analysis") {
+				if (context.recommendedProducts && context.recommendedProducts.length > 0) {
+					const pa = parsed as unknown as PlatformAnalysisOutput;
+					pa.discovered_new_products = context.recommendedProducts;
+					pa.discovery_history = [{
+						generatedAt: new Date().toISOString(),
+						products: context.recommendedProducts,
+					}];
+					console.log(`[lc-orchestrator] spliced ${context.recommendedProducts.length} discovered products into platform_analysis`);
+				} else {
+					console.warn(`[lc-orchestrator] context.recommendedProducts is empty/undefined — no hero will render`);
+				}
 			}
 
 			outputs[skill.name] = parsed;

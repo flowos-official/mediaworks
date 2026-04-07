@@ -241,11 +241,11 @@ function ResultsView({ results, sources, generatedAt, onBack, strategyId, onRedi
 				<ArrowLeft size={14} />一覧に戻る
 			</button>
 			<div id="lc-strategy-content" className="space-y-8">
-				{results.platform_analysis?.discovered_new_products && (
+				{(results.platform_analysis?.discovered_new_products?.length ?? 0) > 0 && (
 					<DiscoveredProductsHero
-						products={results.platform_analysis.discovered_new_products}
+						products={results.platform_analysis!.discovered_new_products!}
 						contextLabel="ライブコマース"
-						history={results.platform_analysis.discovery_history}
+						history={results.platform_analysis?.discovery_history}
 						onRediscover={strategyId ? onRediscover : undefined}
 						rediscovering={rediscovering}
 					/>
@@ -357,6 +357,15 @@ export default function LiveCommercePanel() {
 									break;
 								case 'skill_result': {
 									const skill = payload.skill as LCSkillName;
+									if (skill === 'platform_analysis') {
+										const data = payload.data as { discovered_new_products?: unknown[]; discovery_history?: unknown[] } | undefined;
+										console.log('[lc-panel] received platform_analysis skill_result:', {
+											hasDiscovered: !!data?.discovered_new_products,
+											discoveredLength: data?.discovered_new_products?.length ?? 0,
+											hasHistory: !!data?.discovery_history,
+											historyLength: data?.discovery_history?.length ?? 0,
+										});
+									}
 									setSkillStatuses((prev) => ({ ...prev, [skill]: 'complete' }));
 									setSkillResults((prev) => ({ ...prev, [skill]: payload.data }));
 									break;

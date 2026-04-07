@@ -54,6 +54,10 @@ export async function POST(request: NextRequest) {
 				// Phase 2: Skill pipeline
 				const result = await runStrategyOrchestrator(context, (event: ProgressEvent) => {
 					if (event.status === "complete") {
+						if (event.skill === "product_selection") {
+							const ps = event.data as { discovered_new_products?: unknown[] } | undefined;
+							console.log(`[sse-route md] sending product_selection skill_result — discovered_new_products length=${ps?.discovered_new_products?.length ?? 0}`);
+						}
 						send("skill_result", { skill: event.skill, index: event.index, total: event.total, data: event.data });
 					} else if (event.status === "error") {
 						send("skill_error", { skill: event.skill, index: event.index, total: event.total, error: event.error });
@@ -61,6 +65,9 @@ export async function POST(request: NextRequest) {
 						send("progress", event);
 					}
 				});
+
+				const finalPs = result.product_selection as { discovered_new_products?: unknown[] } | undefined;
+				console.log(`[sse-route md] inserting strategy — final product_selection.discovered_new_products length=${finalPs?.discovered_new_products?.length ?? 0}`);
 
 				// Phase 3: Save to Supabase
 				let strategyId: string | null = null;

@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getServiceClient } from "@/lib/supabase";
-import { rakutenItemSearch } from "@/lib/rakuten";
+import { rakutenItemSearch, rakutenRankingSearch } from "@/lib/rakuten";
 import type {
 	ProductSummary,
 	CategorySummary,
@@ -352,14 +352,25 @@ export async function discoverNewProducts(
 
 	if (keywords.length === 0) return undefined;
 
+	// Normalize keywords for Rakuten — TV category names like "美容・運動" don't match Rakuten well.
+	// Split on the middle dot and use the first segment as a cleaner search term.
+	const normalizeForRakuten = (kw: string) => kw.split(/[・/／,、]/)[0].trim();
+
+	console.log(`[discover] start context=${input.context} keywords=${JSON.stringify(keywords)} excludeUrls=${input.excludeUrls?.length ?? 0}`);
+
 	// Run Rakuten Item Search (review-count sorted = popularity proxy) + Brave product search
 	// + Brave Japan market trend search (separate, used as context not as products)
 	const [rakutenResults, braveProductResults, braveTrendResults] = await Promise.all([
 		// Rakuten Item Search sorted by review count → real popular products
+		// Fall back to Ranking API if Search returns empty
 		Promise.all(
-			keywords.map((kw) =>
-				rakutenItemSearch(kw, "-reviewCount", 10).catch(() => ({ items: [] })),
-			),
+			keywords.map(async (kw) => {
+				const cleanKw = normalizeForRakuten(kw);
+				const search = await rakutenItemSearch(cleanKw, "-reviewCount", 10).catch(() => ({ items: [] }));
+				if (search.items.length > 0) return search;
+				console.log(`[discover] rakuten search empty for "${cleanKw}", falling back to Ranking API`);
+				return await rakutenRankingSearch(cleanKw).catch(() => ({ items: [] }));
+			}),
 		),
 		// Brave product discovery — Japanese popularity / new product keywords
 		Promise.all(
@@ -445,7 +456,11 @@ export async function discoverNewProducts(
 		: "(市場トレンド情報を取得できませんでした)";
 
 	const cappedPool = pool.slice(0, 30);
-	if (cappedPool.length === 0) return undefined;
+	console.log(`[discover] pool built: total=${pool.length} capped=${cappedPool.length} (rakuten=${pool.filter(p => p.source === 'rakuten').length} web=${pool.filter(p => p.source === 'web').length})`);
+	if (cappedPool.length === 0) {
+		console.warn(`[discover] pool empty — returning undefined. Check Rakuten/Brave API keys and keyword quality.`);
+		return undefined;
+	}
 
 	// Curate via Gemini — must pick from REAL pool only
 	// Surface review count + average so Gemini can read social proof signals
@@ -555,14 +570,25 @@ Return a JSON array of exactly 5 items (no markdown):
 All text in Japanese. すべての sales_strategy フィールドを必ず埋めること。`;
 
 	try {
+		console.log(`[discover] calling Gemini for curation (prompt length=${prompt.length})`);
 		const raw = await callGemini(prompt);
+		console.log(`[discover] Gemini raw response length=${raw.length}, head="${raw.slice(0, 120).replace(/\n/g, ' ')}"`);
 		const match = raw.match(/\[[\s\S]*\]/);
-		if (!match) return undefined;
+		if (!match) {
+			console.warn(`[discover] no JSON array found in Gemini response`);
+			return undefined;
+		}
 		const parsed = JSON.parse(match[0]) as NonNullable<StrategyContext["recommendedProducts"]>;
+		console.log(`[discover] parsed ${parsed.length} items from Gemini`);
 
 		// Sanity-pass: drop items whose source_url isn't actually in the pool (anti-hallucination)
 		const validUrls = new Set(cappedPool.map((p) => p.source_url).filter(Boolean));
-		return parsed.filter((p) => !!p.source_url && validUrls.has(p.source_url));
+		const filtered = parsed.filter((p) => !!p.source_url && validUrls.has(p.source_url));
+		console.log(`[discover] sanity-pass: ${filtered.length}/${parsed.length} items survived URL whitelist`);
+		if (filtered.length === 0 && parsed.length > 0) {
+			console.warn(`[discover] all ${parsed.length} Gemini items failed sanity-pass — Gemini may have hallucinated URLs`);
+		}
+		return filtered.length > 0 ? filtered : undefined;
 	} catch (err) {
 		console.error("[md-strategy] discovery curation failed:", err);
 		return undefined;
@@ -1826,13 +1852,18 @@ export async function runStrategyOrchestrator(
 
 			// Inject discovered new products into the product_selection output
 			// so the UI can render them as a top-level "発掘新商品" section.
-			if (skill.name === "product_selection" && context.recommendedProducts) {
-				const ps = parsed as unknown as ProductSelectionOutput;
-				ps.discovered_new_products = context.recommendedProducts;
-				ps.discovery_history = [{
-					generatedAt: new Date().toISOString(),
-					products: context.recommendedProducts,
-				}];
+			if (skill.name === "product_selection") {
+				if (context.recommendedProducts && context.recommendedProducts.length > 0) {
+					const ps = parsed as unknown as ProductSelectionOutput;
+					ps.discovered_new_products = context.recommendedProducts;
+					ps.discovery_history = [{
+						generatedAt: new Date().toISOString(),
+						products: context.recommendedProducts,
+					}];
+					console.log(`[orchestrator] spliced ${context.recommendedProducts.length} discovered products into product_selection`);
+				} else {
+					console.warn(`[orchestrator] context.recommendedProducts is empty/undefined — no hero will render`);
+				}
 			}
 
 			outputs[skill.name] = parsed;

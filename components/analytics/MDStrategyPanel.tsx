@@ -162,11 +162,11 @@ function SkillResultsView({ results, generatedAt, onBack, strategyId, onRediscov
 			</button>
 
 			<div id="md-strategy-content" className="space-y-8">
-				{results.product_selection?.discovered_new_products && (
+				{(results.product_selection?.discovered_new_products?.length ?? 0) > 0 && (
 					<DiscoveredProductsHero
-						products={results.product_selection.discovered_new_products}
+						products={results.product_selection!.discovered_new_products!}
 						contextLabel="ホームショッピング / EC"
-						history={results.product_selection.discovery_history}
+						history={results.product_selection?.discovery_history}
 						onRediscover={strategyId ? onRediscover : undefined}
 						rediscovering={rediscovering}
 					/>
@@ -328,6 +328,15 @@ export default function MDStrategyPanel() {
 			}
 			case 'skill_result': {
 				const skill = payload.skill as SkillName;
+				if (skill === 'product_selection') {
+					const data = payload.data as { discovered_new_products?: unknown[]; discovery_history?: unknown[] } | undefined;
+					console.log('[md-panel] received product_selection skill_result:', {
+						hasDiscovered: !!data?.discovered_new_products,
+						discoveredLength: data?.discovered_new_products?.length ?? 0,
+						hasHistory: !!data?.discovery_history,
+						historyLength: data?.discovery_history?.length ?? 0,
+					});
+				}
 				setSkillStatuses((prev) => ({ ...prev, [skill]: 'complete' }));
 				setSkillResults((prev) => ({ ...prev, [skill]: payload.data }));
 				break;
