@@ -10,12 +10,18 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 async function callGemini(prompt: string): Promise<string> {
 	const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
-	const resultPromise = model.generateContent(prompt);
+	const streamPromise = (async () => {
+		const result = await model.generateContentStream(prompt);
+		let text = "";
+		for await (const chunk of result.stream) {
+			text += chunk.text();
+		}
+		return text.trim();
+	})();
 	const timeoutPromise = new Promise<never>((_, reject) =>
 		setTimeout(() => reject(new Error("Gemini timeout (90s)")), 90000),
 	);
-	const result = await Promise.race([resultPromise, timeoutPromise]);
-	return result.response.text().trim();
+	return await Promise.race([streamPromise, timeoutPromise]);
 }
 
 function parseJSON<T>(raw: string): T {
@@ -228,6 +234,7 @@ export interface LCContext {
 	searchSummary: string;
 	products: LCProduct[];
 	recommendedProducts?: DiscoveredProduct[];
+	recommendedProductsPromise?: Promise<DiscoveredProduct[] | undefined>;
 }
 
 export async function fetchLCContext(
@@ -260,7 +267,7 @@ export async function fetchLCContext(
 		? Math.round(productResult.reduce((s, p) => s + p.marginRate, 0) / productResult.length)
 		: 0;
 
-	const recommendedProducts = await discoverNewProducts({
+	const recommendedProductsPromise = discoverNewProducts({
 		context: "live_commerce",
 		topCategoryNames,
 		userGoal,
@@ -277,7 +284,7 @@ export async function fetchLCContext(
 		searchSources: allSources,
 		searchSummary,
 		products: productResult,
-		recommendedProducts,
+		recommendedProductsPromise,
 	};
 }
 
@@ -579,6 +586,46 @@ ${goalSection(ctx)}
 // Orchestrator
 // ---------------------------------------------------------------------------
 
+// Public single-skill runner used by the workflow path.
+export async function runLCSkill(
+	skillName: LCSkillName,
+	context: LCContext,
+	priorOutputs: Record<string, unknown>,
+): Promise<unknown> {
+	if (skillName === "goal_analysis") {
+		if (!context.userGoal) {
+			return {
+				primary_objective: "日本市場でのライブコマース事業参入の全体戦略策定",
+				target_platforms: context.targetPlatforms ?? ["TikTok Live", "Instagram Live", "YouTube Live"],
+			} as ParsedGoal;
+		}
+		return await runGoalAnalysis(context.userGoal);
+	}
+	const skill = SKILL_PIPELINE.find((s) => s.name === skillName);
+	if (!skill) throw new Error(`Unknown LC skill: ${skillName}`);
+	const prompt = skill.buildPrompt(context, priorOutputs);
+	const raw = await callGemini(prompt);
+	const parsed = parseJSON<Record<string, unknown>>(raw);
+	if (skillName === "platform_analysis" && context.recommendedProducts && context.recommendedProducts.length > 0) {
+		const pa = parsed as unknown as PlatformAnalysisOutput;
+		pa.discovered_new_products = context.recommendedProducts;
+		pa.discovery_history = [{
+			generatedAt: new Date().toISOString(),
+			products: context.recommendedProducts,
+		}];
+	}
+	return parsed;
+}
+
+export const LC_SKILL_NAMES: LCSkillName[] = [
+	"goal_analysis",
+	"market_research",
+	"platform_analysis",
+	"content_strategy",
+	"execution_plan",
+	"risk_analysis",
+];
+
 export async function runLCOrchestrator(
 	context: LCContext,
 	onProgress: (event: LCProgressEvent) => void,
@@ -620,6 +667,10 @@ export async function runLCOrchestrator(
 				continue;
 			}
 
+			if (skill.name === "platform_analysis" && context.recommendedProductsPromise) {
+				context.recommendedProducts = await context.recommendedProductsPromise;
+				context.recommendedProductsPromise = undefined;
+			}
 			const prompt = skill.buildPrompt(context, outputs);
 			const raw = await callGemini(prompt);
 			const parsed = parseJSON<Record<string, unknown>>(raw);

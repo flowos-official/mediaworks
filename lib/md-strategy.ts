@@ -18,12 +18,18 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 async function callGemini(prompt: string): Promise<string> {
 	const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
-	const resultPromise = model.generateContent(prompt);
+	const streamPromise = (async () => {
+		const result = await model.generateContentStream(prompt);
+		let text = "";
+		for await (const chunk of result.stream) {
+			text += chunk.text();
+		}
+		return text.trim();
+	})();
 	const timeoutPromise = new Promise<never>((_, reject) =>
 		setTimeout(() => reject(new Error("Gemini timeout (90s)")), 90000),
 	);
-	const result = await Promise.race([resultPromise, timeoutPromise]);
-	return result.response.text().trim();
+	return await Promise.race([streamPromise, timeoutPromise]);
 }
 
 function parseJSON<T>(raw: string): T {
@@ -280,6 +286,8 @@ export interface StrategyContext {
 			risks: string[];
 		};
 	}>;
+	// Pending discovery promise (parallelized with goal_analysis skill)
+	recommendedProductsPromise?: Promise<StrategyContext["recommendedProducts"]>;
 	recommendCategory?: string;
 	recommendTargetMarket?: string;
 	// Web search sources for citation
@@ -799,7 +807,8 @@ export async function fetchStrategyContext(
 	// to drive REAL Rakuten + Brave searches, then Gemini curates 5 from the actual pool.
 	const recommendCategory = recommend?.category;
 	const recommendTargetMarket = recommend?.targetMarket;
-	const recommendedProducts = await discoverNewProducts({
+	// Kick off discovery in parallel — orchestrator will await it just before product_selection.
+	const recommendedProductsPromise = discoverNewProducts({
 		context: "home_shopping",
 		topCategoryNames: categoryBreakdown.slice(0, 3).map((c) => c.category),
 		explicitCategory: recommend?.category,
@@ -808,6 +817,9 @@ export async function fetchStrategyContext(
 		userGoal,
 		tvProductNames: enrichedProducts.map((p) => p.name),
 		tvMarginRate: totalRevenue > 0 ? Math.round((totalProfit / totalRevenue) * 10000) / 100 : 0,
+	}).catch((err) => {
+		console.error("[discover] background promise failed:", err);
+		return undefined;
 	});
 
 	return {
@@ -822,7 +834,7 @@ export async function fetchStrategyContext(
 		products: enrichedProducts,
 		weeklyTrends,
 		userGoal,
-		recommendedProducts,
+		recommendedProductsPromise,
 		recommendCategory,
 		recommendTargetMarket,
 		searchSources,
@@ -1069,7 +1081,7 @@ export const SKILL_META: Record<SkillName, { label: string; labelJa: string }> =
 };
 
 export interface ProgressEvent {
-	skill: SkillName;
+	skill: SkillName | "data_fetch";
 	status: "running" | "complete" | "error";
 	index: number;
 	total: number;
@@ -1710,15 +1722,8 @@ function buildRiskContingencyPrompt(ctx: StrategyContext, priorOutputs: Record<s
 	const pm = (priorOutputs.pricing_margin as PricingMarginOutput) ?? EMPTY_PM;
 	const fp = (priorOutputs.financial_projection as FinancialProjectionOutput) ?? EMPTY_FP;
 
-	// Focus risk analysis on top 4 priority channels only — analyzing all 7
-	// makes Gemini generate too much and the step takes too long.
-	const priorityRank: Record<string, number> = { immediate: 0, "3month": 1, "6month": 2, "12month": 3 };
-	const focusedChannels = [...cs.channels]
-		.sort((a, b) => (priorityRank[a.priority] ?? 9) - (priorityRank[b.priority] ?? 9) || b.fit_score - a.fit_score)
-		.slice(0, 4);
-
-	// Compact channel detail (top 4 only)
-	const channelDetailLines = focusedChannels.map((ch) => {
+	// Full competitive landscape and operations requirements from Skill 2
+	const channelDetailLines = cs.channels.map((ch) => {
 		const roi = fp.roi_timeline.find((r) => r.channel === ch.name);
 		const bep = pm.bep_analysis.find((b) => b.channel === ch.name);
 		return `=== ${ch.name} (${ch.priority}) ===
@@ -1733,8 +1738,8 @@ ${bep ? `- BEP: ${bep.bep_units}個/月, 達成見込: ${bep.bep_timeline}` : ""
 ${roi ? `- 1年目ROI: ${roi.year1_roi_pct}%, 純利益: ${formatYen(roi.year1_net_profit)}` : ""}`;
 	}).join("\n\n");
 
-	// Sunk cost calculations (top 4 only)
-	const sunkCostLines = focusedChannels.map((ch) => {
+	// Sunk cost calculations (all channels)
+	const sunkCostLines = cs.channels.map((ch) => {
 		const totalInitial = ch.entry_requirements.initial_costs
 			.map((c) => {
 				const match = c.cost.match(/(\d[\d,]*)/);
@@ -1744,10 +1749,8 @@ ${roi ? `- 1年目ROI: ${roi.year1_roi_pct}%, 純利益: ${formatYen(roi.year1_n
 		return `- ${ch.name}: 初期サンクコスト ≈ ${formatYen(totalInitial)}`;
 	}).join("\n");
 
-	// BEP thresholds (top 4 only)
-	const focusedChannelNames = new Set(focusedChannels.map((c) => c.name));
+	// BEP thresholds (all channels)
 	const bepThresholds = pm.bep_analysis
-		.filter((b) => focusedChannelNames.has(b.channel))
 		.map((b) => {
 			const monthlyFixedTotal = b.fixed_costs.reduce((s, f) => s + f.monthly, 0);
 			return `- ${b.channel}: BEP=${b.bep_units}個/月, 月間固定費=${formatYen(monthlyFixedTotal)}`;
@@ -1786,7 +1789,7 @@ ${bepThresholds}
 - Go/No-Go判断は3ヶ月後・6ヶ月後
 
 [TASK]
-上記の優先${focusedChannels.length}チャネルについて、簡潔だが具体的なリスク分析を策定。
+上記の${cs.channels.length}チャネルについて、簡潔だが具体的なリスク分析を策定。
 - risk_matrix: 各チャネル最大3リスクのみ。
 - top_5_risks: 全体TOP5のみ。playbookは3ステップ以内。
 - go_nogo_criteria: 各チャネル1セットのみ。
@@ -1817,6 +1820,41 @@ const SKILL_PIPELINE: Array<{ name: SkillName; buildPrompt: PromptBuilder }> = [
 	{ name: "risk_contingency", buildPrompt: buildRiskContingencyPrompt },
 ];
 
+// Public single-skill runner — used by the workflow path so each skill can run as its own step.
+export async function runMDSkill(
+	skillName: SkillName,
+	context: StrategyContext,
+	priorOutputs: Record<string, unknown>,
+): Promise<unknown> {
+	if (skillName === "goal_analysis") {
+		return context.userGoal ? await runGoalAnalysis(context.userGoal) : null;
+	}
+	const skill = SKILL_PIPELINE.find((s) => s.name === skillName);
+	if (!skill) throw new Error(`Unknown skill: ${skillName}`);
+	const prompt = skill.buildPrompt(context, priorOutputs);
+	const raw = await callGemini(prompt);
+	const parsed = parseJSON<Record<string, unknown>>(raw);
+	if (skillName === "product_selection" && context.recommendedProducts && context.recommendedProducts.length > 0) {
+		const ps = parsed as unknown as ProductSelectionOutput;
+		ps.discovered_new_products = context.recommendedProducts;
+		ps.discovery_history = [{
+			generatedAt: new Date().toISOString(),
+			products: context.recommendedProducts,
+		}];
+	}
+	return parsed;
+}
+
+export const MD_SKILL_NAMES: SkillName[] = [
+	"goal_analysis",
+	"product_selection",
+	"channel_strategy",
+	"pricing_margin",
+	"marketing_execution",
+	"financial_projection",
+	"risk_contingency",
+];
+
 export async function runStrategyOrchestrator(
 	context: StrategyContext,
 	onProgress: (event: ProgressEvent) => void,
@@ -1842,6 +1880,10 @@ export async function runStrategyOrchestrator(
 				continue;
 			}
 
+			if (skill.name === "product_selection" && context.recommendedProductsPromise) {
+				context.recommendedProducts = await context.recommendedProductsPromise;
+				context.recommendedProductsPromise = undefined;
+			}
 			const prompt = skill.buildPrompt(context, outputs);
 			const raw = await callGemini(prompt);
 			const parsed = parseJSON<Record<string, unknown>>(raw);

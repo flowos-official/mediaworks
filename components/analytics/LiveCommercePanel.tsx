@@ -307,7 +307,7 @@ export default function LiveCommercePanel() {
 		setCurrentStrategyId(null);
 
 		try {
-			const res = await fetch('/api/analytics/live-commerce', {
+			const startRes = await fetch('/api/analytics/live-commerce', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
@@ -316,79 +316,65 @@ export default function LiveCommercePanel() {
 				}),
 			});
 
-			if (!res.ok) {
-				const body = await res.json().catch(() => ({}));
-				throw new Error(body.error || `HTTP ${res.status}`);
+			if (!startRes.ok) {
+				const body = await startRes.json().catch(() => ({}));
+				throw new Error(body.error || `HTTP ${startRes.status}`);
 			}
+			const { runId, error: startErr } = await startRes.json();
+			if (!runId) throw new Error(startErr || 'Failed to start workflow');
 
-			const reader = res.body?.getReader();
-			if (!reader) throw new Error('No response body');
+			const streamRes = await fetch(`/api/analytics/live-commerce/run/${runId}/stream`);
+			if (!streamRes.ok || !streamRes.body) throw new Error('No stream body');
 
+			const reader = streamRes.body.getReader();
 			const decoder = new TextDecoder();
 			let buffer = '';
 
 			while (true) {
 				const { done, value } = await reader.read();
 				if (done) break;
-
 				buffer += decoder.decode(value, { stream: true });
 				const lines = buffer.split('\n');
 				buffer = lines.pop() ?? '';
-
-				let eventType = '';
 				for (const line of lines) {
-					if (line.startsWith('event: ')) {
-						eventType = line.slice(7).trim();
-					} else if (line.startsWith('data: ') && eventType) {
-						try {
-							const payload = JSON.parse(line.slice(6));
-							switch (eventType) {
-								case 'progress': {
-									const skill = payload.skill as string;
-									if (skill === 'data_fetch') {
-										setDataFetchStatus(payload.status as 'running' | 'complete');
-									} else {
-										setSkillStatuses((prev) => ({ ...prev, [skill]: 'running' }));
-									}
-									break;
-								}
-								case 'sources':
-									setSearchSources(payload.sources ?? []);
-									break;
-								case 'skill_result': {
-									const skill = payload.skill as LCSkillName;
-									if (skill === 'platform_analysis') {
-										const data = payload.data as { discovered_new_products?: unknown[]; discovery_history?: unknown[] } | undefined;
-										console.log('[lc-panel] received platform_analysis skill_result:', {
-											hasDiscovered: !!data?.discovered_new_products,
-											discoveredLength: data?.discovered_new_products?.length ?? 0,
-											hasHistory: !!data?.discovery_history,
-											historyLength: data?.discovery_history?.length ?? 0,
-										});
-									}
-									setSkillStatuses((prev) => ({ ...prev, [skill]: 'complete' }));
-									setSkillResults((prev) => ({ ...prev, [skill]: payload.data }));
-									break;
-								}
-								case 'skill_error': {
-									const skill = payload.skill as LCSkillName;
-									setSkillStatuses((prev) => ({ ...prev, [skill]: 'error' }));
-									break;
-								}
-								case 'complete':
-									setStatus('complete');
-									setGeneratedAt(payload.generatedAt as string);
-									if (payload.strategyId) setCurrentStrategyId(payload.strategyId as string);
-									setHistoryRefresh((n) => n + 1);
-									break;
-								case 'error':
-									setError(payload.message as string);
-									setStatus('error');
-									break;
+					const trimmed = line.trim();
+					if (!trimmed) continue;
+					try {
+						const event = JSON.parse(trimmed) as Record<string, unknown>;
+						const skill = event.skill as string;
+						const status = event.status as 'running' | 'complete' | 'error';
+
+						// final completion sentinel
+						if (skill === 'data_fetch' && event.index === 999 && status === 'complete') {
+							const data = event.data as { strategyId?: string; generatedAt?: string } | undefined;
+							setStatus('complete');
+							if (data?.generatedAt) setGeneratedAt(data.generatedAt);
+							if (data?.strategyId) setCurrentStrategyId(data.strategyId);
+							setHistoryRefresh((n) => n + 1);
+							continue;
+						}
+
+						if (skill === 'data_fetch') {
+							setDataFetchStatus(status === 'complete' ? 'complete' : 'running');
+							continue;
+						}
+
+						if (status === 'running') {
+							setSkillStatuses((prev) => ({ ...prev, [skill]: 'running' }));
+						} else if (status === 'complete') {
+							if (skill === 'platform_analysis') {
+								const data = event.data as { discovered_new_products?: unknown[] } | undefined;
+								console.log('[lc-panel] received platform_analysis:', {
+									discoveredLength: data?.discovered_new_products?.length ?? 0,
+								});
 							}
-						} catch { /* skip */ }
-						eventType = '';
-					}
+							setSkillStatuses((prev) => ({ ...prev, [skill]: 'complete' }));
+							setSkillResults((prev) => ({ ...prev, [skill as LCSkillName]: event.data }));
+						} else if (status === 'error') {
+							setSkillStatuses((prev) => ({ ...prev, [skill]: 'error' }));
+							if (event.error) setError(String(event.error));
+						}
+					} catch { /* skip */ }
 				}
 			}
 		} catch (err) {
