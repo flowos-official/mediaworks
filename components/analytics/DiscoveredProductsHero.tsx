@@ -433,7 +433,7 @@ export default function DiscoveredProductsHero({
 					p={p}
 					idx={idx}
 					onAnalyze={onAnalyze}
-					analyzing={!!analyzingUrl && analyzingUrl === p.source_url}
+					analyzing={!!rediscovering || (!!analyzingUrl && analyzingUrl === p.source_url)}
 				/>
 				))}
 			</div>

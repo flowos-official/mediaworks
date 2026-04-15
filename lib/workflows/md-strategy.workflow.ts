@@ -47,30 +47,14 @@ async function runDiscoveryStep(
 	console.log(`[md-workflow] running final discovery with full analysis context`);
 	const summary = buildMDAnalysisSummary(outputs);
 	try {
-		const tvProfile = buildTVShoppingProfile(
-			context.products.map((p) => ({
-				product_code: p.code,
-				product_name: p.name,
-				category: p.category,
-				year: 2025,
-				total_quantity: p.totalQuantity,
-				total_revenue: p.totalRevenue,
-				total_cost: p.totalRevenue - p.totalProfit,
-				total_profit: p.totalProfit,
-				week_count: p.weekCount,
-				avg_weekly_qty: p.avgWeeklyQty,
-				margin_rate: p.marginRate,
-			})),
-			context.categoryBreakdown.map((c) => ({
-				category: c.category,
-				year: 2025,
-				total_quantity: c.quantity,
-				total_revenue: c.revenue,
-				total_profit: c.profit,
-				product_count: c.productCount,
-				margin_rate: c.marginRate,
-			})),
-		);
+		// Fetch authoritative data from Supabase (same pattern as LC workflow)
+		const supabase = getServiceClient();
+		const [prodResult, catResult] = await Promise.all([
+			supabase.from("product_summaries").select("*").in("year", [2025, 2026]).order("total_revenue", { ascending: false }).limit(60),
+			supabase.from("category_summaries").select("*").in("year", [2025, 2026]),
+		]);
+		const tvProfile = buildTVShoppingProfile(prodResult.data ?? [], catResult.data ?? []);
+
 		const products = await discoverNewProducts({
 			context: "home_shopping",
 			topCategoryNames: context.categoryBreakdown.slice(0, 3).map((c) => c.category),
