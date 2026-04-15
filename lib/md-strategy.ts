@@ -1,6 +1,6 @@
 import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { getServiceClient } from "@/lib/supabase";
-import { rakutenItemSearch, rakutenRankingSearch } from "@/lib/rakuten";
+import { rakutenItemSearch, rakutenRankingSearch, type RakutenItem } from "@/lib/rakuten";
 import { formatProfileForPrompt } from "@/lib/tv-shopping-profile";
 import type {
 	ProductSummary,
@@ -522,32 +522,36 @@ export async function discoverNewProducts(
 
 	// Run Rakuten Item Search (review-count sorted = popularity proxy) + Brave product search
 	// + Brave Japan market trend search (separate, used as context not as products)
-	const [rakutenResults, braveProductResults, braveTrendResults] = await Promise.all([
-		// Rakuten Item Search sorted by review count → real popular products
-		// Fall back to Ranking API if Search returns empty
-		Promise.all(
-			keywords.map(async (kw) => {
-				const cleanKw = normalizeForRakuten(kw);
-				const attempt = async () => {
-					const search = await rakutenItemSearch(cleanKw, "-reviewCount", 10);
-					if (search.items.length > 0) return search;
-					console.log(`[discover] rakuten search empty for "${cleanKw}", falling back to Ranking API`);
-					return await rakutenRankingSearch(cleanKw);
-				};
-				try {
-					return await attempt();
-				} catch (err) {
-					console.warn(`[discover] rakuten first attempt failed for "${cleanKw}": ${err instanceof Error ? err.message : err}`);
-					await new Promise((r) => setTimeout(r, 1000));
-					try {
-						return await attempt();
-					} catch {
-						console.warn(`[discover] rakuten retry also failed for "${cleanKw}" — skipping`);
-						return { items: [] };
-					}
-				}
-			}),
-		),
+	// Rakuten API: 1 request/sec rate limit → sequential with 1s delay
+	const rakutenResults: { items: RakutenItem[] }[] = [];
+	for (const kw of keywords) {
+		const cleanKw = normalizeForRakuten(kw);
+		const attempt = async () => {
+			const search = await rakutenItemSearch(cleanKw, "-reviewCount", 10);
+			if (search.items.length > 0) return search;
+			console.log(`[discover] rakuten search empty for "${cleanKw}", falling back to Ranking API`);
+			return await rakutenRankingSearch(cleanKw);
+		};
+		try {
+			rakutenResults.push(await attempt());
+		} catch (err) {
+			console.warn(`[discover] rakuten first attempt failed for "${cleanKw}": ${err instanceof Error ? err.message : err}`);
+			await new Promise((r) => setTimeout(r, 1000));
+			try {
+				rakutenResults.push(await attempt());
+			} catch {
+				console.warn(`[discover] rakuten retry also failed for "${cleanKw}" — skipping`);
+				rakutenResults.push({ items: [] });
+			}
+		}
+		// Rate limit: wait 1s between Rakuten calls
+		if (keywords.indexOf(kw) < keywords.length - 1) {
+			await new Promise((r) => setTimeout(r, 1000));
+		}
+	}
+
+	// Brave searches run in parallel (no rate limit concern)
+	const [braveProductResults, braveTrendResults] = await Promise.all([
 		// Brave product discovery — Japanese popularity / new product keywords
 		Promise.all(
 			keywords.map(async (kw) => {
