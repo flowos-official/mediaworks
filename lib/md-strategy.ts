@@ -401,6 +401,7 @@ export interface StrategyContext {
 		estimated_price_jpy: string;
 		source: "rakuten" | "web";
 		source_url: string;
+		ranking_info?: string;
 		signal_basis: string;
 		japan_market_fit: {
 			popularity_evidence: string;
@@ -551,12 +552,12 @@ export async function discoverNewProducts(
 		Promise.all(
 			keywords.map(async (kw) => {
 				try {
-					return await braveSearchStructured(`${kw} 売れ筋 人気 ランキング 2025 楽天 Amazon`);
+					return await braveSearchStructured(`${kw} 通販 商品 おすすめ 楽天 Amazon 購入`);
 				} catch (err) {
 					console.warn(`[discover] brave search failed for "${kw}": ${err instanceof Error ? err.message : err}`);
 					await new Promise((r) => setTimeout(r, 1000));
 					try {
-						return await braveSearchStructured(`${kw} 人気商品 おすすめ`);
+						return await braveSearchStructured(`${kw} 人気商品 通販 購入ページ`);
 					} catch {
 						console.warn(`[discover] brave retry also failed for "${kw}" — skipping`);
 						return [];
@@ -796,7 +797,8 @@ ${poolText}
 
 === 厳守ルール ===
 - 必ず上記プールに存在する商品のみから選ぶこと。プールにない商品名を作らないこと。
-- source_url は提供されたURLを一字一句そのままコピー (絶対に変更しない)。
+- source_url は商品の個別ページURL (楽天商品ページ、Amazon商品ページ、メーカー公式ページ等)。プールに商品個別URLがある場合はそのままコピー。ランキングページや一覧ページのURLしかない場合は、商品名から推測される楽天/Amazon/公式の商品個別ページURLを記載すること。
+- ranking_info はランキング順位情報 (例: "楽天デイリーランキング1位"、"価格.com人気売れ筋3位" 等)。ランキング情報がない場合は省略。
 - name は商品プールの name フィールドをそのまま使用。
 - カテゴリが偏らないように${itemCount}商品を選定。
 - 各商品ごとに japan_market_fit を必ず記入する。${salesStrategyRules}
@@ -827,7 +829,8 @@ Return a JSON array of exactly ${itemCount} items (no markdown):
   "supply_source":"楽天 or Webドメイン",
   "estimated_price_jpy":"¥X-Y",
   "source":"rakuten|web",
-  "source_url":"<プールからそのままコピー>",
+  "source_url":"<商品個別ページURL (楽天/Amazon/公式等)>",
+  "ranking_info":"楽天ランキングX位 / 価格.comX位 等 (なければ省略)",
   "signal_basis":"TV自社シグナルとの紐付け",
   "japan_market_fit": {
     "popularity_evidence":"楽天レビュー数/評価やWeb検索から読み取れる人気の具体的根拠",
@@ -850,13 +853,18 @@ ${salesStrategyFooter}`;
 		}
 		console.log(`[discover] parsed ${parsed.length} items from Gemini`);
 
-		// Sanity-pass: drop items whose source_url isn't actually in the pool (anti-hallucination)
-		const normalizeUrl = (u: string) => u.replace(/\/+$/, '').replace(/^https?:\/\//, '');
-		const validUrls = new Set(cappedPool.map((p) => normalizeUrl(p.source_url)).filter(Boolean));
-		const filtered = parsed.filter((p) => !!p.source_url && validUrls.has(normalizeUrl(p.source_url)));
-		console.log(`[discover] sanity-pass: ${filtered.length}/${parsed.length} items survived URL whitelist`);
+		// Sanity-pass: verify items came from the actual pool (anti-hallucination).
+		// Check by name prefix match since Gemini may generate individual product URLs
+		// instead of copying pool URLs directly.
+		const poolNames = cappedPool.map((p) => p.name.slice(0, 15).toLowerCase());
+		const filtered = parsed.filter((p) => {
+			if (!p.name || !p.source_url) return false;
+			const nameHead = p.name.slice(0, 15).toLowerCase();
+			return poolNames.some((pn) => nameHead.includes(pn) || pn.includes(nameHead));
+		});
+		console.log(`[discover] sanity-pass: ${filtered.length}/${parsed.length} items survived name-match check`);
 		if (filtered.length === 0 && parsed.length > 0) {
-			console.warn(`[discover] all ${parsed.length} Gemini items failed sanity-pass — Gemini may have hallucinated URLs`);
+			console.warn(`[discover] all ${parsed.length} Gemini items failed sanity-pass — Gemini may have hallucinated products`);
 		}
 		return filtered.length > 0 ? filtered : undefined;
 	} catch (err) {

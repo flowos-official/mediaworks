@@ -301,16 +301,23 @@ function ProductCard({ p, idx, onAnalyze, analyzing }: {
 				</div>
 			)}
 
-			{p.source_url && (
-				<a
-					href={p.source_url}
-					target="_blank"
-					rel="noopener noreferrer"
-					className="mt-3 inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 hover:underline self-start"
-				>
-					出典ページを確認 <ExternalLink size={10} />
-				</a>
-			)}
+			<div className="mt-3 flex items-center gap-3">
+				{p.source_url && (
+					<a
+						href={p.source_url}
+						target="_blank"
+						rel="noopener noreferrer"
+						className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 hover:underline"
+					>
+						商品ページを確認 <ExternalLink size={10} />
+					</a>
+				)}
+				{p.ranking_info && (
+					<span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
+						{p.ranking_info}
+					</span>
+				)}
+			</div>
 		</article>
 	);
 }
