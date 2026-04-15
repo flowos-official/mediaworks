@@ -14,6 +14,8 @@ interface Props {
 	history?: DiscoveryBatch[];
 	onRediscover?: (focus: string) => Promise<void> | void;
 	rediscovering?: boolean;
+	onAnalyze?: (sourceUrl: string) => Promise<void> | void;
+	analyzingUrl?: string | null;
 }
 
 function scoreColor(score: number): string {
@@ -23,7 +25,12 @@ function scoreColor(score: number): string {
 	return 'text-red-700 bg-red-100 border-red-300';
 }
 
-function ProductCard({ p, idx }: { p: DiscoveredProduct; idx: number }) {
+function ProductCard({ p, idx, onAnalyze, analyzing }: {
+	p: DiscoveredProduct;
+	idx: number;
+	onAnalyze?: (sourceUrl: string) => void;
+	analyzing?: boolean;
+}) {
 	const [expanded, setExpanded] = useState(false);
 	const s = p.sales_strategy;
 
@@ -96,6 +103,24 @@ function ProductCard({ p, idx }: { p: DiscoveredProduct; idx: number }) {
 							<span className="font-semibold text-rose-800">なぜ今日本で:</span> {p.japan_market_fit.why_japan_now}
 						</div>
 					)}
+				</div>
+			)}
+
+			{/* Analyze button — shown when no sales_strategy yet */}
+			{!s && onAnalyze && p.source_url && (
+				<div className="border-t border-gray-100 pt-3">
+					<button
+						type="button"
+						onClick={() => onAnalyze(p.source_url)}
+						disabled={analyzing}
+						className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 text-xs font-semibold rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+					>
+						{analyzing ? (
+							<><Loader2 size={12} className="animate-spin" /> 分析中...</>
+						) : (
+							<><Sparkles size={12} /> この商品を分析する</>
+						)}
+					</button>
 				</div>
 			)}
 
@@ -296,6 +321,8 @@ export default function DiscoveredProductsHero({
 	history,
 	onRediscover,
 	rediscovering,
+	onAnalyze,
+	analyzingUrl,
 }: Props) {
 	const [focus, setFocus] = useState('');
 	const [showHistory, setShowHistory] = useState(false);
@@ -325,7 +352,7 @@ export default function DiscoveredProductsHero({
 				</span>
 			</div>
 			<p className="text-xs text-gray-600 mb-4">
-				TV通販の販売シグナルを基に、楽天 / Web 検索で実在する新商品プールから AI が選定。各商品ごとに詳細な販売戦略付き。
+				TV通販の販売シグナルを基に、楽天 / Web 検索で実在する新商品プールから AI が選定。{onAnalyze ? '各商品を個別に分析できます。' : '各商品ごとに詳細な販売戦略付き。'}
 			</p>
 
 			{/* Re-discover bar */}
@@ -398,9 +425,15 @@ export default function DiscoveredProductsHero({
 				</div>
 			)}
 
-			<div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+			<div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
 				{displayProducts.map((p, idx) => (
-					<ProductCard key={`${p.source_url}-${idx}`} p={p} idx={idx} />
+					<ProductCard
+					key={`${p.source_url}-${idx}`}
+					p={p}
+					idx={idx}
+					onAnalyze={onAnalyze}
+					analyzing={!!analyzingUrl && analyzingUrl === p.source_url}
+				/>
 				))}
 			</div>
 		</section>
