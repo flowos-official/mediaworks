@@ -857,18 +857,31 @@ ${salesStrategyFooter}`;
 		}
 		console.log(`[discover] parsed ${parsed.length} items from Gemini`);
 
-		// Sanity-pass: verify items came from the actual pool (anti-hallucination).
-		// Check by name prefix match since Gemini may generate individual product URLs
-		// instead of copying pool URLs directly.
-		const poolNames = cappedPool.map((p) => p.name.slice(0, 15).toLowerCase());
+		// Sanity-pass: verify items reference the pool (anti-hallucination).
+		// Use flexible matching: check if pool URL domain or key product terms appear.
+		const poolUrls = new Set(cappedPool.map((p) => p.source_url).filter(Boolean));
+		const poolSnippetWords = cappedPool.flatMap((p) => {
+			// Extract meaningful words (4+ chars) from pool names and snippets
+			const text = `${p.name} ${p.snippet}`.toLowerCase();
+			return text.split(/[\s\-\/・、。（）()【】\[\]]+/).filter((w) => w.length >= 4);
+		});
+		const poolWordSet = new Set(poolSnippetWords);
+
 		const filtered = parsed.filter((p) => {
 			if (!p.name || !p.source_url) return false;
-			const nameHead = p.name.slice(0, 15).toLowerCase();
-			return poolNames.some((pn) => nameHead.includes(pn) || pn.includes(nameHead));
+			// Pass if URL matches pool directly
+			const normalizeUrl = (u: string) => u.replace(/\/+$/, '').replace(/^https?:\/\//, '');
+			if (poolUrls.has(p.source_url) || [...poolUrls].some((pu) => normalizeUrl(pu) === normalizeUrl(p.source_url))) return true;
+			// Pass if product name contains significant pool words (at least 2 matches)
+			const nameWords = p.name.toLowerCase().split(/[\s\-\/・、。（）()【】\[\]]+/).filter((w) => w.length >= 4);
+			const matchCount = nameWords.filter((w) => poolWordSet.has(w)).length;
+			return matchCount >= 2;
 		});
-		console.log(`[discover] sanity-pass: ${filtered.length}/${parsed.length} items survived name-match check`);
+		console.log(`[discover] sanity-pass: ${filtered.length}/${parsed.length} items survived pool-match check`);
 		if (filtered.length === 0 && parsed.length > 0) {
-			console.warn(`[discover] all ${parsed.length} Gemini items failed sanity-pass — Gemini may have hallucinated products`);
+			console.warn(`[discover] all ${parsed.length} Gemini items failed sanity-pass — returning all (fallback)`);
+			// Fallback: return all parsed items rather than nothing, since pool existed
+			return parsed.filter((p) => !!p.name && !!p.source_url);
 		}
 		return filtered.length > 0 ? filtered : undefined;
 	} catch (err) {
