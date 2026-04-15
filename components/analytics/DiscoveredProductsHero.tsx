@@ -330,8 +330,9 @@ export default function DiscoveredProductsHero({
 
 	if (!products || products.length === 0) return null;
 
-	// Use history's active batch if user has selected one
-	const displayProducts = history && history.length > 0
+	// Use products prop for latest batch (may have merged analyses),
+	// fall back to history for older batches.
+	const displayProducts = history && history.length > 0 && activeBatchIndex > 0
 		? history[activeBatchIndex]?.products ?? products
 		: products;
 
