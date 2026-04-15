@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
 import { discoverNewProducts, type DiscoveryBatch } from "@/lib/md-strategy";
 import type { PlatformAnalysisOutput } from "@/lib/live-commerce-strategy";
+import { buildTVShoppingProfile } from "@/lib/tv-shopping-profile";
 
 export const maxDuration = 120;
 
@@ -26,10 +27,10 @@ export async function POST(
 		return Response.json({ error: fetchErr?.message ?? "Strategy not found" }, { status: 404 });
 	}
 
-	const [productResult, annualResult] = await Promise.all([
+	const [productResult, annualResult, categoryResult] = await Promise.all([
 		supabase
 			.from("product_summaries")
-			.select("product_name, category, total_revenue, total_profit")
+			.select("*")
 			.in("year", [2025, 2026])
 			.order("total_revenue", { ascending: false })
 			.limit(60),
@@ -37,10 +38,15 @@ export async function POST(
 			.from("annual_summaries")
 			.select("total_revenue, total_profit")
 			.in("year", [2025, 2026]),
+		supabase
+			.from("category_summaries")
+			.select("*")
+			.in("year", [2025, 2026]),
 	]);
 
 	const products = productResult.data ?? [];
 	const annuals = annualResult.data ?? [];
+	const tvProfile = buildTVShoppingProfile(products, categoryResult.data ?? []);
 
 	const categoryRevenue: Record<string, number> = {};
 	for (const p of products) {
@@ -74,6 +80,8 @@ export async function POST(
 		tvMarginRate,
 		excludeUrls,
 		excludeNames,
+		tvProfile,
+		lightweight: true,
 	});
 
 	if (!discovered || discovered.length === 0) {

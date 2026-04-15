@@ -9,6 +9,7 @@ import {
 } from "@/lib/live-commerce-strategy";
 import { discoverNewProducts, type DiscoveredProduct } from "@/lib/md-strategy";
 import { getServiceClient } from "@/lib/supabase";
+import { buildTVShoppingProfile } from "@/lib/tv-shopping-profile";
 
 export interface LCWorkflowInput {
 	userGoal?: string;
@@ -31,6 +32,14 @@ async function runDiscoveryStep(
 	console.log(`[lc-workflow] running final discovery with full analysis context`);
 	const summary = buildLCAnalysisSummary(outputs);
 	try {
+		// Build TV profile from Supabase data for data-driven curation
+		const supabase = getServiceClient();
+		const [prodResult, catResult] = await Promise.all([
+			supabase.from("product_summaries").select("*").in("year", [2025, 2026]).order("total_revenue", { ascending: false }).limit(60),
+			supabase.from("category_summaries").select("*").in("year", [2025, 2026]),
+		]);
+		const tvProfile = buildTVShoppingProfile(prodResult.data ?? [], catResult.data ?? []);
+
 		const products = await discoverNewProducts({
 			context: "live_commerce",
 			topCategoryNames: context.topCategoryNames ?? [],
@@ -38,6 +47,8 @@ async function runDiscoveryStep(
 			tvProductNames: context.products.map((p) => p.name),
 			tvMarginRate: context.avgMarginRate ?? 0,
 			analysisContext: summary,
+			tvProfile,
+			lightweight: true,
 		});
 		console.log(`[lc-workflow] discovery complete: ${products?.length ?? 0} products`);
 		return products;

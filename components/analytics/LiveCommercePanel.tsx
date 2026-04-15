@@ -249,7 +249,7 @@ function LCHistory({ onView, refreshKey }: { onView: (id: string) => void; refre
 // Results view
 // ---------------------------------------------------------------------------
 
-function ResultsView({ results, sources, generatedAt, backHref, strategyId, onRediscover, rediscovering }: {
+function ResultsView({ results, sources, generatedAt, backHref, strategyId, onRediscover, rediscovering, discoveredProducts, onAnalyze, analyzingUrl }: {
 	results: SkillResults;
 	sources?: Array<{ title: string; url: string }>;
 	generatedAt?: string | null;
@@ -257,6 +257,9 @@ function ResultsView({ results, sources, generatedAt, backHref, strategyId, onRe
 	strategyId?: string | null;
 	onRediscover?: (focus: string) => Promise<void>;
 	rediscovering?: boolean;
+	discoveredProducts?: import('@/lib/md-strategy').DiscoveredProduct[];
+	onAnalyze?: (sourceUrl: string) => Promise<void>;
+	analyzingUrl?: string | null;
 }) {
 	return (
 		<>
@@ -267,15 +270,17 @@ function ResultsView({ results, sources, generatedAt, backHref, strategyId, onRe
 				<ArrowLeft size={14} />一覧に戻る
 			</Link>
 			<div id="lc-strategy-content" className="space-y-8">
-				{(results.platform_analysis?.discovered_new_products?.length ?? 0) > 0 && (
+				{(discoveredProducts ?? results.platform_analysis?.discovered_new_products)?.length ? (
 					<DiscoveredProductsHero
-						products={results.platform_analysis!.discovered_new_products!}
+						products={discoveredProducts ?? results.platform_analysis!.discovered_new_products!}
 						contextLabel="ライブコマース"
 						history={results.platform_analysis?.discovery_history}
 						onRediscover={strategyId ? onRediscover : undefined}
 						rediscovering={rediscovering}
+						onAnalyze={onAnalyze}
+						analyzingUrl={analyzingUrl}
 					/>
-				)}
+				) : null}
 				{results.market_research && <MarketOverviewSection data={results.market_research} />}
 				{results.platform_analysis && <PlatformAnalysisSection data={results.platform_analysis} />}
 				{results.content_strategy && <ContentStrategySection data={results.content_strategy} />}
@@ -311,6 +316,8 @@ export default function LiveCommercePanel({ mode, initialData }: LiveCommercePan
 // ---------------------------------------------------------------------------
 
 function LCDetailView({ initialData, backHref }: { initialData: SavedLCData; backHref: string }) {
+	const [analyses, setAnalyses] = useState<Record<string, NonNullable<import('@/lib/md-strategy').DiscoveredProduct["sales_strategy"]>>>({});
+	const [analyzingUrl, setAnalyzingUrl] = useState<string | null>(null);
 	const [savedResults, setSavedResults] = useState<SkillResults>({
 		goal_analysis: initialData.goal_analysis ?? undefined,
 		market_research: initialData.market_research,
@@ -353,6 +360,42 @@ function LCDetailView({ initialData, backHref }: { initialData: SavedLCData; bac
 		}
 	}, [initialData.id]);
 
+	const handleAnalyze = useCallback(async (sourceUrl: string) => {
+		setAnalyzingUrl(sourceUrl);
+		setError(null);
+		try {
+			const products = savedResults.platform_analysis?.discovered_new_products ?? [];
+			const product = products.find((p) => p.source_url === sourceUrl);
+			const res = await fetch('/api/analytics/discovery/analyze', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					sourceUrl,
+					product,
+					context: 'live_commerce',
+					productName: product?.name,
+				}),
+			});
+			const data = await res.json();
+			if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+			setAnalyses((prev) => ({ ...prev, [sourceUrl]: data.sales_strategy }));
+		} catch (err) {
+			setError(err instanceof Error ? err.message : String(err));
+		} finally {
+			setAnalyzingUrl(null);
+		}
+	}, [savedResults.platform_analysis]);
+
+	const mergedDiscoveredProducts = (() => {
+		const raw = savedResults.platform_analysis?.discovered_new_products;
+		if (!raw) return undefined;
+		return raw.map((p) =>
+			p.source_url && analyses[p.source_url]
+				? { ...p, sales_strategy: analyses[p.source_url] }
+				: p
+		);
+	})();
+
 	return (
 		<div className="space-y-6">
 			<div className="flex items-center gap-2">
@@ -375,6 +418,9 @@ function LCDetailView({ initialData, backHref }: { initialData: SavedLCData; bac
 				strategyId={initialData.id}
 				onRediscover={handleRediscover}
 				rediscovering={rediscovering}
+				discoveredProducts={mergedDiscoveredProducts}
+				onAnalyze={handleAnalyze}
+				analyzingUrl={analyzingUrl}
 			/>
 		</div>
 	);

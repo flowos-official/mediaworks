@@ -165,13 +165,16 @@ function DataPreview() {
 // Shared: Skill results renderer
 // ---------------------------------------------------------------------------
 
-function SkillResultsView({ results, generatedAt, backHref, strategyId, onRediscover, rediscovering }: {
+function SkillResultsView({ results, generatedAt, backHref, strategyId, onRediscover, rediscovering, discoveredProducts, onAnalyze, analyzingUrl }: {
 	results: SkillResults;
 	generatedAt?: string | null;
 	backHref: string;
 	strategyId?: string | null;
 	onRediscover?: (focus: string) => Promise<void>;
 	rediscovering?: boolean;
+	discoveredProducts?: import('@/lib/md-strategy').DiscoveredProduct[];
+	onAnalyze?: (sourceUrl: string) => Promise<void>;
+	analyzingUrl?: string | null;
 }) {
 	const hasAny = Object.keys(results).length > 0;
 	if (!hasAny) return null;
@@ -188,15 +191,17 @@ function SkillResultsView({ results, generatedAt, backHref, strategyId, onRedisc
 			</Link>
 
 			<div id="md-strategy-content" className="space-y-8">
-				{(results.product_selection?.discovered_new_products?.length ?? 0) > 0 && (
+				{(discoveredProducts ?? results.product_selection?.discovered_new_products)?.length ? (
 					<DiscoveredProductsHero
-						products={results.product_selection!.discovered_new_products!}
+						products={discoveredProducts ?? results.product_selection!.discovered_new_products!}
 						contextLabel="ホームショッピング / EC"
 						history={results.product_selection?.discovery_history}
 						onRediscover={strategyId ? onRediscover : undefined}
 						rediscovering={rediscovering}
+						onAnalyze={onAnalyze}
+						analyzingUrl={analyzingUrl}
 					/>
-				)}
+				) : null}
 				{results.product_selection && <ProductSelectionSection data={results.product_selection} />}
 				{results.channel_strategy && <ChannelStrategySection data={results.channel_strategy} />}
 				{results.pricing_margin && <PricingMarginSection data={results.pricing_margin} />}
@@ -267,6 +272,8 @@ export default function MDStrategyPanel({ mode, initialData }: MDStrategyPanelPr
 // ---------------------------------------------------------------------------
 
 function DetailView({ initialData, backHref }: { initialData: SavedStrategyData; backHref: string }) {
+	const [analyses, setAnalyses] = useState<Record<string, NonNullable<import('@/lib/md-strategy').DiscoveredProduct["sales_strategy"]>>>({});
+	const [analyzingUrl, setAnalyzingUrl] = useState<string | null>(null);
 	const [savedResults, setSavedResults] = useState<SkillResults>({
 		goal_analysis: initialData.goal_analysis ?? undefined,
 		product_selection: initialData.product_selection,
@@ -310,6 +317,43 @@ function DetailView({ initialData, backHref }: { initialData: SavedStrategyData;
 		}
 	}, [initialData.id]);
 
+	const handleAnalyze = useCallback(async (sourceUrl: string) => {
+		setAnalyzingUrl(sourceUrl);
+		setError(null);
+		try {
+			const products = savedResults.product_selection?.discovered_new_products ?? [];
+			const product = products.find((p) => p.source_url === sourceUrl);
+			const res = await fetch('/api/analytics/discovery/analyze', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					sourceUrl,
+					product,
+					context: 'home_shopping',
+					productName: product?.name,
+				}),
+			});
+			const data = await res.json();
+			if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+			setAnalyses((prev) => ({ ...prev, [sourceUrl]: data.sales_strategy }));
+		} catch (err) {
+			setError(err instanceof Error ? err.message : String(err));
+		} finally {
+			setAnalyzingUrl(null);
+		}
+	}, [savedResults.product_selection]);
+
+	// Merge analyses into discovered products
+	const mergedDiscoveredProducts = (() => {
+		const raw = savedResults.product_selection?.discovered_new_products;
+		if (!raw) return undefined;
+		return raw.map((p) =>
+			p.source_url && analyses[p.source_url]
+				? { ...p, sales_strategy: analyses[p.source_url] }
+				: p
+		);
+	})();
+
 	return (
 		<div className="space-y-6">
 			<div className="flex items-center gap-2">
@@ -332,6 +376,9 @@ function DetailView({ initialData, backHref }: { initialData: SavedStrategyData;
 				strategyId={initialData.id}
 				onRediscover={handleRediscover}
 				rediscovering={rediscovering}
+				discoveredProducts={mergedDiscoveredProducts}
+				onAnalyze={handleAnalyze}
+				analyzingUrl={analyzingUrl}
 			/>
 		</div>
 	);
