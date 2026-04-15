@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { Search, Loader2, AlertTriangle, Sparkles } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import DiscoveredProductsHero from '@/components/analytics/DiscoveredProductsHero';
@@ -30,6 +30,26 @@ export default function ProductDiscoveryPanel() {
   const [analyzingUrl, setAnalyzingUrl] = useState<string | null>(null);
 
   const latestProducts = history.length > 0 ? history[0].products : undefined;
+
+  // Load existing analyses when sessionId changes (e.g. after page refresh or session restore)
+  useEffect(() => {
+    if (!sessionId) return;
+    (async () => {
+      try {
+        const res = await fetch(`/api/analytics/discovery/${sessionId}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.analyses && Object.keys(data.analyses).length > 0) {
+          setAnalyses(data.analyses);
+        }
+        if (data.session?.discovery_history) {
+          setHistory(data.session.discovery_history);
+        }
+      } catch {
+        // Silently ignore — analyses will just be empty
+      }
+    })();
+  }, [sessionId]);
 
   // Merge analyses into products for display
   const mergedProducts = useMemo(() => {
@@ -88,6 +108,7 @@ export default function ProductDiscoveryPanel() {
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
 
       setHistory(data.discovery_history);
+      setAnalyses({});
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
