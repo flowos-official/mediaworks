@@ -74,13 +74,18 @@ ${rejectionHints}
 【商品プール — index: name | price | review | seller | seed | track】
 ${poolList}
 
+【tv_fit_reason 作成ルール】
+- 商品の実際の特性（カテゴリ、レビュー数、価格帯、実演映えなど）を根拠に説明
+- seed_keyword（検索に使ったキーワード）は参照しないこと
+- 商品名から推定される機能・ベネフィットに焦点
+
 【出力 — JSONのみ、前置き/後書き・コメントなし】
 {
   "candidates": [
     {
       "index": <プールのインデックス>,
       "tv_fit_score": <0-100>,
-      "tv_fit_reason": "1行 (日本語, 50字以内)",
+      "tv_fit_reason": "1行 (日本語, 50字以内, 商品特性のみ)",
       "is_tv_applicable": true,
       "is_live_applicable": true,
       "score_breakdown": {
