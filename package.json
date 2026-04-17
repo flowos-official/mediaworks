@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:discovery-dry-run": "tsx --env-file=.env.local scripts/test-discovery-dry-run.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1016.0",
