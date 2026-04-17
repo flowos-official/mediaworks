@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS discovered_products (
 
   UNIQUE (session_id, product_url)
 );
+CREATE INDEX IF NOT EXISTS idx_dp_session_id ON discovered_products (session_id);
 CREATE INDEX IF NOT EXISTS idx_dp_created_at ON discovered_products (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_dp_user_action ON discovered_products (user_action);
 CREATE INDEX IF NOT EXISTS idx_dp_name_normalized ON discovered_products (name_normalized);
