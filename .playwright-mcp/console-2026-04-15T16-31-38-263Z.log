@@ -1,0 +1,3 @@
+[     491ms] [WARNING] [Meta Pixel] - Removed parameters from custom data due to potential violations. Go to Events Manager to learn more. @ https://connect.facebook.net/en_US/fbevents.js:181
+[     788ms] [ERROR] Attestation check for Shared Storage on https://www.googleadservices.com failed. @ https://www.googleadservices.com/pagead/managed/js/activeview/current/reach_worklet.html:0
+[    1628ms] [INFO] Powered by AMP ⚡ HTML – Version 2603032146000 https://kakaku.com/kaden/medical-equipment/ranking_2182/ @ https://cdn.ampproject.org/rtv/012603032146000/amp4ads-v0.mjs:1

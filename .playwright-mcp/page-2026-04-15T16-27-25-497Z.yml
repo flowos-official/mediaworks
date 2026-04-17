@@ -1,0 +1,89 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - navigation [ref=e3]:
+      - generic [ref=e5]:
+        - link "MediaWorks" [ref=e6] [cursor=pointer]:
+          - /url: /ja
+          - img [ref=e8]
+          - generic [ref=e10]: MediaWorks
+        - generic [ref=e11]:
+          - link "ホーム" [ref=e12] [cursor=pointer]:
+            - /url: /ja
+          - link "売上分析" [ref=e13] [cursor=pointer]:
+            - /url: /ja/analytics
+            - img [ref=e14]
+            - text: 売上分析
+          - generic [ref=e16]:
+            - img [ref=e17]
+            - button "English" [ref=e20]
+            - button "日本語" [ref=e21]
+    - main [ref=e22]:
+      - generic [ref=e23]:
+        - generic [ref=e24]:
+          - img [ref=e25]
+          - heading "売上分析" [level=1] [ref=e27]
+        - paragraph [ref=e28]: TXDレギュラー受注データに基づく販売実績分析
+      - generic [ref=e29]:
+        - generic [ref=e31]:
+          - link "概要" [ref=e32] [cursor=pointer]:
+            - /url: /ja/analytics/overview
+          - link "商品分析" [ref=e33] [cursor=pointer]:
+            - /url: /ja/analytics/products
+          - link "拡大戦略" [ref=e34] [cursor=pointer]:
+            - /url: /ja/analytics/expansion
+          - link "ライブコマース" [ref=e35] [cursor=pointer]:
+            - /url: /ja/analytics/live-commerce
+        - generic [ref=e36]:
+          - generic [ref=e37]:
+            - img [ref=e38]
+            - heading "ライブコマース戦略" [level=3] [ref=e44]
+            - generic [ref=e45]: 6-Skill AI
+          - generic [ref=e47]:
+            - generic [ref=e48]:
+              - generic [ref=e49]: ライブコマースの目標・方向性 (任意)
+              - 'textbox "例: TikTok Liveを中心に月商1000万円を目指したい / Instagram Liveで美容商品の販売を始めたい" [disabled] [ref=e50]'
+            - generic [ref=e51]:
+              - generic [ref=e52]: 対象プラットフォーム (任意・複数選択可)
+              - generic [ref=e53]:
+                - button "TikTok Live" [disabled] [ref=e54]
+                - button "Instagram Live" [disabled] [ref=e55]
+                - button "YouTube Live" [disabled] [ref=e56]
+                - button "楽天ROOM LIVE" [disabled] [ref=e57]
+                - button "Yahoo!ショッピング LIVE" [disabled] [ref=e58]
+            - generic [ref=e59]:
+              - paragraph [ref=e60]: 6つの専門スキル（目標分析→市場調査→プラットフォーム分析→コンテンツ戦略→実行計画→リスク分析）が順次分析します
+              - button "分析中..." [disabled] [ref=e150]:
+                - img [ref=e151]
+                - text: 分析中...
+          - generic [ref=e153]:
+            - img [ref=e154]
+            - text: 分析中はタブを離れたりページを閉じたりしないでください（中断されます）
+          - generic [ref=e156]:
+            - heading "分析進捗" [level=4] [ref=e157]
+            - generic [ref=e158]:
+              - img [ref=e159]
+              - generic [ref=e162]: ウェブリサーチ
+            - generic [ref=e163]:
+              - generic [ref=e164]:
+                - img [ref=e166]
+                - generic [ref=e170]: 目標分析
+              - generic [ref=e171]:
+                - img [ref=e174]
+                - generic [ref=e176]:
+                  - generic [ref=e177]: 市場調査
+                  - generic [ref=e178]: 分析中...
+              - generic [ref=e179]:
+                - img [ref=e182]
+                - generic [ref=e185]: プラットフォーム分析
+              - generic [ref=e186]:
+                - img [ref=e189]
+                - generic [ref=e192]: コンテンツ戦略
+              - generic [ref=e193]:
+                - img [ref=e196]
+                - generic [ref=e199]: 実行ロードマップ
+              - generic [ref=e200]:
+                - img [ref=e203]
+                - generic [ref=e206]: リスク分析
+  - button "Open Next.js Dev Tools" [ref=e76] [cursor=pointer]:
+    - img [ref=e77]
+  - alert [ref=e80]

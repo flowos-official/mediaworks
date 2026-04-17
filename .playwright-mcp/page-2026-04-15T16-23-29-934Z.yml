@@ -1,0 +1,80 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - navigation [ref=e3]:
+      - generic [ref=e5]:
+        - link "MediaWorks" [ref=e6] [cursor=pointer]:
+          - /url: /ja
+          - img [ref=e8]
+          - generic [ref=e10]: MediaWorks
+        - generic [ref=e11]:
+          - link "ホーム" [ref=e12] [cursor=pointer]:
+            - /url: /ja
+          - link "売上分析" [ref=e13] [cursor=pointer]:
+            - /url: /ja/analytics
+            - img [ref=e14]
+            - text: 売上分析
+          - generic [ref=e16]:
+            - img [ref=e17]
+            - button "English" [ref=e20]
+            - button "日本語" [ref=e21]
+    - main [ref=e22]:
+      - generic [ref=e23]:
+        - generic [ref=e24]:
+          - img [ref=e25]
+          - heading "売上分析" [level=1] [ref=e27]
+        - paragraph [ref=e28]: TXDレギュラー受注データに基づく販売実績分析
+      - generic [ref=e29]:
+        - generic [ref=e31]:
+          - link "概要" [ref=e32] [cursor=pointer]:
+            - /url: /ja/analytics/overview
+          - link "商品分析" [ref=e33] [cursor=pointer]:
+            - /url: /ja/analytics/products
+          - link "拡大戦略" [ref=e34] [cursor=pointer]:
+            - /url: /ja/analytics/expansion
+          - link "ライブコマース" [ref=e35] [cursor=pointer]:
+            - /url: /ja/analytics/live-commerce
+        - generic [ref=e36]:
+          - generic [ref=e37]:
+            - img [ref=e38]
+            - heading "チャネル拡大戦略" [level=3] [ref=e42]
+            - generic [ref=e43]: 7-Skill AI
+          - generic [ref=e45]:
+            - generic [ref=e46]:
+              - generic [ref=e47]: 拡大の目標・方向性 (任意)
+              - 'textbox "例: 楽天・Amazonで月商1000万を目指したい / TikTokで若年層にリーチしたい / 韓国Coupangへの越境ECを検討中" [ref=e48]'
+            - generic [ref=e49]:
+              - generic [ref=e50]:
+                - generic [ref=e51]: カテゴリ
+                - combobox [ref=e52]:
+                  - option "指定なし" [selected]
+                  - option "美容・スキンケア"
+                  - option "健康食品"
+                  - option "キッチン用品"
+                  - option "ファッション"
+                  - option "生活雑貨"
+                  - option "電気機器"
+                  - option "フィットネス"
+                  - option "その他"
+              - generic [ref=e53]:
+                - generic [ref=e54]: ターゲット市場
+                - combobox [ref=e55]:
+                  - option "指定なし" [selected]
+                  - option "日本全国"
+                  - option "40-60代女性"
+                  - option "20-30代女性"
+                  - option "男女共用"
+              - generic [ref=e56]:
+                - generic [ref=e57]: 価格帯（任意）
+                - 'textbox "例: ¥3,000-8,000" [ref=e58]'
+            - paragraph [ref=e59]: カテゴリとターゲット市場を指定すると、AI推薦商品も戦略に組み込まれます（指定なしでも分析可能）
+            - generic [ref=e60]:
+              - paragraph [ref=e61]: 7つの専門スキル（目標分析→商品選定→チャネル戦略→価格設計→マーケ計画→収益予測→リスク対策）が順次分析します
+              - button "拡大戦略を分析" [ref=e62]:
+                - img [ref=e63]
+                - text: 拡大戦略を分析
+          - generic [ref=e68]:
+            - img [ref=e69]
+            - text: 履歴を読み込み中...
+  - button "Open Next.js Dev Tools" [ref=e76] [cursor=pointer]:
+    - img [ref=e77]
+  - alert [ref=e80]

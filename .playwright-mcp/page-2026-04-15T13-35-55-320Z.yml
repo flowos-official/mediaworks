@@ -1,0 +1,766 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - navigation [ref=e3]:
+      - generic [ref=e5]:
+        - link "MediaWorks" [ref=e6] [cursor=pointer]:
+          - /url: /ja
+          - img [ref=e8]
+          - generic [ref=e10]: MediaWorks
+        - generic [ref=e11]:
+          - link "ホーム" [ref=e12] [cursor=pointer]:
+            - /url: /ja
+          - link "売上分析" [ref=e13] [cursor=pointer]:
+            - /url: /ja/analytics
+            - img [ref=e14]
+            - text: 売上分析
+          - generic [ref=e16]:
+            - img [ref=e17]
+            - button "English" [ref=e20]
+            - button "日本語" [ref=e21]
+    - main [ref=e22]:
+      - generic [ref=e23]:
+        - generic [ref=e24]:
+          - img [ref=e25]
+          - heading "売上分析" [level=1] [ref=e27]
+        - paragraph [ref=e28]: TXDレギュラー受注データに基づく販売実績分析
+      - generic [ref=e29]:
+        - generic [ref=e31]:
+          - link "概要" [ref=e32] [cursor=pointer]:
+            - /url: /ja/analytics/overview
+          - link "商品分析" [ref=e33] [cursor=pointer]:
+            - /url: /ja/analytics/products
+          - link "拡大戦略" [ref=e34] [cursor=pointer]:
+            - /url: /ja/analytics/expansion
+          - link "ライブコマース" [ref=e35] [cursor=pointer]:
+            - /url: /ja/analytics/live-commerce
+          - link "新商品発掘" [ref=e36] [cursor=pointer]:
+            - /url: /ja/analytics/discovery
+        - generic [ref=e37]:
+          - generic [ref=e38]:
+            - img [ref=e39]
+            - heading "新商品発掘" [level=3] [ref=e42]
+            - generic [ref=e43]: AI Discovery
+          - generic [ref=e45]:
+            - generic [ref=e46]:
+              - generic [ref=e47]: 発掘の目的・方向性 (任意)
+              - 'textbox "例: 美容家電で月商500万を目指したい / 季節商品を探している / 韓国で人気の商品を日本に" [ref=e48]'
+            - generic [ref=e49]:
+              - generic [ref=e50]:
+                - generic [ref=e51]: チャネル
+                - combobox [ref=e52]:
+                  - option "TV通販向け" [selected]
+                  - option "ライブコマース向け"
+              - generic [ref=e53]:
+                - generic [ref=e54]: カテゴリ
+                - combobox [ref=e55]:
+                  - option "指定なし" [selected]
+                  - option "美容・スキンケア"
+                  - option "健康食品"
+                  - option "キッチン用品"
+                  - option "ファッション"
+                  - option "生活雑貨"
+                  - option "電気機器"
+                  - option "フィットネス"
+                  - option "その他"
+              - generic [ref=e56]:
+                - generic [ref=e57]: 価格帯 (任意)
+                - 'textbox "例: ¥3,000-10,000" [ref=e58]'
+            - paragraph [ref=e59]: TV通販の販売シグナルと楽天・Web検索を組み合わせ、AIが新商品候補を選定します
+            - button "新商品を発掘" [ref=e78]:
+              - img [ref=e79]
+              - text: 新商品を発掘
+          - generic [ref=e82]:
+            - generic [ref=e83]:
+              - img [ref=e84]
+              - heading "発掘された新商品" [level=2] [ref=e87]
+              - generic [ref=e88]: TV通販
+            - paragraph [ref=e89]: TV通販の販売シグナルを基に、楽天 / Web 検索で実在する新商品プールから AI が選定。各商品を個別に分析できます。
+            - generic [ref=e90]:
+              - 'textbox "フォーカス絞り込み (任意) — 例: 美容家電に絞って / 韓国コスメ中心 / ¥5000以下" [ref=e91]'
+              - button "新商品を再発掘" [ref=e92]:
+                - img [ref=e93]
+                - text: 新商品を再発掘
+            - generic [ref=e98]:
+              - article [ref=e99]:
+                - generic [ref=e100]:
+                  - generic [ref=e101]:
+                    - generic [ref=e102]: Web
+                    - heading "#1パナソニック 高周波治療器 コリコランワイド EW-RA550" [level=3] [ref=e103]:
+                      - generic [ref=e104]: "#1"
+                      - text: パナソニック 高周波治療器 コリコランワイド EW-RA550
+                  - generic [ref=e105]: "95"
+                - generic [ref=e106]:
+                  - generic [ref=e107]:
+                    - text: 需要
+                    - strong [ref=e108]: 高
+                  - generic [ref=e109]:
+                    - text: 価格
+                    - strong [ref=e110]: ¥35,000-40,000
+                  - generic [ref=e111]:
+                    - text: 供給
+                    - strong [ref=e112]: Web
+                - paragraph [ref=e113]: トレンド情報の「2025年5月家庭用治療機器人気ランキング」に合致し、TV通販の主力カテゴリである医療機器に該当するため。
+                - paragraph [ref=e114]: "TVシグナル根拠: 医療機器カテゴリ（売上比率23.41%）の最新ヒット予測"
+                - generic [ref=e115]:
+                  - generic [ref=e116]:
+                    - img [ref=e117]
+                    - generic [ref=e120]: 日本市場フィット
+                  - generic [ref=e121]: "人気根拠: 価格.comの家庭用治療機器ランキング1位。高周波12個配置というスペックが差別化されている。"
+                  - generic [ref=e122]: "市場トレンド: 高周波が血流にアプローチ、肩コリを改善。アタッチメントに入れて肩にはおるだけの簡単装着（2025年5月トレンド）。"
+                  - generic [ref=e123]: "なぜ今日本で: 健康寿命延伸ニーズに加え、デスクワーク固定化による深刻な肩こり層へ実演デモで効果が伝わりやすいため。"
+                - button "この商品を分析する" [ref=e125]:
+                  - img [ref=e126]
+                  - text: この商品を分析する
+                - link "出典ページを確認" [ref=e129] [cursor=pointer]:
+                  - /url: https://kakaku.com/kaden/medical-equipment/ranking_2182/
+                  - text: 出典ページを確認
+                  - img [ref=e130]
+              - article [ref=e134]:
+                - generic [ref=e135]:
+                  - generic [ref=e136]:
+                    - generic [ref=e137]: Web
+                    - heading "#2オムロン パルスオキシメータ HPO-100" [level=3] [ref=e138]:
+                      - generic [ref=e139]: "#2"
+                      - text: オムロン パルスオキシメータ HPO-100
+                  - generic [ref=e140]: "90"
+                - generic [ref=e141]:
+                  - generic [ref=e142]:
+                    - text: 需要
+                    - strong [ref=e143]: 高
+                  - generic [ref=e144]:
+                    - text: 価格
+                    - strong [ref=e145]: ¥5,000-7,000
+                  - generic [ref=e146]:
+                    - text: 供給
+                    - strong [ref=e147]: Web
+                - paragraph [ref=e148]: Web検索結果で「人気売れ筋製品」として明記。医療機器はTV通販で最もマージンと売上が安定するカテゴリ。
+                - paragraph [ref=e149]: "TVシグナル根拠: 医療機器カテゴリ平均単価¥5,244に極めて近く、高回転が期待できる。"
+                - generic [ref=e150]:
+                  - generic [ref=e151]:
+                    - img [ref=e152]
+                    - generic [ref=e155]: 日本市場フィット
+                  - generic [ref=e156]: "人気根拠: 価格.comの健康器具・医療機器ランキングにおいて定番の売れ筋製品として掲載。"
+                  - generic [ref=e157]: "市場トレンド: 2034年には医療・健康産業が現在の自動車産業の5〜7倍に達すると予測される市場拡大背景。"
+                  - generic [ref=e158]: "なぜ今日本で: 在宅健康管理の定着。小型で操作が簡単なため、高齢者層が視聴者の中心であるTV通販との相性が抜群。"
+                - button "この商品を分析する" [ref=e160]:
+                  - img [ref=e161]
+                  - text: この商品を分析する
+                - link "出典ページを確認" [ref=e164] [cursor=pointer]:
+                  - /url: https://kakaku.com/kaden/medical-equipment/ranking_2182/
+                  - text: 出典ページを確認
+                  - img [ref=e165]
+              - article [ref=e169]:
+                - generic [ref=e170]:
+                  - generic [ref=e171]:
+                    - generic [ref=e172]: 楽天
+                    - heading "#3ウォッシュボーイ 小型洗濯機 TOM-12f" [level=3] [ref=e173]:
+                      - generic [ref=e174]: "#3"
+                      - text: ウォッシュボーイ 小型洗濯機 TOM-12f
+                  - generic [ref=e175]: "92"
+                - generic [ref=e176]:
+                  - generic [ref=e177]:
+                    - text: 需要
+                    - strong [ref=e178]: 高
+                  - generic [ref=e179]:
+                    - text: 価格
+                    - strong [ref=e180]: ¥8,800-9,800
+                  - generic [ref=e181]:
+                    - text: 供給
+                    - strong [ref=e182]: 楽天
+                - paragraph [ref=e183]: 掃除・洗濯カテゴリ（売上比率13.9%）の1位商品。バケツ型という特殊形状は映像映えが非常に良い。
+                - paragraph [ref=e184]: "TVシグナル根拠: 掃除・洗濯カテゴリの成功事例「ループオーシャンタオル」等に続くヒット候補。"
+                - generic [ref=e185]:
+                  - generic [ref=e186]:
+                    - img [ref=e187]
+                    - generic [ref=e190]: 日本市場フィット
+                  - generic [ref=e191]: "人気根拠: 楽天ランキング1位獲得。リコメン堂限定色などの展開により独自性が高い。"
+                  - generic [ref=e192]: "市場トレンド: 取得不可"
+                  - generic [ref=e193]: "なぜ今日本で: ペット用品や泥汚れ衣類の「別洗い」需要が拡大。コンパクトで2nd家電として衝動買いを誘いやすい。"
+                - button "この商品を分析する" [ref=e195]:
+                  - img [ref=e196]
+                  - text: この商品を分析する
+                - link "出典ページを確認" [ref=e199] [cursor=pointer]:
+                  - /url: https://ranking.rakuten.co.jp/daily/204200/
+                  - text: 出典ページを確認
+                  - img [ref=e200]
+              - article [ref=e204]:
+                - generic [ref=e205]:
+                  - generic [ref=e206]:
+                    - generic [ref=e207]: Web
+                    - heading "#4パナソニック 吸入器 EW-KA65" [level=3] [ref=e208]:
+                      - generic [ref=e209]: "#4"
+                      - text: パナソニック 吸入器 EW-KA65
+                  - generic [ref=e210]: "85"
+                - generic [ref=e211]:
+                  - generic [ref=e212]:
+                    - text: 需要
+                    - strong [ref=e213]: 中
+                  - generic [ref=e214]:
+                    - text: 価格
+                    - strong [ref=e215]: ¥9,000-12,000
+                  - generic [ref=e216]:
+                    - text: 供給
+                    - strong [ref=e217]: Web
+                - paragraph [ref=e218]: Web検索プールの人気売れ筋ランキングに掲載。喉のケアという具体的ニーズに訴求可能。
+                - paragraph [ref=e219]: "TVシグナル根拠: 医療機器カテゴリ。デモでスチームの細かさを視覚的に伝えやすい。"
+                - generic [ref=e220]:
+                  - generic [ref=e221]:
+                    - img [ref=e222]
+                    - generic [ref=e225]: 日本市場フィット
+                  - generic [ref=e226]: "人気根拠: 価格.comユーザーおすすめランキングにおいて上位ランクイン商品として明記。"
+                  - generic [ref=e227]: "市場トレンド: 医療・健康ビジネスの未来2025において家庭用ケア機器の需要拡大が予測されている。"
+                  - generic [ref=e228]: "なぜ今日本で: 季節の変わり目の喉トラブルや花粉対策として、セルフケア意識の高いシニア層に刺さる。"
+                - button "この商品を分析する" [ref=e230]:
+                  - img [ref=e231]
+                  - text: この商品を分析する
+                - link "出典ページを確認" [ref=e234] [cursor=pointer]:
+                  - /url: https://kakaku.com/kaden/medical-equipment/ranking_2182/
+                  - text: 出典ページを確認
+                  - img [ref=e235]
+              - article [ref=e239]:
+                - generic [ref=e240]:
+                  - generic [ref=e241]:
+                    - generic [ref=e242]: 楽天
+                    - heading "#5真空式パイプクリーナー トイレつまり解消 ラバーカップ" [level=3] [ref=e243]:
+                      - generic [ref=e244]: "#5"
+                      - text: 真空式パイプクリーナー トイレつまり解消 ラバーカップ
+                  - generic [ref=e245]: "88"
+                - generic [ref=e246]:
+                  - generic [ref=e247]:
+                    - text: 需要
+                    - strong [ref=e248]: 中
+                  - generic [ref=e249]:
+                    - text: 価格
+                    - strong [ref=e250]: ¥3,500-4,500
+                  - generic [ref=e251]:
+                    - text: 供給
+                    - strong [ref=e252]: 楽天
+                - paragraph [ref=e253]: 掃除・洗濯カテゴリの楽天1位商品。深刻な悩みを即座に解決する実演が可能。
+                - paragraph [ref=e254]: "TVシグナル根拠: 掃除・洗濯カテゴリ。カビパッチ等の成功例と同様、悩み解決型商品はTVで強い。"
+                - generic [ref=e255]:
+                  - generic [ref=e256]:
+                    - img [ref=e257]
+                    - generic [ref=e260]: 日本市場フィット
+                  - generic [ref=e261]: "人気根拠: 楽天ランキング1位。緊急性の高い商品ながら、常備品としての需要が高い。"
+                  - generic [ref=e262]: "市場トレンド: 取得不可"
+                  - generic [ref=e263]: "なぜ今日本で: 「業者を呼ぶ前の自力解決」ニーズ。強力な真空圧のデモはTVの短い枠でもインパクトが絶大。"
+                - button "この商品を分析する" [ref=e265]:
+                  - img [ref=e266]
+                  - text: この商品を分析する
+                - link "出典ページを確認" [ref=e269] [cursor=pointer]:
+                  - /url: https://ranking.rakuten.co.jp/daily/100656/
+                  - text: 出典ページを確認
+                  - img [ref=e270]
+              - article [ref=e274]:
+                - generic [ref=e275]:
+                  - generic [ref=e276]:
+                    - generic [ref=e277]: 楽天
+                    - heading "#6デロンギ マグニフィカS 全自動コーヒーマシン ECAM22112B" [level=3] [ref=e278]:
+                      - generic [ref=e279]: "#6"
+                      - text: デロンギ マグニフィカS 全自動コーヒーマシン ECAM22112B
+                  - generic [ref=e280]: "82"
+                - generic [ref=e281]:
+                  - generic [ref=e282]:
+                    - text: 需要
+                    - strong [ref=e283]: 高
+                  - generic [ref=e284]:
+                    - text: 価格
+                    - strong [ref=e285]: ¥55,000-65,000
+                  - generic [ref=e286]:
+                    - text: 供給
+                    - strong [ref=e287]: 楽天
+                - paragraph [ref=e288]: 家電カテゴリ楽天1位。憧れの高級家電は「今だけ」の特典を付けたTV通販と好相性。
+                - paragraph [ref=e289]: "TVシグナル根拠: 家電・雑貨カテゴリ（売上比率19.12%）。マージン確保が鍵となる大型商材。"
+                - generic [ref=e290]:
+                  - generic [ref=e291]:
+                    - img [ref=e292]
+                    - generic [ref=e295]: 日本市場フィット
+                  - generic [ref=e296]: "人気根拠: 楽天家電ランキング1位。15%OFFクーポン等の販促施策で高いコンバージョンを記録。"
+                  - generic [ref=e297]: "市場トレンド: 取得不可"
+                  - generic [ref=e298]: "なぜ今日本で: タイパ重視・自宅でのQOL向上。ボタン一つで豆から挽く実演は香りが伝わるような演出が可能。"
+                - button "この商品を分析する" [ref=e300]:
+                  - img [ref=e301]
+                  - text: この商品を分析する
+                - link "出典ページを確認" [ref=e304] [cursor=pointer]:
+                  - /url: https://ranking.rakuten.co.jp/daily/562637/
+                  - text: 出典ページを確認
+                  - img [ref=e305]
+              - article [ref=e309]:
+                - generic [ref=e310]:
+                  - generic [ref=e311]:
+                    - generic [ref=e312]: Web
+                    - heading "#7アイリスオーヤマ 縦型洗濯機（プロ53名選出モデル）" [level=3] [ref=e313]:
+                      - generic [ref=e314]: "#7"
+                      - text: アイリスオーヤマ 縦型洗濯機（プロ53名選出モデル）
+                  - generic [ref=e315]: "80"
+                - generic [ref=e316]:
+                  - generic [ref=e317]:
+                    - text: 需要
+                    - strong [ref=e318]: 中
+                  - generic [ref=e319]:
+                    - text: 価格
+                    - strong [ref=e320]: ¥40,000-60,000
+                  - generic [ref=e321]:
+                    - text: 供給
+                    - strong [ref=e322]: Web
+                - paragraph [ref=e323]: 掃除・洗濯カテゴリ。プロが選ぶという社会的証明はTV通販の信頼獲得に不可欠。
+                - paragraph [ref=e324]: "TVシグナル根拠: 掃除・洗濯カテゴリ。設置サービスをセットにすることで付加価値を高められる。"
+                - generic [ref=e325]:
+                  - generic [ref=e326]:
+                    - img [ref=e327]
+                    - generic [ref=e330]: 日本市場フィット
+                  - generic [ref=e331]: "人気根拠: くらしのマーケットにてプロが選ぶ洗濯機ランキングのトップ3入り。"
+                  - generic [ref=e332]: "市場トレンド: 取得不可"
+                  - generic [ref=e333]: "なぜ今日本で: 高機能ドラム式への疲れ。シンプルで故障が少なく、コスパに優れた縦型の再評価トレンド。"
+                - button "この商品を分析する" [ref=e335]:
+                  - img [ref=e336]
+                  - text: この商品を分析する
+                - link "出典ページを確認" [ref=e339] [cursor=pointer]:
+                  - /url: https://curama.jp/washing-machine-install/magazine/2913/
+                  - text: 出典ページを確認
+                  - img [ref=e340]
+              - article [ref=e344]:
+                - generic [ref=e345]:
+                  - generic [ref=e346]:
+                    - generic [ref=e347]: Web
+                    - heading "#8PIA カラコン 2枚入 [医療機器]" [level=3] [ref=e348]:
+                      - generic [ref=e349]: "#8"
+                      - text: PIA カラコン 2枚入 [医療機器]
+                  - generic [ref=e350]: "75"
+                - generic [ref=e351]:
+                  - generic [ref=e352]:
+                    - text: 需要
+                    - strong [ref=e353]: 中
+                  - generic [ref=e354]:
+                    - text: 価格
+                    - strong [ref=e355]: ¥1,650
+                  - generic [ref=e356]:
+                    - text: 供給
+                    - strong [ref=e357]: Web
+                - paragraph [ref=e358]: アットコスメランキング上位。低単価ながら医療機器認証の安心感でまとめ買いを誘発可能。
+                - paragraph [ref=e359]: "TVシグナル根拠: 医療機器カテゴリ。複数セット販売により平均単価を5,000円台へ引き上げ可能。"
+                - generic [ref=e360]:
+                  - generic [ref=e361]:
+                    - img [ref=e362]
+                    - generic [ref=e365]: 日本市場フィット
+                  - generic [ref=e366]: "人気根拠: アットコスメでクチコミ評価5.4。医療機器としての安全性とファッション性を両立。"
+                  - generic [ref=e367]: "市場トレンド: 医療機器業界トピックスにおけるコンシューマー向け製品の多角化傾向。"
+                  - generic [ref=e368]: "なぜ今日本で: 外出機会の増加に伴う美容需要。40代以上の「若見え」ニーズに合わせたセット提案が有効。"
+                - button "この商品を分析する" [ref=e370]:
+                  - img [ref=e371]
+                  - text: この商品を分析する
+                - link "出典ページを確認" [ref=e374] [cursor=pointer]:
+                  - /url: https://www.cosme.net/categories/item/710/ranking/
+                  - text: 出典ページを確認
+                  - img [ref=e375]
+              - article [ref=e379]:
+                - generic [ref=e380]:
+                  - generic [ref=e381]:
+                    - generic [ref=e382]: Web
+                    - heading "#9医療機器認証 磁気ネックレス（Amazon Professional Medical Supplies 1位）" [level=3] [ref=e383]:
+                      - generic [ref=e384]: "#9"
+                      - text: 医療機器認証 磁気ネックレス（Amazon Professional Medical Supplies 1位）
+                  - generic [ref=e385]: "87"
+                - generic [ref=e386]:
+                  - generic [ref=e387]:
+                    - text: 需要
+                    - strong [ref=e388]: 高
+                  - generic [ref=e389]:
+                    - text: 価格
+                    - strong [ref=e390]: ¥4,000-6,000
+                  - generic [ref=e391]:
+                    - text: 供給
+                    - strong [ref=e392]: Web
+                - paragraph [ref=e393]: 医療機器カテゴリの売れ筋。装着するだけで血行改善というデモが容易。
+                - paragraph [ref=e394]: "TVシグナル根拠: 医療機器カテゴリ。ファイテン等の成功例があり、TV視聴層との親和性が極めて高い。"
+                - generic [ref=e395]:
+                  - generic [ref=e396]:
+                    - img [ref=e397]
+                    - generic [ref=e400]: 日本市場フィット
+                  - generic [ref=e401]: "人気根拠: Amazonの医療専門用品ベストセラー。日常的な健康ケア製品としての地位を確立。"
+                  - generic [ref=e402]: "市場トレンド: 健康寿命の延伸を支える技術の進歩（JAHID市場環境資料より）。"
+                  - generic [ref=e403]: "なぜ今日本で: 薬に頼りたくない健康意識の高い層への「医療機器認証」という強力なパワーワードによる訴求。"
+                - button "この商品を分析する" [ref=e405]:
+                  - img [ref=e406]
+                  - text: この商品を分析する
+                - link "出典ページを確認" [ref=e409] [cursor=pointer]:
+                  - /url: https://www.amazon.co.jp/gp/bestsellers/industrial/2356934051
+                  - text: 出典ページを確認
+                  - img [ref=e410]
+              - article [ref=e414]:
+                - generic [ref=e415]:
+                  - generic [ref=e416]:
+                    - generic [ref=e417]: 楽天
+                    - heading "#10日立 ビートウォッシュ BW-V80J" [level=3] [ref=e418]:
+                      - generic [ref=e419]: "#10"
+                      - text: 日立 ビートウォッシュ BW-V80J
+                  - generic [ref=e420]: "78"
+                - generic [ref=e421]:
+                  - generic [ref=e422]:
+                    - text: 需要
+                    - strong [ref=e423]: 中
+                  - generic [ref=e424]:
+                    - text: 価格
+                    - strong [ref=e425]: ¥80,000-95,000
+                  - generic [ref=e426]:
+                    - text: 供給
+                    - strong [ref=e427]: 楽天
+                - paragraph [ref=e428]: 掃除・洗濯カテゴリの定番。楽天市場おすすめモデルとして掲載されており、信頼性が高い。
+                - paragraph [ref=e429]: "TVシグナル根拠: 掃除・洗濯カテゴリ。高単価ながら買い替えサイクルの視聴者層に強力にリーチ。"
+                - generic [ref=e430]:
+                  - generic [ref=e431]:
+                    - img [ref=e432]
+                    - generic [ref=e435]: 日本市場フィット
+                  - generic [ref=e436]: "人気根拠: 楽天市場ランキングにて常に上位に位置する、日本の家庭用洗濯機の標準機的モデル。"
+                  - generic [ref=e437]: "市場トレンド: 取得不可"
+                  - generic [ref=e438]: "なぜ今日本で: 「予洗いなし」でも汚れが落ちる洗浄力のデモは、時短を求める現代の共働き世帯に不可欠。"
+                - button "この商品を分析する" [ref=e440]:
+                  - img [ref=e441]
+                  - text: この商品を分析する
+                - link "出典ページを確認" [ref=e444] [cursor=pointer]:
+                  - /url: https://recommend.marketplace.rakuten.net/category/appliance/3616/
+                  - text: 出典ページを確認
+                  - img [ref=e445]
+              - article [ref=e449]:
+                - generic [ref=e450]:
+                  - generic [ref=e451]:
+                    - generic [ref=e452]: Web
+                    - heading "#11パナソニック 治療機器 高周波デバイス単体（12個配置アタッチメント）" [level=3] [ref=e453]:
+                      - generic [ref=e454]: "#11"
+                      - text: パナソニック 治療機器 高周波デバイス単体（12個配置アタッチメント）
+                  - generic [ref=e455]: "88"
+                - generic [ref=e456]:
+                  - generic [ref=e457]:
+                    - text: 需要
+                    - strong [ref=e458]: 中
+                  - generic [ref=e459]:
+                    - text: 価格
+                    - strong [ref=e460]: ¥40,000-50,000
+                  - generic [ref=e461]:
+                    - text: 供給
+                    - strong [ref=e462]: Web
+                - paragraph [ref=e463]: トレンド情報の「医療・健康ビジネスの未来」で期待される小型・高機能デバイス。
+                - paragraph [ref=e464]: "TVシグナル根拠: 医療機器カテゴリ。高単価ながら高マージンが狙える先端技術商材。"
+                - generic [ref=e465]:
+                  - generic [ref=e466]:
+                    - img [ref=e467]
+                    - generic [ref=e470]: 日本市場フィット
+                  - generic [ref=e471]: "人気根拠: 価格.comランキング2025年5月の注目商品。最新の血流アプローチ技術。"
+                  - generic [ref=e472]: "市場トレンド: 2034年に2700兆円に達する医療・健康産業の主要トレンド（日経BP）。"
+                  - generic [ref=e473]: "なぜ今日本で: 「着るだけ」でコリを改善する簡便さは、運動や通院が億劫な層にとって究極の解決策。"
+                - button "この商品を分析する" [ref=e475]:
+                  - img [ref=e476]
+                  - text: この商品を分析する
+                - link "出典ページを確認" [ref=e479] [cursor=pointer]:
+                  - /url: https://kakaku.com/kaden/medical-equipment/ranking_2182/
+                  - text: 出典ページを確認
+                  - img [ref=e480]
+              - article [ref=e484]:
+                - generic [ref=e485]:
+                  - generic [ref=e486]:
+                    - generic [ref=e487]: Web
+                    - heading "#12オリンパス製 消化器内視鏡（家庭用簡易チェックキット/関連周辺機器）" [level=3] [ref=e488]:
+                      - generic [ref=e489]: "#12"
+                      - text: オリンパス製 消化器内視鏡（家庭用簡易チェックキット/関連周辺機器）
+                  - generic [ref=e490]: "70"
+                - generic [ref=e491]:
+                  - generic [ref=e492]:
+                    - text: 需要
+                    - strong [ref=e493]: 低
+                  - generic [ref=e494]:
+                    - text: 価格
+                    - strong [ref=e495]: ¥15,000-25,000
+                  - generic [ref=e496]:
+                    - text: 供給
+                    - strong [ref=e497]: Web
+                - paragraph [ref=e498]: 医療機器メーカー最新ランキング1位のオリンパスブランド。ブランド力を背景にした展開。
+                - paragraph [ref=e499]: "TVシグナル根拠: 医療機器カテゴリ。専業トップメーカーの技術を強調した信頼性重視の販売。"
+                - generic [ref=e500]:
+                  - generic [ref=e501]:
+                    - img [ref=e502]
+                    - generic [ref=e505]: 日本市場フィット
+                  - generic [ref=e506]: "人気根拠: 連結売上高9,973億円、世界的な存在感を持つトップメーカーの信頼感。"
+                  - generic [ref=e507]: "市場トレンド: 2025年医療機器業界トピックスにおける高度管理医療機器の普及。"
+                  - generic [ref=e508]: "なぜ今日本で: がん検診の意識向上。家庭でのモニタリングや予防医療の重要性が高まっている日本市場に合致。"
+                - button "この商品を分析する" [ref=e510]:
+                  - img [ref=e511]
+                  - text: この商品を分析する
+                - link "出典ページを確認" [ref=e514] [cursor=pointer]:
+                  - /url: https://www.iryo-tenshoku.com/column/detail.html&id=107
+                  - text: 出典ページを確認
+                  - img [ref=e515]
+              - article [ref=e519]:
+                - generic [ref=e520]:
+                  - generic [ref=e521]:
+                    - generic [ref=e522]: 楽天
+                    - heading "#13【3本ｾｯﾄ】衣類用 液体洗剤（楽天ランキング上位モデル）" [level=3] [ref=e523]:
+                      - generic [ref=e524]: "#13"
+                      - text: 【3本ｾｯﾄ】衣類用 液体洗剤（楽天ランキング上位モデル）
+                  - generic [ref=e525]: "82"
+                - generic [ref=e526]:
+                  - generic [ref=e527]:
+                    - text: 需要
+                    - strong [ref=e528]: 高
+                  - generic [ref=e529]:
+                    - text: 価格
+                    - strong [ref=e530]: ¥3,800-4,800
+                  - generic [ref=e531]:
+                    - text: 供給
+                    - strong [ref=e532]: 楽天
+                - paragraph [ref=e533]: 掃除・洗濯カテゴリの人気商品。カビパッチ等の成功事例と同様、消耗品の複数セット販売は鉄板。
+                - paragraph [ref=e534]: "TVシグナル根拠: 掃除・洗濯カテゴリ（売上比率13.9%）の成功パターン（複数セット販売）。"
+                - generic [ref=e535]:
+                  - generic [ref=e536]:
+                    - img [ref=e537]
+                    - generic [ref=e540]: 日本市場フィット
+                  - generic [ref=e541]: "人気根拠: 楽天ランキング上位常連。口コミ数も多く、リピート購入のシグナルが強い。"
+                  - generic [ref=e542]: "市場トレンド: 取得不可"
+                  - generic [ref=e543]: "なぜ今日本で: 物価高騰の中、TV通販特有の「大量セットで単価を抑える」提案が、生活防衛意識の高い層に刺さる。"
+                - button "この商品を分析する" [ref=e545]:
+                  - img [ref=e546]
+                  - text: この商品を分析する
+                - link "出典ページを確認" [ref=e549] [cursor=pointer]:
+                  - /url: https://ranking.rakuten.co.jp/daily/210182/
+                  - text: 出典ページを確認
+                  - img [ref=e550]
+              - article [ref=e554]:
+                - generic [ref=e555]:
+                  - generic [ref=e556]:
+                    - generic [ref=e557]: Web
+                    - heading "#14高機能 磁気治療腰サポーター（ファイテン隣接領域）" [level=3] [ref=e558]:
+                      - generic [ref=e559]: "#14"
+                      - text: 高機能 磁気治療腰サポーター（ファイテン隣接領域）
+                  - generic [ref=e560]: "89"
+                - generic [ref=e561]:
+                  - generic [ref=e562]:
+                    - text: 需要
+                    - strong [ref=e563]: 高
+                  - generic [ref=e564]:
+                    - text: 価格
+                    - strong [ref=e565]: ¥5,800-6,800
+                  - generic [ref=e566]:
+                    - text: 供給
+                    - strong [ref=e567]: Web
+                - paragraph [ref=e568]: 医療機器カテゴリ。成功事例の「磁気治療腰サポーター」と同様のニーズをキャッチ。
+                - paragraph [ref=e569]: "TVシグナル根拠: 医療機器カテゴリ。成功事例「磁気治療腰サポーター ¥5,981」と価格・機能が一致。"
+                - generic [ref=e570]:
+                  - generic [ref=e571]:
+                    - img [ref=e572]
+                    - generic [ref=e575]: 日本市場フィット
+                  - generic [ref=e576]: "人気根拠: Amazonベストセラー。レビュー数が豊富で、装着感への肯定的な評価が確立されている。"
+                  - generic [ref=e577]: "市場トレンド: 健康寿命延伸を支える医療機器・用品の国内マーケット拡大（2010年比で大幅増）。"
+                  - generic [ref=e578]: "なぜ今日本で: 高齢者のアクティブ化に伴い、歩行サポートや腰痛対策への投資が惜しまれない傾向。"
+                - button "この商品を分析する" [ref=e580]:
+                  - img [ref=e581]
+                  - text: この商品を分析する
+                - link "出典ページを確認" [ref=e584] [cursor=pointer]:
+                  - /url: https://www.amazon.co.jp/gp/bestsellers/industrial/2356934051
+                  - text: 出典ページを確認
+                  - img [ref=e585]
+              - article [ref=e589]:
+                - generic [ref=e590]:
+                  - generic [ref=e591]:
+                    - generic [ref=e592]: 楽天
+                    - heading "#15デロンギ エスプレッソマシン用 特製コーヒー豆セット" [level=3] [ref=e593]:
+                      - generic [ref=e594]: "#15"
+                      - text: デロンギ エスプレッソマシン用 特製コーヒー豆セット
+                  - generic [ref=e595]: "76"
+                - generic [ref=e596]:
+                  - generic [ref=e597]:
+                    - text: 需要
+                    - strong [ref=e598]: 中
+                  - generic [ref=e599]:
+                    - text: 価格
+                    - strong [ref=e600]: ¥3,500-4,500
+                  - generic [ref=e601]:
+                    - text: 供給
+                    - strong [ref=e602]: 楽天
+                - paragraph [ref=e603]: 家電カテゴリ本体の周辺需要。リピート商材としてTV通販のLTV向上に寄与。
+                - paragraph [ref=e604]: "TVシグナル根拠: 家電・雑貨カテゴリ。本体購入者へのクロスセルに最適。"
+                - generic [ref=e605]:
+                  - generic [ref=e606]:
+                    - img [ref=e607]
+                    - generic [ref=e610]: 日本市場フィット
+                  - generic [ref=e611]: "人気根拠: 楽天1位の全自動マシンとの同時購入率が高く、レビュー評価も安定。"
+                  - generic [ref=e612]: "市場トレンド: 取得不可"
+                  - generic [ref=e613]: "なぜ今日本で: 自宅で「カフェの味」を再現する贅沢の常態化。ギフト需要としても展開可能。"
+                - button "この商品を分析する" [ref=e615]:
+                  - img [ref=e616]
+                  - text: この商品を分析する
+                - link "出典ページを確認" [ref=e619] [cursor=pointer]:
+                  - /url: https://ranking.rakuten.co.jp/daily/562637/
+                  - text: 出典ページを確認
+                  - img [ref=e620]
+              - article [ref=e624]:
+                - generic [ref=e625]:
+                  - generic [ref=e626]:
+                    - generic [ref=e627]: Web
+                    - heading "#16家庭用 鼻洗浄器（ハナノア等 医療機器認定モデル）" [level=3] [ref=e628]:
+                      - generic [ref=e629]: "#16"
+                      - text: 家庭用 鼻洗浄器（ハナノア等 医療機器認定モデル）
+                  - generic [ref=e630]: "84"
+                - generic [ref=e631]:
+                  - generic [ref=e632]:
+                    - text: 需要
+                    - strong [ref=e633]: 中
+                  - generic [ref=e634]:
+                    - text: 価格
+                    - strong [ref=e635]: ¥3,000-4,500
+                  - generic [ref=e636]:
+                    - text: 供給
+                    - strong [ref=e637]: Web
+                - paragraph [ref=e638]: 医療機器カテゴリ。映像で見せることで使い方の不安を解消し、衝動買いを誘発。
+                - paragraph [ref=e639]: "TVシグナル根拠: 医療機器カテゴリ。アイアジャストグラス等と同様、五感に訴えるニッチ家電。"
+                - generic [ref=e640]:
+                  - generic [ref=e641]:
+                    - img [ref=e642]
+                    - generic [ref=e645]: 日本市場フィット
+                  - generic [ref=e646]: "人気根拠: 価格.comの医療機器・健康器具ランキングで季節を問わず上位に顔を出す製品。"
+                  - generic [ref=e647]: "市場トレンド: 「対面販売に近いネット販売」が求められる中、TVでの実演解説が最も効果を発揮する領域。"
+                  - generic [ref=e648]: "なぜ今日本で: 通年のアレルギー対策に加え、感染症予防としての鼻洗浄が一般的認知を得たため。"
+                - button "この商品を分析する" [ref=e650]:
+                  - img [ref=e651]
+                  - text: この商品を分析する
+                - link "出典ページを確認" [ref=e654] [cursor=pointer]:
+                  - /url: https://kakaku.com/kaden/medical-equipment/ranking_2182/
+                  - text: 出典ページを確認
+                  - img [ref=e655]
+              - article [ref=e659]:
+                - generic [ref=e660]:
+                  - generic [ref=e661]:
+                    - generic [ref=e662]: 楽天
+                    - heading "#17アイリスオーヤマ 全自動洗濯機 8kg（楽天ランキング常連）" [level=3] [ref=e663]:
+                      - generic [ref=e664]: "#17"
+                      - text: アイリスオーヤマ 全自動洗濯機 8kg（楽天ランキング常連）
+                  - generic [ref=e665]: "83"
+                - generic [ref=e666]:
+                  - generic [ref=e667]:
+                    - text: 需要
+                    - strong [ref=e668]: 高
+                  - generic [ref=e669]:
+                    - text: 価格
+                    - strong [ref=e670]: ¥45,000-55,000
+                  - generic [ref=e671]:
+                    - text: 供給
+                    - strong [ref=e672]: 楽天
+                - paragraph [ref=e673]: 掃除・洗濯カテゴリ。圧倒的なコストパフォーマンスはTV通販の「驚きの価格」演出に最適。
+                - paragraph [ref=e674]: "TVシグナル根拠: 掃除・洗濯カテゴリ。平均単価を大きく引き上げ、売上目標達成の柱となる。"
+                - generic [ref=e675]:
+                  - generic [ref=e676]:
+                    - img [ref=e677]
+                    - generic [ref=e680]: 日本市場フィット
+                  - generic [ref=e681]: "人気根拠: 楽天生活家電ランキング上位。シンプルな機能でシニア層からも高い支持。"
+                  - generic [ref=e682]: "市場トレンド: 取得不可"
+                  - generic [ref=e683]: "なぜ今日本で: 大手メーカー品が高騰する中、必要十分な機能に絞った安価な国内メーカー品へのシフトが加速。"
+                - button "この商品を分析する" [ref=e685]:
+                  - img [ref=e686]
+                  - text: この商品を分析する
+                - link "出典ページを確認" [ref=e689] [cursor=pointer]:
+                  - /url: https://ranking.rakuten.co.jp/daily/204200/
+                  - text: 出典ページを確認
+                  - img [ref=e690]
+              - article [ref=e694]:
+                - generic [ref=e695]:
+                  - generic [ref=e696]:
+                    - generic [ref=e697]: Web
+                    - heading "#18医療機器認証済み コンタクトレンズ 10枚入 [PIA]" [level=3] [ref=e698]:
+                      - generic [ref=e699]: "#18"
+                      - text: 医療機器認証済み コンタクトレンズ 10枚入 [PIA]
+                  - generic [ref=e700]: "72"
+                - generic [ref=e701]:
+                  - generic [ref=e702]:
+                    - text: 需要
+                    - strong [ref=e703]: 中
+                  - generic [ref=e704]:
+                    - text: 価格
+                    - strong [ref=e705]: ¥1,760
+                  - generic [ref=e706]:
+                    - text: 供給
+                    - strong [ref=e707]: Web
+                - paragraph [ref=e708]: アットコスメ5位商品。安全性（医療機器認証）を前面に出した美容商材としての展開。
+                - paragraph [ref=e709]: "TVシグナル根拠: 医療機器カテゴリ。雑貨扱いの安価な品との差別化を実演で強調可能。"
+                - generic [ref=e710]:
+                  - generic [ref=e711]:
+                    - img [ref=e712]
+                    - generic [ref=e715]: 日本市場フィット
+                  - generic [ref=e716]: "人気根拠: アットコスメ★5.3、クチコミ162件。発売以来安定した人気を誇る。"
+                  - generic [ref=e717]: "市場トレンド: 医療機器・用品の国内マーケット拡大と用途の多様化（JAHID）。"
+                  - generic [ref=e718]: "なぜ今日本で: カラーコンタクトを「ファッション」ではなく「瞳の健康を守る医療機器」として選ぶ層の増加。"
+                - button "この商品を分析する" [ref=e720]:
+                  - img [ref=e721]
+                  - text: この商品を分析する
+                - link "出典ページを確認" [ref=e724] [cursor=pointer]:
+                  - /url: https://www.cosme.net/categories/item/710/ranking/
+                  - text: 出典ページを確認
+                  - img [ref=e725]
+              - article [ref=e729]:
+                - generic [ref=e730]:
+                  - generic [ref=e731]:
+                    - generic [ref=e732]: 楽天
+                    - heading "#19トイレの詰まり解消 真空式クリーナー（リコメン堂特選）" [level=3] [ref=e733]:
+                      - generic [ref=e734]: "#19"
+                      - text: トイレの詰まり解消 真空式クリーナー（リコメン堂特選）
+                  - generic [ref=e735]: "81"
+                - generic [ref=e736]:
+                  - generic [ref=e737]:
+                    - text: 需要
+                    - strong [ref=e738]: 中
+                  - generic [ref=e739]:
+                    - text: 価格
+                    - strong [ref=e740]: ¥3,200-3,800
+                  - generic [ref=e741]:
+                    - text: 供給
+                    - strong [ref=e742]: 楽天
+                - paragraph [ref=e743]: 掃除・洗濯カテゴリ。トラブル解決のスピードをデモで見せられるためTV通販向き。
+                - paragraph [ref=e744]: "TVシグナル根拠: 掃除・洗濯カテゴリ。成功事例の「カビパッチ」と同様、実用性が高い。"
+                - generic [ref=e745]:
+                  - generic [ref=e746]:
+                    - img [ref=e747]
+                    - generic [ref=e750]: 日本市場フィット
+                  - generic [ref=e751]: "人気根拠: 楽天ランキング1位。レビュー★4.2以上を維持する高い満足度。"
+                  - generic [ref=e752]: "市場トレンド: 取得不可"
+                  - generic [ref=e753]: "なぜ今日本で: 節水型トイレの普及に伴う「つまり」トラブルの増加。1家に1台の備えとして提案。"
+                - button "この商品を分析する" [ref=e755]:
+                  - img [ref=e756]
+                  - text: この商品を分析する
+                - link "出典ページを確認" [ref=e759] [cursor=pointer]:
+                  - /url: https://ranking.rakuten.co.jp/daily/100656/
+                  - text: 出典ページを確認
+                  - img [ref=e760]
+              - article [ref=e764]:
+                - generic [ref=e765]:
+                  - generic [ref=e766]:
+                    - generic [ref=e767]: 楽天
+                    - heading "#20パナソニック 全自動コーヒーメーカー（楽天2025上半期トレンド）" [level=3] [ref=e768]:
+                      - generic [ref=e769]: "#20"
+                      - text: パナソニック 全自動コーヒーメーカー（楽天2025上半期トレンド）
+                  - generic [ref=e770]: "79"
+                - generic [ref=e771]:
+                  - generic [ref=e772]:
+                    - text: 需要
+                    - strong [ref=e773]: 高
+                  - generic [ref=e774]:
+                    - text: 価格
+                    - strong [ref=e775]: ¥22,000-28,000
+                  - generic [ref=e776]:
+                    - text: 供給
+                    - strong [ref=e777]: 楽天
+                - paragraph [ref=e778]: 家電・雑貨カテゴリ。トレンド情報に基づいた「間違いのない」売れ筋商品。
+                - paragraph [ref=e779]: "TVシグナル根拠: 家電・雑貨カテゴリ。実演での香り、音、操作の簡便さが視聴者にダイレクトに伝わる。"
+                - generic [ref=e780]:
+                  - generic [ref=e781]:
+                    - img [ref=e782]
+                    - generic [ref=e785]: 日本市場フィット
+                  - generic [ref=e786]: "人気根拠: 楽天上半期ランキング2025に選出されることが確実視される安定した売上個数。"
+                  - generic [ref=e787]: "市場トレンド: 取得不可"
+                  - generic [ref=e788]: "なぜ今日本で: 物価高での外食控えと、家庭内でのプチ贅沢消費。朝の時短と美味しさを両立したい層へ。"
+                - button "この商品を分析する" [ref=e790]:
+                  - img [ref=e791]
+                  - text: この商品を分析する
+                - link "出典ページを確認" [ref=e794] [cursor=pointer]:
+                  - /url: https://event.rakuten.co.jp/rankinghalfterm/appliance/
+                  - text: 出典ページを確認
+                  - img [ref=e795]
+  - button "Open Next.js Dev Tools" [ref=e71] [cursor=pointer]:
+    - img [ref=e72]
+  - alert [ref=e65]

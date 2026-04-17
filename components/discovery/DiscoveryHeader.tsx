@@ -50,20 +50,26 @@ export function DiscoveryHeader({
 			: t("sessionRunning");
 
 	return (
-		<div className="flex flex-wrap items-center gap-3 mb-6">
+		<div className="bg-white border border-gray-200 rounded-lg px-4 py-3 mb-4 flex flex-wrap items-center gap-3">
 			<span className={`inline-flex items-center px-3 py-1 rounded-full border text-xs font-medium ${statusColor}`}>
 				{statusLabel}
 			</span>
 			<span className="text-sm text-gray-600">
 				{new Date(session.run_at).toLocaleString("ja-JP")}
 			</span>
-			<span className="text-sm text-gray-500">
+			<span className="text-sm text-gray-900 font-medium">
 				{totalCount}/{session.target_count} 件
 			</span>
-			<span className="text-sm text-gray-500">· {t("filterUncategorized")}: {uncategorizedCount}</span>
-			<span className="text-sm text-gray-500">· {t("filterSourced")}: {sourcedCount}</span>
+			<div className="flex gap-2 text-xs">
+				<span className="px-2 py-0.5 rounded bg-gray-100 text-gray-600">
+					{t("filterUncategorized")}: <strong>{uncategorizedCount}</strong>
+				</span>
+				<span className="px-2 py-0.5 rounded bg-green-100 text-green-700">
+					{t("filterSourced")}: <strong>{sourcedCount}</strong>
+				</span>
+			</div>
 			{session.iterations > 0 && (
-				<span className="text-xs text-gray-400">iterations: {session.iterations}</span>
+				<span className="text-xs text-gray-400 ml-auto">iter: {session.iterations}</span>
 			)}
 		</div>
 	);

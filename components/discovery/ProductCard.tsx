@@ -1,4 +1,7 @@
+"use client";
+
 import { useTranslations } from "next-intl";
+import { Sparkles, Star, TrendingUp, ShoppingBag, Tv, Compass } from "lucide-react";
 
 export type DiscoveredProductRow = {
 	id: string;
@@ -15,90 +18,127 @@ export type DiscoveredProductRow = {
 	broadcast_tag: "broadcast_confirmed" | "broadcast_likely" | "unknown" | null;
 	track: "tv_proven" | "exploration";
 	stock_status: string | null;
+	source: "rakuten" | "brave" | "other" | null;
 };
+
+function scoreColor(score: number): string {
+	if (score >= 80) return "text-green-700 bg-green-100 border-green-300";
+	if (score >= 60) return "text-blue-700 bg-blue-100 border-blue-300";
+	if (score >= 40) return "text-yellow-700 bg-yellow-100 border-yellow-300";
+	return "text-red-700 bg-red-100 border-red-300";
+}
 
 export function ProductCard({ product }: { product: DiscoveredProductRow }) {
 	const t = useTranslations("discovery");
 	const score = product.tv_fit_score ?? 0;
-
-	const scoreColor =
-		score >= 80
-			? "bg-green-100 text-green-800 border-green-200"
-			: score >= 60
-			? "bg-yellow-100 text-yellow-800 border-yellow-200"
-			: "bg-gray-100 text-gray-600 border-gray-200";
-
-	const trackLabel =
-		product.track === "tv_proven" ? t("trackTvProven") : t("trackExploration");
+	const isTV = product.track === "tv_proven";
 
 	const broadcastBadge =
 		product.broadcast_tag === "broadcast_confirmed"
-			? { label: t("broadcastConfirmed"), color: "bg-red-50 text-red-700" }
+			? { label: t("broadcastConfirmed"), color: "bg-red-100 text-red-700 border-red-200", icon: <Tv size={10} /> }
 			: product.broadcast_tag === "broadcast_likely"
-			? { label: t("broadcastLikely"), color: "bg-orange-50 text-orange-700" }
+			? { label: t("broadcastLikely"), color: "bg-orange-100 text-orange-700 border-orange-200", icon: <Tv size={10} /> }
 			: null;
 
 	return (
-		<article className="flex gap-4 p-4 bg-white border border-gray-200 rounded-lg hover:shadow-sm transition-shadow">
-			<div className="flex-shrink-0 w-28 h-28 bg-gray-100 rounded overflow-hidden">
-				{product.thumbnail_url ? (
-					<img
-						src={product.thumbnail_url}
-						alt={product.name}
-						className="w-full h-full object-cover"
-					/>
-				) : (
-					<div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
-						no image
-					</div>
-				)}
-			</div>
-
-			<div className="flex-1 min-w-0">
-				<div className="flex items-start justify-between gap-2 mb-1">
-					<h3 className="text-sm font-medium text-gray-900 line-clamp-2 flex-1">
+		<article className="bg-white border border-amber-200 rounded-xl p-4 shadow-sm flex flex-col hover:shadow-md transition-shadow">
+			{/* Header: source badge + name + score */}
+			<div className="flex items-start justify-between gap-2 mb-2">
+				<div className="flex items-center gap-2 flex-1 min-w-0">
+					<span
+						className={`text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0 ${
+							product.source === "rakuten"
+								? "bg-red-100 text-red-700"
+								: "bg-blue-100 text-blue-700"
+						}`}
+					>
+						{product.source === "rakuten" ? "楽天" : "Web"}
+					</span>
+					<h3 className="font-bold text-sm text-gray-900 line-clamp-2" title={product.name}>
 						{product.name}
 					</h3>
-					<span
-						className={`inline-flex items-center px-2 py-0.5 rounded-full border text-xs font-semibold ${scoreColor}`}
-					>
-						{score}
-					</span>
 				</div>
+				<span
+					className={`text-xs font-bold px-2 py-0.5 rounded-full border shrink-0 ${scoreColor(score)}`}
+				>
+					{score}
+				</span>
+			</div>
 
-				<div className="flex flex-wrap items-center gap-2 text-xs text-gray-600 mb-1">
-					<span className="font-medium text-gray-900">
-						{product.price_jpy ? `¥${product.price_jpy.toLocaleString()}` : "¥?"}
-					</span>
-					{product.review_avg !== null && (
-						<span>
-							★{product.review_avg} ({product.review_count ?? 0})
-						</span>
-					)}
-					{product.seller_name && <span className="truncate max-w-[200px]">{product.seller_name}</span>}
-				</div>
-
-				<div className="flex flex-wrap items-center gap-1 mb-2">
-					<span className="inline-block px-2 py-0.5 rounded bg-gray-100 text-gray-700 text-[10px]">
-						{trackLabel}
-					</span>
-					{broadcastBadge && (
-						<span className={`inline-block px-2 py-0.5 rounded text-[10px] ${broadcastBadge.color}`}>
-							{broadcastBadge.label}
-						</span>
+			{/* Thumbnail + metadata row */}
+			<div className="flex gap-3 mb-3">
+				<div className="flex-shrink-0 w-20 h-20 bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+					{product.thumbnail_url ? (
+						<img src={product.thumbnail_url} alt={product.name} className="w-full h-full object-cover" />
+					) : (
+						<div className="w-full h-full flex items-center justify-center text-gray-300">
+							<ShoppingBag size={24} />
+						</div>
 					)}
 				</div>
+				<div className="flex-1 flex flex-col justify-between min-w-0">
+					<div className="flex flex-wrap gap-1.5 text-[10px]">
+						<span className="bg-gray-50 border border-gray-200 rounded px-1.5 py-0.5 text-gray-600">
+							価格 <strong className="text-gray-900">{product.price_jpy ? `¥${product.price_jpy.toLocaleString()}` : "¥?"}</strong>
+						</span>
+						{product.review_avg !== null && (
+							<span className="bg-yellow-50 border border-yellow-200 rounded px-1.5 py-0.5 text-yellow-800 flex items-center gap-0.5">
+								<Star size={9} className="fill-yellow-500 text-yellow-500" />
+								<strong>{product.review_avg}</strong>
+								<span className="text-yellow-600">({product.review_count ?? 0})</span>
+							</span>
+						)}
+					</div>
+					<div className="flex flex-wrap gap-1 items-center">
+						<span
+							className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+								isTV
+									? "bg-purple-50 text-purple-700 border border-purple-200"
+									: "bg-emerald-50 text-emerald-700 border border-emerald-200"
+							}`}
+						>
+							{isTV ? <Tv size={10} /> : <Compass size={10} />}
+							{isTV ? t("trackTvProven") : t("trackExploration")}
+						</span>
+						{broadcastBadge && (
+							<span
+								className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border ${broadcastBadge.color}`}
+							>
+								{broadcastBadge.icon}
+								{broadcastBadge.label}
+							</span>
+						)}
+					</div>
+					{product.seller_name && (
+						<div className="text-[10px] text-gray-500 truncate" title={product.seller_name}>
+							{product.seller_name}
+						</div>
+					)}
+				</div>
+			</div>
 
-				{product.tv_fit_reason && (
-					<p className="text-xs text-gray-600 line-clamp-2 mb-2">{product.tv_fit_reason}</p>
-				)}
+			{/* TV fit reason highlight */}
+			{product.tv_fit_reason && (
+				<div className="bg-amber-50 border border-amber-100 rounded px-3 py-2 mb-3">
+					<div className="flex items-center gap-1 mb-0.5">
+						<TrendingUp size={11} className="text-amber-600" />
+						<span className="text-[10px] font-bold text-amber-700 uppercase tracking-wide">
+							TV適合性
+						</span>
+					</div>
+					<p className="text-[11px] text-amber-900 leading-relaxed">{product.tv_fit_reason}</p>
+				</div>
+			)}
 
+			{/* Footer: external link */}
+			<div className="mt-auto pt-2 border-t border-gray-100">
 				<a
 					href={product.product_url}
 					target="_blank"
 					rel="noopener noreferrer"
-					className="text-xs text-blue-600 hover:underline"
+					className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium"
 				>
+					<Sparkles size={11} />
 					{t("goLive")} →
 				</a>
 			</div>

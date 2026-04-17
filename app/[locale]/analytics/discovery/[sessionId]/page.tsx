@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import Navbar from "@/components/Navbar";
 import { DiscoveryHeader } from "@/components/discovery/DiscoveryHeader";
 import { ProductCard, type DiscoveredProductRow } from "@/components/discovery/ProductCard";
 
@@ -39,54 +38,38 @@ export default function SessionDetailPage() {
 			}
 		}
 		load();
-		return () => {
-			cancelled = true;
-		};
+		return () => { cancelled = true; };
 	}, [sessionId]);
 
 	const counts = {
 		total: products.length,
-		uncategorized: products.filter(
-			(p) => !(p as unknown as { user_action?: string }).user_action,
-		).length,
-		sourced: products.filter(
-			(p) => (p as unknown as { user_action?: string }).user_action === "sourced",
-		).length,
+		uncategorized: products.filter((p) => !(p as unknown as { user_action?: string }).user_action).length,
+		sourced: products.filter((p) => (p as unknown as { user_action?: string }).user_action === "sourced").length,
 	};
 
+	if (loading) return <div className="py-20 text-center text-sm text-gray-500">Loading...</div>;
+
 	return (
-		<div className="min-h-screen bg-gray-50">
-			<Navbar />
-			<main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-				<header className="mb-6">
-					<h1 className="text-2xl font-bold text-gray-900 mb-1">{t("title")}</h1>
-					<p className="text-xs text-gray-500">session: {sessionId}</p>
-				</header>
-
-				{loading ? (
-					<div className="py-20 text-center text-sm text-gray-500">Loading...</div>
-				) : (
-					<>
-						<DiscoveryHeader
-							session={session}
-							totalCount={counts.total}
-							uncategorizedCount={counts.uncategorized}
-							sourcedCount={counts.sourced}
-						/>
-
-						<div className="space-y-3">
-							{products.map((p) => (
-								<ProductCard key={p.id} product={p} />
-							))}
-							{products.length === 0 && (
-								<div className="py-12 text-center text-sm text-gray-400">
-									(no products in this session)
-								</div>
-							)}
-						</div>
-					</>
+		<div>
+			<div className="mb-4">
+				<p className="text-xs text-gray-500">session: {sessionId}</p>
+			</div>
+			<DiscoveryHeader
+				session={session}
+				totalCount={counts.total}
+				uncategorizedCount={counts.uncategorized}
+				sourcedCount={counts.sourced}
+			/>
+			<div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-2">
+				{products.map((p) => (
+					<ProductCard key={p.id} product={p} />
+				))}
+				{products.length === 0 && (
+					<div className="col-span-full py-12 text-center text-sm text-gray-400">
+						(no products in this session)
+					</div>
 				)}
-			</main>
+			</div>
 		</div>
 	);
 }
