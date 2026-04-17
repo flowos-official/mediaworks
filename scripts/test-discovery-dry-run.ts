@@ -92,6 +92,7 @@ async function main(): Promise<void> {
 	section("Step 6 · Curate (Gemini) → 30 candidates");
 	if (filtered.length === 0) {
 		console.warn("No pool items to curate. Aborting.");
+		process.exitCode = 1;
 		return;
 	}
 	const t1 = Date.now();
