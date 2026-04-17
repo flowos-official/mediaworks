@@ -14,7 +14,7 @@ import {
 } from "@/lib/rakuten";
 import type { CategoryPlan, PoolItem, Track } from "./types";
 
-const RAKUTEN_THROTTLE_MS = 1000;
+const RAKUTEN_THROTTLE_MS = 1100;
 const RAKUTEN_PER_KEYWORD = 10;
 const BRAVE_PER_KEYWORD = 5;
 
