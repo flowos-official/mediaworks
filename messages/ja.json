@@ -207,5 +207,28 @@
   "language": {
     "en": "English",
     "ja": "日本語"
+  },
+  "discovery": {
+    "title": "本日の発掘",
+    "subtitle": "毎日自動発掘される30商品の一覧",
+    "noSession": "まだセッションがありません。cronを手動実行してください。",
+    "sessionRunning": "実行中...",
+    "sessionFailed": "実行失敗",
+    "sessionPartial": "部分完了",
+    "sessionCompleted": "完了",
+    "filterAll": "すべて",
+    "filterUncategorized": "未レビュー",
+    "filterSourced": "ソーシング済み",
+    "filterInterested": "関心あり",
+    "filterRejected": "却下",
+    "trackTvProven": "TV実績",
+    "trackExploration": "探索",
+    "broadcastConfirmed": "放送確認",
+    "broadcastLikely": "放送の可能性",
+    "broadcastUnknown": "情報なし",
+    "sortByScore": "スコア順",
+    "sortByPrice": "価格順",
+    "viewHistory": "履歴を見る",
+    "goLive": "商品ページへ"
   }
 }

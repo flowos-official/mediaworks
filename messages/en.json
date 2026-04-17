@@ -207,5 +207,28 @@
   "language": {
     "en": "English",
     "ja": "日本語"
+  },
+  "discovery": {
+    "title": "Today's Discovery",
+    "subtitle": "30 auto-discovered products each day",
+    "noSession": "No session yet. Trigger cron manually.",
+    "sessionRunning": "Running...",
+    "sessionFailed": "Failed",
+    "sessionPartial": "Partial",
+    "sessionCompleted": "Completed",
+    "filterAll": "All",
+    "filterUncategorized": "Unreviewed",
+    "filterSourced": "Sourced",
+    "filterInterested": "Interested",
+    "filterRejected": "Rejected",
+    "trackTvProven": "TV Proven",
+    "trackExploration": "Exploration",
+    "broadcastConfirmed": "Broadcast confirmed",
+    "broadcastLikely": "Likely broadcast",
+    "broadcastUnknown": "Unknown",
+    "sortByScore": "By score",
+    "sortByPrice": "By price",
+    "viewHistory": "View history",
+    "goLive": "Product page"
   }
 }
