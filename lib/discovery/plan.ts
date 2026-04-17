@@ -59,7 +59,7 @@ export async function loadRecentPlannedKeywords(
 	const sb = getServiceClient();
 	const since = new Date(Date.now() - days * 24 * 3600 * 1000).toISOString();
 	const { data, error } = await sb
-		.from("discovery_sessions")
+		.from("discovery_runs")
 		.select("category_plan")
 		.gte("run_at", since);
 

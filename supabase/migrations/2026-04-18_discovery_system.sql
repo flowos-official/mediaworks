@@ -1,8 +1,8 @@
 -- Product Discovery Redesign — Phase 1 schema
 -- Ref: docs/superpowers/specs/2026-04-18-product-discovery-redesign-design.md §7
 
--- 1. discovery_sessions ----------------------------------------------------
-CREATE TABLE IF NOT EXISTS discovery_sessions (
+-- 1. discovery_runs ----------------------------------------------------
+CREATE TABLE IF NOT EXISTS discovery_runs (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   run_at timestamptz NOT NULL DEFAULT now(),
   completed_at timestamptz,
@@ -14,13 +14,13 @@ CREATE TABLE IF NOT EXISTS discovery_sessions (
   iterations int NOT NULL DEFAULT 0,
   error text
 );
-CREATE INDEX IF NOT EXISTS idx_discovery_sessions_run_at
-  ON discovery_sessions (run_at DESC);
+CREATE INDEX IF NOT EXISTS idx_discovery_runs_run_at
+  ON discovery_runs (run_at DESC);
 
 -- 2. discovered_products ---------------------------------------------------
 CREATE TABLE IF NOT EXISTS discovered_products (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  session_id uuid NOT NULL REFERENCES discovery_sessions(id) ON DELETE CASCADE,
+  session_id uuid NOT NULL REFERENCES discovery_runs(id) ON DELETE CASCADE,
   created_at timestamptz NOT NULL DEFAULT now(),
 
   name text NOT NULL,
