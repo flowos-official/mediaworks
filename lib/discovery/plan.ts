@@ -29,7 +29,8 @@ export async function loadTopCategories(limit = 20): Promise<string[]> {
 	const { data, error } = await sb
 		.from("product_summaries")
 		.select("category, total_revenue")
-		.not("category", "is", null);
+		.not("category", "is", null)
+		.limit(10000);
 
 	if (error) {
 		console.warn("[plan] loadTopCategories failed:", error.message);
