@@ -123,3 +123,51 @@ export async function runProductResearch(
 
 	return searches;
 }
+
+export type BraveWebResult = {
+	title: string;
+	description: string;
+	url: string;
+};
+
+/**
+ * Structured Brave Web Search returning parsed result objects (vs. formatted string).
+ * Used by discovery pool builder.
+ */
+export async function braveSearchItems(
+	query: string,
+	count = 10,
+): Promise<BraveWebResult[]> {
+	if (!BRAVE_API_KEY) return [];
+
+	const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=${Math.min(count, 20)}`;
+
+	try {
+		const res = await fetch(url, {
+			headers: {
+				Accept: "application/json",
+				"Accept-Encoding": "gzip",
+				"X-Subscription-Token": BRAVE_API_KEY,
+			},
+			signal: AbortSignal.timeout(10000),
+		});
+		if (!res.ok) {
+			console.warn(`[brave items] ${res.status}`);
+			return [];
+		}
+		const data = await res.json();
+		const results: Array<{ title?: string; description?: string; url?: string }> =
+			data.web?.results ?? [];
+		return results.map((r) => ({
+			title: r.title ?? "",
+			description: r.description ?? "",
+			url: r.url ?? "",
+		}));
+	} catch (err) {
+		console.warn(
+			"[brave items] fetch failed:",
+			err instanceof Error ? err.message : String(err),
+		);
+		return [];
+	}
+}
