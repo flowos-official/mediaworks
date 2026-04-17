@@ -54,6 +54,25 @@ export async function loadExclusionContext(
 			.not("rakuten_item_code", "is", null),
 	]);
 
+	if (ownRes.error) {
+		console.warn(
+			"[exclusion] product_summaries query failed:",
+			ownRes.error.message,
+		);
+	}
+	if (recentRes.error) {
+		console.warn(
+			"[exclusion] discovered_products (7d) query failed:",
+			recentRes.error.message,
+		);
+	}
+	if (codesRes.error) {
+		console.warn(
+			"[exclusion] discovered_products (codes) query failed:",
+			codesRes.error.message,
+		);
+	}
+
 	const ownSourcedNames = (ownRes.data ?? [])
 		.map((r: { product_name: string | null }) =>
 			r.product_name ? normalizeName(r.product_name) : "",
