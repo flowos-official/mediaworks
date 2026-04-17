@@ -19,6 +19,26 @@ const RAKUTEN_PER_KEYWORD = 10;
 const BRAVE_PER_KEYWORD = 5;
 
 /**
+ * Normalize URL for dedup: force https, strip trailing slash, lowercase hostname.
+ * Does NOT modify path casing (paths are case-sensitive).
+ */
+function normalizeUrlForDedup(url: string): string {
+	try {
+		const u = new URL(url);
+		u.protocol = "https:";
+		u.hostname = u.hostname.toLowerCase();
+		let href = u.toString();
+		if (href.endsWith("/") && u.pathname !== "/") {
+			href = href.slice(0, -1);
+		}
+		return href;
+	} catch {
+		// malformed URL — return as-is, let caller dedup by raw string
+		return url;
+	}
+}
+
+/**
  * Extract Rakuten item code (shopCode:itemCode) from an item URL.
  * Pattern: https://item.rakuten.co.jp/<shop>/<item>/
  */
@@ -111,8 +131,9 @@ export async function buildPool(plan: CategoryPlan): Promise<PoolItem[]> {
 	for (const { kw, track } of allKws) {
 		const items = await fetchRakutenForKeyword(kw, track);
 		for (const it of items) {
-			if (seenUrls.has(it.productUrl)) continue;
-			seenUrls.add(it.productUrl);
+			const key = normalizeUrlForDedup(it.productUrl);
+			if (seenUrls.has(key)) continue;
+			seenUrls.add(key);
 			pool.push(it);
 		}
 		await new Promise((r) => setTimeout(r, RAKUTEN_THROTTLE_MS));
@@ -125,8 +146,9 @@ export async function buildPool(plan: CategoryPlan): Promise<PoolItem[]> {
 	for (const batch of braveBatches) {
 		if (batch.status !== "fulfilled") continue;
 		for (const it of batch.value) {
-			if (seenUrls.has(it.productUrl)) continue;
-			seenUrls.add(it.productUrl);
+			const key = normalizeUrlForDedup(it.productUrl);
+			if (seenUrls.has(key)) continue;
+			seenUrls.add(key);
 			pool.push(it);
 		}
 	}
