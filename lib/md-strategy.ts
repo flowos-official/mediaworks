@@ -11,6 +11,7 @@ import type {
 	SalesWeeklyTotal,
 } from "@/lib/supabase";
 import type { SeedContext } from "@/lib/strategy/seed-context";
+import { formatSeedPromptSection } from "@/lib/strategy/seed-context";
 
 // ---------------------------------------------------------------------------
 // Gemini client
@@ -1517,6 +1518,7 @@ IMPORTANT: すべてのテキストフィールドは日本語で記述してく
 // ---------------------------------------------------------------------------
 
 function buildProductSelectionPrompt(ctx: StrategyContext): string {
+	const seedSection = formatSeedPromptSection(ctx.seedProduct ?? null);
 	// Build Markdown table for products with pre-computed metrics
 	const tableHeader = `| # | 商品名 | カテゴリ | 年売上 | 粗利率 | 週平均 | 3M成長率 | TV単価 | 原価 | EC15%後マージン | EC既存 | 季節ピーク |`;
 	const tableSep = `|---|---|---|---|---|---|---|---|---|---|---|---|`;
@@ -1584,7 +1586,7 @@ ${recommendSection}
 - portfolio_strategy: 全体のポートフォリオ戦略。
 
 IMPORTANT: すべてのテキストフィールドは日本語で記述してください。
-
+${seedSection}
 Return a JSON object (no markdown) with this structure:
 {
   "channel_product_matrix": [
@@ -1608,6 +1610,7 @@ const EMPTY_ME: MarketingExecutionOutput = { monthly_plans: [], content_calendar
 const EMPTY_FP: FinancialProjectionOutput = { monthly_forecast: [], roi_timeline: [], scenarios: { conservative: { year1_revenue: 0, year1_profit: 0 }, moderate: { year1_revenue: 0, year1_profit: 0 }, aggressive: { year1_revenue: 0, year1_profit: 0 }, assumptions: [] } };
 
 function buildChannelStrategyPrompt(ctx: StrategyContext, priorOutputs: Record<string, unknown>): string {
+	const seedSection = formatSeedPromptSection(ctx.seedProduct ?? null);
 	const ps = (priorOutputs.product_selection as ProductSelectionOutput) ?? EMPTY_PS;
 
 	// Build structured tier1 summary with margin and revenue data
@@ -1675,7 +1678,7 @@ KPI目標設定基準:
 上記のチャネル基本情報テーブルの数値を活用し、具体的な費用・期間を記載すること。
 
 IMPORTANT: すべてのテキストフィールドは日本語で記述してください。数字は具体的な金額・数値で記載すること。
-
+${seedSection}
 Return a JSON object (no markdown) with this structure:
 {
   "channels": [
@@ -1695,6 +1698,7 @@ ${buildSourcesSection(ctx)}`;
 }
 
 function buildPricingMarginPrompt(ctx: StrategyContext, priorOutputs: Record<string, unknown>): string {
+	const seedSection = formatSeedPromptSection(ctx.seedProduct ?? null);
 	const ps = (priorOutputs.product_selection as ProductSelectionOutput) ?? EMPTY_PS;
 	const cs = (priorOutputs.channel_strategy as ChannelStrategyOutput) ?? EMPTY_CS;
 
@@ -1795,7 +1799,7 @@ BEP検証ルール:
 計算結果をそのまま使うのではなく、競合価格・市場感覚を加味して戦略的な推奨価格を提案すること。
 
 IMPORTANT: すべてのテキストフィールドは日本語で記述。
-
+${seedSection}
 Return a JSON object (no markdown) with this structure:
 {
   "product_pricing": [
@@ -1815,6 +1819,7 @@ ${buildSourcesSection(ctx)}`;
 }
 
 function buildMarketingExecutionPrompt(ctx: StrategyContext, priorOutputs: Record<string, unknown>): string {
+	const seedSection = formatSeedPromptSection(ctx.seedProduct ?? null);
 	const ps = (priorOutputs.product_selection as ProductSelectionOutput) ?? EMPTY_PS;
 	const cs = (priorOutputs.channel_strategy as ChannelStrategyOutput) ?? EMPTY_CS;
 	const pm = (priorOutputs.pricing_margin as PricingMarginOutput) ?? EMPTY_PM;
@@ -1928,7 +1933,7 @@ ${bepSummary}
 - budget_summary: 6ヶ月間の総予算と内訳。
 
 IMPORTANT: すべて日本語で記述。金額は¥で表記。具体的な数値目標を含めること。
-
+${seedSection}
 Return a JSON object (no markdown) with this structure:
 {
   "monthly_plans": [{"month": "2026年4月", "total_budget": 0, "activities": [{"channel": "", "activity": "", "budget": 0, "expected_impressions": "", "expected_conversions": "", "content_type": ""}]}],
@@ -1941,6 +1946,7 @@ ${buildSourcesSection(ctx)}`;
 }
 
 function buildFinancialProjectionPrompt(ctx: StrategyContext, priorOutputs: Record<string, unknown>): string {
+	const seedSection = formatSeedPromptSection(ctx.seedProduct ?? null);
 	const cs = (priorOutputs.channel_strategy as ChannelStrategyOutput) ?? EMPTY_CS;
 	const pm = (priorOutputs.pricing_margin as PricingMarginOutput) ?? EMPTY_PM;
 	const me = (priorOutputs.marketing_execution as MarketingExecutionOutput) ?? EMPTY_ME;
@@ -2051,7 +2057,7 @@ ${launchSequence}
 12ヶ月間（2026年4月〜2027年3月）の収益予測を作成してください。
 
 IMPORTANT: すべて日本語で記述。金額はすべて日本円。
-
+${seedSection}
 Return a JSON object (no markdown) with this structure:
 {
   "monthly_forecast": [{"month": "2026年4月", "by_channel": [{"channel": "", "revenue": 0, "cost": 0, "marketing_spend": 0, "net_profit": 0, "cumulative_profit": 0}], "total_revenue": 0, "total_profit": 0}],
@@ -2063,6 +2069,7 @@ ${buildSourcesSection(ctx)}`;
 }
 
 function buildRiskContingencyPrompt(ctx: StrategyContext, priorOutputs: Record<string, unknown>): string {
+	const seedSection = formatSeedPromptSection(ctx.seedProduct ?? null);
 	const cs = (priorOutputs.channel_strategy as ChannelStrategyOutput) ?? EMPTY_CS;
 	const pm = (priorOutputs.pricing_margin as PricingMarginOutput) ?? EMPTY_PM;
 	const fp = (priorOutputs.financial_projection as FinancialProjectionOutput) ?? EMPTY_FP;
@@ -2140,7 +2147,7 @@ ${bepThresholds}
 - go_nogo_criteria: 各チャネル1セットのみ。
 
 すべて日本語、具体的な数値基準で。出力は簡潔に。
-
+${seedSection}
 Return a JSON object (no markdown):
 {
   "risk_matrix": [{"channel":"","risks":[{"risk":"","category":"","likelihood":"high|medium|low","impact":"high|medium|low","mitigation":[],"contingency_trigger":"","contingency_action":""}]}],
