@@ -2,14 +2,15 @@
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Home, Tv, Calendar } from "lucide-react";
+import { Home, Tv, Calendar, BarChart3 } from "lucide-react";
 
-type SubTab = "home" | "live" | "history";
+type SubTab = "home" | "live" | "history" | "insights";
 
-const TABS: Array<{ key: SubTab; icon: React.ReactNode; labelKey: "subTabHome" | "subTabLive" | "subTabHistory" }> = [
+const TABS: Array<{ key: SubTab; icon: React.ReactNode; labelKey: "subTabHome" | "subTabLive" | "subTabHistory" | "subTabInsights" }> = [
 	{ key: "home", icon: <Home size={14} />, labelKey: "subTabHome" },
 	{ key: "live", icon: <Tv size={14} />, labelKey: "subTabLive" },
 	{ key: "history", icon: <Calendar size={14} />, labelKey: "subTabHistory" },
+	{ key: "insights", icon: <BarChart3 size={14} />, labelKey: "subTabInsights" },
 ];
 
 export function ContextSubTabs() {
@@ -20,7 +21,7 @@ export function ContextSubTabs() {
 	const activeTab = (() => {
 		const parts = pathname.split("/").filter(Boolean);
 		const sub = parts[3];
-		if (sub === "home" || sub === "live" || sub === "history") return sub;
+		if (sub === "home" || sub === "live" || sub === "history" || sub === "insights") return sub;
 		return "home";
 	})();
 
