@@ -4,6 +4,7 @@
  */
 
 export type Track = "tv_proven" | "exploration";
+export type Context = "home_shopping" | "live_commerce";
 export type CandidateSource = "rakuten" | "brave" | "other";
 export type BroadcastTag =
 	| "broadcast_confirmed"
@@ -45,6 +46,7 @@ export interface PoolItem {
 	rakutenItemCode?: string;
 	seedKeyword: string;
 	track: Track;
+	context?: Context;
 }
 
 export interface CurationScore {
@@ -62,6 +64,7 @@ export interface Candidate extends PoolItem {
 	isTvApplicable: boolean;
 	isLiveApplicable: boolean;
 	scoreBreakdown: CurationScore;
+	context: Context;
 }
 
 export interface RejectedSeeds {

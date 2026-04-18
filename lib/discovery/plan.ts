@@ -5,7 +5,7 @@
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getServiceClient } from "@/lib/supabase";
-import type { CategoryPlan, LearningState } from "./types";
+import type { CategoryPlan, Context, LearningState } from "./types";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 const MODEL_ID = "gemini-3-flash-preview";
@@ -89,6 +89,7 @@ export async function buildCategoryPlan(
 	learning: LearningState,
 	topCategories: string[],
 	recentlyUsed: Set<string>,
+	context: Context = "home_shopping",
 ): Promise<CategoryPlan> {
 	const explorationCount = Math.max(
 		3,
@@ -107,13 +108,29 @@ export async function buildCategoryPlan(
 		.map((r) => `${r.reason}(${r.count}件)`)
 		.join(", ");
 
+	const contextGuidance =
+		context === "live_commerce"
+			? `
+【Context: ライブコマース】
+- ターゲット: 20-40代、SNS利用者、即決購入層
+- カテゴリ優先: 化粧品 / ファッション小物 / 美容家電 / ガジェット / 季節限定品 / トレンド雑貨
+- 価格帯: ¥1,000-15,000 (即購入可能)
+- 重視: SNS拡散性、ビジュアル、若年層共感、トレンド感`
+			: `
+【Context: ホームショッピング】
+- ターゲット: 40-60代、TV視聴者、じっくり検討層
+- カテゴリ優先: 美容家電 / キッチン調理器具 / 健康機器 / 寝具 / 防災 / 実演映え家電
+- 価格帯: ¥3,000-30,000 (衝動買いゾーン)
+- 重視: 実演適性、ギフト需要、信頼感、TVデモ可能性`;
+
 	const prompt = `あなたは日本のテレビ通販・ライブコマース向け商品ソーシング専門家です。
 今日の発掘キーワード${TOTAL_KEYWORDS}個を選んでください。
+${contextGuidance}
 
 【キーワード生成ルール — 厳守】
 - 各キーワードは楽天市場で検索可能な短い汎用語（2〜5語）
-- 具体的なブランド名や型番は含めない (例: 悪い例「AI搭載自動追跡ペットカメラ」→ 良い例「ペットカメラ」「見守りカメラ」)
-- 修飾語は最小限 (例: 悪い例「自宅用折りたたみサウナテント」→ 良い例「家庭用サウナ」)
+- 具体的なブランド名や型番は含めない
+- 修飾語は最小限
 - 長い造語を避け、消費者が実際に検索する語を優先
 
 【条件】

@@ -6,6 +6,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import type {
 	Candidate,
+	Context,
 	CurationScore,
 	LearningState,
 	PoolItem,
@@ -40,6 +41,7 @@ export async function curatePool(
 	pool: PoolItem[],
 	targetCount: number,
 	learning: LearningState,
+	context: Context = "home_shopping",
 ): Promise<Candidate[]> {
 	if (pool.length === 0) return [];
 
@@ -52,15 +54,29 @@ export async function curatePool(
 			.map((r) => `${r.reason}(${r.count}件)`)
 			.join(", ") || "(データ不足)";
 
+	const contextBlock =
+		context === "live_commerce"
+			? `
+【Context: ライブコマース (20-40代、SNS利用者)】
+- 重視: SNS拡散性、ビジュアル訴求、トレンド感、若年層共感
+- 価格帯ゾーン: ¥1,000-15,000 (即購入)
+- 除外特性: じっくり検討が必要な高額品、高齢者専用商品`
+			: `
+【Context: ホームショッピング (40-60代、TV視聴者)】
+- 重視: 実演適性、ギフト需要、信頼感、TVデモ可能性
+- 価格帯ゾーン: ¥3,000-30,000 (衝動買い)
+- 除外特性: 若年層向けトレンド商品、SNS専用商品`;
+
 	const prompt = `あなたは日本のテレビ通販・ライブコマースに適した商品を選ぶバイヤーです。
 以下の商品プールから上位${targetCount}個を選び、各商品を評価してください。
+${contextBlock}
 
 【採点基準 (合計0-100)】
 - review_signal (0-35): Rakutenレビュー数と評価の強さ (≥100件→30+, 50-99→20, 5-49→10, <5→0)
-- tv_category_match (0-20): TV実績カテゴリとの一致 (一致=20, 隣接=10, 不一致=0)
+- tv_category_match (0-20): Context実績カテゴリとの一致 (一致=20, 隣接=10, 不一致=0)
 - trend_signal (0-15): 日本市場のトレンド信号の強さ
-- price_fit (0-15): ¥3,000-30,000 衝動買いゾーンに近いほど高い
-- purchase_signal (0-15): 実演映え・ギフト需要・SNS拡散性
+- price_fit (0-15): Context別価格帯ゾーンに近いほど高い
+- purchase_signal (0-15): Context別の購買トリガー (実演映え or SNS拡散性)
 
 【除外すべき特性 (採点せず応答から除外)】
 - 単価¥500未満の消耗品
@@ -115,6 +131,7 @@ ${poolList}
 		if (!source) continue;
 		candidates.push({
 			...source,
+			context,
 			tvFitScore: Math.max(0, Math.min(100, c.tv_fit_score)),
 			tvFitReason: c.tv_fit_reason,
 			isTvApplicable: c.is_tv_applicable,

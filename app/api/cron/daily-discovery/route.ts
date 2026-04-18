@@ -57,11 +57,12 @@ export async function GET(req: NextRequest) {
 	const sessionId = await createSession({
 		targetCount: TARGET_COUNT,
 		explorationRatio: learning.exploration_ratio,
+		context: "home_shopping",
 	});
 
 	try {
 		// Stage 1 pipeline
-		const orchestrated = await runStage1(learning, TARGET_COUNT);
+		const orchestrated = await runStage1(learning, TARGET_COUNT, "home_shopping");
 		await attachPlanToSession(sessionId, orchestrated.plan);
 
 		// Stage 1 단계 7: broadcast tagging

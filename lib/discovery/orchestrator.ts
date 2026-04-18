@@ -13,6 +13,7 @@ import { buildPool } from "./pool";
 import type {
 	Candidate,
 	CategoryPlan,
+	Context,
 	LearningState,
 	PoolItem,
 } from "./types";
@@ -101,13 +102,14 @@ function mergePools(base: PoolItem[], extension: PoolItem[]): PoolItem[] {
 export async function runStage1(
 	learning: LearningState,
 	targetCount: number,
+	context: Context = "home_shopping",
 ): Promise<OrchestrateResult> {
 	// Step 1: plan
 	const [topCategories, recentlyUsed] = await Promise.all([
 		loadTopCategories(),
 		loadRecentPlannedKeywords(),
 	]);
-	const plan = await buildCategoryPlan(learning, topCategories, recentlyUsed);
+	const plan = await buildCategoryPlan(learning, topCategories, recentlyUsed, context);
 
 	// Step 2: initial pool + exclusion
 	let pool = await buildPool(plan);
@@ -115,7 +117,7 @@ export async function runStage1(
 	let filtered = applyExclusions(pool, exclusionCtx);
 
 	// Step 3: curate with bounded iteration
-	let candidates = await curatePool(filtered, targetCount, learning);
+	let candidates = await curatePool(filtered, targetCount, learning, context);
 	let iterations = 0;
 	let qualityCount = candidates.filter(
 		(c) => c.tvFitScore >= QUALITY_SCORE_THRESHOLD,
@@ -129,7 +131,7 @@ export async function runStage1(
 		const extension = await buildAdditionalPool(extraKeywords);
 		pool = mergePools(pool, extension);
 		filtered = applyExclusions(pool, exclusionCtx);
-		candidates = await curatePool(filtered, targetCount, learning);
+		candidates = await curatePool(filtered, targetCount, learning, context);
 		qualityCount = candidates.filter(
 			(c) => c.tvFitScore >= QUALITY_SCORE_THRESHOLD,
 		).length;

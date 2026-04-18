@@ -10,6 +10,7 @@ import type {
 	BroadcastTag,
 	Candidate,
 	CategoryPlan,
+	Context,
 	SessionStatus,
 } from "./types";
 
@@ -20,6 +21,7 @@ import type {
 export async function createSession(input: {
 	targetCount: number;
 	explorationRatio: number;
+	context: Context;
 }): Promise<string> {
 	const sb = getServiceClient();
 	const { data, error } = await sb
@@ -30,6 +32,7 @@ export async function createSession(input: {
 			produced_count: 0,
 			exploration_ratio: input.explorationRatio,
 			iterations: 0,
+			context: input.context,
 		})
 		.select("id")
 		.single();
@@ -96,6 +99,7 @@ export async function saveDiscoveredProducts(
 		track: candidate.track,
 		is_tv_applicable: candidate.isTvApplicable,
 		is_live_applicable: candidate.isLiveApplicable,
+		context: candidate.context,
 	}));
 
 	const { data, error } = await sb
