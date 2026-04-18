@@ -6,6 +6,7 @@ import { Sparkles, Star, TrendingUp, ShoppingBag, Tv, Compass } from "lucide-rea
 import { EnrichmentProgress } from "./EnrichmentProgress";
 import { CPackageDrawer } from "./CPackageDrawer";
 import { IntegrationActions } from "./IntegrationActions";
+import { FeedbackButtons, type FeedbackState } from "./FeedbackButtons";
 import type { CPackage } from "@/lib/discovery/types";
 
 type EnrichmentStatus = "idle" | "queued" | "running" | "completed" | "failed";
@@ -30,6 +31,8 @@ export type DiscoveredProductRow = {
 	c_package?: CPackage | null;
 	enrichment_error?: string | null;
 	context?: "home_shopping" | "live_commerce";
+	user_action?: FeedbackState;
+	action_reason?: string | null;
 };
 
 function scoreColor(score: number): string {
@@ -51,6 +54,12 @@ export function ProductCard({ product }: { product: DiscoveredProductRow }) {
 	const [err, setErr] = useState<string | null>(product.enrichment_error ?? null);
 	const [showDetails, setShowDetails] = useState(false);
 	const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+	const [feedbackState, setFeedbackState] = useState<FeedbackState>(product.user_action ?? null);
+	const [feedbackReason, setFeedbackReason] = useState<string | null>(product.action_reason ?? null);
+
+	const isRejected = feedbackState === "rejected";
+	const isDimmed = feedbackState === "rejected" || feedbackState === "duplicate";
 
 	const stopPolling = useCallback(() => {
 		if (pollRef.current) {
@@ -102,7 +111,12 @@ export function ProductCard({ product }: { product: DiscoveredProductRow }) {
 			: null;
 
 	return (
-		<article className="bg-white border border-amber-200 rounded-xl p-4 shadow-sm flex flex-col hover:shadow-md transition-shadow">
+		<article
+			className={`bg-white border border-amber-200 rounded-xl p-4 shadow-sm flex flex-col hover:shadow-md transition-all ${
+				isDimmed ? "opacity-60" : ""
+			}`}
+			title={isRejected && feedbackReason ? `却下理由: ${feedbackReason}` : undefined}
+		>
 			{/* Header: source badge + name + score */}
 			<div className="flex items-start justify-between gap-2 mb-2">
 				<div className="flex items-center gap-2 flex-1 min-w-0">
@@ -212,6 +226,16 @@ export function ProductCard({ product }: { product: DiscoveredProductRow }) {
 					{t("goLive")} →
 				</a>
 			</div>
+
+			{/* Feedback buttons (Phase 4) */}
+			<FeedbackButtons
+				productId={product.id}
+				current={feedbackState}
+				onUpdate={(next, reason) => {
+					setFeedbackState(next);
+					setFeedbackReason(reason ?? null);
+				}}
+			/>
 
 			{/* Integration action (拡大戦略 / ライブ戦略) */}
 			<div className="mb-3">
