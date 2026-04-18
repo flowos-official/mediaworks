@@ -1,6 +1,7 @@
 import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { getServiceClient } from "@/lib/supabase";
 import { discoverNewProducts, type DiscoveredProduct, type DiscoveryBatch } from "@/lib/md-strategy";
+import type { SeedContext } from "@/lib/strategy/seed-context";
 
 // ---------------------------------------------------------------------------
 // Gemini client
@@ -344,6 +345,7 @@ export interface LCContext {
 	// Signals derived at fetch time, consumed by the final discovery step.
 	topCategoryNames?: string[];
 	avgMarginRate?: number;
+	seedProduct?: SeedContext;
 }
 
 export async function fetchLCContext(

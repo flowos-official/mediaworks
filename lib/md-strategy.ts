@@ -10,6 +10,7 @@ import type {
 	ProductDetail,
 	SalesWeeklyTotal,
 } from "@/lib/supabase";
+import type { SeedContext } from "@/lib/strategy/seed-context";
 
 // ---------------------------------------------------------------------------
 // Gemini client
@@ -438,6 +439,7 @@ export interface StrategyContext {
 	computedMetrics: Record<string, ComputedMetrics>;
 	// Parsed user goal (from Skill 0)
 	parsedGoal?: ParsedGoal;
+	seedProduct?: SeedContext;
 }
 
 // ---------------------------------------------------------------------------
