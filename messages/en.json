@@ -256,6 +256,20 @@
     "contactHints": "Contact hints",
     "partialResult": "Partial (timeout)",
     "viewDetails": "Details",
-    "hideDetails": "Close"
+    "hideDetails": "Close",
+    "subTabHome": "Home Shopping",
+    "subTabLive": "Live Commerce",
+    "subTabHistory": "History",
+    "manualTrigger": "Run Discovery Now",
+    "manualTriggerRunning": "Running...",
+    "manualTriggerSuccess": "Done — refresh page",
+    "manualTriggerFailed": "Failed",
+    "viewStrategy": "Create Expansion Strategy",
+    "viewLiveStrategy": "Create Live Strategy",
+    "calendarLegendCompleted": "Completed",
+    "calendarLegendPartial": "Partial",
+    "calendarLegendFailed": "Failed",
+    "noSessionsYet": "No history",
+    "loadMore": "Load more"
   }
 }

@@ -256,6 +256,20 @@
     "contactHints": "連絡先ヒント",
     "partialResult": "部分結果 (タイムアウト)",
     "viewDetails": "詳細を見る",
-    "hideDetails": "閉じる"
+    "hideDetails": "閉じる",
+    "subTabHome": "ホームショッピング",
+    "subTabLive": "ライブコマース",
+    "subTabHistory": "履歴",
+    "manualTrigger": "今すぐ発掘",
+    "manualTriggerRunning": "実行中...",
+    "manualTriggerSuccess": "発掘完了 — ページを再読込",
+    "manualTriggerFailed": "発掘失敗",
+    "viewStrategy": "拡大戦略を作成",
+    "viewLiveStrategy": "ライブ戦略を作成",
+    "calendarLegendCompleted": "完了",
+    "calendarLegendPartial": "部分完了",
+    "calendarLegendFailed": "失敗",
+    "noSessionsYet": "履歴なし",
+    "loadMore": "もっと見る"
   }
 }
