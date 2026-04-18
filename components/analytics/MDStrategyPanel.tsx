@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Rocket, AlertTriangle, Target, Database, ArrowLeft } from 'lucide-react';
@@ -390,11 +390,19 @@ function DetailView({ initialData, backHref }: { initialData: SavedStrategyData;
 // ---------------------------------------------------------------------------
 
 function ListView({ locale, router }: { locale: string; router: ReturnType<typeof useRouter> }) {
+	const searchParams = useSearchParams();
+	const seedName = searchParams?.get("seed") ?? null;
+	const seedCategory = searchParams?.get("category") ?? null;
+	const seedPrice = searchParams?.get("price") ?? null;
+	const seedUrl = searchParams?.get("sourceUrl") ?? null;
+
 	// Input state
-	const [userGoal, setUserGoal] = useState('');
-	const [category, setCategory] = useState('指定なし');
+	const [userGoal, setUserGoal] = useState(
+		seedName ? `新商品「${seedName}」の拡大戦略を立てる。${seedUrl ? ` 参考URL: ${seedUrl}` : ""}` : ''
+	);
+	const [category, setCategory] = useState(seedCategory ?? '指定なし');
 	const [targetMarket, setTargetMarket] = useState('指定なし');
-	const [priceRange, setPriceRange] = useState('');
+	const [priceRange, setPriceRange] = useState(seedPrice ? `¥${Number(seedPrice).toLocaleString()}前後` : '');
 
 	// Generation state
 	const [status, setStatus] = useState<'idle' | 'running' | 'complete' | 'error'>('idle');

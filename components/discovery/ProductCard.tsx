@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Sparkles, Star, TrendingUp, ShoppingBag, Tv, Compass } from "lucide-react";
 import { EnrichmentProgress } from "./EnrichmentProgress";
 import { CPackageDrawer } from "./CPackageDrawer";
+import { IntegrationActions } from "./IntegrationActions";
 import type { CPackage } from "@/lib/discovery/types";
 
 type EnrichmentStatus = "idle" | "queued" | "running" | "completed" | "failed";
@@ -28,6 +29,7 @@ export type DiscoveredProductRow = {
 	enrichment_status?: EnrichmentStatus | null;
 	c_package?: CPackage | null;
 	enrichment_error?: string | null;
+	context?: "home_shopping" | "live_commerce";
 };
 
 function scoreColor(score: number): string {
@@ -209,6 +211,17 @@ export function ProductCard({ product }: { product: DiscoveredProductRow }) {
 					<Sparkles size={11} />
 					{t("goLive")} →
 				</a>
+			</div>
+
+			{/* Integration action (拡大戦略 / ライブ戦略) */}
+			<div className="mb-3">
+				<IntegrationActions
+					context={product.context ?? "home_shopping"}
+					productName={product.name}
+					category={product.category}
+					productUrl={product.product_url}
+					priceJpy={product.price_jpy}
+				/>
 			</div>
 
 			{/* Enrichment control */}
