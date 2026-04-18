@@ -2,6 +2,7 @@ import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { getServiceClient } from "@/lib/supabase";
 import { discoverNewProducts, type DiscoveredProduct, type DiscoveryBatch } from "@/lib/md-strategy";
 import type { SeedContext } from "@/lib/strategy/seed-context";
+import { formatSeedPromptSection } from "@/lib/strategy/seed-context";
 
 // ---------------------------------------------------------------------------
 // Gemini client
@@ -520,14 +521,16 @@ const SKILL_PIPELINE: SkillDef[] = [
 	},
 	{
 		name: "market_research",
-		buildPrompt: (ctx) => `あなたは日本のライブコマース市場の専門アナリストです。
+		buildPrompt: (ctx) => {
+			const seedSection = formatSeedPromptSection(ctx.seedProduct ?? null);
+			return `あなたは日本のライブコマース市場の専門アナリストです。
 以下のウェブ検索結果に基づき、日本のライブコマース市場を分析してください。
 
 === ウェブ検索結果 ===
 ${ctx.searchSummary}
 
 ${goalSection(ctx)}
-
+${seedSection}
 以下のJSON形式で出力:
 {
   "market_size": "<日本のライブコマース市場規模>",
@@ -543,7 +546,8 @@ ${goalSection(ctx)}
 - key_trendsは5-8個
 - major_playersは5-10個
 - 全てのテキストは日本語で出力
-- ウェブ検索結果を根拠として活用し、sources_referencedで番号を記載`,
+- ウェブ検索結果を根拠として活用し、sources_referencedで番号を記載`;
+		},
 	},
 	{
 		name: "platform_analysis",
@@ -560,6 +564,8 @@ ${goalSection(ctx)}
 				).join("\n")}\nこれらは実在する商品です。ライブコマースで取り扱うべき新商品の候補としてプラットフォーム選定の参考にしてください。\n`
 				: "";
 
+			const seedSection = formatSeedPromptSection(ctx.seedProduct ?? null);
+
 			return `あなたは日本のライブコマースプラットフォーム専門家です。
 以下の情報に基づき、各プラットフォームの詳細分析を行ってください。
 
@@ -574,7 +580,7 @@ ${ctx.searchSummary}
 ${productList}
 ${discoveredList}
 ${goalSection(ctx)}
-
+${seedSection}
 以下のJSON形式で出力:
 {
   "platforms": [
@@ -606,14 +612,16 @@ ${goalSection(ctx)}
 	},
 	{
 		name: "content_strategy",
-		buildPrompt: (ctx, outputs) => `あなたはライブコマースのコンテンツ戦略プランナーです。
+		buildPrompt: (ctx, outputs) => {
+			const seedSection = formatSeedPromptSection(ctx.seedProduct ?? null);
+			return `あなたはライブコマースのコンテンツ戦略プランナーです。
 以下の分析結果に基づき、プラットフォーム別のコンテンツ戦略を策定してください。
 
 === プラットフォーム分析結果 ===
 ${JSON.stringify(outputs.platform_analysis ?? {}, null, 2)}
 
 ${goalSection(ctx)}
-
+${seedSection}
 以下のJSON形式で出力:
 {
   "platforms": [
@@ -636,11 +644,14 @@ ${goalSection(ctx)}
 - content_ideasは各プラットフォーム3-5個
 - engagement_tacticsは各プラットフォーム3-5個
 - sample_script_outlineは実践的な内容
-- 全てのテキストは日本語`,
+- 全てのテキストは日本語`;
+		},
 	},
 	{
 		name: "execution_plan",
-		buildPrompt: (ctx, outputs) => `あなたはライブコマース事業の実行計画策定の専門家です。
+		buildPrompt: (ctx, outputs) => {
+			const seedSection = formatSeedPromptSection(ctx.seedProduct ?? null);
+			return `あなたはライブコマース事業の実行計画策定の専門家です。
 以下の全分析結果に基づき、具体的な実行ロードマップを策定してください。
 
 === 市場調査 ===
@@ -653,7 +664,7 @@ ${JSON.stringify(outputs.platform_analysis ?? {}, null, 2)}
 ${JSON.stringify(outputs.content_strategy ?? {}, null, 2)}
 
 ${goalSection(ctx)}
-
+${seedSection}
 以下のJSON形式で出力:
 {
   "phases": [
@@ -676,11 +687,14 @@ ${goalSection(ctx)}
 - actionsは各フェーズ3-5個
 - kpisは各フェーズ2-4個
 - 全てのテキストは日本語
-- 具体的な数字を含める`,
+- 具体的な数字を含める`;
+		},
 	},
 	{
 		name: "risk_analysis",
-		buildPrompt: (ctx, outputs) => `あなたはライブコマース事業のリスク管理専門家です。
+		buildPrompt: (ctx, outputs) => {
+			const seedSection = formatSeedPromptSection(ctx.seedProduct ?? null);
+			return `あなたはライブコマース事業のリスク管理専門家です。
 以下の全分析結果に基づき、リスク分析と対策を策定してください。
 
 === 実行計画 ===
@@ -690,7 +704,7 @@ ${JSON.stringify(outputs.execution_plan ?? {}, null, 2)}
 ${JSON.stringify(outputs.platform_analysis ?? {}, null, 2)}
 
 ${goalSection(ctx)}
-
+${seedSection}
 以下のJSON形式で出力:
 {
   "risks": [
@@ -710,7 +724,8 @@ ${goalSection(ctx)}
 - risksは8-12個
 - contingency_plansは3-5個
 - success_factorsは5-7個
-- 全てのテキストは日本語`,
+- 全てのテキストは日本語`;
+		},
 	},
 ];
 
