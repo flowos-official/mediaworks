@@ -41,6 +41,9 @@
     },
     "app/api/discovery/enrich/[productId]/worker/route.ts": {
       "maxDuration": 60
+    },
+    "app/api/discovery/feedback/route.ts": {
+      "maxDuration": 10
     }
   },
   "crons": [
