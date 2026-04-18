@@ -37,6 +37,7 @@ export function RejectDialog({
 	const [mounted, setMounted] = useState(false);
 
 	useEffect(() => {
+		// eslint-disable-next-line react-hooks/set-state-in-effect -- portal mount guard, runs once on mount
 		setMounted(true);
 	}, []);
 

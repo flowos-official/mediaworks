@@ -24,10 +24,14 @@ export function SeedEnrichGateModal({
 	const [running, setRunning] = useState(false);
 	const [failed, setFailed] = useState(false);
 
-	useEffect(() => setMounted(true), []);
+	useEffect(() => {
+		// eslint-disable-next-line react-hooks/set-state-in-effect -- portal mount guard, runs once on mount
+		setMounted(true);
+	}, []);
 
 	useEffect(() => {
 		if (open) {
+			// eslint-disable-next-line react-hooks/set-state-in-effect -- reset dialog state when reopened
 			setRunning(false);
 			setFailed(false);
 		}

@@ -17,6 +17,7 @@ import {
 	SchemaType,
 	GoogleGenerativeAI,
 	type FunctionCall,
+	type FunctionDeclaration,
 } from "@google/generative-ai";
 import { braveSearchItems } from "@/lib/brave";
 import { fetchUrlMeta } from "./tools/fetch-meta";
@@ -247,7 +248,7 @@ async function runAgentCore(
 ): Promise<AgentCoreResult> {
 	const model = genAI.getGenerativeModel({
 		model: MODEL_ID,
-		tools: [{ functionDeclarations: TOOL_DECLARATIONS as any }],
+		tools: [{ functionDeclarations: TOOL_DECLARATIONS as unknown as FunctionDeclaration[] }],
 	});
 	const chat = model.startChat({
 		systemInstruction: { role: "system", parts: [{ text: SYSTEM_PROMPT }] },

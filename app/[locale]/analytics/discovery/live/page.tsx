@@ -40,6 +40,7 @@ export default function DiscoveryLivePage() {
 	};
 
 	useEffect(() => {
+		// eslint-disable-next-line react-hooks/set-state-in-effect -- async data fetch triggered on mount; setState calls are post-await
 		load();
 	}, []);
 

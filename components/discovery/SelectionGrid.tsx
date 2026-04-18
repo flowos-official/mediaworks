@@ -20,6 +20,7 @@ export function SelectionGrid() {
 	const queryKey = useMemo(() => `${status}-${context}-${days}`, [status, context, days]);
 
 	useEffect(() => {
+		// eslint-disable-next-line react-hooks/set-state-in-effect -- initial load flag set synchronously before async fetch
 		setLoading(true);
 		const params = new URLSearchParams();
 		if (status !== "all") params.set("status", status);
