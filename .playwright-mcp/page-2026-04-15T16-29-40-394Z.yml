@@ -1,0 +1,1422 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - navigation [ref=e3]:
+      - generic [ref=e5]:
+        - link "MediaWorks" [ref=e6] [cursor=pointer]:
+          - /url: /ja
+          - img [ref=e8]
+          - generic [ref=e10]: MediaWorks
+        - generic [ref=e11]:
+          - link "ホーム" [ref=e12] [cursor=pointer]:
+            - /url: /ja
+          - link "売上分析" [ref=e13] [cursor=pointer]:
+            - /url: /ja/analytics
+            - img [ref=e14]
+            - text: 売上分析
+          - generic [ref=e16]:
+            - img [ref=e17]
+            - button "English" [ref=e20]
+            - button "日本語" [ref=e21]
+    - main [ref=e22]:
+      - generic [ref=e23]:
+        - generic [ref=e24]:
+          - img [ref=e25]
+          - heading "売上分析" [level=1] [ref=e27]
+        - paragraph [ref=e28]: TXDレギュラー受注データに基づく販売実績分析
+      - generic [ref=e29]:
+        - generic [ref=e31]:
+          - link "概要" [ref=e32] [cursor=pointer]:
+            - /url: /ja/analytics/overview
+          - link "商品分析" [ref=e33] [cursor=pointer]:
+            - /url: /ja/analytics/products
+          - link "拡大戦略" [ref=e34] [cursor=pointer]:
+            - /url: /ja/analytics/expansion
+          - link "ライブコマース" [ref=e35] [cursor=pointer]:
+            - /url: /ja/analytics/live-commerce
+        - generic [ref=e821]:
+          - generic [ref=e822]:
+            - img [ref=e823]
+            - heading "ライブコマース戦略" [level=3] [ref=e829]
+            - generic [ref=e830]: 6-Skill AI
+          - link "一覧に戻る" [ref=e831] [cursor=pointer]:
+            - /url: /ja/analytics/live-commerce
+            - img [ref=e832]
+            - text: 一覧に戻る
+          - generic [ref=e834]:
+            - generic [ref=e835]:
+              - generic [ref=e836]:
+                - img [ref=e837]
+                - heading "発掘された新商品" [level=2] [ref=e840]
+                - generic [ref=e841]: ライブコマース
+              - paragraph [ref=e842]: TV通販の販売シグナルを基に、楽天 / Web 検索で実在する新商品プールから AI が選定。各商品を個別に分析できます。
+              - generic [ref=e843]:
+                - 'textbox "フォーカス絞り込み (任意) — 例: 美容家電に絞って / 韓国コスメ中心 / ¥5000以下" [ref=e844]'
+                - button "新商品を再発掘" [ref=e845]:
+                  - img [ref=e846]
+                  - text: 新商品を再発掘
+              - generic [ref=e851]:
+                - article [ref=e852]:
+                  - generic [ref=e853]:
+                    - generic [ref=e854]:
+                      - generic [ref=e855]: Web
+                      - heading "#1オムロン HPO-100" [level=3] [ref=e856]:
+                        - generic [ref=e857]: "#1"
+                        - text: オムロン HPO-100
+                    - generic [ref=e858]: "85"
+                  - generic [ref=e859]:
+                    - generic [ref=e860]:
+                      - text: 需要
+                      - strong [ref=e861]: 高
+                    - generic [ref=e862]:
+                      - text: 価格
+                      - strong [ref=e863]: ¥6,000-8,000
+                    - generic [ref=e864]:
+                      - text: 供給
+                      - strong [ref=e865]: 価格.com
+                  - paragraph [ref=e866]: TVトップの医療機器カテゴリに合致。2025年以降の健康意識の高まりと在宅医療市場の拡大トレンドに直結し、実演での数値変化が分かりやすいため。
+                  - paragraph [ref=e867]: "TVシグナル根拠: 医療機器カテゴリ（売上比率23.41%）"
+                  - generic [ref=e868]:
+                    - generic [ref=e869]:
+                      - img [ref=e870]
+                      - generic [ref=e873]: 日本市場フィット
+                    - generic [ref=e874]: "人気根拠: 価格.com「その他健康器具・医療機器」カテゴリでユーザーおすすめ製品として明記。"
+                    - generic [ref=e875]: "市場トレンド: 2034年には医療・健康産業が自動車産業の5〜7倍の市場規模に達するという日経BP予測に合致。"
+                    - generic [ref=e876]: "なぜ今日本で: 高齢化社会の進展に加え、パルスオキシメーター等の家庭用医療機器の常備化が一般化したため。"
+                  - button "分析中..." [disabled] [ref=e2314]:
+                    - img [ref=e2315]
+                    - text: 分析中...
+                  - link "出典ページを確認" [ref=e882] [cursor=pointer]:
+                    - /url: https://kakaku.com/kaden/medical-equipment/ranking_2182/
+                    - text: 出典ページを確認
+                    - img [ref=e883]
+                - article [ref=e887]:
+                  - generic [ref=e888]:
+                    - generic [ref=e889]:
+                      - generic [ref=e890]: Web
+                      - heading "#2パナソニック EW-KA65" [level=3] [ref=e891]:
+                        - generic [ref=e892]: "#2"
+                        - text: パナソニック EW-KA65
+                    - generic [ref=e893]: "80"
+                  - generic [ref=e894]:
+                    - generic [ref=e895]:
+                      - text: 需要
+                      - strong [ref=e896]: 中
+                    - generic [ref=e897]:
+                      - text: 価格
+                      - strong [ref=e898]: ¥9,000-12,000
+                    - generic [ref=e899]:
+                      - text: 供給
+                      - strong [ref=e900]: 価格.com
+                  - paragraph [ref=e901]: TVで人気の医療機器カテゴリ。スチーム実演という視覚的インパクトがライブ配信での「見映え」と相性が良いため。
+                  - paragraph [ref=e902]: "TVシグナル根拠: 医療機器カテゴリ（売上比率23.41%）"
+                  - generic [ref=e903]:
+                    - generic [ref=e904]:
+                      - img [ref=e905]
+                      - generic [ref=e908]: 日本市場フィット
+                    - generic [ref=e909]: "人気根拠: 価格.comにて売れ筋製品として「オムロン HPO-100」と並び推奨されている。"
+                    - generic [ref=e910]: "市場トレンド: 家庭用治療機器の人気ランキングで高周波やスチーム等、セルフケア機器への関心が高まっている。"
+                    - generic [ref=e911]: "なぜ今日本で: 花粉症や乾燥対策としての吸入器需要は、日本の春・秋シーズンに非常に高い反応を示すため。"
+                  - button "分析中..." [disabled] [ref=e2317]:
+                    - img [ref=e2318]
+                    - text: 分析中...
+                  - link "出典ページを確認" [ref=e917] [cursor=pointer]:
+                    - /url: https://kakaku.com/kaden/medical-equipment/ranking_2182/
+                    - text: 出典ページを確認
+                    - img [ref=e918]
+                - article [ref=e922]:
+                  - generic [ref=e923]:
+                    - generic [ref=e924]:
+                      - generic [ref=e925]: 楽天
+                      - heading "#3ウォッシュボーイ 小型洗濯機 リコメン堂限定色 バケツ 2水流 らくらく排水 TOM-12f" [level=3] [ref=e926]:
+                        - generic [ref=e927]: "#3"
+                        - text: ウォッシュボーイ 小型洗濯機 リコメン堂限定色 バケツ 2水流 らくらく排水 TOM-12f
+                    - generic [ref=e928]: "95"
+                  - generic [ref=e929]:
+                    - generic [ref=e930]:
+                      - text: 需要
+                      - strong [ref=e931]: 高
+                    - generic [ref=e932]:
+                      - text: 価格
+                      - strong [ref=e933]: ¥8,000-9,500
+                    - generic [ref=e934]:
+                      - text: 供給
+                      - strong [ref=e935]: 楽天
+                  - paragraph [ref=e936]: 掃除・洗濯カテゴリはTV通販の主力。泥汚れが落ちる実演はTikTok等のショート動画でバズりやすく、衝動買いを誘発する価格帯。
+                  - paragraph [ref=e937]: "TVシグナル根拠: 掃除・洗濯カテゴリ（マージン15.16%）"
+                  - generic [ref=e938]:
+                    - generic [ref=e939]:
+                      - img [ref=e940]
+                      - generic [ref=e943]: 日本市場フィット
+                      - generic [ref=e944]:
+                        - img [ref=e945]
+                        - text: ★4.5 (500件以上)
+                    - generic [ref=e947]: "人気根拠: 楽天生活家電デイリーランキング1位獲得の実績。"
+                    - generic [ref=e948]: "市場トレンド: 「ニッチ商材のライブ販売拡大」というトレンドにおいて、特定用途に特化した家電として合致。"
+                    - generic [ref=e949]: "なぜ今日本で: 部活動のユニフォームやペット用品の別洗いをしたい層の「タイパ・スペパ」需要に合致している。"
+                  - button "この商品を分析する" [ref=e951]:
+                    - img [ref=e952]
+                    - text: この商品を分析する
+                  - link "出典ページを確認" [ref=e955] [cursor=pointer]:
+                    - /url: https://ranking.rakuten.co.jp/daily/204200/
+                    - text: 出典ページを確認
+                    - img [ref=e956]
+                - article [ref=e960]:
+                  - generic [ref=e961]:
+                    - generic [ref=e962]:
+                      - generic [ref=e963]: 楽天
+                      - heading "#4EENOUR VOYAGE mini ゴルフ 距離計 シライド" [level=3] [ref=e964]:
+                        - generic [ref=e965]: "#4"
+                        - text: EENOUR VOYAGE mini ゴルフ 距離計 シライド
+                    - generic [ref=e966]: "90"
+                  - generic [ref=e967]:
+                    - generic [ref=e968]:
+                      - text: 需要
+                      - strong [ref=e969]: 高
+                    - generic [ref=e970]:
+                      - text: 価格
+                      - strong [ref=e971]: ¥12,000-15,000
+                    - generic [ref=e972]:
+                      - text: 供給
+                      - strong [ref=e973]: 楽天
+                  - paragraph [ref=e974]: ゴルフはTV通販で最もマージンが高い（21.62%）重要カテゴリ。最小最軽量というスペックが映像で伝わりやすくギフト需要も高い。
+                  - paragraph [ref=e975]: "TVシグナル根拠: ゴルフカテゴリ（平均単価¥21,737、高マージン）"
+                  - generic [ref=e976]:
+                    - generic [ref=e977]:
+                      - img [ref=e978]
+                      - generic [ref=e981]: 日本市場フィット
+                      - generic [ref=e982]:
+                        - img [ref=e983]
+                        - text: ★4.6 (1,200件以上)
+                    - generic [ref=e985]: "人気根拠: 楽天ゴルフカテゴリ1位。今平周吾プロ推奨という社会的証明あり。"
+                    - generic [ref=e986]: "市場トレンド: TikTokにおける「実演・検証」と親和性が高い精密機器トレンド。"
+                    - generic [ref=e987]: "なぜ今日本で: アクティブシニア層の増加と、若年層のゴルフブーム再燃により計測器の個人所有が一般化したため。"
+                  - button "この商品を分析する" [ref=e989]:
+                    - img [ref=e990]
+                    - text: この商品を分析する
+                  - link "出典ページを確認" [ref=e993] [cursor=pointer]:
+                    - /url: https://ranking.rakuten.co.jp/daily/101077/
+                    - text: 出典ページを確認
+                    - img [ref=e994]
+                - article [ref=e998]:
+                  - generic [ref=e999]:
+                    - generic [ref=e1000]:
+                      - generic [ref=e1001]: 楽天
+                      - heading "#5デロンギ マグニフィカS 全自動コーヒーマシン エスプレッソマシン [ECAM22112B]" [level=3] [ref=e1002]:
+                        - generic [ref=e1003]: "#5"
+                        - text: デロンギ マグニフィカS 全自動コーヒーマシン エスプレッソマシン [ECAM22112B]
+                    - generic [ref=e1004]: "75"
+                  - generic [ref=e1005]:
+                    - generic [ref=e1006]:
+                      - text: 需要
+                      - strong [ref=e1007]: 中
+                    - generic [ref=e1008]:
+                      - text: 価格
+                      - strong [ref=e1009]: ¥55,000-65,000
+                    - generic [ref=e1010]:
+                      - text: 供給
+                      - strong [ref=e1011]: 楽天
+                  - paragraph [ref=e1012]: 家電・雑貨カテゴリ。憧れ家電としてのブランド力があり、ライブでの淹れたてコーヒーのデモは視聴者の滞在時間を伸ばす。
+                  - paragraph [ref=e1013]: "TVシグナル根拠: 家電・雑貨カテゴリ（売上比率19.12%）"
+                  - generic [ref=e1014]:
+                    - generic [ref=e1015]:
+                      - img [ref=e1016]
+                      - generic [ref=e1019]: 日本市場フィット
+                      - generic [ref=e1020]:
+                        - img [ref=e1021]
+                        - text: ★4.7 (2,100件以上)
+                    - generic [ref=e1023]: "人気根拠: 楽天家電ランキング1位常連。15%OFFクーポン等の限定感が強い。"
+                    - generic [ref=e1024]: "市場トレンド: 自社EC（SaaS）への機能埋め込みを通じた「接客型ライブコマース」で詳しい機能説明が求められる高単価商品。"
+                    - generic [ref=e1025]: "なぜ今日本で: 「おうち時間」の質を重視する層の定着と、円安背景の国内在庫確保需要。"
+                  - button "この商品を分析する" [ref=e1027]:
+                    - img [ref=e1028]
+                    - text: この商品を分析する
+                  - link "出典ページを確認" [ref=e1031] [cursor=pointer]:
+                    - /url: https://ranking.rakuten.co.jp/daily/562637/
+                    - text: 出典ページを確認
+                    - img [ref=e1032]
+                - article [ref=e1036]:
+                  - generic [ref=e1037]:
+                    - generic [ref=e1038]:
+                      - generic [ref=e1039]: 楽天
+                      - heading "#6ガードナーベルトFORLOOP（ガードナーベルトフォーループ）" [level=3] [ref=e1040]:
+                        - generic [ref=e1041]: "#6"
+                        - text: ガードナーベルトFORLOOP（ガードナーベルトフォーループ）
+                    - generic [ref=e1042]: "100"
+                  - generic [ref=e1043]:
+                    - generic [ref=e1044]:
+                      - text: 需要
+                      - strong [ref=e1045]: 高
+                    - generic [ref=e1046]:
+                      - text: 価格
+                      - strong [ref=e1047]: ¥9,000-11,000
+                    - generic [ref=e1048]:
+                      - text: 供給
+                      - strong [ref=e1049]: 楽天
+                  - paragraph [ref=e1050]: 医療機器・健康雑貨の隣接カテゴリ。TV通販で「カチッと締まる」実演は鉄板のキラーコンテンツであり、SNSでの拡散力も極めて高い。
+                  - paragraph [ref=e1051]: "TVシグナル根拠: 医療機器隣接カテゴリ（TV通販実績：磁気治療腰サポーター ¥5,981）"
+                  - generic [ref=e1052]:
+                    - generic [ref=e1053]:
+                      - img [ref=e1054]
+                      - generic [ref=e1057]: 日本市場フィット
+                      - generic [ref=e1058]:
+                        - img [ref=e1059]
+                        - text: ★4.5 (3,500件以上)
+                    - generic [ref=e1061]: "人気根拠: 楽天ゴルフランキング上位。腰痛対策としてゴルファー以外からも圧倒的支持。"
+                    - generic [ref=e1062]: "市場トレンド: TikTok Liveでの実演販売において「ビジュアル変化」が最も分かりやすい商材の代表格。"
+                    - generic [ref=e1063]: "なぜ今日本で: 立ち仕事やデスクワークによる腰痛人口の増加に対し、対面販売に近いライブコマースでの説明が有効。"
+                  - button "この商品を分析する" [ref=e1065]:
+                    - img [ref=e1066]
+                    - text: この商品を分析する
+                  - link "出典ページを確認" [ref=e1069] [cursor=pointer]:
+                    - /url: https://ranking.rakuten.co.jp/daily/101077/
+                    - text: 出典ページを確認
+                    - img [ref=e1070]
+                - article [ref=e1074]:
+                  - generic [ref=e1075]:
+                    - generic [ref=e1076]:
+                      - generic [ref=e1077]: 楽天
+                      - heading "#7テーラーメイド Qi35 MAX ゴルフ ドライバー 2025 Diamana BLUE TM50" [level=3] [ref=e1078]:
+                        - generic [ref=e1079]: "#7"
+                        - text: テーラーメイド Qi35 MAX ゴルフ ドライバー 2025 Diamana BLUE TM50
+                    - generic [ref=e1080]: "70"
+                  - generic [ref=e1081]:
+                    - generic [ref=e1082]:
+                      - text: 需要
+                      - strong [ref=e1083]: 中
+                    - generic [ref=e1084]:
+                      - text: 価格
+                      - strong [ref=e1085]: ¥70,000-85,000
+                    - generic [ref=e1086]:
+                      - text: 供給
+                      - strong [ref=e1087]: 楽天
+                  - paragraph [ref=e1088]: TVシグナルの「高単価・高マージン」ゴルフカテゴリ。最新モデルという「限定感」はライブ配信のタイムセール形式と相性が良い。
+                  - paragraph [ref=e1089]: "TVシグナル根拠: ゴルフカテゴリ（売上比率12.26%、マージン21.62%）"
+                  - generic [ref=e1090]:
+                    - generic [ref=e1091]:
+                      - img [ref=e1092]
+                      - generic [ref=e1095]: 日本市場フィット
+                      - generic [ref=e1096]:
+                        - img [ref=e1097]
+                        - text: ★4.4 (80件)
+                    - generic [ref=e1099]: "人気根拠: 楽天ドライバーランキング1位。2025年モデルとしての初動が強力。"
+                    - generic [ref=e1100]: "市場トレンド: YouTubeショッピング機能でのタグ付け販売に向く、ファン層が固定されたブランド商材。"
+                    - generic [ref=e1101]: "なぜ今日本で: 最新テクノロジーへの関心が高いコア層に対し、ライブでの詳細スペック解説が購買を後押しするため。"
+                  - button "この商品を分析する" [ref=e1103]:
+                    - img [ref=e1104]
+                    - text: この商品を分析する
+                  - link "出典ページを確認" [ref=e1107] [cursor=pointer]:
+                    - /url: https://ranking.rakuten.co.jp/daily/201706/
+                    - text: 出典ページを確認
+                    - img [ref=e1108]
+                - article [ref=e1112]:
+                  - generic [ref=e1113]:
+                    - generic [ref=e1114]:
+                      - generic [ref=e1115]: 楽天
+                      - heading "#8タイトリスト PRO V1 25 イエロー プロV1 25 イエロー 1ダース" [level=3] [ref=e1116]:
+                        - generic [ref=e1117]: "#8"
+                        - text: タイトリスト PRO V1 25 イエロー プロV1 25 イエロー 1ダース
+                    - generic [ref=e1118]: "85"
+                  - generic [ref=e1119]:
+                    - generic [ref=e1120]:
+                      - text: 需要
+                      - strong [ref=e1121]: 高
+                    - generic [ref=e1122]:
+                      - text: 価格
+                      - strong [ref=e1123]: ¥7,000-9,000
+                    - generic [ref=e1124]:
+                      - text: 供給
+                      - strong [ref=e1125]: 楽天
+                  - paragraph [ref=e1126]: ゴルフカテゴリの消耗品。送料無料のハードルが低く、衝動買いしやすい価格帯。カラーボールの視覚的アピールもライブ向き。
+                  - paragraph [ref=e1127]: "TVシグナル根拠: ゴルフカテゴリ（高回転消耗品）"
+                  - generic [ref=e1128]:
+                    - generic [ref=e1129]:
+                      - img [ref=e1130]
+                      - generic [ref=e1133]: 日本市場フィット
+                      - generic [ref=e1134]:
+                        - img [ref=e1135]
+                        - text: ★4.8 (150件)
+                    - generic [ref=e1137]: "人気根拠: 楽天リアルタイムランキング1位。公認球としての圧倒的信頼性。"
+                    - generic [ref=e1138]: "市場トレンド: SNSと大手ECモールの連携（R-SNS）によるまとめ買い促進に適した商材。"
+                    - generic [ref=e1139]: "なぜ今日本で: シーズン入り前の買い溜め需要。視認性の高いイエローは国内シニア層に根強い人気。"
+                  - button "この商品を分析する" [ref=e1141]:
+                    - img [ref=e1142]
+                    - text: この商品を分析する
+                  - link "出典ページを確認" [ref=e1145] [cursor=pointer]:
+                    - /url: https://ranking.rakuten.co.jp/realtime/101077/
+                    - text: 出典ページを確認
+                    - img [ref=e1146]
+                - article [ref=e1150]:
+                  - generic [ref=e1151]:
+                    - generic [ref=e1152]:
+                      - generic [ref=e1153]: Web
+                      - heading "#9高周波デバイス12個分をコリのポイントに最適配置 アタッチメントに入れて肩にはおるだけの簡単装着" [level=3] [ref=e1154]:
+                        - generic [ref=e1155]: "#9"
+                        - text: 高周波デバイス12個分をコリのポイントに最適配置 アタッチメントに入れて肩にはおるだけの簡単装着
+                    - generic [ref=e1156]: "90"
+                  - generic [ref=e1157]:
+                    - generic [ref=e1158]:
+                      - text: 需要
+                      - strong [ref=e1159]: 高
+                    - generic [ref=e1160]:
+                      - text: 価格
+                      - strong [ref=e1161]: ¥30,000-45,000
+                    - generic [ref=e1162]:
+                      - text: 供給
+                      - strong [ref=e1163]: 価格.com
+                  - paragraph [ref=e1164]: 医療機器認証番号：305AKBZX00029000。TV通販の医療機器カテゴリに完全に合致。装着するだけという手軽さがシニア層に刺さる。
+                  - paragraph [ref=e1165]: "TVシグナル根拠: 医療機器カテゴリ（売上比率23.41%）"
+                  - generic [ref=e1166]:
+                    - generic [ref=e1167]:
+                      - img [ref=e1168]
+                      - generic [ref=e1171]: 日本市場フィット
+                    - generic [ref=e1172]: "人気根拠: 価格.comの2025年5月家庭用治療機器人気ランキング1位候補として掲載。"
+                    - generic [ref=e1173]: "市場トレンド: 健康寿命の延伸を支える市場拡大トレンド（JAHID協会データ）に合致。"
+                    - generic [ref=e1174]: "なぜ今日本で: 「ながら」ケアが可能なウェアラブル医療機器は、忙しい現役世代からシニアまで幅広く受容される。"
+                  - button "分析中..." [disabled] [ref=e2320]:
+                    - img [ref=e2321]
+                    - text: 分析中...
+                  - link "出典ページを確認" [ref=e1180] [cursor=pointer]:
+                    - /url: https://kakaku.com/kaden/medical-equipment/ranking_2182/
+                    - text: 出典ページを確認
+                    - img [ref=e1181]
+                - article [ref=e1185]:
+                  - generic [ref=e1186]:
+                    - generic [ref=e1187]:
+                      - generic [ref=e1188]: Web
+                      - heading "#10パナソニック EW-KA65" [level=3] [ref=e1189]:
+                        - generic [ref=e1190]: "#10"
+                        - text: パナソニック EW-KA65
+                    - generic [ref=e1191]: "80"
+                  - generic [ref=e1192]:
+                    - generic [ref=e1193]:
+                      - text: 需要
+                      - strong [ref=e1194]: 中
+                    - generic [ref=e1195]:
+                      - text: 価格
+                      - strong [ref=e1196]: ¥10,000
+                    - generic [ref=e1197]:
+                      - text: 供給
+                      - strong [ref=e1198]: 価格.com
+                  - paragraph [ref=e1199]: （※重複確認、プール内複数存在のため性質を変えて評価）加湿・吸引のデモがライブ画面で非常にクリアに見え、清潔感を訴求しやすい。
+                  - paragraph [ref=e1200]: "TVシグナル根拠: 医療機器カテゴリ（売上比率23.41%）"
+                  - generic [ref=e1201]:
+                    - generic [ref=e1202]:
+                      - img [ref=e1203]
+                      - generic [ref=e1206]: 日本市場フィット
+                    - generic [ref=e1207]: "人気根拠: 価格.comユーザーおすすめ売れ筋ランキング掲載。"
+                    - generic [ref=e1208]: "市場トレンド: 対面販売に近いネット販売を求める「医療の王様」的ニーズにライブ実演で対応。"
+                    - generic [ref=e1209]: "なぜ今日本で: 呼吸器系ケアへの関心が通年で高く、大手メーカーの安心感が購入の決め手になるため。"
+                  - button "分析中..." [disabled] [ref=e2323]:
+                    - img [ref=e2324]
+                    - text: 分析中...
+                  - link "出典ページを確認" [ref=e1215] [cursor=pointer]:
+                    - /url: https://kakaku.com/kaden/medical-equipment/ranking_2182/
+                    - text: 出典ページを確認
+                    - img [ref=e1216]
+                - article [ref=e1220]:
+                  - generic [ref=e1221]:
+                    - generic [ref=e1222]:
+                      - generic [ref=e1223]: 楽天
+                      - heading "#11キャロウェイ エリート" [level=3] [ref=e1224]:
+                        - generic [ref=e1225]: "#11"
+                        - text: キャロウェイ エリート
+                    - generic [ref=e1226]: "75"
+                  - generic [ref=e1227]:
+                    - generic [ref=e1228]:
+                      - text: 需要
+                      - strong [ref=e1229]: 中
+                    - generic [ref=e1230]:
+                      - text: 価格
+                      - strong [ref=e1231]: ¥65,000-80,000
+                    - generic [ref=e1232]:
+                      - text: 供給
+                      - strong [ref=e1233]: 楽天
+                  - paragraph [ref=e1234]: ゴルフカテゴリ。TV通販におけるDANGAN7等の成功例と同様、限定モデルや高性能を謳うドライバーは男性視聴者の熱量が高い。
+                  - paragraph [ref=e1235]: "TVシグナル根拠: ゴルフカテゴリ（平均単価¥21,737を大きく上回るプレミアム枠）"
+                  - generic [ref=e1236]:
+                    - generic [ref=e1237]:
+                      - img [ref=e1238]
+                      - generic [ref=e1241]: 日本市場フィット
+                    - generic [ref=e1242]: "人気根拠: 楽天ランキング上位、ポイント10倍キャンペーン等の施策で関心が高い。"
+                    - generic [ref=e1243]: "市場トレンド: YouTube Studioショッピング管理でのタグ付けに適したブランド品。"
+                    - generic [ref=e1244]: "なぜ今日本で: 買い替えサイクルの早いゴルフギアにおいて、最新の「飛び」を実証するコンテンツが好まれる。"
+                  - button "この商品を分析する" [ref=e1246]:
+                    - img [ref=e1247]
+                    - text: この商品を分析する
+                  - link "出典ページを確認" [ref=e1250] [cursor=pointer]:
+                    - /url: https://ranking.rakuten.co.jp/daily/201706/
+                    - text: 出典ページを確認
+                    - img [ref=e1251]
+                - article [ref=e1255]:
+                  - generic [ref=e1256]:
+                    - generic [ref=e1257]:
+                      - generic [ref=e1258]: Web
+                      - heading "#12[3足ｾｯﾄ]ﾑﾃｷｲﾝｿｰﾙ" [level=3] [ref=e1259]:
+                        - generic [ref=e1260]: "#12"
+                        - text: "[3足ｾｯﾄ]ﾑﾃｷｲﾝｿｰﾙ"
+                    - generic [ref=e1261]: "95"
+                  - generic [ref=e1262]:
+                    - generic [ref=e1263]:
+                      - text: 需要
+                      - strong [ref=e1264]: 高
+                    - generic [ref=e1265]:
+                      - text: 価格
+                      - strong [ref=e1266]: ¥2,882
+                    - generic [ref=e1267]:
+                      - text: 供給
+                      - strong [ref=e1268]: TV通販実績プール
+                  - paragraph [ref=e1269]: TV自社販売の実績値（週451個）が証明されており、インソールを切る、ジャンプする等の実演がTikTokでバズりやすいため。
+                  - paragraph [ref=e1270]: "TVシグナル根拠: 家電・雑貨カテゴリ（実績商品）"
+                  - generic [ref=e1271]:
+                    - generic [ref=e1272]:
+                      - img [ref=e1273]
+                      - generic [ref=e1276]: 日本市場フィット
+                    - generic [ref=e1277]: "人気根拠: 週平均451個の販売実績、マージン12.25%。"
+                    - generic [ref=e1278]: "市場トレンド: 「TikTok売れ」の典型例。ネーミングの引きが強い。"
+                    - generic [ref=e1279]: "なぜ今日本で: インバウンド増による接客業・立ち仕事従事者の増加により、足の疲れ軽減ニーズが爆発しているため。"
+                  - button "この商品を分析する" [ref=e1281]:
+                    - img [ref=e1282]
+                    - text: この商品を分析する
+                  - link "出典ページを確認" [ref=e1285] [cursor=pointer]:
+                    - /url: https://ranking.rakuten.co.jp/daily/215783/
+                    - text: 出典ページを確認
+                    - img [ref=e1286]
+                - article [ref=e1290]:
+                  - generic [ref=e1291]:
+                    - generic [ref=e1292]:
+                      - generic [ref=e1293]: Web
+                      - heading "#13[3本ｾｯﾄ]ｶﾋﾞﾊﾟｯﾁﾌﾟﾚﾐｱﾑ" [level=3] [ref=e1294]:
+                        - generic [ref=e1295]: "#13"
+                        - text: "[3本ｾｯﾄ]ｶﾋﾞﾊﾟｯﾁﾌﾟﾚﾐｱﾑ"
+                    - generic [ref=e1296]: "100"
+                  - generic [ref=e1297]:
+                    - generic [ref=e1298]:
+                      - text: 需要
+                      - strong [ref=e1299]: 高
+                    - generic [ref=e1300]:
+                      - text: 価格
+                      - strong [ref=e1301]: ¥2,723
+                    - generic [ref=e1302]:
+                      - text: 供給
+                      - strong [ref=e1303]: TV通販実績プール
+                  - paragraph [ref=e1304]: TV通販での週平均803個という圧倒的実績。カビが消える瞬間の実演はライブコマースにおいて最強のキラーコンテンツ。
+                  - paragraph [ref=e1305]: "TVシグナル根拠: 掃除・洗濯カテゴリ（売上比率13.9%のトップ商材）"
+                  - generic [ref=e1306]:
+                    - generic [ref=e1307]:
+                      - img [ref=e1308]
+                      - generic [ref=e1311]: 日本市場フィット
+                    - generic [ref=e1312]: "人気根拠: 週平均803個。掃除用品で最も「劇的変化」を実演しやすい。"
+                    - generic [ref=e1313]: "市場トレンド: TikTokで最も重要な「視覚的な劇的変化」を実現する商材。"
+                    - generic [ref=e1314]: "なぜ今日本で: 日本の多湿な住環境において、カビ対策は永遠の課題であり、SNSでのBefore/After動画の需要が極めて高い。"
+                  - button "この商品を分析する" [ref=e1316]:
+                    - img [ref=e1317]
+                    - text: この商品を分析する
+                  - link "出典ページを確認" [ref=e1320] [cursor=pointer]:
+                    - /url: https://ranking.rakuten.co.jp/daily/215783/
+                    - text: 出典ページを確認
+                    - img [ref=e1321]
+                - article [ref=e1325]:
+                  - generic [ref=e1326]:
+                    - generic [ref=e1327]:
+                      - generic [ref=e1328]: Web
+                      - heading "#14ｾｷｽｲの遮熱ｸｰﾙｱｯﾌﾟﾌﾟﾗｽ 4枚組" [level=3] [ref=e1329]:
+                        - generic [ref=e1330]: "#14"
+                        - text: ｾｷｽｲの遮熱ｸｰﾙｱｯﾌﾟﾌﾟﾗｽ 4枚組
+                    - generic [ref=e1331]: "90"
+                  - generic [ref=e1332]:
+                    - generic [ref=e1333]:
+                      - text: 需要
+                      - strong [ref=e1334]: 高
+                    - generic [ref=e1335]:
+                      - text: 価格
+                      - strong [ref=e1336]: ¥5,880
+                    - generic [ref=e1337]:
+                      - text: 供給
+                      - strong [ref=e1338]: TV通販実績プール
+                  - paragraph [ref=e1339]: TV通販での週平均780個の実績。熱を遮るデモ（ライトを使った温度変化）が映像的に強力。
+                  - paragraph [ref=e1340]: "TVシグナル根拠: 家電・雑貨カテゴリ（マージン14.97%）"
+                  - generic [ref=e1341]:
+                    - generic [ref=e1342]:
+                      - img [ref=e1343]
+                      - generic [ref=e1346]: 日本市場フィット
+                    - generic [ref=e1347]: "人気根拠: 週平均780個の実績。大手メーカー「セキスイ」ブランドの信頼性。"
+                    - generic [ref=e1348]: "市場トレンド: 省エネ・節電需要の高まり（日本市場トレンド）に直結。"
+                    - generic [ref=e1349]: "なぜ今日本で: 日本の猛暑化に伴い、電気代高騰対策としての遮熱ニーズが毎年更新されているため。"
+                  - button "この商品を分析する" [ref=e1351]:
+                    - img [ref=e1352]
+                    - text: この商品を分析する
+                  - link "出典ページを確認" [ref=e1355] [cursor=pointer]:
+                    - /url: https://ranking.rakuten.co.jp/daily/215783/
+                    - text: 出典ページを確認
+                    - img [ref=e1356]
+                - article [ref=e1360]:
+                  - generic [ref=e1361]:
+                    - generic [ref=e1362]:
+                      - generic [ref=e1363]: Web
+                      - heading "#15ｱｲｱｼﾞｬｽﾄｸﾞﾗｽ" [level=3] [ref=e1364]:
+                        - generic [ref=e1365]: "#15"
+                        - text: ｱｲｱｼﾞｬｽﾄｸﾞﾗｽ
+                    - generic [ref=e1366]: "85"
+                  - generic [ref=e1367]:
+                    - generic [ref=e1368]:
+                      - text: 需要
+                      - strong [ref=e1369]: 中
+                    - generic [ref=e1370]:
+                      - text: 価格
+                      - strong [ref=e1371]: ¥4,491
+                    - generic [ref=e1372]:
+                      - text: 供給
+                      - strong [ref=e1373]: TV通販実績プール
+                  - paragraph [ref=e1374]: TV通販実績商品。度数を自分で変えられる実演は、ライブ配信中の「本当に見えるようになるのか？」という質問に即座に答えられる。
+                  - paragraph [ref=e1375]: "TVシグナル根拠: 医療機器カテゴリ（マージン20.02%の高収益商品）"
+                  - generic [ref=e1376]:
+                    - generic [ref=e1377]:
+                      - img [ref=e1378]
+                      - generic [ref=e1381]: 日本市場フィット
+                    - generic [ref=e1382]: "人気根拠: 週平均396個の安定した販売実績。"
+                    - generic [ref=e1383]: "市場トレンド: 医療・健康産業の市場規模拡大トレンド。シニア向けニッチ商材。"
+                    - generic [ref=e1384]: "なぜ今日本で: 老眼鏡を複数持ちたくないシニア層の「これ一本で済む」というタイパ需要。"
+                  - button "分析中..." [disabled] [ref=e2326]:
+                    - img [ref=e2327]
+                    - text: 分析中...
+                  - link "出典ページを確認" [ref=e1390] [cursor=pointer]:
+                    - /url: https://kakaku.com/kaden/medical-equipment/ranking_2182/
+                    - text: 出典ページを確認
+                    - img [ref=e1391]
+                - article [ref=e1395]:
+                  - generic [ref=e1396]:
+                    - generic [ref=e1397]:
+                      - generic [ref=e1398]: Web
+                      - heading "#16ﾙｰﾌﾟ ｵｰｼｬﾝﾀｵﾙ特別ｾｯﾄ" [level=3] [ref=e1399]:
+                        - generic [ref=e1400]: "#16"
+                        - text: ﾙｰﾌﾟ ｵｰｼｬﾝﾀｵﾙ特別ｾｯﾄ
+                    - generic [ref=e1401]: "80"
+                  - generic [ref=e1402]:
+                    - generic [ref=e1403]:
+                      - text: 需要
+                      - strong [ref=e1404]: 中
+                    - generic [ref=e1405]:
+                      - text: 価格
+                      - strong [ref=e1406]: ¥2,936
+                    - generic [ref=e1407]:
+                      - text: 供給
+                      - strong [ref=e1408]: TV通販実績プール
+                  - paragraph [ref=e1409]: 掃除・洗濯カテゴリの実績商品。古い角質が取れる等のパーソナルケア実演は、ライブ配信の親密な接客スタイルと相性が良い。
+                  - paragraph [ref=e1410]: "TVシグナル根拠: 掃除・洗濯カテゴリ（TV実績）"
+                  - generic [ref=e1411]:
+                    - generic [ref=e1412]:
+                      - img [ref=e1413]
+                      - generic [ref=e1416]: 日本市場フィット
+                    - generic [ref=e1417]: "人気根拠: 週平均315個。リピート率が高いとされるニッチ商材。"
+                    - generic [ref=e1418]: "市場トレンド: 「製法にこだわった特産品やニッチ商材」のライブ販売拡大トレンドに合致。"
+                    - generic [ref=e1419]: "なぜ今日本で: 美容に関心の高い層に加え、QOL（生活の質）向上を求める日本の消費者層に合致。"
+                  - button "この商品を分析する" [ref=e1421]:
+                    - img [ref=e1422]
+                    - text: この商品を分析する
+                  - link "出典ページを確認" [ref=e1425] [cursor=pointer]:
+                    - /url: https://ranking.rakuten.co.jp/daily/215783/
+                    - text: 出典ページを確認
+                    - img [ref=e1426]
+                - article [ref=e1430]:
+                  - generic [ref=e1431]:
+                    - generic [ref=e1432]:
+                      - generic [ref=e1433]: Web
+                      - heading "#17DANGAN7 MAXﾄﾞﾗｲﾊﾞｰ" [level=3] [ref=e1434]:
+                        - generic [ref=e1435]: "#17"
+                        - text: DANGAN7 MAXﾄﾞﾗｲﾊﾞｰ
+                    - generic [ref=e1436]: "70"
+                  - generic [ref=e1437]:
+                    - generic [ref=e1438]:
+                      - text: 需要
+                      - strong [ref=e1439]: 低
+                    - generic [ref=e1440]:
+                      - text: 価格
+                      - strong [ref=e1441]: ¥43,300
+                    - generic [ref=e1442]:
+                      - text: 供給
+                      - strong [ref=e1443]: TV通販実績プール
+                  - paragraph [ref=e1444]: TV通販のゴルフカテゴリ伝説的ヒット商品。単価は高いが、それを補って余りある「飛び」のデモが男性層の熱狂を生む。
+                  - paragraph [ref=e1445]: "TVシグナル根拠: ゴルフカテゴリ（マージン26.1%の最高収益モデル）"
+                  - generic [ref=e1446]:
+                    - generic [ref=e1447]:
+                      - img [ref=e1448]
+                      - generic [ref=e1451]: 日本市場フィット
+                    - generic [ref=e1452]: "人気根拠: 週平均58個。高単価ながら安定した固定ファン層が存在。"
+                    - generic [ref=e1453]: "市場トレンド: YouTubeショッピングでの詳細レビュー動画と連動した高単価販売戦略。"
+                    - generic [ref=e1454]: "なぜ今日本で: ゴルフ市場における「シニア富裕層」の購買意欲は景気に左右されにくいため。"
+                  - button "この商品を分析する" [ref=e1456]:
+                    - img [ref=e1457]
+                    - text: この商品を分析する
+                  - link "出典ページを確認" [ref=e1460] [cursor=pointer]:
+                    - /url: https://ranking.rakuten.co.jp/daily/101077/
+                    - text: 出典ページを確認
+                    - img [ref=e1461]
+                - article [ref=e1465]:
+                  - generic [ref=e1466]:
+                    - generic [ref=e1467]:
+                      - generic [ref=e1468]: Web
+                      - heading "#18[2枚組]ﾌｧｲﾃﾝ 磁気治療腰ｻﾎﾟｰﾀｰ" [level=3] [ref=e1469]:
+                        - generic [ref=e1470]: "#18"
+                        - text: "[2枚組]ﾌｧｲﾃﾝ 磁気治療腰ｻﾎﾟｰﾀｰ"
+                    - generic [ref=e1471]: "85"
+                  - generic [ref=e1472]:
+                    - generic [ref=e1473]:
+                      - text: 需要
+                      - strong [ref=e1474]: 中
+                    - generic [ref=e1475]:
+                      - text: 価格
+                      - strong [ref=e1476]: ¥5,981
+                    - generic [ref=e1477]:
+                      - text: 供給
+                      - strong [ref=e1478]: TV通販実績プール
+                  - paragraph [ref=e1479]: 医療機器カテゴリ。TV通販での実績もあり、「磁気」という目に見えない効果を体験談を交えてリアルタイム接客できる強みがある。
+                  - paragraph [ref=e1480]: "TVシグナル根拠: 医療機器カテゴリ（売上比率23.41%）"
+                  - generic [ref=e1481]:
+                    - generic [ref=e1482]:
+                      - img [ref=e1483]
+                      - generic [ref=e1486]: 日本市場フィット
+                    - generic [ref=e1487]: "人気根拠: 週平均151個。ファイテンブランドという強固な社会的証明。"
+                    - generic [ref=e1488]: "市場トレンド: 健康寿命延伸市場の拡大と、2025年以降のセルフケア意識の向上。"
+                    - generic [ref=e1489]: "なぜ今日本で: 日本市場特有の「ブランドへの信頼性」を重視する消費傾向に合致。"
+                  - button "この商品を分析する" [ref=e1491]:
+                    - img [ref=e1492]
+                    - text: この商品を分析する
+                  - link "出典ページを確認" [ref=e1495] [cursor=pointer]:
+                    - /url: https://ranking.rakuten.co.jp/daily/101048/
+                    - text: 出典ページを確認
+                    - img [ref=e1496]
+                - article [ref=e1500]:
+                  - generic [ref=e1501]:
+                    - generic [ref=e1502]:
+                      - generic [ref=e1503]: Web
+                      - heading "#19[期間限定]marumanSG ﾄﾞﾗｲﾊﾞｰ2023" [level=3] [ref=e1504]:
+                        - generic [ref=e1505]: "#19"
+                        - text: "[期間限定]marumanSG ﾄﾞﾗｲﾊﾞｰ2023"
+                    - generic [ref=e1506]: "80"
+                  - generic [ref=e1507]:
+                    - generic [ref=e1508]:
+                      - text: 需要
+                      - strong [ref=e1509]: 中
+                    - generic [ref=e1510]:
+                      - text: 価格
+                      - strong [ref=e1511]: ¥15,613
+                    - generic [ref=e1512]:
+                      - text: 供給
+                      - strong [ref=e1513]: TV通販実績プール
+                  - paragraph [ref=e1514]: ゴルフカテゴリ。「期間限定」のフックはライブ配信の終了間際における駆け込み購入を誘発するのに最適。
+                  - paragraph [ref=e1515]: "TVシグナル根拠: ゴルフカテゴリ（マージン17.9%）"
+                  - generic [ref=e1516]:
+                    - generic [ref=e1517]:
+                      - img [ref=e1518]
+                      - generic [ref=e1521]: 日本市場フィット
+                    - generic [ref=e1522]: "人気根拠: 週平均200個。1万円台というドライバーとしては手を出しやすい価格戦略。"
+                    - generic [ref=e1523]: "市場トレンド: フラッシュセール形式のライブ配信に最適な価格・限定性。"
+                    - generic [ref=e1524]: "なぜ今日本で: 中古市場が活発な日本において、型落ち新品を「今だけ」の価格で出す戦略が有効。"
+                  - button "この商品を分析する" [ref=e1526]:
+                    - img [ref=e1527]
+                    - text: この商品を分析する
+                  - link "出典ページを確認" [ref=e1530] [cursor=pointer]:
+                    - /url: https://ranking.rakuten.co.jp/daily/201706/
+                    - text: 出典ページを確認
+                    - img [ref=e1531]
+                - article [ref=e1535]:
+                  - generic [ref=e1536]:
+                    - generic [ref=e1537]:
+                      - generic [ref=e1538]: 楽天
+                      - heading "#20SILLAID EENOUR VOYAGE mini ゴルフ 距離計 シライド" [level=3] [ref=e1539]:
+                        - generic [ref=e1540]: "#20"
+                        - text: SILLAID EENOUR VOYAGE mini ゴルフ 距離計 シライド
+                    - generic [ref=e1541]: "90"
+                  - generic [ref=e1542]:
+                    - generic [ref=e1543]:
+                      - text: 需要
+                      - strong [ref=e1544]: 高
+                    - generic [ref=e1545]:
+                      - text: 価格
+                      - strong [ref=e1546]: ¥12,980
+                    - generic [ref=e1547]:
+                      - text: 供給
+                      - strong [ref=e1548]: 楽天
+                  - paragraph [ref=e1549]: （※プール内別表記確認のため調整）業界最小級のサイズ感は、演者が手に持って視聴者のコメントに応えながら操作するのに最適。
+                  - paragraph [ref=e1550]: "TVシグナル根拠: ゴルフカテゴリ（家電・雑貨性質を併せ持つ）"
+                  - generic [ref=e1551]:
+                    - generic [ref=e1552]:
+                      - img [ref=e1553]
+                      - generic [ref=e1556]: 日本市場フィット
+                      - generic [ref=e1557]:
+                        - img [ref=e1558]
+                        - text: ★4.6 (1,000件以上)
+                    - generic [ref=e1560]: "人気根拠: 楽天ランキング1位。12,980円〜というTVスイートスポット価格に合致。"
+                    - generic [ref=e1561]: "市場トレンド: TikTok Shopとショート動画の相乗効果を生み出しやすいガジェット系商材。"
+                    - generic [ref=e1562]: "なぜ今日本で: 日本のゴルフ場は距離計測の正確性がスコアに直結しやすく、コンパクトな計測器が現在のトレンド。"
+                  - button "この商品を分析する" [ref=e1564]:
+                    - img [ref=e1565]
+                    - text: この商品を分析する
+                  - link "出典ページを確認" [ref=e1568] [cursor=pointer]:
+                    - /url: https://ranking.rakuten.co.jp/daily/101077/
+                    - text: 出典ページを確認
+                    - img [ref=e1569]
+            - generic [ref=e1573]:
+              - generic [ref=e1574]:
+                - img [ref=e1575]
+                - heading "市場概況" [level=3] [ref=e1578]
+              - generic [ref=e1579]:
+                - generic [ref=e1581]:
+                  - generic [ref=e1582]: 市場規模
+                  - generic [ref=e1583]: 2023年時点で約3,000億円
+                - generic [ref=e1585]:
+                  - generic [ref=e1586]: 成長率
+                  - generic [ref=e1587]: 2020年（約140億円）から2023年にかけて3年で約20倍の急成長
+              - generic [ref=e1589]:
+                - generic [ref=e1590]:
+                  - img [ref=e1591]
+                  - generic [ref=e1596]: 消費者行動
+                - paragraph [ref=e1597]: 日本の消費者は、配信中に直接質問を投げかけるインタラクティブな要素を重視しており、実店舗で接客を受けているような購買体験を求めている。特に10〜30代の女性層を中心に、InstagramやTikTokを通じてリアルな口コミやトレンド感のある情報を得た上で、スムーズな購入体験（シームレスな決済等）を期待する傾向がある [10][14][19][20]。
+              - generic [ref=e1599]:
+                - generic [ref=e1600]:
+                  - img [ref=e1601]
+                  - generic [ref=e1604]: 主要トレンド
+                - generic [ref=e1605]:
+                  - generic [ref=e1606]:
+                    - generic [ref=e1607]: "1"
+                    - generic [ref=e1608]:
+                      - text: 接客型ライブコマースの普及
+                      - paragraph [ref=e1609]: 単なる商品説明に留まらず、視聴者とのリアルタイムな質疑応答を通じて実店舗のような接客体験を提供する「オンライン接客」へのシフトが進んでいる [5][10][19]。
+                  - generic [ref=e1610]:
+                    - generic [ref=e1611]: "2"
+                    - generic [ref=e1612]:
+                      - text: TikTok Shopとショート動画の相乗効果
+                      - paragraph [ref=e1613]: TikTok LIVEでの配信に加え、投稿動画（UGC）や広告を組み合わせることで爆発的な売上を記録する事例が増加している [11][14][15]。
+                  - generic [ref=e1614]:
+                    - generic [ref=e1615]: "3"
+                    - generic [ref=e1616]:
+                      - text: 自社EC（SaaS）への機能埋め込み
+                      - paragraph [ref=e1617]: プラットフォーム依存を避け、顧客データを自社資産化するために自社ECサイト内にライブコマース機能を実装する「ECサイト構築型」の活用が進んでいる [6][7]。
+                  - generic [ref=e1618]:
+                    - generic [ref=e1619]: "4"
+                    - generic [ref=e1620]:
+                      - text: YouTubeショッピング機能の統合強化
+                      - paragraph [ref=e1621]: YouTube Studioでショッピング管理を一元化し、ライブ画面から直接商品をタグ付けしてスムーズに購入ページへ誘導する仕組みが整備されている [21][23][25]。
+                  - generic [ref=e1622]:
+                    - generic [ref=e1623]: "5"
+                    - generic [ref=e1624]:
+                      - text: SNSと大手ECモールの連携（R-SNS等）
+                      - paragraph [ref=e1625]: 楽天市場などの大手モール出店者が、InstagramやLINEなどのSNSを活用して集客・販売を行うマルチチャネル戦略が一般化している [26][27]。
+                  - generic [ref=e1626]:
+                    - generic [ref=e1627]: "6"
+                    - generic [ref=e1628]:
+                      - text: ニッチ商材・特産品のライブ販売拡大
+                      - paragraph [ref=e1629]: 製法にこだわった特産品やニッチな商材など、口頭での詳しい説明が必要なアイテムがライブ配信との親和性を見出している [15][20]。
+              - generic [ref=e1631]:
+                - generic [ref=e1632]:
+                  - img [ref=e1633]
+                  - generic [ref=e1635]: 主要プレイヤー
+                - generic [ref=e1636]:
+                  - generic [ref=e1637]:
+                    - generic [ref=e1638]:
+                      - generic [ref=e1639]: トキバナ（株式会社Cellest）
+                      - generic [ref=e1640]: TikTok LIVE
+                    - paragraph [ref=e1641]: 「ぞうねこちゃんねる」等を運営するライブコマース専門事務所。TikTokを活用し年商16億円（前年比400%超）を達成 [11]。
+                  - generic [ref=e1642]:
+                    - generic [ref=e1643]:
+                      - generic [ref=e1644]: Kiehl’s（キールズ）
+                      - generic [ref=e1645]: TikTok Shop
+                    - paragraph [ref=e1646]: 美容ファンの関心を集めるため、短期間で集中的なライブ配信と広告を組み合わせて展開するグローバルブランド [13]。
+                  - generic [ref=e1647]:
+                    - generic [ref=e1648]:
+                      - generic [ref=e1649]: 佐渡島のキムチ屋（佐渡のこだわり）
+                      - generic [ref=e1650]: TikTok LIVE
+                    - paragraph [ref=e1651]: 地方の特産品をライブ配信で販売し、3分で200個を完売させるなど「TikTok売れ」を実現した成功事例 [15]。
+                  - generic [ref=e1652]:
+                    - generic [ref=e1653]:
+                      - generic [ref=e1654]: Shopify（ショッピファイ）
+                      - generic [ref=e1655]: ECサイト構築型
+                    - paragraph [ref=e1656]: インスタグラム連携や分析ツールを提供し、D2Cブランドのライブコマース運用を支援するプラットフォーム [1][4]。
+                  - generic [ref=e1657]:
+                    - generic [ref=e1658]:
+                      - generic [ref=e1659]: HandsUP（17LIVE運営）
+                      - generic [ref=e1660]: ライブコマース特化ツール
+                    - paragraph [ref=e1661]: SNS型から一歩進んだ、カート機能や分析機能を備えたライブコマース専用ソリューションを提供 [8]。
+                  - generic [ref=e1662]:
+                    - generic [ref=e1663]:
+                      - generic [ref=e1664]: 楽天市場（R-SNS）
+                      - generic [ref=e1665]: ECモール / SNS連携
+                    - paragraph [ref=e1666]: SNS（Instagram, LINE等）を活用した集客オプションを提供し、ライブコマースからの流入を受け止める巨大プラットフォーム [26][27][30]。
+                  - generic [ref=e1667]:
+                    - generic [ref=e1668]:
+                      - generic [ref=e1669]: Instagram（Meta）
+                      - generic [ref=e1670]: Instagram Live
+                    - paragraph [ref=e1671]: 10〜30代女性に強く、導入の容易さとフォロワーとの高い親和性を活かしたコスメ・アパレル販売の主要舞台 [16][17][20]。
+              - generic [ref=e1672]:
+                - text: 市場見通し
+                - paragraph [ref=e1673]: 2025年以降も成長は継続し、特にTikTok Shopの本格化やYouTubeショッピング機能の進化により、動画視聴から購入までのハードルがさらに下がると予想される。2030年には世界のライブコマース市場が約745億ドルに達するという予測もあり、日本国内でも競合との差別化を図るための「必携の販売手法」として定着していく見通しである [2][4][5][11]。
+            - generic [ref=e1674]:
+              - generic [ref=e1675]:
+                - img [ref=e1676]
+                - heading "プラットフォーム分析" [level=3] [ref=e1678]
+              - generic [ref=e1679]:
+                - generic [ref=e1680]: "推奨優先度:"
+                - generic [ref=e1681]:
+                  - img [ref=e1682]
+                  - text: TikTok Live
+                - generic [ref=e1684]:
+                  - img [ref=e1685]
+                  - text: Instagram Live
+                - generic [ref=e1687]:
+                  - img [ref=e1688]
+                  - text: YouTube Live
+                - generic [ref=e1690]:
+                  - img [ref=e1691]
+                  - text: 楽天ROOM LIVE
+                - generic [ref=e1693]:
+                  - img [ref=e1694]
+                  - text: Yahoo!ショッピング LIVE
+              - generic [ref=e1696]:
+                - button "95 TikTok Live 10-30代。拡散性が高く、衝動買いやトレンドへの反応が非常に早い層。" [ref=e1698]:
+                  - generic [ref=e1700]:
+                    - generic [ref=e1701]:
+                      - generic [ref=e1702]: "95"
+                      - generic [ref=e1703]:
+                        - text: TikTok Live
+                        - paragraph [ref=e1704]: 10-30代。拡散性が高く、衝動買いやトレンドへの反応が非常に早い層。
+                    - img [ref=e1705]
+                - button "85 Instagram Live 20-40代女性。美容、ファッション、ライフスタイルへの関心が高い層。" [ref=e1708]:
+                  - generic [ref=e1710]:
+                    - generic [ref=e1711]:
+                      - generic [ref=e1712]: "85"
+                      - generic [ref=e1713]:
+                        - text: Instagram Live
+                        - paragraph [ref=e1714]: 20-40代女性。美容、ファッション、ライフスタイルへの関心が高い層。
+                    - img [ref=e1715]
+                - button "80 YouTube Live 全年齢層。特定の趣味（ゴルフ、家電、医療機器等）を持つ熱心なファン層。" [ref=e1718]:
+                  - generic [ref=e1720]:
+                    - generic [ref=e1721]:
+                      - generic [ref=e1722]: "80"
+                      - generic [ref=e1723]:
+                        - text: YouTube Live
+                        - paragraph [ref=e1724]: 全年齢層。特定の趣味（ゴルフ、家電、医療機器等）を持つ熱心なファン層。
+                    - img [ref=e1725]
+                - button "75 楽天ROOM LIVE 30-50代。楽天経済圏を利用するポイ活層や主婦層が中心。" [ref=e1728]:
+                  - generic [ref=e1730]:
+                    - generic [ref=e1731]:
+                      - generic [ref=e1732]: "75"
+                      - generic [ref=e1733]:
+                        - text: 楽天ROOM LIVE
+                        - paragraph [ref=e1734]: 30-50代。楽天経済圏を利用するポイ活層や主婦層が中心。
+                    - img [ref=e1735]
+                - button "60 Yahoo!ショッピング LIVE 30-50代。PayPay利用者やソフトバンクユーザー中心。" [ref=e1738]:
+                  - generic [ref=e1740]:
+                    - generic [ref=e1741]:
+                      - generic [ref=e1742]: "60"
+                      - generic [ref=e1743]:
+                        - text: Yahoo!ショッピング LIVE
+                        - paragraph [ref=e1744]: 30-50代。PayPay利用者やソフトバンクユーザー中心。
+                    - img [ref=e1745]
+              - generic [ref=e1747]:
+                - text: 比較総括
+                - paragraph [ref=e1748]: 日本市場においては、「拡散性のTikTok」「接客（ブランディング）のInstagram」「専門性・信頼性のYouTube」という棲み分けが明確です。自社商品のラインナップは、実演映えする掃除用品から、高単価な趣味商材（ゴルフ）、深い悩み解決（医療機器）まで多岐にわたるため、一つのプラットフォームに絞らず、商品カテゴリごとに最適なプラットフォームを選択するマルチチャネル戦略が最も有効です。特にTikTokの成長率と自社商品の「実演販売」との親和性は、事業急拡大の鍵となります。
+            - generic [ref=e1749]:
+              - generic [ref=e1750]:
+                - img [ref=e1751]
+                - heading "コンテンツ戦略" [level=3] [ref=e1754]
+              - generic [ref=e1755]:
+                - button "TikTok Live" [ref=e1756]
+                - button "Instagram Live" [ref=e1757]
+                - button "YouTube Live" [ref=e1758]
+              - generic [ref=e1759]:
+                - generic [ref=e1760]:
+                  - generic [ref=e1762]:
+                    - generic [ref=e1763]:
+                      - img [ref=e1764]
+                      - generic [ref=e1767]: 配信形式
+                    - paragraph [ref=e1768]: 縦型・実演特化型ライブ（ショート動画連動）
+                  - generic [ref=e1770]:
+                    - generic [ref=e1771]:
+                      - img [ref=e1772]
+                      - generic [ref=e1775]: 最適時間帯
+                    - generic [ref=e1776]:
+                      - paragraph [ref=e1777]: 19:00 - 21:00
+                      - paragraph [ref=e1778]: 22:00 - 24:00
+                  - generic [ref=e1780]:
+                    - generic [ref=e1781]:
+                      - img [ref=e1782]
+                      - generic [ref=e1785]: 配信頻度
+                    - paragraph [ref=e1786]: 週4〜5回以上（毎日配信を推奨）
+                - generic [ref=e1787]:
+                  - text: 推奨ホストスタイル
+                  - paragraph [ref=e1788]: エネルギッシュな実演販売士スタイル。冒頭3秒で視覚を奪うパフォーマンス重視。
+                - generic [ref=e1790]:
+                  - generic [ref=e1791]:
+                    - img [ref=e1792]
+                    - generic [ref=e1794]: コンテンツ企画
+                  - generic [ref=e1795]:
+                    - generic [ref=e1796]:
+                      - generic [ref=e1797]:
+                        - generic [ref=e1798]: 【閲覧注意】カビが消える瞬間の衝撃実演
+                        - generic [ref=e1799]: Before/After リアルタイム実演
+                      - paragraph [ref=e1800]: カビパッチプレミアムを使用し、黒ずみが真っ白になる様子をノーカットで配信。
+                    - generic [ref=e1801]:
+                      - generic [ref=e1802]:
+                        - generic [ref=e1803]: 魔法のインソール、本当にジャンプ力が変わるのか検証
+                        - generic [ref=e1804]: ユーザー参加型検証
+                      - paragraph [ref=e1805]: ムテキインソールを着用し、その場で見ている人のリクエストに応えて強度や弾力をテスト。
+                    - generic [ref=e1806]:
+                      - generic [ref=e1807]:
+                        - generic [ref=e1808]: 深夜の便利グッズ爆買いセール
+                        - generic [ref=e1809]: フラッシュセール
+                      - paragraph [ref=e1810]: TikTok売れ商品を15分おきに入れ替え、タイムセール形式で衝動買いを誘発。
+                - generic [ref=e1812]:
+                  - text: エンゲージメント施策
+                  - list [ref=e1813]:
+                    - listitem [ref=e1814]:
+                      - generic [ref=e1815]: ●
+                      - text: 配信画面上のリアルタイム在庫カウントダウン表示
+                    - listitem [ref=e1816]:
+                      - generic [ref=e1817]: ●
+                      - text: ギフト（投げ銭）を送った視聴者への名前呼び＆限定割引特典
+                    - listitem [ref=e1818]:
+                      - generic [ref=e1819]: ●
+                      - text: 『コメントで質問くれた方の中から1名にサンプルプレゼント』企画の実施
+                - generic [ref=e1821]:
+                  - text: サンプルスクリプト
+                  - paragraph [ref=e1822]: 【0-5分：引き込み】「見てください、このお風呂の真っ黒なカビ…これが1分で消えたら凄くないですか？」とカビパッチを塗布。画面をズームし、変化を待つ間に商品の凄さを3つのポイントで早口解説。【5-15分：証明と教育】「ゴシゴシしないでください、流すだけ！」と実演。綺麗になった瞬間に「今すぐリンク見て！」と誘導。並行してムテキインソールの紹介へ。「立ち仕事の方、これ敷くだけで世界変わります」と、実際にインソールの上に乗って反発性をアピール。【15分-：クロージング】「TikTok限定価格はあと10分、在庫は残り15個です！」と緊急性を出し、視聴者のコメント（色やサイズ、使い方の質問）に10秒以内で即答し続ける。
+              - generic [ref=e1823]:
+                - text: クロスプラットフォーム戦略
+                - paragraph [ref=e1824]: プラットフォームを『集客・拡散（TikTok）』『教育・接客（Instagram）』『納得・高単価販売（YouTube）』の3層で役割分担します。具体的には、TikTokで『カビパッチ』のバズ動画を生成して認知を広げ、そこからInstagramのストーリーズへ誘導し、より詳細な使用感をライブで接客。4万円を超える『DANGAN7』等は、YouTubeでの深い解説動画をライブのアーカイブとして残し、SEO流入と信頼構築のハブとします。全てのライブからLINE公式アカウントへ誘導し、顧客リスト化することで、再購入（リピート）の自動化を目指します。
+            - generic [ref=e1825]:
+              - generic [ref=e1826]:
+                - img [ref=e1827]
+                - heading "実行ロードマップ" [level=3] [ref=e1829]
+              - generic [ref=e1830]:
+                - img [ref=e1831]
+                - generic [ref=e1833]: "初年度総投資: 2,050万円（初年度合計）"
+              - generic [ref=e1834]:
+                - generic [ref=e1836]:
+                  - generic [ref=e1837]:
+                    - generic [ref=e1838]: "1"
+                    - generic [ref=e1839]: 基盤構築期（準備・仕込み）1ヶ月目〜2ヶ月目
+                    - generic [ref=e1840]: 150万円（機材費、サンプル費、SNS広告費含む）
+                  - generic [ref=e1841]:
+                    - text: 目標
+                    - list [ref=e1842]:
+                      - listitem [ref=e1843]:
+                        - generic [ref=e1844]: ▶
+                        - text: 各プラットフォームのアカウント最適化と配信環境の整備
+                      - listitem [ref=e1845]:
+                        - generic [ref=e1846]: ▶
+                        - text: TikTokフォロワー1,000人達成によるライブ権限の取得
+                      - listitem [ref=e1847]:
+                        - generic [ref=e1848]: ▶
+                        - text: 実演販売特化型のコンテンツ企画と台本の策定
+                  - generic [ref=e1849]:
+                    - text: アクション
+                    - generic [ref=e1850]:
+                      - generic [ref=e1851]:
+                        - generic [ref=e1852]: TikTokショート動画の毎日投稿（1,000フォロワー獲得のためのUGC風動画）
+                        - generic [ref=e1853]: SNS運用担当
+                        - generic [ref=e1854]: 2ヶ月目末
+                      - generic [ref=e1855]:
+                        - generic [ref=e1856]: Shopify等自社ECとYouTubeショッピング・各SNSの連携設定
+                        - generic [ref=e1857]: システム/EC担当
+                        - generic [ref=e1858]: 1ヶ月目末
+                      - generic [ref=e1859]:
+                        - generic [ref=e1860]: カビパッチ、ムテキインソール、包丁を用いた「視覚的インパクト」台本の作成
+                        - generic [ref=e1861]: 番組ディレクター
+                        - generic [ref=e1862]: 1ヶ月目末
+                      - generic [ref=e1863]:
+                        - generic [ref=e1864]: 簡易スタジオ（照明、マイク、実演用キッチン/水回り設備）の設置
+                        - generic [ref=e1865]: 総務/制作担当
+                        - generic [ref=e1866]: 1.5ヶ月目
+                  - generic [ref=e1867]:
+                    - text: KPI
+                    - generic [ref=e1868]:
+                      - generic [ref=e1869]: "TikTokフォロワー数: 1,000人以上"
+                      - generic [ref=e1870]: "ショート動画総再生数: 500,000回"
+                - generic [ref=e1872]:
+                  - generic [ref=e1873]:
+                    - generic [ref=e1874]: "2"
+                    - generic [ref=e1875]: 市場参入・検証期（立ち上げ）3ヶ月目〜5ヶ月目
+                    - generic [ref=e1876]: 300万円（演者人件費、広告宣伝費、配送管理費）
+                  - generic [ref=e1877]:
+                    - text: 目標
+                    - list [ref=e1878]:
+                      - listitem [ref=e1879]:
+                        - generic [ref=e1880]: ▶
+                        - text: TikTok LiveとInstagram Liveの定期配信開始（週3回以上）
+                      - listitem [ref=e1881]:
+                        - generic [ref=e1882]: ▶
+                        - text: 低単価〜中単価商品の「衝動買い」モデルの確立
+                      - listitem [ref=e1883]:
+                        - generic [ref=e1884]: ▶
+                        - text: ライブ視聴からの購入コンバージョン率（CVR）の計測と改善
+                  - generic [ref=e1885]:
+                    - text: アクション
+                    - generic [ref=e1886]:
+                      - generic [ref=e1887]:
+                        - generic [ref=e1888]: TikTok Liveでのカビパッチプレミアム実演販売（夜間22時〜24時中心）
+                        - generic [ref=e1889]: 配信ホスト/演者
+                        - generic [ref=e1890]: 3ヶ月目から継続
+                      - generic [ref=e1891]:
+                        - generic [ref=e1892]: Instagram Liveでの美容・キッチン雑貨「お悩み解決」接客配信
+                        - generic [ref=e1893]: 配信ホスト/演者
+                        - generic [ref=e1894]: 3ヶ月目から継続
+                      - generic [ref=e1895]:
+                        - generic [ref=e1896]: LINE公式アカウントへの誘導とクーポン配布による顧客リスト化
+                        - generic [ref=e1897]: CRM担当
+                        - generic [ref=e1898]: 3ヶ月目末
+                      - generic [ref=e1899]:
+                        - generic [ref=e1900]: 配信データ分析（視聴離脱ポイント、コメント率、購入誘導数）の週次報告
+                        - generic [ref=e1901]: アナリスト
+                        - generic [ref=e1902]: 毎週月曜
+                  - generic [ref=e1903]:
+                    - text: KPI
+                    - generic [ref=e1904]:
+                      - generic [ref=e1905]: "ライブ配信1回あたりの平均売上: 15万円"
+                      - generic [ref=e1906]: "ライブ経由のEC転換率（CVR）: 3.5%以上"
+                      - generic [ref=e1907]: "LINE友だち登録数: 累計3,000人"
+                - generic [ref=e1909]:
+                  - generic [ref=e1910]:
+                    - generic [ref=e1911]: "3"
+                    - generic [ref=e1912]: 売上最大化・高単価攻略期（成長）6ヶ月目〜9ヶ月目
+                    - generic [ref=e1913]: 600万円（インフルエンサーキャスティング費、YouTube広告費、モール販促費）
+                  - generic [ref=e1914]:
+                    - text: 目標
+                    - list [ref=e1915]:
+                      - listitem [ref=e1916]:
+                        - generic [ref=e1917]: ▶
+                        - text: YouTube Liveを開始し、ゴルフ用品や健康機器の高単価商材を成約させる
+                      - listitem [ref=e1918]:
+                        - generic [ref=e1919]: ▶
+                        - text: 外部インフルエンサーとのコラボ配信による新規層の爆発的獲得
+                      - listitem [ref=e1920]:
+                        - generic [ref=e1921]: ▶
+                        - text: リピート購入を促進するCRM施策の自動化
+                  - generic [ref=e1922]:
+                    - text: アクション
+                    - generic [ref=e1923]:
+                      - generic [ref=e1924]:
+                        - generic [ref=e1925]: DANGAN7ドライバー、アイアジャストグラスのYouTube徹底解説ライブの実施
+                        - generic [ref=e1926]: 専門解説者（外部プロ等）
+                        - generic [ref=e1927]: 6ヶ月目〜
+                      - generic [ref=e1928]:
+                        - generic [ref=e1929]: TikTok/Instagramで人気のインフルエンサーをゲストに招いたメガライブ企画
+                        - generic [ref=e1930]: PR/企画担当
+                        - generic [ref=e1931]: 7ヶ月目・9ヶ月目
+                      - generic [ref=e1932]:
+                        - generic [ref=e1933]: 楽天ROOM LIVE/Yahoo!ショッピングLIVEと連動したセール時集中配信
+                        - generic [ref=e1934]: モール運用担当
+                        - generic [ref=e1935]: 楽天セール期間
+                      - generic [ref=e1936]:
+                        - generic [ref=e1937]: アーカイブ動画をショート動画へ再編集し、24時間365日の自動集客体制構築
+                        - generic [ref=e1938]: 編集エディター
+                        - generic [ref=e1939]: 8ヶ月目末
+                  - generic [ref=e1940]:
+                    - text: KPI
+                    - generic [ref=e1941]:
+                      - generic [ref=e1942]: "月間総流通額（GMV）: 1,500万円"
+                      - generic [ref=e1943]: "高単価商材（3万円以上）の成約数: 月100件以上"
+                      - generic [ref=e1944]: "リピート購入率: 20%以上"
+                - generic [ref=e1946]:
+                  - generic [ref=e1947]:
+                    - generic [ref=e1948]: "4"
+                    - generic [ref=e1949]: 事業拡大・ブランド化期（拡大）10ヶ月目〜12ヶ月目
+                    - generic [ref=e1950]: 1,000万円（新商品開発費、システム構築費、採用費）
+                  - generic [ref=e1951]:
+                    - text: 目標
+                    - list [ref=e1952]:
+                      - listitem [ref=e1953]:
+                        - generic [ref=e1954]: ▶
+                        - text: 自社スタジオの複数拠点化または配信枠の24時間化検討
+                      - listitem [ref=e1955]:
+                        - generic [ref=e1956]: ▶
+                        - text: ライブコマース発のPB（プライベートブランド）商品の企画開発
+                      - listitem [ref=e1957]:
+                        - generic [ref=e1958]: ▶
+                        - text: 蓄積した視聴・購買データに基づく精度の高い需要予測モデルの導入
+                  - generic [ref=e1959]:
+                    - text: アクション
+                    - generic [ref=e1960]:
+                      - generic [ref=e1961]:
+                        - generic [ref=e1962]: ライブ中の視聴者の声を反映した「次なるバズ商品」の開発着手
+                        - generic [ref=e1963]: 商品企画部
+                        - generic [ref=e1964]: 10ヶ月目末
+                      - generic [ref=e1965]:
+                        - generic [ref=e1966]: 自社ECサイトへのライブ機能直接埋め込み（SaaS活用）によるデータ完全囲い込み
+                        - generic [ref=e1967]: CTO/エンジニア
+                        - generic [ref=e1968]: 11ヶ月目末
+                      - generic [ref=e1969]:
+                        - generic [ref=e1970]: ライブコマース専門職（演者・ライバーマネージャー）の正社員採用強化
+                        - generic [ref=e1971]: 人事/経営層
+                        - generic [ref=e1972]: 12ヶ月目末
+                  - generic [ref=e1973]:
+                    - text: KPI
+                    - generic [ref=e1974]:
+                      - generic [ref=e1975]: "年間累積売上高: 2億円"
+                      - generic [ref=e1976]: "自社ドメイン内ライブ視聴者比率: 40%以上"
+                      - generic [ref=e1977]: "顧客獲得単価（CPA）の低減: 前四半期比15%減"
+              - generic [ref=e1979]:
+                - generic [ref=e1980]:
+                  - img [ref=e1981]
+                  - generic [ref=e1984]: 人員計画
+                - generic [ref=e1985]:
+                  - generic [ref=e1986]:
+                    - generic [ref=e1987]: 事業責任者（プロデューサー）
+                    - generic [ref=e1988]: 正社員
+                    - generic [ref=e1989]: 1ヶ月目
+                  - generic [ref=e1990]:
+                    - generic [ref=e1991]: ライブ配信ホスト（実演販売士）
+                    - generic [ref=e1992]: 業務委託/契約社員
+                    - generic [ref=e1993]: 2ヶ月目
+                  - generic [ref=e1994]:
+                    - generic [ref=e1995]: 動画編集・SNS運用担当
+                    - generic [ref=e1996]: パート/業務委託
+                    - generic [ref=e1997]: 1ヶ月目
+                  - generic [ref=e1998]:
+                    - generic [ref=e1999]: カスタマーサポート・ライブ接客補助
+                    - generic [ref=e2000]: パート
+                    - generic [ref=e2001]: 3ヶ月目
+              - generic [ref=e2003]:
+                - generic [ref=e2004]:
+                  - img [ref=e2005]
+                  - generic [ref=e2007]: ツール・サービス
+                - generic [ref=e2008]:
+                  - generic [ref=e2009]:
+                    - generic [ref=e2010]: Shopify + PlusSub
+                    - generic [ref=e2011]: ECサイト基盤および定期購入・ライブ連携機能
+                    - generic [ref=e2012]: 約40,000円/月
+                  - generic [ref=e2013]:
+                    - generic [ref=e2014]: HandsUP / Firework
+                    - generic [ref=e2015]: 自社EC内ライブコマース機能の実装
+                    - generic [ref=e2016]: 約100,000円/月
+                  - generic [ref=e2017]:
+                    - generic [ref=e2018]: Lステップ（LINE連携ツール）
+                    - generic [ref=e2019]: ライブ後の追客・顧客セグメント管理
+                    - generic [ref=e2020]: 約32,780円/月
+                  - generic [ref=e2021]:
+                    - generic [ref=e2022]: StreamYard / OBS Studio
+                    - generic [ref=e2023]: マルチプラットフォーム同時配信・画面構成ツール
+                    - generic [ref=e2024]: 約10,000円/月
+            - generic [ref=e2025]:
+              - generic [ref=e2026]:
+                - img [ref=e2027]
+                - heading "リスク分析" [level=3] [ref=e2029]
+              - generic [ref=e2030]:
+                - generic [ref=e2033]:
+                  - generic [ref=e2034]:
+                    - generic [ref=e2035]: "深刻度: 高"
+                    - generic [ref=e2036]: "発生率: 高"
+                  - generic [ref=e2037]:
+                    - generic [ref=e2039]: 法規制
+                    - paragraph [ref=e2040]: 実演販売における景品表示法（優良誤認）および薬機法への抵触。ライブ中の過度な演出や、視聴者からの質問に対する不適切な回答。
+                    - paragraph [ref=e2041]: "対策: 演者・ディレクター向けのコンプライアンス研修実施、ライブ台本のリーガルチェック、配信中のNGワード集作成とモニター監視。"
+                - generic [ref=e2044]:
+                  - generic [ref=e2045]:
+                    - generic [ref=e2046]: "深刻度: 中"
+                    - generic [ref=e2047]: "発生率: 中"
+                  - generic [ref=e2048]:
+                    - generic [ref=e2050]: 運営
+                    - paragraph [ref=e2051]: TikTokフォロワー1,000人獲得の遅延による配信開始時期のズレ。ショート動画の再生数が伸びず、ライブ権限が取得できないリスク。
+                    - paragraph [ref=e2052]: "対策: 初期段階でのSNS広告投下によるフォロワー獲得加速、バズりやすいUGC企画の外部専門家による監修。"
+                - generic [ref=e2055]:
+                  - generic [ref=e2056]:
+                    - generic [ref=e2057]: "深刻度: 高"
+                    - generic [ref=e2058]: "発生率: 中"
+                  - generic [ref=e2059]:
+                    - generic [ref=e2061]: 運営
+                    - paragraph [ref=e2062]: 演者（実演販売士）の離脱やコンディション不良。特定人物に依存した配信体制による事業継続性の欠如。
+                    - paragraph [ref=e2063]: "対策: 演者の複数名体制（正社員・業務委託のハイブリッド）、マニュアル化による属人性の排除、サブ演者の育成。"
+                - generic [ref=e2066]:
+                  - generic [ref=e2067]:
+                    - generic [ref=e2068]: "深刻度: 高"
+                    - generic [ref=e2069]: "発生率: 中"
+                  - generic [ref=e2070]:
+                    - generic [ref=e2072]: 市場
+                    - paragraph [ref=e2073]: プラットフォーム側のアルゴリズム変更。TikTokやInstagramの仕様変更により、既存の集客手法が機能しなくなるリスク。
+                    - paragraph [ref=e2074]: "対策: 特定SNSに依存しないマルチチャネル展開（Shopifyへの直接埋め込み準備）およびLINE公式アカウントへの顧客リスト移行。"
+                - generic [ref=e2077]:
+                  - generic [ref=e2078]:
+                    - generic [ref=e2079]: "深刻度: 中"
+                    - generic [ref=e2080]: "発生率: 低"
+                  - generic [ref=e2081]:
+                    - generic [ref=e2083]: 技術
+                    - paragraph [ref=e2084]: ライブ配信中の通信トラブルや機材故障。高視聴者数獲得時のサーバー負荷によるECサイトのダウン。
+                    - paragraph [ref=e2085]: "対策: 予備回線（5Gルーター等）の確保、機材の二重化、Shopify等の高負荷耐性を持つEC基盤の採用。"
+                - generic [ref=e2088]:
+                  - generic [ref=e2089]:
+                    - generic [ref=e2090]: "深刻度: 中"
+                    - generic [ref=e2091]: "発生率: 高"
+                  - generic [ref=e2092]:
+                    - generic [ref=e2094]: 競合
+                    - paragraph [ref=e2095]: 大手小売業者や競合メーカーによるライブコマース本格参入による広告単価（CPM）の高騰および視聴者の奪い合い。
+                    - paragraph [ref=e2096]: "対策: 独自性のある実演スキルの磨き込み（エンタメ化）、CRMを通じたリピーターの囲い込み、独自商品の開発（PB化）。"
+                - generic [ref=e2099]:
+                  - generic [ref=e2100]:
+                    - generic [ref=e2101]: "深刻度: 高"
+                    - generic [ref=e2102]: "発生率: 低"
+                  - generic [ref=e2103]:
+                    - generic [ref=e2105]: 財務
+                    - paragraph [ref=e2106]: 広告費・制作費の先行投資に対する回収遅延（キャッシュフローの悪化）。特に高単価商品の成約率が目標を下回る場合。
+                    - paragraph [ref=e2107]: "対策: フェーズごとのKPI管理による投資判断、低単価商材（衝動買い）でのキャッシュ回転率の確保。"
+                - generic [ref=e2110]:
+                  - generic [ref=e2111]:
+                    - generic [ref=e2112]: "深刻度: 高"
+                    - generic [ref=e2113]: "発生率: 中"
+                  - generic [ref=e2114]:
+                    - generic [ref=e2116]: 運営
+                    - paragraph [ref=e2117]: ライブ配信中の炎上リスク。不適切な発言や、視聴者からのクレームコメントに対する不適切な対応によるブランド毀損。
+                    - paragraph [ref=e2118]: "対策: コメントモデレーターの配置、トラブル発生時の緊急対応マニュアル（Q&A）の完備。"
+                - generic [ref=e2121]:
+                  - generic [ref=e2122]:
+                    - generic [ref=e2123]: "深刻度: 中"
+                    - generic [ref=e2124]: "発生率: 中"
+                  - generic [ref=e2125]:
+                    - generic [ref=e2127]: 法規制
+                    - paragraph [ref=e2128]: 特定商取引法に基づく表示や返品ルール等の説明不足。ライブ特有の「勢い」による説明義務の怠慢。
+                    - paragraph [ref=e2129]: "対策: 配信画面上への常時注釈表示、注文完了メール等での再周知、CS体制の強化。"
+                - generic [ref=e2132]:
+                  - generic [ref=e2133]:
+                    - generic [ref=e2134]: "深刻度: 中"
+                    - generic [ref=e2135]: "発生率: 中"
+                  - generic [ref=e2136]:
+                    - generic [ref=e2138]: 市場
+                    - paragraph [ref=e2139]: ターゲット層（シニア層等）のデバイスリテラシー不足。YouTube Live等で高単価商品への興味はあるが、決済まで至らないケース。
+                    - paragraph [ref=e2140]: "対策: 決済画面の簡略化、ライブ中での「買い方解説」コーナーの設置、電話注文窓口の併設検討。"
+              - generic [ref=e2142]:
+                - text: コンティンジェンシープラン
+                - generic [ref=e2143]:
+                  - generic [ref=e2144]:
+                    - paragraph [ref=e2145]: "シナリオ: 主要SNSアカウント（TikTok等）の凍結・バン"
+                    - paragraph [ref=e2146]: "対応: 即座に他プラットフォーム（Instagram/YouTube）へ配信を切り替え。LINE公式アカウントを通じて全ユーザーに代替リンクを周知し、凍結理由の特定と異議申し立てを並行して行う。"
+                  - generic [ref=e2147]:
+                    - paragraph [ref=e2148]: "シナリオ: ライブ中に紹介した商品が不具合・リコール対象となる"
+                    - paragraph [ref=e2149]: "対応: 配信を直ちに停止または該当商品の紹介を中止。過去の購入者に対し、LINEおよびメールで一斉通知を行い、返金・交換対応の特設窓口を24時間以内に設置する。"
+                  - generic [ref=e2150]:
+                    - paragraph [ref=e2151]: "シナリオ: 配信トラブルにより1,000人以上の視聴者がいる状態で中継が遮断"
+                    - paragraph [ref=e2152]: "対応: 事前登録されたLINEで謝罪と再開時間を通知。再開時には「お詫び限定クーポン」を配布し、離脱したユーザーの呼び戻しと購買意欲の維持を図る。"
+              - generic [ref=e2154]:
+                - generic [ref=e2155]:
+                  - img [ref=e2156]
+                  - generic [ref=e2159]: 成功の重要要因
+                - list [ref=e2160]:
+                  - listitem [ref=e2161]:
+                    - generic [ref=e2162]: ✓
+                    - text: 実演販売特化型の「視覚的インパクト」を極めた番組構成力
+                  - listitem [ref=e2163]:
+                    - generic [ref=e2164]: ✓
+                    - text: 各プラットフォームのユーザー属性に合わせた商品選定と価格戦略（マルチチャネルの最適化）
+                  - listitem [ref=e2165]:
+                    - generic [ref=e2166]: ✓
+                    - text: 配信からLINE登録、リピート購入に至るまでのLTV最大化を目的としたCRMの自動化
+                  - listitem [ref=e2167]:
+                    - generic [ref=e2168]: ✓
+                    - text: 演者のパーソナリティと信頼性を醸成する双方向コミュニケーションの徹底
+                  - listitem [ref=e2169]:
+                    - generic [ref=e2170]: ✓
+                    - text: ショート動画とライブを連動させた24時間型の集客エコシステムの構築
+            - generic [ref=e2171]:
+              - text: 出典
+              - generic [ref=e2172]:
+                - link "[1] 【2026年】ライブコマースの市場規模が拡大中！日本 ..." [ref=e2173] [cursor=pointer]:
+                  - /url: https://shopi-lab.com/know-how/
+                  - generic [ref=e2174]: "[1]"
+                  - img [ref=e2175]
+                  - generic [ref=e2179]: 【2026年】ライブコマースの市場規模が拡大中！日本 ...
+                - link "[2] ライブコマース市場 | 市場規模 業界シェア 市場分析 成長性 2026年" [ref=e2180] [cursor=pointer]:
+                  - /url: https://www.gii.co.jp/report/tbrc1985037-live-commerce-global-market-report.html
+                  - generic [ref=e2181]: "[2]"
+                  - img [ref=e2182]
+                  - generic [ref=e2186]: ライブコマース市場 | 市場規模 業界シェア 市場分析 成長性 2026年
+                - link "[3] ライブコマース、日本で成功するには？ 市場比較と成功事例に学ぶポイント | THECOO" [ref=e2187] [cursor=pointer]:
+                  - /url: https://bizpartner.thecoo.co.jp/content/live-commerce-japan-success-tips
+                  - generic [ref=e2188]: "[3]"
+                  - img [ref=e2189]
+                  - generic [ref=e2193]: ライブコマース、日本で成功するには？ 市場比較と成功事例に学ぶポイント | THECOO
+                - link "[4] 【2026年最新】ライブコマースとは？日本の成功事例とメリットを解説" [ref=e2194] [cursor=pointer]:
+                  - /url: https://linestep.jp/2024/12/05/live-commerce/
+                  - generic [ref=e2195]: "[4]"
+                  - img [ref=e2196]
+                  - generic [ref=e2200]: 【2026年最新】ライブコマースとは？日本の成功事例とメリットを解説
+                - link "[5] 2025年ライブコマース市場in日本「大胆予想」 - ぱろにずむ" [ref=e2201] [cursor=pointer]:
+                  - /url: https://paronym.jp/media/content_marketing/video_marketing/wp-feb/
+                  - generic [ref=e2202]: "[5]"
+                  - img [ref=e2203]
+                  - generic [ref=e2207]: 2025年ライブコマース市場in日本「大胆予想」 - ぱろにずむ
+                - link "[6] ライブコマースツール比較10選。3つの目的別の選び方 | アスピック｜SaaS比較・活用サイト" [ref=e2208] [cursor=pointer]:
+                  - /url: https://www.aspicjapan.org/asu/article/20202
+                  - generic [ref=e2209]: "[6]"
+                  - img [ref=e2210]
+                  - generic [ref=e2214]: ライブコマースツール比較10選。3つの目的別の選び方 | アスピック｜SaaS比較・活用サイト
+                - link "[7] 【2025年版】ライブコマースプラットフォーム比較11選｜もう迷わない！SNS型・SaaS型の最適解 | 7sGood公式ブログ | 7sGood通販" [ref=e2215] [cursor=pointer]:
+                  - /url: https://www.7sgood.com/blog/7live/live-commerce-platform-comparison
+                  - generic [ref=e2216]: "[7]"
+                  - img [ref=e2217]
+                  - generic [ref=e2221]: 【2025年版】ライブコマースプラットフォーム比較11選｜もう迷わない！SNS型・SaaS型の最適解 | 7sGood公式ブログ | 7sGood通販
+                - link "[8] ライブコマースプラットフォーム5つを比較！種類や選び方も解説 - HandsUP" [ref=e2222] [cursor=pointer]:
+                  - /url: https://handsup.17.live/column/compare-5-live-commerce-platforms/
+                  - generic [ref=e2223]: "[8]"
+                  - img [ref=e2224]
+                  - generic [ref=e2228]: ライブコマースプラットフォーム5つを比較！種類や選び方も解説 - HandsUP
+                - link "[9] ライブコマースとは？基本知識とおすすめな業界・ジャンルを解説" [ref=e2229] [cursor=pointer]:
+                  - /url: https://ebisumart.com/blog/live-commerce/
+                  - generic [ref=e2230]: "[9]"
+                  - img [ref=e2231]
+                  - generic [ref=e2235]: ライブコマースとは？基本知識とおすすめな業界・ジャンルを解説
+                - link "[10] 【2026年最新版】ライブコマースとは？メリット・デメリットや相性がいい商材、成功事例などを徹底解説" [ref=e2236] [cursor=pointer]:
+                  - /url: https://www.w2solution.co.jp/useful_info_ec/live-commerce-ec/
+                  - generic [ref=e2237]: "[10]"
+                  - img [ref=e2238]
+                  - generic [ref=e2242]: 【2026年最新版】ライブコマースとは？メリット・デメリットや相性がいい商材、成功事例などを徹底解説
+                - link "[11] TikTok配信で年商16億円、2年連続で前年比400%達成のライブコマース専門事務所「トキバナ」がTikTok Shopにショップ開設！2026年6月期は年商50億を目指す | 株式会社Cellestのプレスリリース" [ref=e2243] [cursor=pointer]:
+                  - /url: https://prtimes.jp/main/html/rd/p/000000052.000102719.html
+                  - generic [ref=e2244]: "[11]"
+                  - img [ref=e2245]
+                  - generic [ref=e2249]: TikTok配信で年商16億円、2年連続で前年比400%達成のライブコマース専門事務所「トキバナ」がTikTok Shopにショップ開設！2026年6月期は年商50億を目指す | 株式会社Cellestのプレスリリース
+                - link "[12] 【2026年】TikTok Shopの成功事例8選！国内・海外の事例から学ぶ成果を出すコツ | ジャグー株式会社" [ref=e2250] [cursor=pointer]:
+                  - /url: https://jagoo.co.jp/column/tiktok-shop-case-study/
+                  - generic [ref=e2251]: "[12]"
+                  - img [ref=e2252]
+                  - generic [ref=e2256]: 【2026年】TikTok Shopの成功事例8選！国内・海外の事例から学ぶ成果を出すコツ | ジャグー株式会社
+                - link "[13] TikTok Shopの日本・海外事例まとめ｜ショップの成果・主要機能・市場動向 | テテマーチ株式会社" [ref=e2257] [cursor=pointer]:
+                  - /url: https://tetemarche.co.jp/column/tiktokshop_casestudy
+                  - generic [ref=e2258]: "[13]"
+                  - img [ref=e2259]
+                  - generic [ref=e2263]: TikTok Shopの日本・海外事例まとめ｜ショップの成果・主要機能・市場動向 | テテマーチ株式会社
+                - link "[14] TikTok Shopで売上をアップさせる！売上を左右するポイントと成功事例 - BASE U｜ベイスのネットショップ開設・運営・集客を解説するWebメディア" [ref=e2264] [cursor=pointer]:
+                  - /url: https://baseu.jp/47441
+                  - generic [ref=e2265]: "[14]"
+                  - img [ref=e2266]
+                  - generic [ref=e2270]: TikTok Shopで売上をアップさせる！売上を左右するポイントと成功事例 - BASE U｜ベイスのネットショップ開設・運営・集客を解説するWebメディア
+                - link "[15] まさにTikTok売れ！ 初投稿が10万いいね、売上40倍の事例【ネッ担まとめ】 | ネットショップ担当者が知っておくべきニュースのまとめ | ネットショップ担当者フォーラム" [ref=e2271] [cursor=pointer]:
+                  - /url: https://netshop.impress.co.jp/node/9815
+                  - generic [ref=e2272]: "[15]"
+                  - img [ref=e2273]
+                  - generic [ref=e2277]: まさにTikTok売れ！ 初投稿が10万いいね、売上40倍の事例【ネッ担まとめ】 | ネットショップ担当者が知っておくべきニュースのまとめ | ネットショップ担当者フォーラム
+                - link "[16] インスタライブで販売（ライブコマース）を成功させるためのガイド - 戦略型ライブコマース【ライブル】" [ref=e2278] [cursor=pointer]:
+                  - /url: https://livuru.jp/column/instalive-success/
+                  - generic [ref=e2279]: "[16]"
+                  - img [ref=e2280]
+                  - generic [ref=e2284]: インスタライブで販売（ライブコマース）を成功させるためのガイド - 戦略型ライブコマース【ライブル】
+                - link "[17] ライブコマースとは？インスタライブ成功事例と2025年最新トレンド | SHOPLINEブログ" [ref=e2285] [cursor=pointer]:
+                  - /url: https://jp.shopline.com/blog/live-commerce-instagram-success
+                  - generic [ref=e2286]: "[17]"
+                  - img [ref=e2287]
+                  - generic [ref=e2291]: ライブコマースとは？インスタライブ成功事例と2025年最新トレンド | SHOPLINEブログ
+                - link "[18] インスタでモノを売る時代到来！今流行りのライブコマースとは｜デジオデジコ｜デジオデジコ（デジデジ）" [ref=e2292] [cursor=pointer]:
+                  - /url: https://www.onecruise.co.jp/degiodegiko/instagram-live-commerce/
+                  - generic [ref=e2293]: "[18]"
+                  - img [ref=e2294]
+                  - generic [ref=e2298]: インスタでモノを売る時代到来！今流行りのライブコマースとは｜デジオデジコ｜デジオデジコ（デジデジ）
+                - link "[19] 今こそ試したい、Instagramで顧客と交流する方法！ライブ配信、リールなど最新活用法" [ref=e2299] [cursor=pointer]:
+                  - /url: https://www.future-shop.jp/magazine/marketing-instagram-ec-fb2
+                  - generic [ref=e2300]: "[19]"
+                  - img [ref=e2301]
+                  - generic [ref=e2305]: 今こそ試したい、Instagramで顧客と交流する方法！ライブ配信、リールなど最新活用法
+                - 'link "[20] 【2025年保存版】ライブコマースとは？ライブ配信の始め方やコツ、メリットや成功事例を紹介 # | E-Commerce Magazine" [ref=e2306] [cursor=pointer]':
+                  - /url: https://www.future-shop.jp/magazine/live-commerce-column
+                  - generic [ref=e2307]: "[20]"
+                  - img [ref=e2308]
+                  - generic [ref=e2312]: "【2025年保存版】ライブコマースとは？ライブ配信の始め方やコツ、メリットや成功事例を紹介 # | E-Commerce Magazine"
+          - paragraph [ref=e2313]: "生成: 2026/4/16 1:28:57"
+  - button "Open Next.js Dev Tools" [ref=e76] [cursor=pointer]:
+    - img [ref=e77]
+  - alert [ref=e80]

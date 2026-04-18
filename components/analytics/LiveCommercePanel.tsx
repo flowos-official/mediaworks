@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, Radio, AlertTriangle, ArrowLeft, ExternalLink, CheckCircle, Circle } from 'lucide-react';
@@ -302,7 +302,7 @@ function ResultsView({ results, sources, generatedAt, backHref, strategyId, onRe
 export default function LiveCommercePanel({ mode, initialData }: LiveCommercePanelProps) {
 	const router = useRouter();
 	const { locale } = useParams<{ locale: string }>();
-	const listHref = `/${locale}/analytics/live-commerce`;
+	const listHref = `/${locale}/analytics/strategy/live`;
 
 	if (mode === 'detail' && initialData) {
 		return <LCDetailView initialData={initialData} backHref={listHref} />;
@@ -432,7 +432,18 @@ function LCDetailView({ initialData, backHref }: { initialData: SavedLCData; bac
 // ---------------------------------------------------------------------------
 
 function LCListView({ locale, router }: { locale: string; router: ReturnType<typeof useRouter> }) {
-	const [userGoal, setUserGoal] = useState('');
+	const searchParams = useSearchParams();
+	const seedName = searchParams?.get('seed') ?? null;
+	const seedCategory = searchParams?.get('category') ?? null;
+	const seedUrl = searchParams?.get('sourceUrl') ?? null;
+	const seedPrice = searchParams?.get('price') ?? null;
+	const seedProductId = searchParams?.get('seedId') ?? null;
+
+	const seedGoal = seedName
+		? `新商品「${seedName}」のライブコマース戦略を立てる。${seedCategory ? `カテゴリ: ${seedCategory}。` : ''}${seedPrice ? `参考価格: ¥${Number(seedPrice).toLocaleString()}。` : ''}${seedUrl ? ` 参考URL: ${seedUrl}` : ''}`
+		: '';
+
+	const [userGoal, setUserGoal] = useState(seedGoal);
 	const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
 
 	const [status, setStatus] = useState<'idle' | 'running' | 'complete' | 'error'>('idle');
@@ -477,6 +488,7 @@ function LCListView({ locale, router }: { locale: string; router: ReturnType<typ
 				body: JSON.stringify({
 					userGoal: userGoal || undefined,
 					targetPlatforms: selectedPlatforms.length > 0 ? selectedPlatforms : undefined,
+					seedProductId: seedProductId ?? undefined,
 				}),
 			});
 
@@ -500,7 +512,7 @@ function LCListView({ locale, router }: { locale: string; router: ReturnType<typ
 				setStatus('complete');
 				setHistoryRefresh((n) => n + 1);
 				if (data?.strategyId) {
-					router.push(`/${locale}/analytics/live-commerce/${data.strategyId}`);
+					router.push(`/${locale}/analytics/strategy/live/${data.strategyId}`);
 				}
 			};
 
@@ -570,7 +582,7 @@ function LCListView({ locale, router }: { locale: string; router: ReturnType<typ
 	}, [userGoal, selectedPlatforms, locale, router]);
 
 	const handleViewSaved = (id: string) => {
-		router.push(`/${locale}/analytics/live-commerce/${id}`);
+		router.push(`/${locale}/analytics/strategy/live/${id}`);
 	};
 
 	const hasResults = !!(

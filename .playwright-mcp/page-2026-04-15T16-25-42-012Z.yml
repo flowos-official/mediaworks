@@ -1,0 +1,1788 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - navigation [ref=e3]:
+      - generic [ref=e5]:
+        - link "MediaWorks" [ref=e6] [cursor=pointer]:
+          - /url: /ja
+          - img [ref=e8]
+          - generic [ref=e10]: MediaWorks
+        - generic [ref=e11]:
+          - link "ホーム" [ref=e12] [cursor=pointer]:
+            - /url: /ja
+          - link "売上分析" [ref=e13] [cursor=pointer]:
+            - /url: /ja/analytics
+            - img [ref=e14]
+            - text: 売上分析
+          - generic [ref=e16]:
+            - img [ref=e17]
+            - button "English" [ref=e20]
+            - button "日本語" [ref=e21]
+    - main [ref=e22]:
+      - generic [ref=e23]:
+        - generic [ref=e24]:
+          - img [ref=e25]
+          - heading "売上分析" [level=1] [ref=e27]
+        - paragraph [ref=e28]: TXDレギュラー受注データに基づく販売実績分析
+      - generic [ref=e29]:
+        - generic [ref=e31]:
+          - link "概要" [ref=e32] [cursor=pointer]:
+            - /url: /ja/analytics/overview
+          - link "商品分析" [ref=e33] [cursor=pointer]:
+            - /url: /ja/analytics/products
+          - link "拡大戦略" [ref=e34] [cursor=pointer]:
+            - /url: /ja/analytics/expansion
+          - link "ライブコマース" [ref=e35] [cursor=pointer]:
+            - /url: /ja/analytics/live-commerce
+        - generic [ref=e1447]:
+          - generic [ref=e1448]:
+            - img [ref=e1449]
+            - heading "チャネル拡大戦略" [level=3] [ref=e1453]
+            - generic [ref=e1454]: 7-Skill AI
+          - link "一覧に戻る" [ref=e1455] [cursor=pointer]:
+            - /url: /ja/analytics/expansion
+            - img [ref=e1456]
+            - text: 一覧に戻る
+          - generic [ref=e1458]:
+            - generic [ref=e1459]:
+              - generic [ref=e1460]:
+                - img [ref=e1461]
+                - heading "発掘された新商品" [level=2] [ref=e1464]
+                - generic [ref=e1465]: ホームショッピング / EC
+              - paragraph [ref=e1466]: TV通販の販売シグナルを基に、楽天 / Web 検索で実在する新商品プールから AI が選定。各商品を個別に分析できます。
+              - generic [ref=e1467]:
+                - 'textbox "フォーカス絞り込み (任意) — 例: 美容家電に絞って / 韓国コスメ中心 / ¥5000以下" [ref=e1468]'
+                - button "新商品を再発掘" [ref=e1469]:
+                  - img [ref=e1470]
+                  - text: 新商品を再発掘
+              - generic [ref=e1475]:
+                - article [ref=e1476]:
+                  - generic [ref=e1477]:
+                    - generic [ref=e1478]:
+                      - generic [ref=e1479]: Web
+                      - heading "#1パナソニック EW-KA65" [level=3] [ref=e1480]:
+                        - generic [ref=e1481]: "#1"
+                        - text: パナソニック EW-KA65
+                    - generic [ref=e1482]: "90"
+                  - generic [ref=e1483]:
+                    - generic [ref=e1484]:
+                      - text: 需要
+                      - strong [ref=e1485]: 高
+                    - generic [ref=e1486]:
+                      - text: 価格
+                      - strong [ref=e1487]: ¥10,000-15,000
+                    - generic [ref=e1488]:
+                      - text: 供給
+                      - strong [ref=e1489]: 価格.com
+                  - paragraph [ref=e1490]: TVトップカテゴリの「医療機器」に合致し、トレンド情報でも人気売れ筋として明記されている。吸入器は実演での蒸気演出がTV映えし、健康意識の高まりに即している。
+                  - paragraph [ref=e1491]: "TVシグナル根拠: 医療機器カテゴリ（売上比率23.41%）に合致"
+                  - generic [ref=e1492]:
+                    - generic [ref=e1493]:
+                      - img [ref=e1494]
+                      - generic [ref=e1497]: 日本市場フィット
+                    - generic [ref=e1498]: "人気根拠: 価格.comの2026年1月その他健康器具・医療機器ランキングにて「人気の売れ筋製品」として選出されている。"
+                    - generic [ref=e1499]: "市場トレンド: 2034年には医療・健康産業の世界市場規模は2700兆～2800兆円に達すると予測される成長分野。"
+                    - generic [ref=e1500]: "なぜ今日本で: 花粉症や乾燥対策として、家庭で手軽にケアできる医療機器への需要がシニア層を中心に拡大しているため。"
+                  - button "この商品を分析する" [ref=e1502]:
+                    - img [ref=e1503]
+                    - text: この商品を分析する
+                  - link "出典ページを確認" [ref=e1506] [cursor=pointer]:
+                    - /url: https://kakaku.com/kaden/medical-equipment/ranking_2182/
+                    - text: 出典ページを確認
+                    - img [ref=e1507]
+                - article [ref=e1511]:
+                  - generic [ref=e1512]:
+                    - generic [ref=e1513]:
+                      - generic [ref=e1514]: Web
+                      - heading "#2オムロン HPO-100" [level=3] [ref=e1515]:
+                        - generic [ref=e1516]: "#2"
+                        - text: オムロン HPO-100
+                    - generic [ref=e1517]: "85"
+                  - generic [ref=e1518]:
+                    - generic [ref=e1519]:
+                      - text: 需要
+                      - strong [ref=e1520]: 高
+                    - generic [ref=e1521]:
+                      - text: 価格
+                      - strong [ref=e1522]: ¥5,000-8,000
+                    - generic [ref=e1523]:
+                      - text: 供給
+                      - strong [ref=e1524]: 価格.com
+                  - paragraph [ref=e1525]: TVで実績の高い医療機器カテゴリ。パルスオキシメータは数値で効果が可視化しやすく、コンパクトで衝動買い価格帯にも合致する。
+                  - paragraph [ref=e1526]: "TVシグナル根拠: 医療機器カテゴリの平均単価¥5,244に極めて近い"
+                  - generic [ref=e1527]:
+                    - generic [ref=e1528]:
+                      - img [ref=e1529]
+                      - generic [ref=e1532]: 日本市場フィット
+                    - generic [ref=e1533]: "人気根拠: 価格.comにおいて「ユーザーもおすすめ！人気売れ筋」の筆頭として掲載されている。"
+                    - generic [ref=e1534]: "市場トレンド: 家庭用治療機器の人気商品として高周波デバイス等と共に注目されるセグメント。"
+                    - generic [ref=e1535]: "なぜ今日本で: 在宅健康管理の定着により、信頼性の高い日本メーカーの計測機器に対する指名買いが増加している。"
+                  - button "この商品を分析する" [ref=e1537]:
+                    - img [ref=e1538]
+                    - text: この商品を分析する
+                  - link "出典ページを確認" [ref=e1541] [cursor=pointer]:
+                    - /url: https://kakaku.com/kaden/medical-equipment/ranking_2182/
+                    - text: 出典ページを確認
+                    - img [ref=e1542]
+                - article [ref=e1546]:
+                  - generic [ref=e1547]:
+                    - generic [ref=e1548]:
+                      - generic [ref=e1549]: 楽天
+                      - heading "#3SILLAID EENOUR VOYAGE mini ゴルフ 距離計 シライド" [level=3] [ref=e1550]:
+                        - generic [ref=e1551]: "#3"
+                        - text: SILLAID EENOUR VOYAGE mini ゴルフ 距離計 シライド
+                    - generic [ref=e1552]: "95"
+                  - generic [ref=e1553]:
+                    - generic [ref=e1554]:
+                      - text: 需要
+                      - strong [ref=e1555]: 高
+                    - generic [ref=e1556]:
+                      - text: 価格
+                      - strong [ref=e1557]: ¥12,980
+                    - generic [ref=e1558]:
+                      - text: 供給
+                      - strong [ref=e1559]: 楽天市場
+                  - paragraph [ref=e1560]: TVでマージン率が最も高いゴルフカテゴリ（21.62%）に属し、実演で「遠くのピンが見える」映像訴求が強力。価格もスイートスポット内。
+                  - paragraph [ref=e1561]: "TVシグナル根拠: ゴルフカテゴリの高マージン戦略に合致"
+                  - generic [ref=e1562]:
+                    - generic [ref=e1563]:
+                      - img [ref=e1564]
+                      - generic [ref=e1567]: 日本市場フィット
+                    - generic [ref=e1568]: "人気根拠: 楽天ゴルフランキング1位。今平周吾プロ推奨という社会的証明がある。"
+                    - generic [ref=e1569]: "市場トレンド: 取得不可"
+                    - generic [ref=e1570]: "なぜ今日本で: ゴルフ市場の若返りと共に、ガジェットを活用したスコアアップへの関心が高まっているため。"
+                  - button "この商品を分析する" [ref=e1572]:
+                    - img [ref=e1573]
+                    - text: この商品を分析する
+                  - link "出典ページを確認" [ref=e1576] [cursor=pointer]:
+                    - /url: https://ranking.rakuten.co.jp/daily/101048/
+                    - text: 出典ページを確認
+                    - img [ref=e1577]
+                - article [ref=e1581]:
+                  - generic [ref=e1582]:
+                    - generic [ref=e1583]:
+                      - generic [ref=e1584]: 楽天
+                      - heading "#4ウォッシュボーイ 小型洗濯機 リコメン堂限定色" [level=3] [ref=e1585]:
+                        - generic [ref=e1586]: "#4"
+                        - text: ウォッシュボーイ 小型洗濯機 リコメン堂限定色
+                    - generic [ref=e1587]: "88"
+                  - generic [ref=e1588]:
+                    - generic [ref=e1589]:
+                      - text: 需要
+                      - strong [ref=e1590]: 高
+                    - generic [ref=e1591]:
+                      - text: 価格
+                      - strong [ref=e1592]: ¥8,000-9,000
+                    - generic [ref=e1593]:
+                      - text: 供給
+                      - strong [ref=e1594]: 楽天市場
+                  - paragraph [ref=e1595]: 掃除・洗濯カテゴリ（売上比率13.9%）に該当。泥汚れが落ちるビフォーアフターの映像が作りやすく、TV通販の王道商品。
+                  - paragraph [ref=e1596]: "TVシグナル根拠: 掃除・洗濯カテゴリの成功事例「カビパッチ」等の流れを汲む"
+                  - generic [ref=e1597]:
+                    - generic [ref=e1598]:
+                      - img [ref=e1599]
+                      - generic [ref=e1602]: 日本市場フィット
+                    - generic [ref=e1603]: "人気根拠: 楽天市場生活家電ランキング1位。リコメン堂限定色という希少性がある。"
+                    - generic [ref=e1604]: "市場トレンド: 取得不可"
+                    - generic [ref=e1605]: "なぜ今日本で: ペット用品や靴の「別洗い」需要が日本の共働き世帯で急増している。"
+                  - button "この商品を分析する" [ref=e1607]:
+                    - img [ref=e1608]
+                    - text: この商品を分析する
+                  - link "出典ページを確認" [ref=e1611] [cursor=pointer]:
+                    - /url: https://ranking.rakuten.co.jp/daily/204200/
+                    - text: 出典ページを確認
+                    - img [ref=e1612]
+                - article [ref=e1616]:
+                  - generic [ref=e1617]:
+                    - generic [ref=e1618]:
+                      - generic [ref=e1619]: 楽天
+                      - heading "#5デロンギ マグニフィカS 全自動コーヒーマシン [ECAM22112B]" [level=3] [ref=e1620]:
+                        - generic [ref=e1621]: "#5"
+                        - text: デロンギ マグニフィカS 全自動コーヒーマシン [ECAM22112B]
+                    - generic [ref=e1622]: "82"
+                  - generic [ref=e1623]:
+                    - generic [ref=e1624]:
+                      - text: 需要
+                      - strong [ref=e1625]: 中
+                    - generic [ref=e1626]:
+                      - text: 価格
+                      - strong [ref=e1627]: ¥55,000-65,000
+                    - generic [ref=e1628]:
+                      - text: 供給
+                      - strong [ref=e1629]: 楽天市場
+                  - paragraph [ref=e1630]: 家電・雑貨カテゴリ。憧れブランドの「15%OFF」はTVでの「期間限定・特別価格」演出と相性が良く、デモでの香り・音の訴求が強い。
+                  - paragraph [ref=e1631]: "TVシグナル根拠: 家電・雑貨カテゴリ（売上比率19.12%）のプレミアム枠"
+                  - generic [ref=e1632]:
+                    - generic [ref=e1633]:
+                      - img [ref=e1634]
+                      - generic [ref=e1637]: 日本市場フィット
+                    - generic [ref=e1638]: "人気根拠: 楽天ランキング1位かつ、デロンギ公式による大規模プロモーション対象。"
+                    - generic [ref=e1639]: "市場トレンド: 取得不可"
+                    - generic [ref=e1640]: "なぜ今日本で: QOL（生活の質）向上を求める中高年層の「家ナカ消費」が継続的に高いため。"
+                  - button "この商品を分析する" [ref=e1642]:
+                    - img [ref=e1643]
+                    - text: この商品を分析する
+                  - link "出典ページを確認" [ref=e1646] [cursor=pointer]:
+                    - /url: https://ranking.rakuten.co.jp/daily/562637/
+                    - text: 出典ページを確認
+                    - img [ref=e1647]
+                - article [ref=e1651]:
+                  - generic [ref=e1652]:
+                    - generic [ref=e1653]:
+                      - generic [ref=e1654]: 楽天
+                      - heading "#6テーラーメイド Qi35 MAX ゴルフ ドライバー 2025" [level=3] [ref=e1655]:
+                        - generic [ref=e1656]: "#6"
+                        - text: テーラーメイド Qi35 MAX ゴルフ ドライバー 2025
+                    - generic [ref=e1657]: "80"
+                  - generic [ref=e1658]:
+                    - generic [ref=e1659]:
+                      - text: 需要
+                      - strong [ref=e1660]: 中
+                    - generic [ref=e1661]:
+                      - text: 価格
+                      - strong [ref=e1662]: ¥70,000-80,000
+                    - generic [ref=e1663]:
+                      - text: 供給
+                      - strong [ref=e1664]: 楽天市場
+                  - paragraph [ref=e1665]: ゴルフカテゴリの最新トレンド。高単価ながら、TV通販での「飛距離アップ」実演は非常にコンバージョンが高く、高収益が見込める。
+                  - paragraph [ref=e1666]: "TVシグナル根拠: DANGAN7等の高単価ゴルフ商材の成功パターンに合致"
+                  - generic [ref=e1667]:
+                    - generic [ref=e1668]:
+                      - img [ref=e1669]
+                      - generic [ref=e1672]: 日本市場フィット
+                    - generic [ref=e1673]: "人気根拠: 楽天ドライバーランキング上位。2025年モデルという鮮度がある。"
+                    - generic [ref=e1674]: "市場トレンド: 取得不可"
+                    - generic [ref=e1675]: "なぜ今日本で: シーズンインに合わせた買い替え需要。最新テクノロジーへの投資を惜しまないシニア層がターゲット。"
+                  - button "この商品を分析する" [ref=e1677]:
+                    - img [ref=e1678]
+                    - text: この商品を分析する
+                  - link "出典ページを確認" [ref=e1681] [cursor=pointer]:
+                    - /url: https://ranking.rakuten.co.jp/daily/201706/
+                    - text: 出典ページを確認
+                    - img [ref=e1682]
+                - article [ref=e1686]:
+                  - generic [ref=e1687]:
+                    - generic [ref=e1688]:
+                      - generic [ref=e1689]: 楽天
+                      - heading "#7ガードナーベルトFORLOOP" [level=3] [ref=e1690]:
+                        - generic [ref=e1691]: "#7"
+                        - text: ガードナーベルトFORLOOP
+                    - generic [ref=e1692]: "95"
+                  - generic [ref=e1693]:
+                    - generic [ref=e1694]:
+                      - text: 需要
+                      - strong [ref=e1695]: 高
+                    - generic [ref=e1696]:
+                      - text: 価格
+                      - strong [ref=e1697]: ¥9,900
+                    - generic [ref=e1698]:
+                      - text: 供給
+                      - strong [ref=e1699]: 楽天市場
+                  - paragraph [ref=e1700]: 医療機器・健康雑貨の隣接領域。強力な固定力を視覚的に見せるデモ（水入りペットボトルを持ち上げる等）が非常に有名でTV通販向き。
+                  - paragraph [ref=e1701]: "TVシグナル根拠: 医療機器/サポーターカテゴリ（成功実例：ファイテン磁気サポーター）"
+                  - generic [ref=e1702]:
+                    - generic [ref=e1703]:
+                      - img [ref=e1704]
+                      - generic [ref=e1707]: 日本市場フィット
+                    - generic [ref=e1708]: "人気根拠: 楽天治療機器ランキング上位常連。SNS等でも動画による拡散力が証明されている。"
+                    - generic [ref=e1709]: "市場トレンド: 健康寿命の延伸を支えるための技術進歩とマーケット拡大のトレンドに合致。"
+                    - generic [ref=e1710]: "なぜ今日本で: 腰痛に悩む高齢者層だけでなく、立ち仕事やゴルフ愛好家へのクロスセルが可能なため。"
+                  - button "この商品を分析する" [ref=e1712]:
+                    - img [ref=e1713]
+                    - text: この商品を分析する
+                  - link "出典ページを確認" [ref=e1716] [cursor=pointer]:
+                    - /url: https://ranking.rakuten.co.jp/daily/101048/
+                    - text: 出典ページを確認
+                    - img [ref=e1717]
+                - article [ref=e1721]:
+                  - generic [ref=e1722]:
+                    - generic [ref=e1723]:
+                      - generic [ref=e1724]: 楽天
+                      - heading "#8タイトリスト PRO V1 25 イエロー 1ダース" [level=3] [ref=e1725]:
+                        - generic [ref=e1726]: "#8"
+                        - text: タイトリスト PRO V1 25 イエロー 1ダース
+                    - generic [ref=e1727]: "75"
+                  - generic [ref=e1728]:
+                    - generic [ref=e1729]:
+                      - text: 需要
+                      - strong [ref=e1730]: 中
+                    - generic [ref=e1731]:
+                      - text: 価格
+                      - strong [ref=e1732]: ¥7,000-8,000
+                    - generic [ref=e1733]:
+                      - text: 供給
+                      - strong [ref=e1734]: 楽天市場
+                  - paragraph [ref=e1735]: ゴルフカテゴリの消耗品。ブランド力が高く、TV通販での「セット販売」による単価アップとリピート購入が期待できる。
+                  - paragraph [ref=e1736]: "TVシグナル根拠: ゴルフカテゴリの安定需要アイテム"
+                  - generic [ref=e1737]:
+                    - generic [ref=e1738]:
+                      - img [ref=e1739]
+                      - generic [ref=e1742]: 日本市場フィット
+                    - generic [ref=e1743]: "人気根拠: 楽天リアルタイムランキング1位。世界No.1ボールとしての絶大な信頼。"
+                    - generic [ref=e1744]: "市場トレンド: 取得不可"
+                    - generic [ref=e1745]: "なぜ今日本で: 贈答用（ギフト需要）としての安定感があり、父の日などの催事企画と連動しやすいため。"
+                  - button "この商品を分析する" [ref=e1747]:
+                    - img [ref=e1748]
+                    - text: この商品を分析する
+                  - link "出典ページを確認" [ref=e1751] [cursor=pointer]:
+                    - /url: https://ranking.rakuten.co.jp/realtime/101077/
+                    - text: 出典ページを確認
+                    - img [ref=e1752]
+                - article [ref=e1756]:
+                  - generic [ref=e1757]:
+                    - generic [ref=e1758]:
+                      - generic [ref=e1759]: Web
+                      - heading "#9ニプロ株式会社 関連医療用品" [level=3] [ref=e1760]:
+                        - generic [ref=e1761]: "#9"
+                        - text: ニプロ株式会社 関連医療用品
+                    - generic [ref=e1762]: "70"
+                  - generic [ref=e1763]:
+                    - generic [ref=e1764]:
+                      - text: 需要
+                      - strong [ref=e1765]: 中
+                    - generic [ref=e1766]:
+                      - text: 価格
+                      - strong [ref=e1767]: ¥3,000-5,000
+                    - generic [ref=e1768]:
+                      - text: 供給
+                      - strong [ref=e1769]: Webドメイン
+                  - paragraph [ref=e1770]: トレンド情報で注目ランキング3位の企業。信頼性が高く、在宅医療ニーズに応える家庭用消耗品はTV通販のLTV向上に寄与する。
+                  - paragraph [ref=e1771]: "TVシグナル根拠: 医療機器カテゴリの国内大手ブランドとしての安心感"
+                  - generic [ref=e1772]:
+                    - generic [ref=e1773]:
+                      - img [ref=e1774]
+                      - generic [ref=e1777]: 日本市場フィット
+                    - generic [ref=e1778]: "人気根拠: 2026年2月注目ランキングにおいてニプロが3位にランクイン。"
+                    - generic [ref=e1779]: "市場トレンド: 医療機器卸がSPDやITソリューションにより囲い込みを進める中、家庭用市場も拡大。"
+                    - generic [ref=e1780]: "なぜ今日本で: 病院で使用されるブランドと同じものを使いたいという「プロ仕様」への安心ニーズ。"
+                  - button "この商品を分析する" [ref=e1782]:
+                    - img [ref=e1783]
+                    - text: この商品を分析する
+                  - link "出典ページを確認" [ref=e1786] [cursor=pointer]:
+                    - /url: https://metoree.com/categories/9432/
+                    - text: 出典ページを確認
+                    - img [ref=e1787]
+                - article [ref=e1791]:
+                  - generic [ref=e1792]:
+                    - generic [ref=e1793]:
+                      - generic [ref=e1794]: 楽天
+                      - heading "#10EENOUR ゴルフ 距離計 最小最軽量モデル" [level=3] [ref=e1795]:
+                        - generic [ref=e1796]: "#10"
+                        - text: EENOUR ゴルフ 距離計 最小最軽量モデル
+                    - generic [ref=e1797]: "92"
+                  - generic [ref=e1798]:
+                    - generic [ref=e1799]:
+                      - text: 需要
+                      - strong [ref=e1800]: 高
+                    - generic [ref=e1801]:
+                      - text: 価格
+                      - strong [ref=e1802]: ¥10,431
+                    - generic [ref=e1803]:
+                      - text: 供給
+                      - strong [ref=e1804]: 楽天市場
+                  - paragraph [ref=e1805]: 家電・雑貨とゴルフのクロスオーバー。TV通販では「世界最小」などのスペック訴求が数字として視聴者に伝わりやすく、衝動買いを誘発する。
+                  - paragraph [ref=e1806]: "TVシグナル根拠: ゴルフカテゴリ（マージン21.62%）の主力ガジェット"
+                  - generic [ref=e1807]:
+                    - generic [ref=e1808]:
+                      - img [ref=e1809]
+                      - generic [ref=e1812]: 日本市場フィット
+                    - generic [ref=e1813]: "人気根拠: 楽天リアルタイムランキング1位。価格対効果の高さがレビューで支持されている。"
+                    - generic [ref=e1814]: "市場トレンド: 取得不可"
+                    - generic [ref=e1815]: "なぜ今日本で: セルフプレーの増加により、計測器は「一人一台」の必須アイテムに変化しているため。"
+                  - button "この商品を分析する" [ref=e1817]:
+                    - img [ref=e1818]
+                    - text: この商品を分析する
+                  - link "出典ページを確認" [ref=e1821] [cursor=pointer]:
+                    - /url: https://ranking.rakuten.co.jp/realtime/101077/
+                    - text: 出典ページを確認
+                    - img [ref=e1822]
+                - article [ref=e1826]:
+                  - generic [ref=e1827]:
+                    - generic [ref=e1828]:
+                      - generic [ref=e1829]: Web
+                      - heading "#11高周波治療器（家庭用治療機器）" [level=3] [ref=e1830]:
+                        - generic [ref=e1831]: "#11"
+                        - text: 高周波治療器（家庭用治療機器）
+                    - generic [ref=e1832]: "87"
+                  - generic [ref=e1833]:
+                    - generic [ref=e1834]:
+                      - text: 需要
+                      - strong [ref=e1835]: 高
+                    - generic [ref=e1836]:
+                      - text: 価格
+                      - strong [ref=e1837]: ¥20,000-30,000
+                    - generic [ref=e1838]:
+                      - text: 供給
+                      - strong [ref=e1839]: 価格.com
+                  - paragraph [ref=e1840]: 価格.comのトレンドで「血流アプローチ・肩コリ改善」として注目されている。TV通販では、目に見えない効果をCGやグラフで解説する演出に適している。
+                  - paragraph [ref=e1841]: "TVシグナル根拠: 医療機器カテゴリ（売上比率23.41%）の主力商品"
+                  - generic [ref=e1842]:
+                    - generic [ref=e1843]:
+                      - img [ref=e1844]
+                      - generic [ref=e1847]: 日本市場フィット
+                    - generic [ref=e1848]: "人気根拠: 2025年5月の家庭用治療機器人気商品ランキングとして具体的に紹介されている。"
+                    - generic [ref=e1849]: "市場トレンド: 医療・健康産業の市場規模が自動車産業を凌駕する勢いで成長しているトレンド。"
+                    - generic [ref=e1850]: "なぜ今日本で: スマホ首やデスクワークによる慢性的なコリに悩む層への新解決策として。"
+                  - button "この商品を分析する" [ref=e1852]:
+                    - img [ref=e1853]
+                    - text: この商品を分析する
+                  - link "出典ページを確認" [ref=e1856] [cursor=pointer]:
+                    - /url: https://kakaku.com/kaden/medical-equipment/ranking_2182/
+                    - text: 出典ページを確認
+                    - img [ref=e1857]
+                - article [ref=e1861]:
+                  - generic [ref=e1862]:
+                    - generic [ref=e1863]:
+                      - generic [ref=e1864]: Web
+                      - heading "#12オリンパス 消化器内視鏡関連技術（民生用応用）" [level=3] [ref=e1865]:
+                        - generic [ref=e1866]: "#12"
+                        - text: オリンパス 消化器内視鏡関連技術（民生用応用）
+                    - generic [ref=e1867]: "65"
+                  - generic [ref=e1868]:
+                    - generic [ref=e1869]:
+                      - text: 需要
+                      - strong [ref=e1870]: 中
+                    - generic [ref=e1871]:
+                      - text: 価格
+                      - strong [ref=e1872]: ¥15,000-40,000
+                    - generic [ref=e1873]:
+                      - text: 供給
+                      - strong [ref=e1874]: Webドメイン
+                  - paragraph [ref=e1875]: 世界シェア1位のオリンパスブランドはTV通販における「最強の権威」となる。その技術を応用した健康管理・視覚補助器具は親和性が高い。
+                  - paragraph [ref=e1876]: "TVシグナル根拠: 医療機器カテゴリの世界的ブランド認知活用"
+                  - generic [ref=e1877]:
+                    - generic [ref=e1878]:
+                      - img [ref=e1879]
+                      - generic [ref=e1882]: 日本市場フィット
+                    - generic [ref=e1883]: "人気根拠: 2025年3月期の売上高が9,973億円に達する圧倒的市場プレゼンス。"
+                    - generic [ref=e1884]: "市場トレンド: 消化器内視鏡ソリューションが6,740億円を占めるなど、専門分野での信頼性が極めて高い。"
+                    - generic [ref=e1885]: "なぜ今日本で: 技術の日本（メイドインジャパン）への回帰と、医療メーカーが作る安心感の追求。"
+                  - button "この商品を分析する" [ref=e1887]:
+                    - img [ref=e1888]
+                    - text: この商品を分析する
+                  - link "出典ページを確認" [ref=e1891] [cursor=pointer]:
+                    - /url: https://www.iryo-tenshoku.com/column/detail.html&id=107
+                    - text: 出典ページを確認
+                    - img [ref=e1892]
+                - article [ref=e1896]:
+                  - generic [ref=e1897]:
+                    - generic [ref=e1898]:
+                      - generic [ref=e1899]: Web
+                      - heading "#13株式会社NAITO 精密医療機器パーツ採用製品" [level=3] [ref=e1900]:
+                        - generic [ref=e1901]: "#13"
+                        - text: 株式会社NAITO 精密医療機器パーツ採用製品
+                    - generic [ref=e1902]: "60"
+                  - generic [ref=e1903]:
+                    - generic [ref=e1904]:
+                      - text: 需要
+                      - strong [ref=e1905]: 低
+                    - generic [ref=e1906]:
+                      - text: 価格
+                      - strong [ref=e1907]: ¥5,000-15,000
+                    - generic [ref=e1908]:
+                      - text: 供給
+                      - strong [ref=e1909]: Webドメイン
+                  - paragraph [ref=e1910]: トレンドランキング1位。精密加工技術を活かした雑貨や健康器具は、TV通販における「職人の技術」「日本のモノづくり」というストーリー訴求に最適。
+                  - paragraph [ref=e1911]: "TVシグナル根拠: 家電・雑貨カテゴリの「こだわり・高品質」訴求"
+                  - generic [ref=e1912]:
+                    - generic [ref=e1913]:
+                      - img [ref=e1914]
+                      - generic [ref=e1917]: 日本市場フィット
+                    - generic [ref=e1918]: "人気根拠: 2026年2月医療機器製造注目ランキング1位。"
+                    - generic [ref=e1919]: "市場トレンド: 地域密着型から大手まで、医療機器のITソリューション提供が進む市場環境。"
+                    - generic [ref=e1920]: "なぜ今日本で: 粗悪な輸入品に対し、信頼できる国内精密メーカーの製品を求める層が増えている。"
+                  - button "この商品を分析する" [ref=e1922]:
+                    - img [ref=e1923]
+                    - text: この商品を分析する
+                  - link "出典ページを確認" [ref=e1926] [cursor=pointer]:
+                    - /url: https://metoree.com/categories/9432/
+                    - text: 出典ページを確認
+                    - img [ref=e1927]
+                - article [ref=e1931]:
+                  - generic [ref=e1932]:
+                    - generic [ref=e1933]:
+                      - generic [ref=e1934]: 楽天
+                      - heading "#14バケツ型洗濯機 らくらく排水 TOM-12f" [level=3] [ref=e1935]:
+                        - generic [ref=e1936]: "#14"
+                        - text: バケツ型洗濯機 らくらく排水 TOM-12f
+                    - generic [ref=e1937]: "85"
+                  - generic [ref=e1938]:
+                    - generic [ref=e1939]:
+                      - text: 需要
+                      - strong [ref=e1940]: 高
+                    - generic [ref=e1941]:
+                      - text: 価格
+                      - strong [ref=e1942]: ¥8,480
+                    - generic [ref=e1943]:
+                      - text: 供給
+                      - strong [ref=e1944]: 楽天市場
+                  - paragraph [ref=e1945]: TV通販で伝統的に売れる「サブ家電」。排水のしやすさやコンパクトさをデモで実演しやすく、価格も衝動買いを誘発する1万円以下。
+                  - paragraph [ref=e1946]: "TVシグナル根拠: 掃除・洗濯カテゴリ（平均単価¥3,058）のアップセル商材"
+                  - generic [ref=e1947]:
+                    - generic [ref=e1948]:
+                      - img [ref=e1949]
+                      - generic [ref=e1952]: 日本市場フィット
+                    - generic [ref=e1953]: "人気根拠: 楽天生活家電ランキング1位。公式販売によるサポートの安心感。"
+                    - generic [ref=e1954]: "市場トレンド: 取得不可"
+                    - generic [ref=e1955]: "なぜ今日本で: SDGsの観点から、少量の洗濯物を節水して洗いたいという節約・環境ニーズ。"
+                  - button "この商品を分析する" [ref=e1957]:
+                    - img [ref=e1958]
+                    - text: この商品を分析する
+                  - link "出典ページを確認" [ref=e1961] [cursor=pointer]:
+                    - /url: https://ranking.rakuten.co.jp/daily/204200/
+                    - text: 出典ページを確認
+                    - img [ref=e1962]
+                - article [ref=e1966]:
+                  - generic [ref=e1967]:
+                    - generic [ref=e1968]:
+                      - generic [ref=e1969]: 楽天
+                      - heading "#15キャロウェイ エリート ドライバー" [level=3] [ref=e1970]:
+                        - generic [ref=e1971]: "#15"
+                        - text: キャロウェイ エリート ドライバー
+                    - generic [ref=e1972]: "78"
+                  - generic [ref=e1973]:
+                    - generic [ref=e1974]:
+                      - text: 需要
+                      - strong [ref=e1975]: 中
+                    - generic [ref=e1976]:
+                      - text: 価格
+                      - strong [ref=e1977]: ¥60,000-75,000
+                    - generic [ref=e1978]:
+                      - text: 供給
+                      - strong [ref=e1979]: 楽天市場
+                  - paragraph [ref=e1980]: ゴルフカテゴリ。大手メーカーの「限定価格」はTVでの引きが強く、テーラーメイドとの比較訴求などで視聴者の選択を促しやすい。
+                  - paragraph [ref=e1981]: "TVシグナル根拠: ゴルフカテゴリの高単価・高利益モデル"
+                  - generic [ref=e1982]:
+                    - generic [ref=e1983]:
+                      - img [ref=e1984]
+                      - generic [ref=e1987]: 日本市場フィット
+                    - generic [ref=e1988]: "人気根拠: 楽天ランキング上位。ポイント10倍キャンペーン等と連動し、EC流入も強力。"
+                    - generic [ref=e1989]: "市場トレンド: 取得不可"
+                    - generic [ref=e1990]: "なぜ今日本で: 名門ブランドによる所有欲の充足と、最新モデルによるスコア改善への期待。"
+                  - button "この商品を分析する" [ref=e1992]:
+                    - img [ref=e1993]
+                    - text: この商品を分析する
+                  - link "出典ページを確認" [ref=e1996] [cursor=pointer]:
+                    - /url: https://ranking.rakuten.co.jp/daily/201706/
+                    - text: 出典ページを確認
+                    - img [ref=e1997]
+                - article [ref=e2001]:
+                  - generic [ref=e2002]:
+                    - generic [ref=e2003]:
+                      - generic [ref=e2004]: Web
+                      - heading "#16株式会社池上精機 開発健康器具" [level=3] [ref=e2005]:
+                        - generic [ref=e2006]: "#16"
+                        - text: 株式会社池上精機 開発健康器具
+                    - generic [ref=e2007]: "58"
+                  - generic [ref=e2008]:
+                    - generic [ref=e2009]:
+                      - text: 需要
+                      - strong [ref=e2010]: 低
+                    - generic [ref=e2011]:
+                      - text: 価格
+                      - strong [ref=e2012]: ¥8,000-20,000
+                    - generic [ref=e2013]:
+                      - text: 供給
+                      - strong [ref=e2014]: Webドメイン
+                  - paragraph [ref=e2015]: トレンド2位の技術力。TV通販では「他社が真似できない特殊構造」という切り口で、競合他社との差別化を明確に打ち出せる。
+                  - paragraph [ref=e2016]: "TVシグナル根拠: 家電・雑貨カテゴリの新規開拓"
+                  - generic [ref=e2017]:
+                    - generic [ref=e2018]:
+                      - img [ref=e2019]
+                      - generic [ref=e2022]: 日本市場フィット
+                    - generic [ref=e2023]: "人気根拠: 2026年2月医療機器製造注目ランキング2位。"
+                    - generic [ref=e2024]: "市場トレンド: 2025年医療機器業界は、地域密着型卸とITソリューションが融合する過渡期。"
+                    - generic [ref=e2025]: "なぜ今日本で: BtoB技術のBtoC転用（スピンオフ商品）はTV通販でヒットしやすい鉄板ストーリー。"
+                  - button "この商品を分析する" [ref=e2027]:
+                    - img [ref=e2028]
+                    - text: この商品を分析する
+                  - link "出典ページを確認" [ref=e2031] [cursor=pointer]:
+                    - /url: https://metoree.com/categories/9432/
+                    - text: 出典ページを確認
+                    - img [ref=e2032]
+                - article [ref=e2036]:
+                  - generic [ref=e2037]:
+                    - generic [ref=e2038]:
+                      - generic [ref=e2039]: 楽天
+                      - heading "#17全自動エスプレッソマシン [ECAM22112B]" [level=3] [ref=e2040]:
+                        - generic [ref=e2041]: "#17"
+                        - text: 全自動エスプレッソマシン [ECAM22112B]
+                    - generic [ref=e2042]: "80"
+                  - generic [ref=e2043]:
+                    - generic [ref=e2044]:
+                      - text: 需要
+                      - strong [ref=e2045]: 中
+                    - generic [ref=e2046]:
+                      - text: 価格
+                      - strong [ref=e2047]: ¥55,000-60,000
+                    - generic [ref=e2048]:
+                      - text: 供給
+                      - strong [ref=e2049]: 楽天市場
+                  - paragraph [ref=e2050]: 家電・雑貨カテゴリ。朝のルーティンを劇的に変える提案は、視聴者のライフスタイル改善欲求を刺激する。TV特別セット（豆付き等）の構成が容易。
+                  - paragraph [ref=e2051]: "TVシグナル根拠: 家電・雑貨カテゴリの高単価成功事例（平均単価¥4,010の10倍以上だが成約率は高い）"
+                  - generic [ref=e2052]:
+                    - generic [ref=e2053]:
+                      - img [ref=e2054]
+                      - generic [ref=e2057]: 日本市場フィット
+                    - generic [ref=e2058]: "人気根拠: 楽天ランキング1位。デロンギブランドへの圧倒的信頼。"
+                    - generic [ref=e2059]: "市場トレンド: 取得不可"
+                    - generic [ref=e2060]: "なぜ今日本で: コンビニコーヒーからのアップグレード層による「自宅での本格カフェ体験」需要。"
+                  - button "この商品を分析する" [ref=e2062]:
+                    - img [ref=e2063]
+                    - text: この商品を分析する
+                  - link "出典ページを確認" [ref=e2066] [cursor=pointer]:
+                    - /url: https://ranking.rakuten.co.jp/daily/562637/
+                    - text: 出典ページを確認
+                    - img [ref=e2067]
+                - article [ref=e2071]:
+                  - generic [ref=e2072]:
+                    - generic [ref=e2073]:
+                      - generic [ref=e2074]: 楽天
+                      - heading "#18Diamana BLUE TM50 搭載ドライバー" [level=3] [ref=e2075]:
+                        - generic [ref=e2076]: "#18"
+                        - text: Diamana BLUE TM50 搭載ドライバー
+                    - generic [ref=e2077]: "70"
+                  - generic [ref=e2078]:
+                    - generic [ref=e2079]:
+                      - text: 需要
+                      - strong [ref=e2080]: 中
+                    - generic [ref=e2081]:
+                      - text: 価格
+                      - strong [ref=e2082]: ¥70,000-80,000
+                    - generic [ref=e2083]:
+                      - text: 供給
+                      - strong [ref=e2084]: 楽天市場
+                  - paragraph [ref=e2085]: ゴルフカテゴリの「シャフト」に焦点を当てた訴求。TV通販では「自分に合うスペック」を診断形式で見せることで、高価格帯でも納得感を持たせられる。
+                  - paragraph [ref=e2086]: "TVシグナル根拠: ゴルフカテゴリの専門性・高単価戦略"
+                  - generic [ref=e2087]:
+                    - generic [ref=e2088]:
+                      - img [ref=e2089]
+                      - generic [ref=e2092]: 日本市場フィット
+                    - generic [ref=e2093]: "人気根拠: テーラーメイドQi10等の最新モデルに標準採用され、市場での評価が確立されている。"
+                    - generic [ref=e2094]: "市場トレンド: 取得不可"
+                    - generic [ref=e2095]: "なぜ今日本で: 「道具にこだわりたい」というアクティブシニアの自己投資欲求に合致。"
+                  - button "この商品を分析する" [ref=e2097]:
+                    - img [ref=e2098]
+                    - text: この商品を分析する
+                  - link "出典ページを確認" [ref=e2101] [cursor=pointer]:
+                    - /url: https://ranking.rakuten.co.jp/daily/201706/
+                    - text: 出典ページを確認
+                    - img [ref=e2102]
+            - generic [ref=e2106]:
+              - generic [ref=e2107]:
+                - img [ref=e2108]
+                - heading "商品選定" [level=3] [ref=e2112]
+              - generic [ref=e2114]:
+                - text: ポートフォリオ戦略
+                - paragraph [ref=e2115]: 2026年に向けた戦略として、TV通販で培った「商品力」をチャネル特性に合わせて最適化する。Amazon/楽天では「高マージン・高回転」の掃除・ゴルフ用品を軸に収益を最大化し、TikTokでは「成長率1000%超」のEMS・美容商材をインフルエンサー経由で拡散させる発見型ECを展開[14]。最終的には顧客データを自社で保有・蓄積し、D2Cサイトを中心としたブランドロイヤリティ向上を図る[4][5]。
+              - generic [ref=e2116]:
+                - generic [ref=e2118]: Amazon Japan
+                - generic [ref=e2119]:
+                  - generic [ref=e2120]:
+                    - generic [ref=e2122]: Tier 1 — 即時投入
+                    - generic [ref=e2123]:
+                      - generic [ref=e2124]:
+                        - generic [ref=e2125]:
+                          - generic [ref=e2126]: "[3本ｾｯﾄ]ｶﾋﾞﾊﾟｯﾁﾌﾟﾚﾐｱﾑ"
+                          - generic [ref=e2128]:
+                            - img [ref=e2129]
+                            - text: 下降
+                        - paragraph [ref=e2132]: 粗利率16.05%だがEC15%後マージンが40.05%と極めて高く、週平均780個の圧倒的回転数を持つため。FBA活用による配送スピードが鍵となる。
+                        - paragraph [ref=e2133]: 原価¥1,224、EC手数料15%でも40%以上のマージンを確保可能。
+                      - generic [ref=e2134]:
+                        - generic [ref=e2135]:
+                          - generic [ref=e2136]: "[期間限定]marumanSG ﾄﾞﾗｲﾊﾞｰ2023"
+                          - generic [ref=e2138]:
+                            - img [ref=e2139]
+                            - text: 下降
+                        - paragraph [ref=e2142]: EC15%後マージンが55.21%と全商品中最高クラス。高単価(¥13,732)かつゴルフカテゴリの成長性に合致[14]。
+                        - paragraph [ref=e2143]: 原価¥4,091、手数料15%引き後も50%以上の利益幅あり。
+                      - generic [ref=e2144]:
+                        - generic [ref=e2145]:
+                          - generic [ref=e2146]: "[3本ｾｯﾄ]K2K MAXﾕｰﾃｨﾘﾃｨ"
+                          - generic [ref=e2148]:
+                            - img [ref=e2149]
+                            - text: 下降
+                        - paragraph [ref=e2152]: 粗利率22.86%でECマージン18.33%を確保。Amazon内のゴルフ需要は安定しており、高単価商材の獲得に向く。
+                        - paragraph [ref=e2153]: 原価¥35,000、販売価格¥52,500において手数料8%適用なら更に利益改善可能。
+                  - generic [ref=e2154]:
+                    - generic [ref=e2156]: Tier 2 — 第2弾
+                    - generic [ref=e2157]:
+                      - generic [ref=e2158]:
+                        - text: ﾊﾟｰﾘｰﾃﾞｭ薬用ﾘﾝｸﾙﾊﾟｳﾀﾞﾘｰﾌｧﾝﾃﾞｰｼｮﾝ
+                        - paragraph [ref=e2159]: ECマージン6.86%と低めだが、Amazon定期おトク便によるリピート化が期待できる化粧品カテゴリのため。
+                      - generic [ref=e2160]:
+                        - text: "[期間限定]K2K ﾁｯﾋﾟﾝｸﾞｳｴｯｼﾞ"
+                        - paragraph [ref=e2161]: ECマージン4.54%で除外基準に近いが、ゴルフカテゴリの他商品との買い回りを期待。
+                  - generic [ref=e2162]:
+                    - generic [ref=e2163]:
+                      - img [ref=e2164]
+                      - generic [ref=e2168]: 不適合商品
+                    - generic [ref=e2170]:
+                      - generic [ref=e2171]: "-"
+                      - generic [ref=e2172]: "[3足ｾｯﾄ]ﾑﾃｷｲﾝｿｰﾙ: 原価とTV単価が同額(¥2,882)でECマージンが-15%となり、販売するほど赤字になるため。"
+              - generic [ref=e2173]:
+                - generic [ref=e2175]: TikTok Shop Japan
+                - generic [ref=e2176]:
+                  - generic [ref=e2177]:
+                    - generic [ref=e2179]: Tier 1 — 即時投入
+                    - generic [ref=e2180]:
+                      - generic [ref=e2181]:
+                        - generic [ref=e2182]:
+                          - generic [ref=e2183]: "[期間限定]ﾙﾈｻﾝｽ ｽﾀｲﾘｰﾎﾞｰﾙ"
+                          - generic [ref=e2185]:
+                            - img [ref=e2186]
+                            - text: 上昇
+                        - paragraph [ref=e2189]: 3M成長率+1000.6%と爆発的。動画映えするフィットネス器具はTikTokの「発見型EC」[14]と相性が極めて良い。
+                        - paragraph [ref=e2190]: TV単価¥4,991。現状マージン-15%だが、TikTok直接販売による販促費圧縮と卸値調整で改善の余地あり。
+                      - generic [ref=e2191]:
+                        - generic [ref=e2192]:
+                          - generic [ref=e2193]: YONAMINE 足裏ﾌﾟﾛ EMSﾌﾟﾗｽ
+                          - generic [ref=e2195]:
+                            - img [ref=e2196]
+                            - text: 上昇
+                        - paragraph [ref=e2199]: 3M成長率+1050%でトレンド。美容・家電カテゴリはTikTok市場の6割を占める[14]。
+                        - paragraph [ref=e2200]: 成長率が極めて高く、ライブコマースによる大量受注で物流コストを抑制可能。
+                      - generic [ref=e2201]:
+                        - generic [ref=e2202]:
+                          - generic [ref=e2203]: ﾌｧｲﾃﾝ 磁気治療足裏ｻﾎﾟｰﾀｰ2足ｾｯﾄ
+                          - generic [ref=e2205]:
+                            - img [ref=e2206]
+                            - text: 上昇
+                        - paragraph [ref=e2209]: 成長率+160%。「健康・美容」への関心が高いTikTokユーザー層[14]に向けたインフルエンサー起用が有効。
+                        - paragraph [ref=e2210]: 手数料5-8%の低さを活かし、TV価格より柔軟なプライシングが可能。
+                  - generic [ref=e2211]:
+                    - generic [ref=e2213]: Tier 2 — 第2弾
+                    - generic [ref=e2214]:
+                      - generic [ref=e2215]:
+                        - text: ｽﾄｰﾝﾊﾞﾘｱ包丁+専用ｼｬｰﾌﾟﾅｰ
+                        - paragraph [ref=e2216]: 実演販売動画との親和性が高いキッチン用品。TV通販の資産をそのままSNS広告に転用可能。
+                      - generic [ref=e2217]:
+                        - text: ﾄﾞｸﾀｰｴｱ ｴｱﾛｼﾞｪｯﾄS 特別ｾｯﾄ
+                        - paragraph [ref=e2218]: 週平均236個の稼働があり、若年層向けのヘルスケア商材として有望。
+                  - generic [ref=e2219]:
+                    - generic [ref=e2220]:
+                      - img [ref=e2221]
+                      - generic [ref=e2225]: 不適合商品
+                    - generic [ref=e2227]:
+                      - generic [ref=e2228]: "-"
+                      - generic [ref=e2229]: "遠赤外線暖房器 ｻﾝﾙﾐｴpro: 粗利率4.97%と極めて低く、大型家電のため物流コストがSNS販売のメリットを打ち消すため。"
+              - generic [ref=e2230]:
+                - generic [ref=e2232]: D2C (自社EC)
+                - generic [ref=e2233]:
+                  - generic [ref=e2234]:
+                    - generic [ref=e2236]: Tier 1 — 即時投入
+                    - generic [ref=e2237]:
+                      - generic [ref=e2238]:
+                        - generic [ref=e2239]:
+                          - generic [ref=e2240]: "[TXD]ﾋﾟﾝﾄｸﾞﾗｽ"
+                          - generic [ref=e2242]:
+                            - img [ref=e2243]
+                            - text: 上昇
+                        - paragraph [ref=e2246]: 成長率+13.33%で安定。ブランド独自性の高い商品はD2Cでのファン化・ロイヤリティ向上に向く[4]。
+                        - paragraph [ref=e2247]: 決済手数料のみ(3-4%)のため、実質マージンを10%以上改善可能。
+                      - generic [ref=e2248]:
+                        - generic [ref=e2249]:
+                          - generic [ref=e2250]: 松屋銀座外商部 ｸﾛｺﾀﾞｲﾙ長財布
+                          - generic [ref=e2252]:
+                            - img [ref=e2253]
+                            - text: 上昇
+                        - paragraph [ref=e2256]: 成長率+95.12%。高単価商材をストーリーと共に売る手法はD2Cの「ブランド再定義」戦略に合致[3][6]。
+                        - paragraph [ref=e2257]: 手数料が最小限のため、ギフト対応などの付加価値サービスへの投資が可能。
+                  - generic [ref=e2258]:
+                    - generic [ref=e2260]: Tier 2 — 第2弾
+                    - generic [ref=e2262]:
+                      - text: "[3本ｾｯﾄ]ｶﾋﾞﾊﾟｯﾁﾌﾟﾚﾐｱﾑ"
+                      - paragraph [ref=e2263]: 圧倒的な売上実績を誇る看板商品として、自社サイトへの集客フックとして活用。
+                  - generic [ref=e2264]:
+                    - generic [ref=e2265]:
+                      - img [ref=e2266]
+                      - generic [ref=e2270]: 不適合商品
+                    - generic [ref=e2272]:
+                      - generic [ref=e2273]: "-"
+                      - generic [ref=e2274]: "[期間限定][6本ｾｯﾄ]DANGAN7 MAXｱｲｱﾝ: 在庫リスクが高く、自社集客のみでは販売スピードが確保しにくいため、まずはモール先行が妥当。"
+              - generic [ref=e2275]:
+                - text: 出典
+                - generic [ref=e2276]:
+                  - link "[3] 2026年EC再定義へ。ECの未来を予測する７つのキーワード" [ref=e2277] [cursor=pointer]:
+                    - /url: https://www.commercepick.com/archives/82126
+                    - generic [ref=e2278]: "[3]"
+                    - img [ref=e2279]
+                    - generic [ref=e2283]: 2026年EC再定義へ。ECの未来を予測する７つのキーワード
+                  - link "[4] ECは、ブランディング中心へ【2026年 EC再定義へ 未来予測キーワードを解説】" [ref=e2284] [cursor=pointer]:
+                    - /url: https://news.yahoo.co.jp/articles/1f40705937c4d9a1c5bc14098ffe512b905fe99e
+                    - generic [ref=e2285]: "[4]"
+                    - img [ref=e2286]
+                    - generic [ref=e2290]: ECは、ブランディング中心へ【2026年 EC再定義へ 未来予測キーワードを解説】
+                  - link "[14] 【2026年最新】TikTok Shopとは？日本のEC事業者向けに注目理由から出店・運用まで徹底解説" [ref=e2291] [cursor=pointer]:
+                    - /url: https://next-engine.net/ec-blog/tiktokshop/
+                    - generic [ref=e2292]: "[14]"
+                    - img [ref=e2293]
+                    - generic [ref=e2297]: 【2026年最新】TikTok Shopとは？日本のEC事業者向けに注目理由から出店・運用まで徹底解説
+            - generic [ref=e2298]:
+              - generic [ref=e2299]:
+                - img [ref=e2300]
+                - heading "チャネル戦略" [level=3] [ref=e2304]
+              - generic [ref=e2306]:
+                - text: 展開ロードマップ
+                - generic [ref=e2307]:
+                  - generic [ref=e2308]:
+                    - generic [ref=e2309]: "1"
+                    - generic [ref=e2310]:
+                      - generic [ref=e2311]:
+                        - generic [ref=e2312]: "Phase 1: 即時収益化"
+                        - generic [ref=e2313]: 0-1ヶ月
+                      - generic [ref=e2314]:
+                        - generic [ref=e2315]: Amazon Japan
+                        - generic [ref=e2316]: TikTok Shop Japan
+                      - paragraph [ref=e2317]: 初期費用が低く、TV通販で培ったデモ動画を即座に活用可能。Amazonで高マージン商品を確保し、TikTokで爆発的な拡散を狙う [12][14]。
+                  - generic [ref=e2318]:
+                    - generic [ref=e2319]: "2"
+                    - generic [ref=e2320]:
+                      - generic [ref=e2321]:
+                        - generic [ref=e2322]: "Phase 2: モール基盤構築"
+                        - generic [ref=e2323]: 2-4ヶ月
+                      - generic [ref=e2324]:
+                        - generic [ref=e2325]: 楽天市場
+                        - generic [ref=e2326]: Yahoo!ショッピング
+                        - generic [ref=e2327]: Instagram Shopping
+                      - paragraph [ref=e2328]: 楽天・Yahooのポイント経済圏へ進出し、TV放送による指名検索を確実に刈り取る。Instagramでファンとの接点を強化。
+                  - generic [ref=e2329]:
+                    - generic [ref=e2330]: "3"
+                    - generic [ref=e2331]:
+                      - generic [ref=e2332]:
+                        - generic [ref=e2333]: "Phase 3: D2C・越境展開"
+                        - generic [ref=e2334]: 6-12ヶ月
+                      - generic [ref=e2335]:
+                        - generic [ref=e2336]: 自社EC (D2C)
+                        - generic [ref=e2337]: 越境EC
+                      - paragraph [ref=e2338]: 蓄積した顧客データを活用し、自社サイトを中心とした「ブランドロイヤリティ」重視の運営へシフト [4]。余剰在庫やヒット商品の海外展開を模索。
+              - generic [ref=e2340] [cursor=pointer]:
+                - generic [ref=e2341]:
+                  - generic [ref=e2342]:
+                    - generic [ref=e2343]: Amazon Japan
+                    - generic [ref=e2344]: 即時開始
+                  - generic [ref=e2345]:
+                    - generic [ref=e2346]: "95"
+                    - img [ref=e2347]
+                - generic [ref=e2349]: 世界4位の日本EC市場を牽引する巨大プラットフォーム
+              - generic [ref=e2351] [cursor=pointer]:
+                - generic [ref=e2352]:
+                  - generic [ref=e2353]:
+                    - generic [ref=e2354]: TikTok Shop Japan
+                    - generic [ref=e2355]: 即時開始
+                  - generic [ref=e2356]:
+                    - generic [ref=e2357]: "90"
+                    - img [ref=e2358]
+                - generic [ref=e2360]: 2025年12月に月間GMV約60.2億円に到達する急成長市場 [12]
+              - generic [ref=e2362] [cursor=pointer]:
+                - generic [ref=e2363]:
+                  - generic [ref=e2364]:
+                    - generic [ref=e2365]: 自社EC (D2C)
+                    - generic [ref=e2366]: 6ヶ月以内
+                  - generic [ref=e2367]:
+                    - generic [ref=e2368]: "90"
+                    - img [ref=e2369]
+                - generic [ref=e2371]: 2026年にはブランドロイヤリティ向上の中心地へ [4]
+              - generic [ref=e2373] [cursor=pointer]:
+                - generic [ref=e2374]:
+                  - generic [ref=e2375]:
+                    - generic [ref=e2376]: 楽天市場
+                    - generic [ref=e2377]: 3ヶ月以内
+                  - generic [ref=e2378]:
+                    - generic [ref=e2379]: "85"
+                    - img [ref=e2380]
+                - generic [ref=e2382]: 日本最大級のポイント経済圏
+              - generic [ref=e2384] [cursor=pointer]:
+                - generic [ref=e2385]:
+                  - generic [ref=e2386]:
+                    - generic [ref=e2387]: Yahoo!ショッピング
+                    - generic [ref=e2388]: 3ヶ月以内
+                  - generic [ref=e2389]:
+                    - generic [ref=e2390]: "80"
+                    - img [ref=e2391]
+                - generic [ref=e2393]: LINE/PayPayユーザーを基盤とした巨大商圏
+              - generic [ref=e2395] [cursor=pointer]:
+                - generic [ref=e2396]:
+                  - generic [ref=e2397]:
+                    - generic [ref=e2398]: Instagram Shopping
+                    - generic [ref=e2399]: 3ヶ月以内
+                  - generic [ref=e2400]:
+                    - generic [ref=e2401]: "75"
+                    - img [ref=e2402]
+                - generic [ref=e2404]: ビジュアル重視のライフスタイル提案型市場
+              - generic [ref=e2406] [cursor=pointer]:
+                - generic [ref=e2407]:
+                  - generic [ref=e2408]:
+                    - generic [ref=e2409]: 越境EC (Coupang/Shopee)
+                    - generic [ref=e2410]: 12ヶ月以内
+                  - generic [ref=e2411]:
+                    - generic [ref=e2412]: "60"
+                    - img [ref=e2413]
+                - generic [ref=e2415]: 拡大を続けるが、物流・規制の壁あり [5]
+              - generic [ref=e2416]:
+                - text: 出典
+                - generic [ref=e2417]:
+                  - link "[4] ECは、ブランディング中心へ【2026年 EC再定義へ 未来予測キーワードを解説】" [ref=e2418] [cursor=pointer]:
+                    - /url: https://news.yahoo.co.jp/articles/1f40705937c4d9a1c5bc14098ffe512b905fe99e
+                    - generic [ref=e2419]: "[4]"
+                    - img [ref=e2420]
+                    - generic [ref=e2424]: ECは、ブランディング中心へ【2026年 EC再定義へ 未来予測キーワードを解説】
+                  - link "[5] 2025年、EC業界を振り返る～そして2026年の展望は。" [ref=e2425] [cursor=pointer]:
+                    - /url: https://transcosmos-ecx.jp/blog/c474
+                    - generic [ref=e2426]: "[5]"
+                    - img [ref=e2427]
+                    - generic [ref=e2431]: 2025年、EC業界を振り返る～そして2026年の展望は。
+                  - link "[12] TikTok Shop日本市場、2025年12月のGMVは約60.2億円に到達" [ref=e2432] [cursor=pointer]:
+                    - /url: https://www.commercepick.com/archives/83642
+                    - generic [ref=e2433]: "[12]"
+                    - img [ref=e2434]
+                    - generic [ref=e2438]: TikTok Shop日本市場、2025年12月のGMVは約60.2億円に到達
+                  - link "[14] 【2026年最新】TikTok Shopとは？日本のEC事業者向けに注目理由から出店・運用まで徹底解説" [ref=e2439] [cursor=pointer]:
+                    - /url: https://next-engine.net/ec-blog/tiktokshop/
+                    - generic [ref=e2440]: "[14]"
+                    - img [ref=e2441]
+                    - generic [ref=e2445]: 【2026年最新】TikTok Shopとは？日本のEC事業者向けに注目理由から出店・運用まで徹底解説
+            - generic [ref=e2446]:
+              - generic [ref=e2447]:
+                - img [ref=e2448]
+                - heading "価格・マージン戦略" [level=3] [ref=e2450]
+              - generic [ref=e2451]:
+                - generic [ref=e2452]:
+                  - generic [ref=e2453]: プレミアム高機能キッチンウェア
+                  - generic [ref=e2454]:
+                    - generic [ref=e2455]:
+                      - text: "原価:"
+                      - generic [ref=e2456]: ¥4,000
+                    - generic [ref=e2457]:
+                      - text: "卸売率:"
+                      - generic [ref=e2458]: 0.4%
+                    - generic [ref=e2459]:
+                      - text: "TV単価:"
+                      - generic [ref=e2460]: ¥10,000
+                - generic [ref=e2461]:
+                  - table [ref=e2463]:
+                    - rowgroup [ref=e2464]:
+                      - row "チャネル 推奨価格 競合基準 手数料 純粗利率 純粗利額" [ref=e2465]:
+                        - columnheader "チャネル" [ref=e2466]
+                        - columnheader "推奨価格" [ref=e2467]
+                        - columnheader "競合基準" [ref=e2468]
+                        - columnheader "手数料" [ref=e2469]
+                        - columnheader "純粗利率" [ref=e2470]
+                        - columnheader "純粗利額" [ref=e2471]
+                    - rowgroup [ref=e2472]:
+                      - row "Amazon Japan ¥9,800 9,500 - 11,000円 手数料15% + FBA 700円 37% ¥3,630" [ref=e2473]:
+                        - cell "Amazon Japan" [ref=e2474]
+                        - cell "¥9,800" [ref=e2475]
+                        - cell "9,500 - 11,000円" [ref=e2476]
+                        - cell "手数料15% + FBA 700円" [ref=e2477]
+                        - cell "37%" [ref=e2478]:
+                          - generic [ref=e2479]: 37%
+                        - cell "¥3,630" [ref=e2480]
+                      - row "TikTok Shop Japan ¥8,900 8,000 - 10,000円 手数料8% + 自社出荷 800円 38.1% ¥3,388" [ref=e2481]:
+                        - cell "TikTok Shop Japan" [ref=e2482]
+                        - cell "¥8,900" [ref=e2483]
+                        - cell "8,000 - 10,000円" [ref=e2484]
+                        - cell "手数料8% + 自社出荷 800円" [ref=e2485]
+                        - cell "38.1%" [ref=e2486]:
+                          - generic [ref=e2487]: 38.1%
+                        - cell "¥3,388" [ref=e2488]
+                      - row "自社EC (D2C) ¥10,000 10,000円 決済4% + 外部委託 900円 47% ¥4,700" [ref=e2489]:
+                        - cell "自社EC (D2C)" [ref=e2490]
+                        - cell "¥10,000" [ref=e2491]
+                        - cell "10,000円" [ref=e2492]
+                        - cell "決済4% + 外部委託 900円" [ref=e2493]
+                        - cell "47%" [ref=e2494]:
+                          - generic [ref=e2495]: 47%
+                        - cell "¥4,700" [ref=e2496]
+                  - paragraph [ref=e2497]: TV視聴後の検索流入を確実にキャッチするため、送料込みでTV単価より僅かに安価に設定。FBA活用によりプライム会員の利便性を優先 [14]。
+              - generic [ref=e2498]:
+                - generic [ref=e2500]:
+                  - img [ref=e2501]
+                  - text: 損益分岐点（BEP）分析
+                - generic [ref=e2504]:
+                  - generic [ref=e2505]:
+                    - generic [ref=e2506]:
+                      - generic [ref=e2507]: Amazon Japan
+                      - generic [ref=e2508]: "BEP: 43個/月"
+                    - generic [ref=e2509]:
+                      - generic [ref=e2510]:
+                        - generic [ref=e2511]: 変動費/個
+                        - generic [ref=e2512]: ¥6,170
+                      - generic [ref=e2513]:
+                        - generic [ref=e2514]: BEP売上
+                        - generic [ref=e2515]: ¥421,400
+                      - generic [ref=e2516]:
+                        - generic [ref=e2517]: 達成見込
+                        - text: 2ヶ月以内（TV放送との連動による指名検索増を想定 [8]）
+                    - generic [ref=e2518]: "固定費: 月額費用 ¥4,900/月 + 広告宣伝費 ¥150,000/月"
+                  - generic [ref=e2519]:
+                    - generic [ref=e2520]:
+                      - generic [ref=e2521]: 楽天市場
+                      - generic [ref=e2522]: "BEP: 57個/月"
+                    - generic [ref=e2523]:
+                      - generic [ref=e2524]:
+                        - generic [ref=e2525]: 変動費/個
+                        - generic [ref=e2526]: ¥5,600
+                      - generic [ref=e2527]:
+                        - generic [ref=e2528]: BEP売上
+                        - generic [ref=e2529]: ¥570,000
+                      - generic [ref=e2530]:
+                        - generic [ref=e2531]: 達成見込
+                        - text: 3-4ヶ月（楽天経済圏内でのSEO・店舗評価蓄積期間を考慮 [1]）
+                    - generic [ref=e2532]: "固定費: 月額費用 ¥50,000/月 + RPP広告・クーポン原資 ¥200,000/月"
+              - generic [ref=e2533]:
+                - generic [ref=e2535]: マージン改善提案
+                - list [ref=e2537]:
+                  - listitem [ref=e2538]:
+                    - generic [ref=e2539]: ●
+                    - text: 1. 多店舗展開による在庫一元化と物流コスト(RSL/FBA)の最適化による固定費分散 [5]。
+                  - listitem [ref=e2540]:
+                    - generic [ref=e2541]: ●
+                    - text: 2. 自社ECサイトでの定期購入（LTV重視）への誘導による、広告依存度の中長期的な低減 [4]。
+                  - listitem [ref=e2542]:
+                    - generic [ref=e2543]: ●
+                    - text: 3. TikTok Shop等の低手数料チャネルでのライブコマース実施による、獲得CPAの抑制とマージン確保 [12][15]。
+                  - listitem [ref=e2544]:
+                    - generic [ref=e2545]: ●
+                    - text: 4. TV通販の放送枠に合わせた「EC限定クーポン」の発行により、放送直後の離脱率を改善しBEP達成を加速させる [10]。
+              - generic [ref=e2546]:
+                - text: 出典
+                - generic [ref=e2547]:
+                  - link "[1] 【2026年最新版】EC市場規模は拡大中？調査結果と今後の動向について解説" [ref=e2548] [cursor=pointer]:
+                    - /url: https://www.w2solution.co.jp/useful_info_ec/ec-market/
+                    - generic [ref=e2549]: "[1]"
+                    - img [ref=e2550]
+                    - generic [ref=e2554]: 【2026年最新版】EC市場規模は拡大中？調査結果と今後の動向について解説
+                  - link "[3] 2026年EC再定義へ。ECの未来を予測する７つのキーワード" [ref=e2555] [cursor=pointer]:
+                    - /url: https://www.commercepick.com/archives/82126
+                    - generic [ref=e2556]: "[3]"
+                    - img [ref=e2557]
+                    - generic [ref=e2561]: 2026年EC再定義へ。ECの未来を予測する７つのキーワード
+                  - link "[4] ECは、ブランディング中心へ【2026年 EC再定義へ 未来予測キーワードを解説】" [ref=e2562] [cursor=pointer]:
+                    - /url: https://news.yahoo.co.jp/articles/1f40705937c4d9a1c5bc14098ffe512b905fe99e
+                    - generic [ref=e2563]: "[4]"
+                    - img [ref=e2564]
+                    - generic [ref=e2568]: ECは、ブランディング中心へ【2026年 EC再定義へ 未来予測キーワードを解説】
+                  - link "[8] テレビ・ネットの融合に取り組むテレビ通販の奮闘" [ref=e2569] [cursor=pointer]:
+                    - /url: https://ecclab.empowershop.co.jp/archives/1668
+                    - generic [ref=e2570]: "[8]"
+                    - img [ref=e2571]
+                    - generic [ref=e2575]: テレビ・ネットの融合に取り組むテレビ通販の奮闘
+                  - link "[10] TV通販 vs ECサイト vs 新聞チラシ 2024年の食品の売り方はこれだ！" [ref=e2576] [cursor=pointer]:
+                    - /url: https://corekara.co.jp/seminar/20240215seminar/
+                    - generic [ref=e2577]: "[10]"
+                    - img [ref=e2578]
+                    - generic [ref=e2582]: TV通販 vs ECサイト vs 新聞チラシ 2024年の食品の売り方はこれだ！
+                  - link "[12] TikTok Shop日本市場、2025年12月のGMVは約60.2億円に到達" [ref=e2583] [cursor=pointer]:
+                    - /url: https://www.commercepick.com/archives/83642
+                    - generic [ref=e2584]: "[12]"
+                    - img [ref=e2585]
+                    - generic [ref=e2589]: TikTok Shop日本市場、2025年12月のGMVは約60.2億円に到達
+                  - link "[14] 【2026年最新】TikTok Shopとは？日本のEC事業者向けに注目理由から出店・運用まで" [ref=e2590] [cursor=pointer]:
+                    - /url: https://next-engine.net/ec-blog/tiktokshop/
+                    - generic [ref=e2591]: "[14]"
+                    - img [ref=e2592]
+                    - generic [ref=e2596]: 【2026年最新】TikTok Shopとは？日本のEC事業者向けに注目理由から出店・運用まで
+                  - link "[15] TikTok Shop日本市場が急成長、11月のGMVは前月比68.4%増" [ref=e2597] [cursor=pointer]:
+                    - /url: https://www.commercepick.com/archives/79506
+                    - generic [ref=e2598]: "[15]"
+                    - img [ref=e2599]
+                    - generic [ref=e2603]: TikTok Shop日本市場が急成長、11月のGMVは前月比68.4%増
+            - generic [ref=e2604]:
+              - generic [ref=e2605]:
+                - img [ref=e2606]
+                - heading "マーケティング実行計画" [level=3] [ref=e2609]
+              - generic [ref=e2611]:
+                - text: 6ヶ月間予算サマリー
+                - generic [ref=e2612]:
+                  - generic [ref=e2613]: ¥425万
+                  - generic [ref=e2614]: 総予算
+                - generic [ref=e2615]:
+                  - generic [ref=e2616]: チャネル別
+                  - generic [ref=e2617]:
+                    - generic [ref=e2618]: "自社EC (D2C): ¥140万"
+                    - generic [ref=e2619]: "TikTok Shop: ¥115万"
+                    - generic [ref=e2620]: "楽天市場: ¥100万"
+                    - generic [ref=e2621]: "Amazon Japan: ¥40万"
+                    - generic [ref=e2622]: "その他(Yahoo/Insta): ¥30万"
+                - generic [ref=e2623]:
+                  - generic [ref=e2624]: 施策別
+                  - generic [ref=e2625]:
+                    - generic [ref=e2626]: "広告費: ¥170万"
+                    - generic [ref=e2627]: "コンテンツ制作費: ¥106万"
+                    - generic [ref=e2628]: "インフルエンサー費: ¥106万"
+                    - generic [ref=e2629]: "PR/その他: ¥43万"
+              - generic [ref=e2630]:
+                - generic [ref=e2632]:
+                  - img [ref=e2633]
+                  - text: 月別実行計画
+                - generic [ref=e2635]:
+                  - generic [ref=e2636]:
+                    - generic [ref=e2637]:
+                      - generic [ref=e2638]: 1ヶ月目
+                      - generic [ref=e2639]: ¥30万
+                    - generic [ref=e2640]:
+                      - generic [ref=e2641]:
+                        - generic [ref=e2642]: Amazon Japan
+                        - generic [ref=e2643]:
+                          - text: TV放送連動型スポンサー検索広告運用
+                          - generic [ref=e2644]:
+                            - generic [ref=e2645]: "予算: ¥10万"
+                            - generic [ref=e2646]: "IMP: 500,000"
+                            - generic [ref=e2647]: "CV: 120"
+                      - generic [ref=e2648]:
+                        - generic [ref=e2649]: TikTok Shop
+                        - generic [ref=e2650]:
+                          - text: デモ動画広告・ライブコマース連携
+                          - generic [ref=e2651]:
+                            - generic [ref=e2652]: "予算: ¥20万"
+                            - generic [ref=e2653]: "IMP: 1,200,000"
+                            - generic [ref=e2654]: "CV: 80"
+                  - generic [ref=e2655]:
+                    - generic [ref=e2656]:
+                      - generic [ref=e2657]: 2ヶ月目
+                      - generic [ref=e2658]: ¥35万
+                    - generic [ref=e2659]:
+                      - generic [ref=e2660]:
+                        - generic [ref=e2661]: Amazon Japan
+                        - generic [ref=e2662]:
+                          - text: スポンサーディスプレイ広告（リターゲティング）
+                          - generic [ref=e2663]:
+                            - generic [ref=e2664]: "予算: ¥10万"
+                            - generic [ref=e2665]: "IMP: 400,000"
+                            - generic [ref=e2666]: "CV: 150"
+                      - generic [ref=e2667]:
+                        - generic [ref=e2668]: TikTok Shop
+                        - generic [ref=e2669]:
+                          - text: マイクロインフルエンサーUGC創出
+                          - generic [ref=e2670]:
+                            - generic [ref=e2671]: "予算: ¥25万"
+                            - generic [ref=e2672]: "IMP: 1,500,000"
+                            - generic [ref=e2673]: "CV: 100"
+                  - generic [ref=e2674]:
+                    - generic [ref=e2675]:
+                      - generic [ref=e2676]: 3ヶ月目
+                      - generic [ref=e2677]: ¥70万
+                    - generic [ref=e2678]:
+                      - generic [ref=e2679]:
+                        - generic [ref=e2680]: 楽天市場
+                        - generic [ref=e2681]:
+                          - text: 新規開店・RPP広告・お買い物マラソン参加
+                          - generic [ref=e2682]:
+                            - generic [ref=e2683]: "予算: ¥40万"
+                            - generic [ref=e2684]: "IMP: 600,000"
+                            - generic [ref=e2685]: "CV: 60"
+                      - generic [ref=e2686]:
+                        - generic [ref=e2687]: Instagram Shopping
+                        - generic [ref=e2688]:
+                          - text: フィード・ストーリーズ広告
+                          - generic [ref=e2689]:
+                            - generic [ref=e2690]: "予算: ¥10万"
+                            - generic [ref=e2691]: "IMP: 300,000"
+                            - generic [ref=e2692]: "CV: 30"
+                      - generic [ref=e2693]:
+                        - generic [ref=e2694]: Yahoo!ショッピング
+                        - generic [ref=e2695]:
+                          - text: アイテムマッチ広告運用
+                          - generic [ref=e2696]:
+                            - generic [ref=e2697]: "予算: ¥5万"
+                            - generic [ref=e2698]: "IMP: 150,000"
+                            - generic [ref=e2699]: "CV: 20"
+                  - generic [ref=e2700]:
+                    - generic [ref=e2701]:
+                      - generic [ref=e2702]: 4ヶ月目
+                      - generic [ref=e2703]: ¥80万
+                    - generic [ref=e2704]:
+                      - generic [ref=e2705]:
+                        - generic [ref=e2706]: 楽天市場
+                        - generic [ref=e2707]:
+                          - text: クーポン広告・店舗内SEO強化
+                          - generic [ref=e2708]:
+                            - generic [ref=e2709]: "予算: ¥40万"
+                            - generic [ref=e2710]: "IMP: 800,000"
+                            - generic [ref=e2711]: "CV: 100"
+                      - generic [ref=e2712]:
+                        - generic [ref=e2713]: TikTok Shop
+                        - generic [ref=e2714]:
+                          - text: マクロインフルエンサー起用
+                          - generic [ref=e2715]:
+                            - generic [ref=e2716]: "予算: ¥30万"
+                            - generic [ref=e2717]: "IMP: 2,000,000"
+                            - generic [ref=e2718]: "CV: 150"
+                  - generic [ref=e2719]:
+                    - generic [ref=e2720]:
+                      - generic [ref=e2721]: 5ヶ月目
+                      - generic [ref=e2722]: ¥90万
+                    - generic [ref=e2723]:
+                      - generic [ref=e2724]:
+                        - generic [ref=e2725]: 自社EC (D2C)
+                        - generic [ref=e2726]:
+                          - text: サイト構築・集客広告テスト
+                          - generic [ref=e2727]:
+                            - generic [ref=e2728]: "予算: ¥60万"
+                            - generic [ref=e2729]: "IMP: 1,000,000"
+                            - generic [ref=e2730]: "CV: 50"
+                      - generic [ref=e2731]:
+                        - generic [ref=e2732]: Amazon/楽天
+                        - generic [ref=e2733]:
+                          - text: 在庫連動・リピート促進メール
+                          - generic [ref=e2734]:
+                            - generic [ref=e2735]: "予算: ¥20万"
+                            - generic [ref=e2736]: "IMP: 300,000"
+                            - generic [ref=e2737]: "CV: 100"
+                  - generic [ref=e2738]:
+                    - generic [ref=e2739]:
+                      - generic [ref=e2740]: 6ヶ月目
+                      - generic [ref=e2741]: ¥120万
+                    - generic [ref=e2742]:
+                      - generic [ref=e2743]:
+                        - generic [ref=e2744]: 自社EC (D2C)
+                        - generic [ref=e2745]:
+                          - text: SNS運用・ブランディング広告本格化
+                          - generic [ref=e2746]:
+                            - generic [ref=e2747]: "予算: ¥80万"
+                            - generic [ref=e2748]: "IMP: 2,500,000"
+                            - generic [ref=e2749]: "CV: 120"
+                      - generic [ref=e2750]:
+                        - generic [ref=e2751]: TikTok Shop
+                        - generic [ref=e2752]:
+                          - text: ライブコマース祭事参加
+                          - generic [ref=e2753]:
+                            - generic [ref=e2754]: "予算: ¥30万"
+                            - generic [ref=e2755]: "IMP: 1,800,000"
+                            - generic [ref=e2756]: "CV: 200"
+              - generic [ref=e2757]:
+                - generic [ref=e2759]: コンテンツカレンダー（8週間）
+                - table [ref=e2762]:
+                  - rowgroup [ref=e2763]:
+                    - row "週 チャネル 種別 テーマ 商品" [ref=e2764]:
+                      - columnheader "週" [ref=e2765]
+                      - columnheader "チャネル" [ref=e2766]
+                      - columnheader "種別" [ref=e2767]
+                      - columnheader "テーマ" [ref=e2768]
+                      - columnheader "商品" [ref=e2769]
+                  - rowgroup [ref=e2770]:
+                    - row "Week 1 Amazon 商品画像/A+コンテンツ TV放送実績の可視化 カビパッチプレミアム" [ref=e2771]:
+                      - cell "Week 1" [ref=e2772]
+                      - cell "Amazon" [ref=e2773]
+                      - cell "商品画像/A+コンテンツ" [ref=e2774]:
+                        - generic [ref=e2775]: 商品画像/A+コンテンツ
+                      - cell "TV放送実績の可視化" [ref=e2776]
+                      - cell "カビパッチプレミアム" [ref=e2777]
+                    - row "Week 2 TikTok ショート動画 足裏EMSの「ビリビリ」体験検証 YONAMINE 足裏プロ" [ref=e2778]:
+                      - cell "Week 2" [ref=e2779]
+                      - cell "TikTok" [ref=e2780]
+                      - cell "ショート動画" [ref=e2781]:
+                        - generic [ref=e2782]: ショート動画
+                      - cell "足裏EMSの「ビリビリ」体験検証" [ref=e2783]
+                      - cell "YONAMINE 足裏プロ" [ref=e2784]
+                    - row "Week 3 Amazon リスティング広告 指名検索受け皿作り marumanSG ドライバー" [ref=e2785]:
+                      - cell "Week 3" [ref=e2786]
+                      - cell "Amazon" [ref=e2787]
+                      - cell "リスティング広告" [ref=e2788]:
+                        - generic [ref=e2789]: リスティング広告
+                      - cell "指名検索受け皿作り" [ref=e2790]
+                      - cell "marumanSG ドライバー" [ref=e2791]
+                    - row "Week 4 TikTok ライブ配信 スタイリーボールで宅トレ実演 ルネサンス スタイリーボール" [ref=e2792]:
+                      - cell "Week 4" [ref=e2793]
+                      - cell "TikTok" [ref=e2794]
+                      - cell "ライブ配信" [ref=e2795]:
+                        - generic [ref=e2796]: ライブ配信
+                      - cell "スタイリーボールで宅トレ実演" [ref=e2797]
+                      - cell "ルネサンス スタイリーボール" [ref=e2798]
+                    - row "Week 5 TikTok インフルエンサー投稿 磁気サポーターの日常使い ファイテン 磁気治療足裏サポーター" [ref=e2799]:
+                      - cell "Week 5" [ref=e2800]
+                      - cell "TikTok" [ref=e2801]
+                      - cell "インフルエンサー投稿" [ref=e2802]:
+                        - generic [ref=e2803]: インフルエンサー投稿
+                      - cell "磁気サポーターの日常使い" [ref=e2804]
+                      - cell "ファイテン 磁気治療足裏サポーター" [ref=e2805]
+                    - row "Week 6 Amazon ストアページ更新 高評価レビューのピックアップ K2K MAXユーティリティ" [ref=e2806]:
+                      - cell "Week 6" [ref=e2807]
+                      - cell "Amazon" [ref=e2808]
+                      - cell "ストアページ更新" [ref=e2809]:
+                        - generic [ref=e2810]: ストアページ更新
+                      - cell "高評価レビューのピックアップ" [ref=e2811]
+                      - cell "K2K MAXユーティリティ" [ref=e2812]
+                    - row "Week 7 TikTok 比較検証動画 一般の洗剤 vs カビパッチ カビパッチプレミアム" [ref=e2813]:
+                      - cell "Week 7" [ref=e2814]
+                      - cell "TikTok" [ref=e2815]
+                      - cell "比較検証動画" [ref=e2816]:
+                        - generic [ref=e2817]: 比較検証動画
+                      - cell "一般の洗剤 vs カビパッチ" [ref=e2818]
+                      - cell "カビパッチプレミアム" [ref=e2819]
+                    - row "Week 8 全チャネル セール告知 期間限定ポイントアップキャンペーン 全商品" [ref=e2820]:
+                      - cell "Week 8" [ref=e2821]
+                      - cell "全チャネル" [ref=e2822]
+                      - cell "セール告知" [ref=e2823]:
+                        - generic [ref=e2824]: セール告知
+                      - cell "期間限定ポイントアップキャンペーン" [ref=e2825]
+                      - cell "全商品" [ref=e2826]
+              - generic [ref=e2827]:
+                - generic [ref=e2829]:
+                  - img [ref=e2830]
+                  - text: インフルエンサー施策
+                - generic [ref=e2836]:
+                  - generic [ref=e2837]:
+                    - generic [ref=e2838]:
+                      - generic [ref=e2839]: macro
+                      - generic [ref=e2840]: 2名
+                      - generic [ref=e2841]: "@TikTok / Instagram"
+                    - generic [ref=e2842]:
+                      - generic [ref=e2843]: "予算/人: ¥400,000"
+                      - generic [ref=e2844]: "期待ROI: 250%"
+                    - paragraph [ref=e2845]: ライフスタイル・家電・美容系で高いエンゲージメントを持つ、TV出演経験者
+                  - generic [ref=e2846]:
+                    - generic [ref=e2847]:
+                      - generic [ref=e2848]: micro
+                      - generic [ref=e2849]: 15名
+                      - generic [ref=e2850]: "@TikTok / Instagram"
+                    - generic [ref=e2851]:
+                      - generic [ref=e2852]: "予算/人: ¥50,000"
+                      - generic [ref=e2853]: "期待ROI: 180%"
+                    - paragraph [ref=e2854]: 主婦・共働き層・ゴルフ愛好家など特定コミュニティへの影響力
+              - generic [ref=e2855]:
+                - text: 出典
+                - generic [ref=e2856]:
+                  - link "[8] テレビ・ネットの融合に取り組むテレビ通販の奮闘" [ref=e2857] [cursor=pointer]:
+                    - /url: https://ecclab.empowershop.co.jp/archives/1668
+                    - generic [ref=e2858]: "[8]"
+                    - img [ref=e2859]
+                    - generic [ref=e2863]: テレビ・ネットの融合に取り組むテレビ通販の奮闘
+                  - link "[1] 【2026年最新版】EC市場規模は拡大中？調査結果と今後の動向について解説" [ref=e2864] [cursor=pointer]:
+                    - /url: https://www.w2solution.co.jp/useful_info_ec/ec-market/
+                    - generic [ref=e2865]: "[1]"
+                    - img [ref=e2866]
+                    - generic [ref=e2870]: 【2026年最新版】EC市場規模は拡大中？調査結果と今後の動向について解説
+                  - link "[12] TikTok Shop日本市場、2025年12月のGMVは約60.2億円に到達" [ref=e2871] [cursor=pointer]:
+                    - /url: https://www.commercepick.com/archives/83642
+                    - generic [ref=e2872]: "[12]"
+                    - img [ref=e2873]
+                    - generic [ref=e2877]: TikTok Shop日本市場、2025年12月のGMVは約60.2億円に到達
+                  - link "[4] ECは、ブランディング中心へ【2026年 EC再定義へ】" [ref=e2878] [cursor=pointer]:
+                    - /url: https://news.yahoo.co.jp/articles/1f40705937c4d9a1c5bc14098ffe512b905fe99e
+                    - generic [ref=e2879]: "[4]"
+                    - img [ref=e2880]
+                    - generic [ref=e2884]: ECは、ブランディング中心へ【2026年 EC再定義へ】
+            - generic [ref=e2885]:
+              - generic [ref=e2886]:
+                - img [ref=e2887]
+                - heading "収益予測" [level=3] [ref=e2889]
+              - generic [ref=e2890]:
+                - generic [ref=e2892]: 12ヶ月売上・利益推移 (万円)
+                - application [ref=e2897]:
+                  - generic [ref=e2918]:
+                    - generic [ref=e2919]:
+                      - generic [ref=e2921]: 4月
+                      - generic [ref=e2923]: 5月
+                      - generic [ref=e2925]: 6月
+                      - generic [ref=e2927]: 9月
+                      - generic [ref=e2929]: "'27 3月"
+                    - generic [ref=e2930]:
+                      - generic [ref=e2932]: 0万
+                      - generic [ref=e2934]: 2500万
+                      - generic [ref=e2936]: 5000万
+                      - generic [ref=e2938]: 7500万
+                      - generic [ref=e2940]: 10000万
+              - generic [ref=e2941]:
+                - generic [ref=e2943]: チャネル別売上構成 (万円)
+                - generic [ref=e2947]:
+                  - list [ref=e2949]:
+                    - listitem [ref=e2950]:
+                      - img "Amazon Japan legend icon" [ref=e2951]
+                      - text: Amazon Japan
+                    - listitem [ref=e2953]:
+                      - img "TikTok Shop Japan legend icon" [ref=e2954]
+                      - text: TikTok Shop Japan
+                    - listitem [ref=e2956]:
+                      - img "楽天市場 legend icon" [ref=e2957]
+                      - text: 楽天市場
+                    - listitem [ref=e2959]:
+                      - img "自社EC (D2C) legend icon" [ref=e2960]
+                      - text: 自社EC (D2C)
+                    - listitem [ref=e2962]:
+                      - img "越境EC legend icon" [ref=e2963]
+                      - text: 越境EC
+                  - application [ref=e2965]:
+                    - generic [ref=e3026]:
+                      - generic [ref=e3027]:
+                        - generic [ref=e3029]: 4月
+                        - generic [ref=e3031]: 5月
+                        - generic [ref=e3033]: 6月
+                        - generic [ref=e3035]: 9月
+                        - generic [ref=e3037]: "'27 3月"
+                      - generic [ref=e3038]:
+                        - generic [ref=e3040]: 0万
+                        - generic [ref=e3042]: 2000万
+                        - generic [ref=e3044]: 4000万
+                        - generic [ref=e3046]: 6000万
+                        - generic [ref=e3048]: 8000万
+              - generic [ref=e3049]:
+                - generic [ref=e3051]:
+                  - img [ref=e3052]
+                  - text: ROIタイムライン
+                - generic [ref=e3056]:
+                  - generic [ref=e3057]:
+                    - generic [ref=e3058]:
+                      - generic [ref=e3059]: Amazon Japan
+                      - generic [ref=e3060]: ROI 8477.1%
+                    - generic [ref=e3061]:
+                      - generic [ref=e3062]:
+                        - generic [ref=e3063]: 総投資額
+                        - text: ¥70万
+                      - generic [ref=e3064]:
+                        - generic [ref=e3065]: 損益分岐
+                        - text: 2026年5月
+                      - generic [ref=e3066]:
+                        - generic [ref=e3067]: 1年目純利益
+                        - text: ¥5934万
+                  - generic [ref=e3068]:
+                    - generic [ref=e3069]:
+                      - generic [ref=e3070]: TikTok Shop Japan
+                      - generic [ref=e3071]: ROI 1945.5%
+                    - generic [ref=e3072]:
+                      - generic [ref=e3073]:
+                        - generic [ref=e3074]: 総投資額
+                        - text: ¥125万
+                      - generic [ref=e3075]:
+                        - generic [ref=e3076]: 損益分岐
+                        - text: 2026年5月
+                      - generic [ref=e3077]:
+                        - generic [ref=e3078]: 1年目純利益
+                        - text: ¥2432万
+                  - generic [ref=e3079]:
+                    - generic [ref=e3080]:
+                      - generic [ref=e3081]: 楽天市場
+                      - generic [ref=e3082]: ROI 1422.5%
+                    - generic [ref=e3083]:
+                      - generic [ref=e3084]:
+                        - generic [ref=e3085]: 総投資額
+                        - text: ¥200万
+                      - generic [ref=e3086]:
+                        - generic [ref=e3087]: 損益分岐
+                        - text: 2026年10月
+                      - generic [ref=e3088]:
+                        - generic [ref=e3089]: 1年目純利益
+                        - text: ¥2845万
+                  - generic [ref=e3090]:
+                    - generic [ref=e3091]:
+                      - generic [ref=e3092]: 自社EC (D2C)
+                      - generic [ref=e3093]: ROI 546.6%
+                    - generic [ref=e3094]:
+                      - generic [ref=e3095]:
+                        - generic [ref=e3096]: 総投資額
+                        - text: ¥440万
+                      - generic [ref=e3097]:
+                        - generic [ref=e3098]: 損益分岐
+                        - text: 2027年1月
+                      - generic [ref=e3099]:
+                        - generic [ref=e3100]: 1年目純利益
+                        - text: ¥2405万
+              - generic [ref=e3101]:
+                - generic [ref=e3103]: シナリオ分析
+                - generic [ref=e3104]:
+                  - generic [ref=e3105]:
+                    - generic [ref=e3106]:
+                      - text: 保守的
+                      - generic [ref=e3107]:
+                        - generic [ref=e3108]: ¥1.9億
+                        - generic [ref=e3109]: 売上
+                      - generic [ref=e3110]:
+                        - generic [ref=e3111]: ¥6250万
+                        - generic [ref=e3112]: 利益
+                    - generic [ref=e3113]:
+                      - text: 中立的
+                      - generic [ref=e3114]:
+                        - generic [ref=e3115]: ¥3.7億
+                        - generic [ref=e3116]: 売上
+                      - generic [ref=e3117]:
+                        - generic [ref=e3118]: ¥1.4億
+                        - generic [ref=e3119]: 利益
+                    - generic [ref=e3120]:
+                      - text: 積極的
+                      - generic [ref=e3121]:
+                        - generic [ref=e3122]: ¥6.5億
+                        - generic [ref=e3123]: 売上
+                      - generic [ref=e3124]:
+                        - generic [ref=e3125]: ¥2.5億
+                        - generic [ref=e3126]: 利益
+                  - generic [ref=e3127]:
+                    - text: "前提条件:"
+                    - list [ref=e3128]:
+                      - listitem [ref=e3129]: • TV放送による指名検索増がECの初期トラフィックを牽引 [8]
+                      - listitem [ref=e3130]: • TikTok Shopはデモ動画の二次利用によりCVRが他チャネルより高いと想定 [12][14]
+                      - listitem [ref=e3131]: • 自社ECはD2CモデルによりLTVと粗利を最大化 [4]
+                      - listitem [ref=e3132]: • 楽天・Yahooはポイント経済圏によるリピート購入を考慮 [1]
+              - generic [ref=e3133]:
+                - text: 出典
+                - generic [ref=e3134]:
+                  - link "[1] 【2026年最新版】EC市場規模は拡大中？調査結果と今後の動向について解説" [ref=e3135] [cursor=pointer]:
+                    - /url: https://www.w2solution.co.jp/useful_info_ec/ec-market/
+                    - generic [ref=e3136]: "[1]"
+                    - img [ref=e3137]
+                    - generic [ref=e3141]: 【2026年最新版】EC市場規模は拡大中？調査結果と今後の動向について解説
+                  - link "[4] ECは、ブランディング中心へ【＜連載第2回＞2026年 EC再定義へ 未来予測キーワードを解説】" [ref=e3142] [cursor=pointer]:
+                    - /url: https://news.yahoo.co.jp/articles/1f40705937c4d9a1c5bc14098ffe512b905fe99e
+                    - generic [ref=e3143]: "[4]"
+                    - img [ref=e3144]
+                    - generic [ref=e3148]: ECは、ブランディング中心へ【＜連載第2回＞2026年 EC再定義へ 未来予測キーワードを解説】
+                  - link "[8] テレビ・ネットの融合に取り組むテレビ通販の奮闘" [ref=e3149] [cursor=pointer]:
+                    - /url: https://ecclab.empowershop.co.jp/archives/1668
+                    - generic [ref=e3150]: "[8]"
+                    - img [ref=e3151]
+                    - generic [ref=e3155]: テレビ・ネットの融合に取り組むテレビ通販の奮闘
+                  - link "[12] TikTok Shop日本市場、2025年12月のGMVは約60.2億円に到達" [ref=e3156] [cursor=pointer]:
+                    - /url: https://www.commercepick.com/archives/83642
+                    - generic [ref=e3157]: "[12]"
+                    - img [ref=e3158]
+                    - generic [ref=e3162]: TikTok Shop日本市場、2025年12月のGMVは約60.2億円に到達
+                  - link "[14] 【2026年最新】TikTok Shopとは？日本のEC事業者向けに注目理由から出店・運用まで徹底解説" [ref=e3163] [cursor=pointer]:
+                    - /url: https://next-engine.net/ec-blog/tiktokshop/
+                    - generic [ref=e3164]: "[14]"
+                    - img [ref=e3165]
+                    - generic [ref=e3169]: 【2026年最新】TikTok Shopとは？日本のEC事業者向けに注目理由から出店・運用まで徹底解説
+            - generic [ref=e3170]:
+              - generic [ref=e3171]:
+                - img [ref=e3172]
+                - heading "リスク・対策" [level=3] [ref=e3174]
+              - generic [ref=e3175]:
+                - generic [ref=e3177]:
+                  - img [ref=e3178]
+                  - text: 重要リスク TOP 5
+                - generic [ref=e3180]:
+                  - generic [ref=e3181]:
+                    - generic [ref=e3182]:
+                      - generic [ref=e3183]: "1"
+                      - generic [ref=e3184]:
+                        - text: TV放送連動時のトラフィック集中によるサーバーダウン・処理遅延
+                        - generic [ref=e3185]:
+                          - generic [ref=e3186]: 自社EC (D2C)
+                          - generic [ref=e3187]: "担当: CTO / 運用責任者 | レビュー: TV放送予定の7日前"
+                    - generic [ref=e3188]:
+                      - text: 対応プレイブック
+                      - list [ref=e3189]:
+                        - listitem [ref=e3190]:
+                          - generic [ref=e3191]: "1."
+                          - text: オートスケーリングサーバーの構成確認
+                        - listitem [ref=e3192]:
+                          - generic [ref=e3193]: "2."
+                          - text: 決済ゲートウェイの同時処理上限の引き上げ
+                        - listitem [ref=e3194]:
+                          - generic [ref=e3195]: "3."
+                          - text: 静的コンテンツ(CDN)の活用による負荷分散
+                  - generic [ref=e3196]:
+                    - generic [ref=e3197]:
+                      - generic [ref=e3198]: "2"
+                      - generic [ref=e3199]:
+                        - text: FBA在庫枯渇によるAmazon検索ランキングの大幅下落
+                        - generic [ref=e3200]:
+                          - generic [ref=e3201]: Amazon Japan
+                          - generic [ref=e3202]: "担当: SCMマネージャー | レビュー: 週次"
+                    - generic [ref=e3203]:
+                      - text: 対応プレイブック
+                      - list [ref=e3204]:
+                        - listitem [ref=e3205]:
+                          - generic [ref=e3206]: "1."
+                          - text: 販売予測に基づいた30日分在庫の先行納入
+                        - listitem [ref=e3207]:
+                          - generic [ref=e3208]: "2."
+                          - text: 自社倉庫からのバックアップ出荷体制構築
+                        - listitem [ref=e3209]:
+                          - generic [ref=e3210]: "3."
+                          - text: 在庫不足時の広告自動停止設定
+                  - generic [ref=e3211]:
+                    - generic [ref=e3212]:
+                      - generic [ref=e3213]: "3"
+                      - generic [ref=e3214]:
+                        - text: 出演者契約違反（TV素材のEC・SNS二次利用）
+                        - generic [ref=e3215]:
+                          - generic [ref=e3216]: TikTok Shop / Instagram
+                          - generic [ref=e3217]: "担当: 法務 / 広報 | レビュー: 月次"
+                    - generic [ref=e3218]:
+                      - text: 対応プレイブック
+                      - list [ref=e3219]:
+                        - listitem [ref=e3220]:
+                          - generic [ref=e3221]: "1."
+                          - text: 法務による二次利用許諾範囲の再確認
+                        - listitem [ref=e3222]:
+                          - generic [ref=e3223]: "2."
+                          - text: 契約期間終了リマインダーの設定
+                        - listitem [ref=e3224]:
+                          - generic [ref=e3225]: "3."
+                          - text: 配信前クリエイティブチェックリストの運用
+                  - generic [ref=e3226]:
+                    - generic [ref=e3227]:
+                      - generic [ref=e3228]: "4"
+                      - generic [ref=e3229]:
+                        - text: ROAS悪化による累積赤字の拡大（損益分岐未達）
+                        - generic [ref=e3230]:
+                          - generic [ref=e3231]: 楽天市場 / Yahoo!
+                          - generic [ref=e3232]: "担当: マーケティング部長 | レビュー: 日次"
+                    - generic [ref=e3233]:
+                      - text: 対応プレイブック
+                      - list [ref=e3234]:
+                        - listitem [ref=e3235]:
+                          - generic [ref=e3236]: "1."
+                          - text: CPA・ROASのチャネル別リアルタイムモニタリング
+                        - listitem [ref=e3237]:
+                          - generic [ref=e3238]: "2."
+                          - text: ポイント還元率の段階的調整
+                        - listitem [ref=e3239]:
+                          - generic [ref=e3240]: "3."
+                          - text: セット販売による客単価の向上
+                  - generic [ref=e3241]:
+                    - generic [ref=e3242]:
+                      - generic [ref=e3243]: "5"
+                      - generic [ref=e3244]:
+                        - text: 物流キャパシティオーバーによる配送遅延・クレーム増
+                        - generic [ref=e3245]:
+                          - generic [ref=e3246]: 全チャネル
+                          - generic [ref=e3247]: "担当: 物流センター長 | レビュー: 放送前日・当日"
+                    - generic [ref=e3248]:
+                      - text: 対応プレイブック
+                      - list [ref=e3249]:
+                        - listitem [ref=e3250]:
+                          - generic [ref=e3251]: "1."
+                          - text: TV放送後の注文予測数に対する出荷要員の増員確保
+                        - listitem [ref=e3252]:
+                          - generic [ref=e3253]: "2."
+                          - text: 遅延発生時のお詫びメール自動配信設定
+                        - listitem [ref=e3254]:
+                          - generic [ref=e3255]: "3."
+                          - text: 配送遅延情報のサイトトップ掲出
+              - generic [ref=e3256]:
+                - generic [ref=e3258]: Amazon Japan
+                - generic [ref=e3259]:
+                  - generic [ref=e3260]:
+                    - generic [ref=e3261]:
+                      - generic [ref=e3262]: FBA在庫切れによる機会損失・検索ランク下落
+                      - generic [ref=e3263]: "可能性: high"
+                      - generic [ref=e3264]: "影響: high"
+                      - generic [ref=e3265]: 在庫
+                    - generic [ref=e3266]:
+                      - generic [ref=e3267]: • TV放送連動型の需要予測ツールの導入
+                      - generic [ref=e3268]: • Amazon専用在庫の優先確保
+                    - generic [ref=e3269]: "発動条件: FBA在庫が7日分を下回る → 自社出荷（MFN）への即時切り替え"
+                  - generic [ref=e3270]:
+                    - generic [ref=e3271]:
+                      - generic [ref=e3272]: 偽造品・相乗り出品によるブランド毀損
+                      - generic [ref=e3273]: "可能性: medium"
+                      - generic [ref=e3274]: "影響: high"
+                      - generic [ref=e3275]: 知財
+                    - generic [ref=e3276]:
+                      - generic [ref=e3277]: • Amazonブランド登録の早期完了
+                      - generic [ref=e3278]: • 商標権に基づく削除申請フローの確立
+                    - generic [ref=e3279]: "発動条件: 相乗り出品者の検知 → 法的警告書送付とAmazonへの違反報告"
+              - generic [ref=e3280]:
+                - generic [ref=e3282]: TikTok Shop Japan
+                - generic [ref=e3283]:
+                  - generic [ref=e3284]:
+                    - generic [ref=e3285]:
+                      - generic [ref=e3286]: TV素材の著作権・肖像権侵害（二次利用）
+                      - generic [ref=e3287]: "可能性: medium"
+                      - generic [ref=e3288]: "影響: high"
+                      - generic [ref=e3289]: コンプライアンス
+                    - generic [ref=e3290]:
+                      - generic [ref=e3291]: • 出演者契約へのSNS転用条項の追加
+                      - generic [ref=e3292]: • 権利確認済みの編集ガイドライン作成
+                    - generic [ref=e3293]: "発動条件: 権利団体・所属事務所からの照会 → 対象動画の即時非公開化と権利交渉"
+                  - generic [ref=e3294]:
+                    - generic [ref=e3295]:
+                      - generic [ref=e3296]: ライブ配信中の不適切発言による炎上
+                      - generic [ref=e3297]: "可能性: medium"
+                      - generic [ref=e3298]: "影響: medium"
+                      - generic [ref=e3299]: 運用
+                    - generic [ref=e3300]:
+                      - generic [ref=e3301]: • 配信マニュアルの策定とスタッフ教育
+                      - generic [ref=e3302]: • 不適切ワードのコメントフィルター設定
+                    - generic [ref=e3303]: "発動条件: コメント欄の批判殺到（5分以上継続） → ライブ配信の強制終了と謝罪文掲出"
+              - generic [ref=e3304]:
+                - generic [ref=e3306]: 楽天市場
+                - generic [ref=e3308]:
+                  - generic [ref=e3309]:
+                    - generic [ref=e3310]: 高額な広告費による利益圧迫
+                    - generic [ref=e3311]: "可能性: high"
+                    - generic [ref=e3312]: "影響: medium"
+                    - generic [ref=e3313]: 財務
+                  - generic [ref=e3314]:
+                    - generic [ref=e3315]: • ROAS 300%以上のキャンペーンのみ継続
+                    - generic [ref=e3316]: • RPP広告のキーワード入札単価上限設定
+                  - generic [ref=e3317]: "発動条件: 広告宣伝比率が売上の30%を超過 → 全広告の停止と自然検索流入重視への転換"
+              - generic [ref=e3318]:
+                - generic [ref=e3320]: 自社EC (D2C)
+                - generic [ref=e3322]:
+                  - generic [ref=e3323]:
+                    - generic [ref=e3324]: 集客コスト（CPA）の暴騰
+                    - generic [ref=e3325]: "可能性: high"
+                    - generic [ref=e3326]: "影響: high"
+                    - generic [ref=e3327]: 集客
+                  - generic [ref=e3328]:
+                    - generic [ref=e3329]: • TV放送時のQRコード誘導による獲得効率化
+                    - generic [ref=e3330]: • LINE公式アカウントへの囲い込み
+                  - generic [ref=e3331]: "発動条件: CPAがLTV（3ヶ月分）を上回る → 新規獲得広告の停止とリピート施策へのリソース集中"
+              - generic [ref=e3332]:
+                - generic [ref=e3334]: 越境EC (Coupang/Shopee)
+                - generic [ref=e3336]:
+                  - generic [ref=e3337]:
+                    - generic [ref=e3338]: 現地法規制・関税トラブル
+                    - generic [ref=e3339]: "可能性: high"
+                    - generic [ref=e3340]: "影響: high"
+                    - generic [ref=e3341]: 法務
+                  - generic [ref=e3342]:
+                    - generic [ref=e3343]: • 現地専門コンサルによる法規制事前調査
+                    - generic [ref=e3344]: • 通関代行業者の選定
+                  - generic [ref=e3345]: "発動条件: 通関保留が14日以上継続 → 当該国への輸出一時停止と在庫回収"
+              - generic [ref=e3346]:
+                - generic [ref=e3348]:
+                  - img [ref=e3349]
+                  - text: Go/No-Go判断基準
+                - generic [ref=e3352]:
+                  - generic [ref=e3353]:
+                    - generic [ref=e3354]:
+                      - generic [ref=e3355]: Amazon Japan
+                      - generic [ref=e3356]: "判断期日: 開始3ヶ月後"
+                    - list [ref=e3357]:
+                      - listitem [ref=e3358]:
+                        - generic [ref=e3359]: ✓
+                        - text: 月間販売数が43個以上かつ営業利益率が10%以上であること
+                  - generic [ref=e3360]:
+                    - generic [ref=e3361]:
+                      - generic [ref=e3362]: TikTok Shop Japan
+                      - generic [ref=e3363]: "判断期日: 開始3ヶ月後"
+                    - list [ref=e3364]:
+                      - listitem [ref=e3365]:
+                        - generic [ref=e3366]: ✓
+                        - text: 動画1投稿あたりの平均再生数が3,000回を超え、自社ECへの誘導率が1%以上であること
+                  - generic [ref=e3367]:
+                    - generic [ref=e3368]:
+                      - generic [ref=e3369]: 楽天市場
+                      - generic [ref=e3370]: "判断期日: 開始6ヶ月後"
+                    - list [ref=e3371]:
+                      - listitem [ref=e3372]:
+                        - generic [ref=e3373]: ✓
+                        - text: 店舗総合評価が4.0以上かつ月間売上が¥2,000,000を超えていること
+                  - generic [ref=e3374]:
+                    - generic [ref=e3375]:
+                      - generic [ref=e3376]: 自社EC (D2C)
+                      - generic [ref=e3377]: "判断期日: 開始6ヶ月後"
+                    - list [ref=e3378]:
+                      - listitem [ref=e3379]:
+                        - generic [ref=e3380]: ✓
+                        - text: リピート率が15%以上かつ獲得CPAが¥5,000以下であること
+                  - generic [ref=e3381]:
+                    - generic [ref=e3382]:
+                      - generic [ref=e3383]: 越境EC (Coupang/Shopee)
+                      - generic [ref=e3384]: "判断期日: 開始12ヶ月後"
+                    - list [ref=e3385]:
+                      - listitem [ref=e3386]:
+                        - generic [ref=e3387]: ✓
+                        - text: 現地通関トラブル発生率が3%以下かつ粗利20%以上を確保できていること
+          - generic [ref=e3388]:
+            - paragraph [ref=e3389]: "生成: 2026/4/16 1:25:29"
+            - button "PDF戦略書ダウンロード" [ref=e3390]:
+              - img [ref=e3391]
+              - text: PDF戦略書ダウンロード
+  - button "Open Next.js Dev Tools" [ref=e76] [cursor=pointer]:
+    - img [ref=e77]
+  - alert [ref=e80]
+  - generic [ref=e145]: 2000万

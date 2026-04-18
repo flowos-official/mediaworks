@@ -10,15 +10,23 @@ import {
 import { discoverNewProducts, type DiscoveredProduct } from "@/lib/md-strategy";
 import { getServiceClient } from "@/lib/supabase";
 import { buildTVShoppingProfile } from "@/lib/tv-shopping-profile";
+import { loadSeedContext } from "@/lib/strategy/seed-context";
 
 export interface LCWorkflowInput {
 	userGoal?: string;
 	targetPlatforms?: string[];
+	seedProductId?: string;
 }
 
 async function fetchContextStep(input: LCWorkflowInput): Promise<LCContext> {
 	"use step";
 	const ctx = await fetchLCContext(input.userGoal || undefined, input.targetPlatforms);
+	if (input.seedProductId) {
+		const seed = await loadSeedContext(input.seedProductId);
+		if (seed) {
+			ctx.seedProduct = seed;
+		}
+	}
 	console.log(`[lc-workflow] context fetched (discovery deferred to final step)`);
 	return ctx;
 }

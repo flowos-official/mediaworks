@@ -1,0 +1,72 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - navigation [ref=e3]:
+      - generic [ref=e5]:
+        - link "MediaWorks" [ref=e6] [cursor=pointer]:
+          - /url: /ja
+          - img [ref=e8]
+          - generic [ref=e10]: MediaWorks
+        - generic [ref=e11]:
+          - link "ホーム" [ref=e12] [cursor=pointer]:
+            - /url: /ja
+          - link "売上分析" [ref=e13] [cursor=pointer]:
+            - /url: /ja/analytics
+            - img [ref=e14]
+            - text: 売上分析
+          - generic [ref=e16]:
+            - img [ref=e17]
+            - button "English" [ref=e20]
+            - button "日本語" [ref=e21]
+    - main [ref=e22]:
+      - generic [ref=e23]:
+        - generic [ref=e24]:
+          - img [ref=e25]
+          - heading "売上分析" [level=1] [ref=e27]
+        - paragraph [ref=e28]: TXDレギュラー受注データに基づく販売実績分析
+      - generic [ref=e29]:
+        - generic [ref=e31]:
+          - link "概要" [ref=e32] [cursor=pointer]:
+            - /url: /ja/analytics/overview
+          - link "商品分析" [ref=e33] [cursor=pointer]:
+            - /url: /ja/analytics/products
+          - link "拡大戦略" [ref=e34] [cursor=pointer]:
+            - /url: /ja/analytics/expansion
+          - link "ライブコマース" [ref=e35] [cursor=pointer]:
+            - /url: /ja/analytics/live-commerce
+          - link "新商品発掘" [ref=e36] [cursor=pointer]:
+            - /url: /ja/analytics/discovery
+        - generic [ref=e37]:
+          - generic [ref=e38]:
+            - img [ref=e39]
+            - heading "新商品発掘" [level=3] [ref=e42]
+            - generic [ref=e43]: AI Discovery
+          - generic [ref=e45]:
+            - generic [ref=e46]:
+              - generic [ref=e47]: 発掘の目的・方向性 (任意)
+              - 'textbox "例: 美容家電で月商500万を目指したい / 季節商品を探している / 韓国で人気の商品を日本に" [ref=e48]'
+            - generic [ref=e49]:
+              - generic [ref=e50]:
+                - generic [ref=e51]: チャネル
+                - combobox [ref=e52]:
+                  - option "TV通販向け" [selected]
+                  - option "ライブコマース向け"
+              - generic [ref=e53]:
+                - generic [ref=e54]: カテゴリ
+                - combobox [ref=e55]:
+                  - option "指定なし" [selected]
+                  - option "美容・スキンケア"
+                  - option "健康食品"
+                  - option "キッチン用品"
+                  - option "ファッション"
+                  - option "生活雑貨"
+                  - option "電気機器"
+                  - option "フィットネス"
+                  - option "その他"
+              - generic [ref=e56]:
+                - generic [ref=e57]: 価格帯 (任意)
+                - 'textbox "例: ¥3,000-10,000" [ref=e58]'
+            - paragraph [ref=e59]: TV通販の販売シグナルと楽天・Web検索を組み合わせ、AIが新商品候補を選定します
+            - button "新商品を発掘" [ref=e61]:
+              - img [ref=e62]
+              - text: 新商品を発掘
+  - alert [ref=e65]

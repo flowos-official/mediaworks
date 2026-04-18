@@ -13,12 +13,14 @@ import {
 } from "@/lib/md-strategy";
 import { getServiceClient } from "@/lib/supabase";
 import { buildTVShoppingProfile } from "@/lib/tv-shopping-profile";
+import { loadSeedContext } from "@/lib/strategy/seed-context";
 
 export interface MDWorkflowInput {
 	userGoal?: string;
 	category?: string;
 	targetMarket?: string;
 	priceRange?: string;
+	seedProductId?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -32,6 +34,12 @@ async function fetchContextStep(input: MDWorkflowInput): Promise<StrategyContext
 			? { category: input.category, targetMarket: input.targetMarket, priceRange: input.priceRange }
 			: undefined;
 	const ctx = await fetchStrategyContext(input.userGoal || undefined, recommend);
+	if (input.seedProductId) {
+		const seed = await loadSeedContext(input.seedProductId);
+		if (seed) {
+			ctx.seedProduct = seed;
+		}
+	}
 	console.log(`[md-workflow] context fetched (discovery deferred to final step)`);
 	return ctx;
 }
