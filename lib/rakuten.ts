@@ -20,6 +20,7 @@ export type RakutenItem = {
 	reviewCount: number;
 	reviewAverage: number;
 	genreId?: string;
+	imageUrl?: string;
 };
 
 export type RakutenRankingResult = {
@@ -52,6 +53,22 @@ function parseItems(data: Record<string, unknown>): RakutenItem[] {
 		(entry: unknown, idx: number) => {
 			const e = entry as Record<string, unknown>;
 			const item = (e.Item ?? e.item ?? e) as Record<string, unknown>;
+
+			// Rakuten returns mediumImageUrls as array of { imageUrl: "..." }
+			// Some responses use smallImageUrls. Extract first non-empty.
+			const imgArr = (item.mediumImageUrls ?? item.smallImageUrls ?? []) as Array<
+				{ imageUrl?: string } | string
+			>;
+			let imageUrl: string | undefined;
+			for (const img of imgArr) {
+				const raw = typeof img === "string" ? img : img?.imageUrl;
+				if (raw) {
+					// Rakuten sometimes appends ?_ex=128x128 — strip for higher res
+					imageUrl = raw.replace(/\?_ex=\d+x\d+/, "");
+					break;
+				}
+			}
+
 			return {
 				rank: idx + 1,
 				itemName: String(item.itemName ?? ""),
@@ -62,6 +79,7 @@ function parseItems(data: Record<string, unknown>): RakutenItem[] {
 				reviewCount: Number(item.reviewCount ?? 0),
 				reviewAverage: Number(item.reviewAverage ?? 0),
 				genreId: String(item.genreId ?? ""),
+				imageUrl,
 			};
 		},
 	);

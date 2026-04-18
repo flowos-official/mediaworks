@@ -55,6 +55,7 @@ function rakutenItemToPoolItem(
 	return {
 		name: it.itemName,
 		productUrl: it.itemUrl,
+		thumbnailUrl: it.imageUrl,
 		priceJpy: it.itemPrice || undefined,
 		reviewCount: it.reviewCount,
 		reviewAvg: it.reviewAverage || undefined,
