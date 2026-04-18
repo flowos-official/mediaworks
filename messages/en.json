@@ -270,6 +270,19 @@
     "calendarLegendPartial": "Partial",
     "calendarLegendFailed": "Failed",
     "noSessionsYet": "No history",
-    "loadMore": "Load more"
+    "loadMore": "Load more",
+    "sourceButton": "Sourced",
+    "interestedButton": "Interested",
+    "rejectedButton": "Rejected",
+    "duplicateButton": "Duplicate",
+    "rejectDialogTitle": "Select rejection reason",
+    "rejectReason_priceMismatch": "Price mismatch",
+    "rejectReason_categorySaturated": "Category saturated",
+    "rejectReason_alreadyBroadcast": "Already broadcasting",
+    "rejectReason_qualityConcern": "Quality concern",
+    "rejectReason_other": "Other",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "feedbackSaving": "Saving..."
   }
 }

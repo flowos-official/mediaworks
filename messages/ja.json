@@ -270,6 +270,19 @@
     "calendarLegendPartial": "部分完了",
     "calendarLegendFailed": "失敗",
     "noSessionsYet": "履歴なし",
-    "loadMore": "もっと見る"
+    "loadMore": "もっと見る",
+    "sourceButton": "ソーシング済み",
+    "interestedButton": "関心あり",
+    "rejectedButton": "却下",
+    "duplicateButton": "既にあり",
+    "rejectDialogTitle": "却下理由を選択",
+    "rejectReason_priceMismatch": "価格帯不適合",
+    "rejectReason_categorySaturated": "カテゴリ過飽和",
+    "rejectReason_alreadyBroadcast": "既に放送中",
+    "rejectReason_qualityConcern": "品質懸念",
+    "rejectReason_other": "その他",
+    "confirm": "確定",
+    "cancel": "キャンセル",
+    "feedbackSaving": "保存中..."
   }
 }
