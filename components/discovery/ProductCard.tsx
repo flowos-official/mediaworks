@@ -240,11 +240,14 @@ export function ProductCard({ product }: { product: DiscoveredProductRow }) {
 			{/* Integration action (拡大戦略 / ライブ戦略) */}
 			<div className="mb-3">
 				<IntegrationActions
+					productId={product.id}
 					context={product.context ?? "home_shopping"}
 					productName={product.name}
 					category={product.category}
 					productUrl={product.product_url}
 					priceJpy={product.price_jpy}
+					enrichmentStatus={status}
+					hasCPackage={!!pkg}
 				/>
 			</div>
 
