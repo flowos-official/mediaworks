@@ -283,6 +283,13 @@
     "rejectReason_other": "その他",
     "confirm": "確定",
     "cancel": "キャンセル",
-    "feedbackSaving": "保存中..."
+    "feedbackSaving": "保存中...",
+    "seedGateTitle": "深掘り情報なし",
+    "seedGateBody": "この商品はまだ詳細分析されていません。製造元・卸値・TVスクリプトなどが欠落します。戦略生成前に自動で深掘りしますか？(予想時間: 約30秒)",
+    "seedGateSkip": "スキップ(簡易戦略)",
+    "seedGateEnrich": "深掘りして戦略作成",
+    "seedGateRunning": "深掘り中...",
+    "seedGateFailed": "深掘り失敗. 簡易戦略で続行しますか？",
+    "seedGateContinueAnyway": "簡易戦略で続行"
   }
 }

@@ -283,6 +283,13 @@
     "rejectReason_other": "Other",
     "confirm": "Confirm",
     "cancel": "Cancel",
-    "feedbackSaving": "Saving..."
+    "feedbackSaving": "Saving...",
+    "seedGateTitle": "No Deep Dive Data",
+    "seedGateBody": "This product hasn't been deep-analyzed yet. Manufacturer/wholesale/TV-script info will be unavailable. Run deep dive before generating strategy? (~30 seconds)",
+    "seedGateSkip": "Skip (simple strategy)",
+    "seedGateEnrich": "Deep Dive & Generate",
+    "seedGateRunning": "Deep diving...",
+    "seedGateFailed": "Deep dive failed. Continue with simple strategy?",
+    "seedGateContinueAnyway": "Continue with simple strategy"
   }
 }
