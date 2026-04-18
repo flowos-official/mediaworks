@@ -6,13 +6,20 @@ export const maxDuration = 10;
 type Action = "sourced" | "interested" | "rejected" | "duplicate";
 const VALID_ACTIONS: Action[] = ["sourced", "interested", "rejected", "duplicate"];
 
-const VALID_REASONS = [
+const FIXED_REASONS = [
 	"価格帯不適合",
 	"カテゴリ過飽和",
 	"既に放送中",
 	"品質懸念",
 	"その他",
 ];
+
+function isValidReason(reason: string | undefined): boolean {
+	if (!reason) return false;
+	if (FIXED_REASONS.includes(reason)) return true;
+	// Allow "その他: <custom text>" for free-form other reasons
+	return reason.startsWith("その他") && reason.length <= 200;
+}
 
 interface FeedbackBody {
 	productId: string;
@@ -34,9 +41,12 @@ export async function POST(req: NextRequest) {
 	if (!VALID_ACTIONS.includes(body.action)) {
 		return NextResponse.json({ error: "invalid action" }, { status: 400 });
 	}
-	if (body.action === "rejected" && !VALID_REASONS.includes(body.reason ?? "")) {
+	if (body.action === "rejected" && !isValidReason(body.reason)) {
 		return NextResponse.json(
-			{ error: "reason required and must be one of: " + VALID_REASONS.join(", ") },
+			{
+				error:
+					'reason required — must be one of fixed 5 values or start with "その他" for custom',
+			},
 			{ status: 400 },
 		);
 	}
