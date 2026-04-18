@@ -96,3 +96,40 @@ export const DEFAULT_LEARNING_STATE: LearningState = {
 	feedback_sample_size: 0,
 	is_cold_start: true,
 };
+
+export type Confidence = "high" | "medium" | "low";
+
+export interface ManufacturerInfo {
+	name: string | null;
+	is_seller_same_as_manufacturer: boolean;
+	official_site: string | null;
+	address: string | null;
+	contact_hints: string[];
+	confidence: Confidence;
+}
+
+export interface WholesaleEstimate {
+	retail_jpy: number;
+	estimated_cost_jpy: number | null;
+	estimated_margin_rate: number | null;
+	method: "baseline" | "blended" | "mediaworks_adjusted";
+	sample_size: number;
+	confidence: Confidence;
+}
+
+export interface SnsTrend {
+	signal_strength: "high" | "medium" | "low" | "none";
+	sources: string[];
+}
+
+export interface CPackage {
+	manufacturer: ManufacturerInfo;
+	wholesale_estimate: WholesaleEstimate;
+	moq_hint: string | null;
+	tv_script_draft: string;
+	sns_trend: SnsTrend;
+	enriched_at: string;
+	tool_calls_used: number;
+	partial: boolean;
+	error?: string;
+}
