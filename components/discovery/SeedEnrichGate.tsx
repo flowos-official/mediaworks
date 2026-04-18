@@ -1,51 +1,41 @@
 "use client";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Loader2, Sparkles, X, AlertTriangle } from "lucide-react";
 
-type EnrichmentStatus = "idle" | "queued" | "running" | "completed" | "failed";
-
 interface Props {
+	open: boolean;
 	productId: string;
-	enrichmentStatus: EnrichmentStatus;
-	hasCPackage: boolean;
-	targetHref: string;
-	children: React.ReactNode;
+	onDone: () => void;
+	onSkip: () => void;
+	onClose: () => void;
 }
 
-export function SeedEnrichGate({
+export function SeedEnrichGateModal({
+	open,
 	productId,
-	enrichmentStatus,
-	hasCPackage,
-	targetHref,
-	children,
+	onDone,
+	onSkip,
+	onClose,
 }: Props) {
 	const t = useTranslations("discovery");
-	const router = useRouter();
 	const [mounted, setMounted] = useState(false);
-	const [gateOpen, setGateOpen] = useState(false);
 	const [running, setRunning] = useState(false);
 	const [failed, setFailed] = useState(false);
 
 	useEffect(() => setMounted(true), []);
 
-	const needGate = !hasCPackage && enrichmentStatus !== "completed";
+	useEffect(() => {
+		if (open) {
+			setRunning(false);
+			setFailed(false);
+		}
+	}, [open]);
 
-	function handleClick(e: React.MouseEvent) {
-		if (!needGate) return;
-		e.preventDefault();
-		e.stopPropagation();
-		setGateOpen(true);
-	}
+	if (!open || !mounted) return null;
 
-	function skipAndNavigate() {
-		setGateOpen(false);
-		router.push(targetHref);
-	}
-
-	async function enrichAndNavigate() {
+	async function enrichAndContinue() {
 		setRunning(true);
 		setFailed(false);
 		try {
@@ -64,8 +54,7 @@ export function SeedEnrichGate({
 			};
 			const result = await poll();
 			if (result === "completed") {
-				setGateOpen(false);
-				router.push(targetHref);
+				onDone();
 			} else {
 				setFailed(true);
 				setRunning(false);
@@ -77,90 +66,78 @@ export function SeedEnrichGate({
 		}
 	}
 
-	const dialog =
-		gateOpen && mounted
-			? createPortal(
-					<div
-						className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-						onClick={() => !running && setGateOpen(false)}
-					>
-						<div
-							className="bg-white rounded-lg shadow-lg p-5 w-full max-w-md mx-4"
-							onClick={(e) => e.stopPropagation()}
+	return createPortal(
+		<div
+			className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+			onClick={() => !running && onClose()}
+		>
+			<div
+				className="bg-white rounded-lg shadow-lg p-5 w-full max-w-md mx-4"
+				onClick={(e) => e.stopPropagation()}
+			>
+				<div className="flex items-center justify-between mb-3">
+					<h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+						<AlertTriangle size={14} className="text-amber-500" />
+						{t("seedGateTitle")}
+					</h3>
+					{!running && (
+						<button
+							type="button"
+							onClick={onClose}
+							className="text-gray-400 hover:text-gray-600"
 						>
-							<div className="flex items-center justify-between mb-3">
-								<h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-									<AlertTriangle size={14} className="text-amber-500" />
-									{t("seedGateTitle")}
-								</h3>
-								{!running && (
-									<button
-										type="button"
-										onClick={() => setGateOpen(false)}
-										className="text-gray-400 hover:text-gray-600"
-									>
-										<X size={16} />
-									</button>
-								)}
-							</div>
+							<X size={16} />
+						</button>
+					)}
+				</div>
 
-							<p className="text-xs text-gray-600 leading-relaxed mb-4">
-								{failed ? t("seedGateFailed") : t("seedGateBody")}
-							</p>
+				<p className="text-xs text-gray-600 leading-relaxed mb-4">
+					{failed ? t("seedGateFailed") : t("seedGateBody")}
+				</p>
 
-							{running ? (
-								<div className="flex items-center justify-center gap-2 py-4 text-sm text-amber-700">
-									<Loader2 size={16} className="animate-spin" />
-									{t("seedGateRunning")}
-								</div>
-							) : failed ? (
-								<div className="flex justify-end gap-2">
-									<button
-										type="button"
-										onClick={() => setGateOpen(false)}
-										className="px-4 py-1.5 text-xs text-gray-700 border border-gray-200 rounded hover:bg-gray-50"
-									>
-										{t("cancel")}
-									</button>
-									<button
-										type="button"
-										onClick={skipAndNavigate}
-										className="px-4 py-1.5 text-xs bg-gray-500 text-white rounded hover:bg-gray-600"
-									>
-										{t("seedGateContinueAnyway")}
-									</button>
-								</div>
-							) : (
-								<div className="flex justify-end gap-2">
-									<button
-										type="button"
-										onClick={skipAndNavigate}
-										className="px-4 py-1.5 text-xs text-gray-700 border border-gray-200 rounded hover:bg-gray-50"
-									>
-										{t("seedGateSkip")}
-									</button>
-									<button
-										type="button"
-										onClick={enrichAndNavigate}
-										className="px-4 py-1.5 text-xs bg-amber-500 text-white rounded hover:bg-amber-600 inline-flex items-center gap-1"
-									>
-										<Sparkles size={12} />
-										{t("seedGateEnrich")}
-									</button>
-								</div>
-							)}
-						</div>
-					</div>,
-					document.body,
-				)
-			: null;
-
-	return (
-		<>
-			<span onClick={handleClick} className="block">
-				{children}
-			</span>
-			{dialog}
-		</>
+				{running ? (
+					<div className="flex items-center justify-center gap-2 py-4 text-sm text-amber-700">
+						<Loader2 size={16} className="animate-spin" />
+						{t("seedGateRunning")}
+					</div>
+				) : failed ? (
+					<div className="flex justify-end gap-2">
+						<button
+							type="button"
+							onClick={onClose}
+							className="px-4 py-1.5 text-xs text-gray-700 border border-gray-200 rounded hover:bg-gray-50"
+						>
+							{t("cancel")}
+						</button>
+						<button
+							type="button"
+							onClick={onSkip}
+							className="px-4 py-1.5 text-xs bg-gray-500 text-white rounded hover:bg-gray-600"
+						>
+							{t("seedGateContinueAnyway")}
+						</button>
+					</div>
+				) : (
+					<div className="flex justify-end gap-2">
+						<button
+							type="button"
+							onClick={onSkip}
+							className="px-4 py-1.5 text-xs text-gray-700 border border-gray-200 rounded hover:bg-gray-50"
+						>
+							{t("seedGateSkip")}
+						</button>
+						<button
+							type="button"
+							onClick={enrichAndContinue}
+							className="px-4 py-1.5 text-xs bg-amber-500 text-white rounded hover:bg-amber-600 inline-flex items-center gap-1"
+						>
+							<Sparkles size={12} />
+							{t("seedGateEnrich")}
+						</button>
+					</div>
+				)}
+			</div>
+		</div>,
+		document.body,
 	);
 }
