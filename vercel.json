@@ -47,6 +47,9 @@
     },
     "app/api/cron/daily-learning/route.ts": {
       "maxDuration": 60
+    },
+    "app/api/cron/weekly-insights/route.ts": {
+      "maxDuration": 120
     }
   },
   "crons": [
@@ -65,6 +68,10 @@
     {
       "path": "/api/cron/daily-learning",
       "schedule": "45 23 * * *"
+    },
+    {
+      "path": "/api/cron/weekly-insights",
+      "schedule": "0 1 * * 1"
     }
   ]
 }
