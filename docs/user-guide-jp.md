@@ -46,7 +46,7 @@
 ### Step 4. "深掘り" 클릭
 
 관심 있는 상품 카드의 **🔍 深掘り** 버튼 클릭:
-- 비동기 실행 (15-45초)
+- 비동기 실행 (평균 15-45초, 최대 55-60초)
 - Gemini 에이전트가 자동으로 도구 호출:
   - Rakuten 판매자 페이지 크롤링
   - 제조사 공식 사이트 확인
@@ -84,7 +84,7 @@
 `/ja/analytics/strategy/expansion?seedId=<UUID>` 자동 이동:
 - **userGoal** 텍스트박스에 자동 pre-fill (제품명 + 참조 URL)
 - **price帯** 도 pre-fill
-- **拡大戦略を分析** 클릭 → Gemini 6 skills 순차 실행 (~60-120초)
+- **拡大戦略を分析** 클릭 → Gemini 7 skills 순차 실행 (goal_analysis / product_selection / channel_strategy / pricing_margin / marketing_execution / financial_projection / risk_contingency, ~60-120초)
 
 결과:
 - **신상품 실제 데이터 기반 맞춤 전략** (가격/마진/채널/리스크 분석)
