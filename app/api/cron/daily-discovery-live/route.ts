@@ -21,7 +21,7 @@ async function loadLearningState(): Promise<LearningState> {
 		const { data, error } = await sb
 			.from("learning_state")
 			.select("*")
-			.eq("id", 1)
+			.eq("context", "live_commerce")
 			.single();
 		if (error || !data) return DEFAULT_LEARNING_STATE;
 		return {
