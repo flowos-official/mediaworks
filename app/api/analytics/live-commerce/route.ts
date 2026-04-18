@@ -24,6 +24,7 @@ export async function POST(request: NextRequest) {
 	const input = {
 		userGoal: typeof body.userGoal === "string" ? body.userGoal : "",
 		targetPlatforms: Array.isArray(body.targetPlatforms) ? (body.targetPlatforms as string[]) : undefined,
+		seedProductId: typeof body.seedProductId === "string" ? body.seedProductId : undefined,
 	};
 	try {
 		const run = await start(liveCommerceWorkflow, [input]);

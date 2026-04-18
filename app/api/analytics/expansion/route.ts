@@ -82,6 +82,7 @@ export async function POST(request: NextRequest) {
 	const weekCount = annuals.reduce((s, a) => s + (a.week_count ?? 0), 0);
 
 	try {
+		const seedProductId = typeof body.seedProductId === "string" ? body.seedProductId : undefined;
 		const analysis = await analyzeExpansionStrategy({
 			topProducts,
 			categorySummary,
@@ -90,6 +91,7 @@ export async function POST(request: NextRequest) {
 			overallMarginRate: totalRevenue > 0 ? Math.round((totalProfit / totalRevenue) * 10000) / 100 : 0,
 			weekCount,
 			userGoal: userGoal || undefined,
+			seedProductId,
 		});
 
 		return NextResponse.json({

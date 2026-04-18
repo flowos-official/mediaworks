@@ -415,6 +415,7 @@ export interface ExpansionInput {
 	overallMarginRate: number;
 	weekCount: number;
 	userGoal?: string;
+	seedProductId?: string;
 }
 
 export interface RecommendedProduct {

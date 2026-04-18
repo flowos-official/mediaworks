@@ -395,6 +395,7 @@ function ListView({ locale, router }: { locale: string; router: ReturnType<typeo
 	const seedCategory = searchParams?.get("category") ?? null;
 	const seedPrice = searchParams?.get("price") ?? null;
 	const seedUrl = searchParams?.get("sourceUrl") ?? null;
+	const seedProductId = searchParams?.get("seedId") ?? null;
 
 	// Input state
 	const [userGoal, setUserGoal] = useState(
@@ -475,6 +476,7 @@ function ListView({ locale, router }: { locale: string; router: ReturnType<typeo
 					category: category !== '指定なし' ? category : undefined,
 					targetMarket: targetMarket !== '指定なし' ? targetMarket : undefined,
 					priceRange: priceRange || undefined,
+					seedProductId: seedProductId ?? undefined,
 				}),
 			});
 

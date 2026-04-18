@@ -437,6 +437,7 @@ function LCListView({ locale, router }: { locale: string; router: ReturnType<typ
 	const seedCategory = searchParams?.get('category') ?? null;
 	const seedUrl = searchParams?.get('sourceUrl') ?? null;
 	const seedPrice = searchParams?.get('price') ?? null;
+	const seedProductId = searchParams?.get('seedId') ?? null;
 
 	const seedGoal = seedName
 		? `新商品「${seedName}」のライブコマース戦略を立てる。${seedCategory ? `カテゴリ: ${seedCategory}。` : ''}${seedPrice ? `参考価格: ¥${Number(seedPrice).toLocaleString()}。` : ''}${seedUrl ? ` 参考URL: ${seedUrl}` : ''}`
@@ -487,6 +488,7 @@ function LCListView({ locale, router }: { locale: string; router: ReturnType<typ
 				body: JSON.stringify({
 					userGoal: userGoal || undefined,
 					targetPlatforms: selectedPlatforms.length > 0 ? selectedPlatforms : undefined,
+					seedProductId: seedProductId ?? undefined,
 				}),
 			});
 
