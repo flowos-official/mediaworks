@@ -1,7 +1,13 @@
 "use client";
 
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Sparkles, Star, TrendingUp, ShoppingBag, Tv, Compass } from "lucide-react";
+import { EnrichmentProgress } from "./EnrichmentProgress";
+import { CPackageDrawer } from "./CPackageDrawer";
+import type { CPackage } from "@/lib/discovery/types";
+
+type EnrichmentStatus = "idle" | "queued" | "running" | "completed" | "failed";
 
 export type DiscoveredProductRow = {
 	id: string;
@@ -19,6 +25,9 @@ export type DiscoveredProductRow = {
 	track: "tv_proven" | "exploration";
 	stock_status: string | null;
 	source: "rakuten" | "brave" | "other" | null;
+	enrichment_status?: EnrichmentStatus | null;
+	c_package?: CPackage | null;
+	enrichment_error?: string | null;
 };
 
 function scoreColor(score: number): string {
@@ -32,6 +41,56 @@ export function ProductCard({ product }: { product: DiscoveredProductRow }) {
 	const t = useTranslations("discovery");
 	const score = product.tv_fit_score ?? 0;
 	const isTV = product.track === "tv_proven";
+
+	const [status, setStatus] = useState<EnrichmentStatus>(
+		product.enrichment_status ?? "idle",
+	);
+	const [pkg, setPkg] = useState<CPackage | null>(product.c_package ?? null);
+	const [err, setErr] = useState<string | null>(product.enrichment_error ?? null);
+	const [showDetails, setShowDetails] = useState(false);
+	const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+	const stopPolling = useCallback(() => {
+		if (pollRef.current) {
+			clearInterval(pollRef.current);
+			pollRef.current = null;
+		}
+	}, []);
+
+	const pollOnce = useCallback(async () => {
+		const res = await fetch(`/api/discovery/enrich/${product.id}`, {
+			cache: "no-store",
+		});
+		if (!res.ok) return;
+		const data = await res.json();
+		setStatus(data.status);
+		if (data.c_package) setPkg(data.c_package);
+		if (data.error) setErr(data.error);
+		if (data.status === "completed" || data.status === "failed") {
+			stopPolling();
+			if (data.status === "completed") setShowDetails(true);
+		}
+	}, [product.id, stopPolling]);
+
+	const startPolling = useCallback(() => {
+		stopPolling();
+		pollRef.current = setInterval(pollOnce, 2000);
+	}, [pollOnce, stopPolling]);
+
+	useEffect(() => {
+		return () => stopPolling();
+	}, [stopPolling]);
+
+	const triggerEnrichment = useCallback(async () => {
+		setErr(null);
+		setStatus("queued");
+		startPolling();
+		try {
+			await fetch(`/api/discovery/enrich/${product.id}`, { method: "POST" });
+		} catch (error) {
+			console.error("enrich POST failed", error);
+		}
+	}, [product.id, startPolling]);
 
 	const broadcastBadge =
 		product.broadcast_tag === "broadcast_confirmed"
@@ -69,7 +128,11 @@ export function ProductCard({ product }: { product: DiscoveredProductRow }) {
 			<div className="flex gap-3 mb-3">
 				<div className="flex-shrink-0 w-20 h-20 bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
 					{product.thumbnail_url ? (
-						<img src={product.thumbnail_url} alt={product.name} className="w-full h-full object-cover" />
+						<img
+							src={product.thumbnail_url}
+							alt={product.name}
+							className="w-full h-full object-cover"
+						/>
 					) : (
 						<div className="w-full h-full flex items-center justify-center text-gray-300">
 							<ShoppingBag size={24} />
@@ -79,7 +142,10 @@ export function ProductCard({ product }: { product: DiscoveredProductRow }) {
 				<div className="flex-1 flex flex-col justify-between min-w-0">
 					<div className="flex flex-wrap gap-1.5 text-[10px]">
 						<span className="bg-gray-50 border border-gray-200 rounded px-1.5 py-0.5 text-gray-600">
-							価格 <strong className="text-gray-900">{product.price_jpy ? `¥${product.price_jpy.toLocaleString()}` : "¥?"}</strong>
+							価格{" "}
+							<strong className="text-gray-900">
+								{product.price_jpy ? `¥${product.price_jpy.toLocaleString()}` : "¥?"}
+							</strong>
 						</span>
 						{product.review_avg !== null && (
 							<span className="bg-yellow-50 border border-yellow-200 rounded px-1.5 py-0.5 text-yellow-800 flex items-center gap-0.5">
@@ -117,7 +183,7 @@ export function ProductCard({ product }: { product: DiscoveredProductRow }) {
 				</div>
 			</div>
 
-			{/* TV fit reason highlight */}
+			{/* TV fit reason */}
 			{product.tv_fit_reason && (
 				<div className="bg-amber-50 border border-amber-100 rounded px-3 py-2 mb-3">
 					<div className="flex items-center gap-1 mb-0.5">
@@ -126,12 +192,14 @@ export function ProductCard({ product }: { product: DiscoveredProductRow }) {
 							TV適合性
 						</span>
 					</div>
-					<p className="text-[11px] text-amber-900 leading-relaxed">{product.tv_fit_reason}</p>
+					<p className="text-[11px] text-amber-900 leading-relaxed">
+						{product.tv_fit_reason}
+					</p>
 				</div>
 			)}
 
-			{/* Footer: external link */}
-			<div className="mt-auto pt-2 border-t border-gray-100">
+			{/* External link */}
+			<div className="pb-2 border-b border-gray-100 mb-3">
 				<a
 					href={product.product_url}
 					target="_blank"
@@ -142,6 +210,19 @@ export function ProductCard({ product }: { product: DiscoveredProductRow }) {
 					{t("goLive")} →
 				</a>
 			</div>
+
+			{/* Enrichment control */}
+			<EnrichmentProgress
+				status={status}
+				hasPackage={!!pkg}
+				showDetails={showDetails}
+				onTrigger={triggerEnrichment}
+				onToggleDetails={() => setShowDetails((v) => !v)}
+				error={err}
+			/>
+
+			{/* C Package (when expanded) */}
+			{showDetails && pkg && <CPackageDrawer pkg={pkg} />}
 		</article>
 	);
 }
