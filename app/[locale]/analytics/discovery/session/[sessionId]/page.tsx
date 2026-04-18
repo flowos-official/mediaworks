@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { DiscoveryHeader } from "@/components/discovery/DiscoveryHeader";
 import { ProductCard, type DiscoveredProductRow } from "@/components/discovery/ProductCard";
+import { ContextSubTabs } from "@/components/discovery/ContextSubTabs";
 
 type Session = {
 	id: string;
@@ -51,6 +52,7 @@ export default function SessionDetailPage() {
 
 	return (
 		<div>
+			<ContextSubTabs />
 			<div className="mb-4">
 				<p className="text-xs text-gray-500">session: {sessionId}</p>
 			</div>
