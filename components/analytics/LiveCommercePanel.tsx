@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, Radio, AlertTriangle, ArrowLeft, ExternalLink, CheckCircle, Circle } from 'lucide-react';
@@ -432,7 +432,17 @@ function LCDetailView({ initialData, backHref }: { initialData: SavedLCData; bac
 // ---------------------------------------------------------------------------
 
 function LCListView({ locale, router }: { locale: string; router: ReturnType<typeof useRouter> }) {
-	const [userGoal, setUserGoal] = useState('');
+	const searchParams = useSearchParams();
+	const seedName = searchParams?.get('seed') ?? null;
+	const seedCategory = searchParams?.get('category') ?? null;
+	const seedUrl = searchParams?.get('sourceUrl') ?? null;
+	const seedPrice = searchParams?.get('price') ?? null;
+
+	const seedGoal = seedName
+		? `新商品「${seedName}」のライブコマース戦略を立てる。${seedCategory ? `カテゴリ: ${seedCategory}。` : ''}${seedPrice ? `参考価格: ¥${Number(seedPrice).toLocaleString()}。` : ''}${seedUrl ? ` 参考URL: ${seedUrl}` : ''}`
+		: '';
+
+	const [userGoal, setUserGoal] = useState(seedGoal);
 	const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
 
 	const [status, setStatus] = useState<'idle' | 'running' | 'complete' | 'error'>('idle');
