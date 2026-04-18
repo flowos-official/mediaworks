@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslations } from "next-intl";
 import { X } from "lucide-react";
 
@@ -32,10 +33,15 @@ export function RejectDialog({
 }) {
 	const t = useTranslations("discovery");
 	const [selected, setSelected] = useState<ReasonKey>(REASON_KEYS[0]);
+	const [mounted, setMounted] = useState(false);
 
-	if (!open) return null;
+	useEffect(() => {
+		setMounted(true);
+	}, []);
 
-	return (
+	if (!open || !mounted) return null;
+
+	const dialog = (
 		<div
 			className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
 			onClick={onCancel}
@@ -99,4 +105,6 @@ export function RejectDialog({
 			</div>
 		</div>
 	);
+
+	return createPortal(dialog, document.body);
 }
