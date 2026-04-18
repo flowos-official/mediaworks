@@ -13,13 +13,17 @@ export async function GET(req: NextRequest) {
 	const sb = getServiceClient();
 	const { searchParams } = new URL(req.url);
 
-	const { data: session, error: sessErr } = await sb
+	const contextFilter = searchParams.get("context");
+	let sessQuery = sb
 		.from("discovery_runs")
 		.select("*")
 		.in("status", ["completed", "partial"])
 		.order("run_at", { ascending: false })
-		.limit(1)
-		.maybeSingle();
+		.limit(1);
+	if (contextFilter === "home_shopping" || contextFilter === "live_commerce") {
+		sessQuery = sessQuery.eq("context", contextFilter);
+	}
+	const { data: session, error: sessErr } = await sessQuery.maybeSingle();
 
 	if (sessErr) {
 		return NextResponse.json({ error: sessErr.message }, { status: 500 });
