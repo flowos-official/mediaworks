@@ -37,7 +37,7 @@ export async function loadExclusionContext(
 ): Promise<ExclusionContext> {
 	const sb = getServiceClient();
 
-	const [ownRes, recentRes, codesRes] = await Promise.all([
+	const [ownRes, recentRes, codesRes, feedbackRes] = await Promise.all([
 		sb.from("product_summaries").select("product_name").limit(5000),
 		sb
 			.from("discovered_products")
@@ -52,6 +52,10 @@ export async function loadExclusionContext(
 			.from("discovered_products")
 			.select("rakuten_item_code")
 			.not("rakuten_item_code", "is", null),
+		sb
+			.from("discovered_products")
+			.select("product_url, rakuten_item_code")
+			.in("user_action", ["sourced", "duplicate"]),
 	]);
 
 	if (ownRes.error) {
@@ -70,6 +74,12 @@ export async function loadExclusionContext(
 		console.warn(
 			"[exclusion] discovered_products (codes) query failed:",
 			codesRes.error.message,
+		);
+	}
+	if (feedbackRes.error) {
+		console.warn(
+			"[exclusion] discovered_products (feedback sourced) query failed:",
+			feedbackRes.error.message,
 		);
 	}
 
@@ -91,6 +101,15 @@ export async function loadExclusionContext(
 			.filter((c): c is string => !!c),
 	);
 
+	const feedbackRows = (feedbackRes.data ?? []) as Array<{
+		product_url: string;
+		rakuten_item_code: string | null;
+	}>;
+	const feedbackSourcedUrls = new Set(feedbackRows.map((r) => r.product_url));
+	const feedbackSourcedCodes = new Set(
+		feedbackRows.map((r) => r.rakuten_item_code).filter((c): c is string => !!c),
+	);
+
 	return {
 		ownSourcedNames,
 		recentDiscoveredUrls,
@@ -98,6 +117,8 @@ export async function loadExclusionContext(
 		rejectedUrls: new Set(learning.rejected_seeds.urls),
 		rejectedBrands: new Set(learning.rejected_seeds.brands),
 		rejectedTerms: learning.rejected_seeds.terms,
+		feedbackSourcedUrls,
+		feedbackSourcedCodes,
 	};
 }
 
@@ -126,7 +147,15 @@ export function applyExclusions(
 		)
 			return false;
 
-		// 4. rejected seeds
+		// 4. user feedback sourced/duplicate (permanent exclusion)
+		if (ctx.feedbackSourcedUrls.has(item.productUrl)) return false;
+		if (
+			item.rakutenItemCode &&
+			ctx.feedbackSourcedCodes.has(item.rakutenItemCode)
+		)
+			return false;
+
+		// 5. rejected seeds
 		if (ctx.rejectedUrls.has(item.productUrl)) return false;
 		if (item.sellerName && ctx.rejectedBrands.has(item.sellerName)) return false;
 		for (const term of ctx.rejectedTerms) {

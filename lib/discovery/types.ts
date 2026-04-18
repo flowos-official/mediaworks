@@ -89,6 +89,8 @@ export interface ExclusionContext {
 	rejectedUrls: Set<string>;
 	rejectedBrands: Set<string>;
 	rejectedTerms: string[];
+	feedbackSourcedUrls: Set<string>;
+	feedbackSourcedCodes: Set<string>;
 }
 
 export const DEFAULT_LEARNING_STATE: LearningState = {
