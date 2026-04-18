@@ -10,6 +10,12 @@
       "maxDuration": 300
     },
     "app/api/cron/daily-discovery/route.ts": {
+      "maxDuration": 10
+    },
+    "app/api/cron/daily-discovery-home/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/cron/daily-discovery-live/route.ts": {
       "maxDuration": 300
     },
     "app/api/recommend/route.ts": {
@@ -43,8 +49,12 @@
       "schedule": "0 9 * * *"
     },
     {
-      "path": "/api/cron/daily-discovery",
+      "path": "/api/cron/daily-discovery-home",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/daily-discovery-live",
+      "schedule": "30 0 * * *"
     }
   ]
 }
