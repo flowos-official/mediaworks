@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { getServiceClient } from '@/lib/supabase';
 import LiveCommercePanel, { type SavedLCData } from '@/components/analytics/LiveCommercePanel';
+import { StrategySubTabs } from '@/components/analytics/StrategySubTabs';
 
 export default async function LiveCommerceDetailPage({
   params,
@@ -32,5 +33,10 @@ export default async function LiveCommerceDetailPage({
     search_sources: data.search_sources ?? [],
   };
 
-  return <LiveCommercePanel mode="detail" initialData={initialData} />;
+  return (
+    <>
+      <StrategySubTabs />
+      <LiveCommercePanel mode="detail" initialData={initialData} />
+    </>
+  );
 }

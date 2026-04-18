@@ -22,8 +22,8 @@ export function IntegrationActions({
 
 	const targetPath =
 		context === "live_commerce"
-			? `/${locale}/analytics/live-commerce`
-			: `/${locale}/analytics/expansion`;
+			? `/${locale}/analytics/strategy/live`
+			: `/${locale}/analytics/strategy/expansion`;
 
 	const params = new URLSearchParams();
 	params.set("seed", productName);

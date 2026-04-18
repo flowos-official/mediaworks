@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { getServiceClient } from '@/lib/supabase';
 import MDStrategyPanel, { type SavedStrategyData } from '@/components/analytics/MDStrategyPanel';
+import { StrategySubTabs } from '@/components/analytics/StrategySubTabs';
 
 export default async function ExpansionDetailPage({
   params,
@@ -32,5 +33,10 @@ export default async function ExpansionDetailPage({
     risk_contingency: data.risk_contingency ?? undefined,
   };
 
-  return <MDStrategyPanel mode="detail" initialData={initialData} />;
+  return (
+    <>
+      <StrategySubTabs />
+      <MDStrategyPanel mode="detail" initialData={initialData} />
+    </>
+  );
 }

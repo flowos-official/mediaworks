@@ -32,14 +32,13 @@ export function useAnalyticsFilter(): AnalyticsFilterContextValue {
 // Layout
 // ---------------------------------------------------------------------------
 
-type TabKey = 'overview' | 'products' | 'expansion' | 'live-commerce' | 'discovery';
+type TabKey = 'overview' | 'products' | 'discovery' | 'strategy';
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'overview', label: '概要' },
   { key: 'products', label: '商品分析' },
-  { key: 'expansion', label: '拡大戦略' },
-  { key: 'live-commerce', label: 'ライブコマース' },
-  { key: 'discovery', label: '発掘' },
+  { key: 'discovery', label: '商品発掘' },
+  { key: 'strategy', label: '戦略立案' },
 ];
 
 export default function AnalyticsLayout({ children }: { children: ReactNode }) {

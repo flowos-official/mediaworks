@@ -302,7 +302,7 @@ function ResultsView({ results, sources, generatedAt, backHref, strategyId, onRe
 export default function LiveCommercePanel({ mode, initialData }: LiveCommercePanelProps) {
 	const router = useRouter();
 	const { locale } = useParams<{ locale: string }>();
-	const listHref = `/${locale}/analytics/live-commerce`;
+	const listHref = `/${locale}/analytics/strategy/live`;
 
 	if (mode === 'detail' && initialData) {
 		return <LCDetailView initialData={initialData} backHref={listHref} />;
@@ -510,7 +510,7 @@ function LCListView({ locale, router }: { locale: string; router: ReturnType<typ
 				setStatus('complete');
 				setHistoryRefresh((n) => n + 1);
 				if (data?.strategyId) {
-					router.push(`/${locale}/analytics/live-commerce/${data.strategyId}`);
+					router.push(`/${locale}/analytics/strategy/live/${data.strategyId}`);
 				}
 			};
 
@@ -580,7 +580,7 @@ function LCListView({ locale, router }: { locale: string; router: ReturnType<typ
 	}, [userGoal, selectedPlatforms, locale, router]);
 
 	const handleViewSaved = (id: string) => {
-		router.push(`/${locale}/analytics/live-commerce/${id}`);
+		router.push(`/${locale}/analytics/strategy/live/${id}`);
 	};
 
 	const hasResults = !!(
