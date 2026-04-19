@@ -15,6 +15,13 @@ import type {
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 const MODEL_ID = "gemini-3-flash-preview";
 const POOL_SAMPLE_LIMIT = 150;
+// Max candidates kept per seed keyword — prevents a single hot seed from
+// monopolizing the final list while still allowing overflow backfill when
+// diversity-first selection leaves a shortfall.
+const PER_SEED_CAP = Number(process.env.DISCOVERY_PER_SEED_CAP ?? 3);
+// Ask Gemini for extra candidates beyond targetCount so the diversity cap
+// has overflow room without dropping below the target.
+const OVERSAMPLE_MULTIPLIER = 1.5;
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
 const SEASONAL_HOT_THRESHOLD = 1.15;
 const SEASONAL_COLD_THRESHOLD = 0.85;
@@ -99,9 +106,16 @@ export async function curatePool(
 - 価格帯ゾーン: ¥3,000-30,000 (衝動買い)
 - 除外特性: 若年層向けトレンド商品、SNS専用商品`;
 
+	const requestCount = Math.ceil(targetCount * OVERSAMPLE_MULTIPLIER);
+
 	const prompt = `あなたは日本のテレビ通販・ライブコマースに適した商品を選ぶバイヤーです。
-以下の商品プールから上位${targetCount}個を選び、各商品を評価してください。
+以下の商品プールから上位${requestCount}個を選び、各商品を評価してください。
 ${contextBlock}
+
+【多様性ルール — 厳守】
+同じ seed_keyword (pool に "seed=..." で記載) から選ぶのは最大 ${PER_SEED_CAP}個まで。
+例: "包丁 セット" seed の高評価商品が5件あっても、選ぶのは3件まで。残り枠は他の seed から埋める。
+目的: 単一カテゴリに偏らず、TV通販の商品バリエーションを確保する。
 
 【採点基準 (合計0-100)】
 - review_signal (0-35): レビュー評価と数の総合強度。評価(★)を最優先、件数は補強。
@@ -182,5 +196,20 @@ ${poolList}
 	}
 
 	candidates.sort((a, b) => b.tvFitScore - a.tvFitScore);
-	return candidates.slice(0, targetCount);
+
+	// Strictly enforce seed diversity: max PER_SEED_CAP per seedKeyword, stop
+	// when we hit targetCount. Gemini is already instructed to respect the
+	// cap upstream; this acts as a hard safety net. If fewer than targetCount
+	// candidates survive the cap, the orchestrator's quality-iteration loop
+	// will request additional keywords (rather than duplicating hot seeds).
+	const seedCounts = new Map<string, number>();
+	const result: Candidate[] = [];
+	for (const c of candidates) {
+		if (result.length >= targetCount) break;
+		const n = seedCounts.get(c.seedKeyword) ?? 0;
+		if (n >= PER_SEED_CAP) continue;
+		result.push(c);
+		seedCounts.set(c.seedKeyword, n + 1);
+	}
+	return result;
 }
