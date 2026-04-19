@@ -273,10 +273,18 @@ export async function computeCategorySeasonality(): Promise<
 
 	const result: Record<string, Record<string, number>> = {};
 	for (const [category, monthMap] of cells) {
+		// Normalize against the average of months with sufficient data, not
+		// against 12. Dividing by 12 inflates factors when sales_weekly has
+		// gaps (e.g. current year not yet complete), since revenue bunches
+		// into the covered months.
 		let totalRev = 0;
-		for (const { revenue } of monthMap.values()) totalRev += revenue;
-		if (totalRev <= 0) continue;
-		const avgMonthlyRev = totalRev / 12;
+		let activeMonths = 0;
+		for (const { revenue, weeks } of monthMap.values()) {
+			totalRev += revenue;
+			if (weeks >= SEASONAL_MIN_WEEKS_PER_CELL) activeMonths += 1;
+		}
+		if (totalRev <= 0 || activeMonths === 0) continue;
+		const avgMonthlyRev = totalRev / activeMonths;
 		const perMonth: Record<string, number> = {};
 		for (let m = 1; m <= 12; m++) {
 			const cell = monthMap.get(m);
