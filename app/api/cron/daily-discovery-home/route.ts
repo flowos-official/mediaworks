@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { tagBroadcastEvidence } from "@/lib/discovery/broadcast";
+import { applyBroadcastBoost, tagBroadcastEvidence } from "@/lib/discovery/broadcast";
 import { runStage1 } from "@/lib/discovery/orchestrator";
 import {
 	attachPlanToSession,
@@ -27,6 +27,7 @@ async function loadLearningState(): Promise<LearningState> {
 		return {
 			exploration_ratio: data.exploration_ratio,
 			category_weights: data.category_weights ?? {},
+			category_seasonal_weights: data.category_seasonal_weights ?? {},
 			rejected_seeds: data.rejected_seeds ?? {
 				urls: [],
 				brands: [],
@@ -66,6 +67,13 @@ export async function GET(req: NextRequest) {
 
 		const broadcasts = await tagBroadcastEvidence(orchestrated.candidates);
 		const broadcastMap = new Map(broadcasts.map((b) => [b.productUrl, b]));
+
+		// Apply broadcast-evidence boost to tvFitScore before saving so the
+		// persisted score reflects competitor-signal reweighting.
+		applyBroadcastBoost(
+			orchestrated.candidates,
+			new Map(broadcasts.map((b) => [b.productUrl, b.tag])),
+		);
 
 		const batch = orchestrated.candidates.map((c) => {
 			const bc = broadcastMap.get(c.productUrl);

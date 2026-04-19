@@ -1,12 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getServiceClient } from "@/lib/supabase";
+import { rakutenItemSearch } from "@/lib/rakuten";
 
 export const maxDuration = 60;
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 const BRAVE_API_KEY = process.env.BRAVE_SEARCH_API_KEY;
+
+// Rakuten rate limit is 1 req/s per app id. Stay at 1.1s between calls.
+const RAKUTEN_VERIFY_THROTTLE_MS = 1100;
+const RAKUTEN_VERIFY_SAMPLES = 3;
+// Fraction above/below the market median at which we flag the Gemini-estimated
+// price as out-of-range. 0.30 = ±30%.
+const PRICE_MISMATCH_THRESHOLD = 0.3;
 
 async function braveSearch(query: string): Promise<Array<{ title: string; url: string; description: string }>> {
 	if (!BRAVE_API_KEY) return [];
@@ -34,6 +42,14 @@ async function braveSearch(query: string): Promise<Array<{ title: string; url: s
 	}
 }
 
+export type MarketPriceHint = {
+	median_jpy: number;
+	min_jpy: number;
+	max_jpy: number;
+	sample_count: number;
+	sources: Array<{ name: string; price_jpy: number; url: string }>;
+};
+
 export type ProductRecommendation = {
 	name: string;
 	reason: string;
@@ -42,6 +58,12 @@ export type ProductRecommendation = {
 	supply_source: string;
 	estimated_price_jpy: string;
 	sources: Array<{ title: string; url: string }>;
+	market_price_hint?: MarketPriceHint;
+	/**
+	 * True when the Gemini-estimated price midpoint diverges from the Rakuten
+	 * market median by more than PRICE_MISMATCH_THRESHOLD (either direction).
+	 */
+	price_mismatch?: boolean;
 };
 
 export type RecommendResponse = {
@@ -50,6 +72,91 @@ export type RecommendResponse = {
 	targetMarket: string;
 	generatedAt: string;
 };
+
+/**
+ * Parse "¥3,980-5,980" / "3980~5980円" / "¥4,980" style strings into a
+ * midpoint yen value. Returns null if no numeric price is detectable.
+ */
+function parseEstimatedPriceMidpoint(s: string): number | null {
+	if (!s) return null;
+	const nums = s.match(/\d[\d,]*/g)?.map((n) => Number(n.replace(/,/g, "")));
+	if (!nums || nums.length === 0) return null;
+	if (nums.length === 1) return nums[0];
+	return Math.round((nums[0] + nums[1]) / 2);
+}
+
+function median(sorted: number[]): number {
+	const n = sorted.length;
+	if (n === 0) return 0;
+	if (n % 2 === 1) return sorted[(n - 1) / 2];
+	return Math.round((sorted[n / 2 - 1] + sorted[n / 2]) / 2);
+}
+
+/**
+ * Look up current Rakuten market prices for a product name. Returns null if
+ * Rakuten is unavailable or no priced results were returned.
+ */
+async function fetchMarketPriceHint(
+	productName: string,
+): Promise<MarketPriceHint | null> {
+	const res = await rakutenItemSearch(
+		productName,
+		"-reviewCount",
+		RAKUTEN_VERIFY_SAMPLES,
+	);
+	const priced = res.items.filter((it) => it.itemPrice > 0);
+	if (priced.length === 0) return null;
+	const prices = priced.map((it) => it.itemPrice).sort((a, b) => a - b);
+	return {
+		median_jpy: median(prices),
+		min_jpy: prices[0],
+		max_jpy: prices[prices.length - 1],
+		sample_count: priced.length,
+		sources: priced.map((it) => ({
+			name: it.itemName,
+			price_jpy: it.itemPrice,
+			url: it.itemUrl,
+		})),
+	};
+}
+
+/**
+ * Run Rakuten price lookups sequentially with throttling to respect the
+ * 1 req/s Rakuten rate limit. Failures are isolated per recommendation.
+ */
+async function annotateWithMarketPrices(
+	recs: ProductRecommendation[],
+): Promise<ProductRecommendation[]> {
+	const annotated: ProductRecommendation[] = [];
+	for (let i = 0; i < recs.length; i++) {
+		const rec = recs[i];
+		let hint: MarketPriceHint | null = null;
+		try {
+			hint = await fetchMarketPriceHint(rec.name);
+		} catch (err) {
+			console.warn(
+				`[recommend] price lookup failed for "${rec.name}":`,
+				err instanceof Error ? err.message : String(err),
+			);
+		}
+
+		const next: ProductRecommendation = { ...rec };
+		if (hint) {
+			next.market_price_hint = hint;
+			const midpoint = parseEstimatedPriceMidpoint(rec.estimated_price_jpy);
+			if (midpoint && hint.median_jpy > 0) {
+				const deviation = Math.abs(midpoint - hint.median_jpy) / hint.median_jpy;
+				next.price_mismatch = deviation > PRICE_MISMATCH_THRESHOLD;
+			}
+		}
+		annotated.push(next);
+
+		if (i < recs.length - 1) {
+			await new Promise((r) => setTimeout(r, RAKUTEN_VERIFY_THROTTLE_MS));
+		}
+	}
+	return annotated;
+}
 
 export async function POST(request: NextRequest) {
 	const body = await request.json().catch(() => ({}));
@@ -191,8 +298,13 @@ Return only valid JSON, no markdown.`;
 
 		const recommendations = JSON.parse(jsonMatch[0]) as ProductRecommendation[];
 
+		// Verify each recommended price against current Rakuten market prices.
+		// Degrades gracefully: if Rakuten is unavailable, recommendations ship
+		// without market_price_hint fields rather than failing the request.
+		const verified = await annotateWithMarketPrices(recommendations);
+
 		return NextResponse.json({
-			recommendations,
+			recommendations: verified,
 			category,
 			targetMarket,
 			generatedAt: new Date().toISOString(),

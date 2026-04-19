@@ -19,6 +19,11 @@ const EXPLORATION_MAX = 0.67;
 const EXPLORATION_LOSS_MARGIN = 0.1;
 const CATEGORY_MIN_SAMPLES = 5;
 const REJECTION_TOP_N = 5;
+// Seasonality: require at least this many weeks of data in the category+month
+// cell before we trust the factor; otherwise fall back to 1.0 (neutral).
+const SEASONAL_MIN_WEEKS_PER_CELL = 3;
+const SEASONAL_FACTOR_MIN = 0.3;
+const SEASONAL_FACTOR_MAX = 2.0;
 
 export interface ContextLearningStats {
 	exploration_ratio: number;
@@ -197,4 +202,97 @@ export async function computeContextLearning(
 		feedback_sample_size: feedbackSampleSize,
 		is_cold_start: false,
 	};
+}
+
+interface SeasonalRow {
+	category: string | null;
+	total_revenue: number | null;
+	week_start: string | null;
+}
+
+/**
+ * Compute per-category monthly seasonality factors from sales_weekly.
+ *
+ * Formula: factor(category, month) = month_revenue / (annual_revenue / 12)
+ * where month_revenue is total_revenue of weeks whose week_start falls in that
+ * calendar month across the analyzed window, summed across all years present.
+ *
+ * Clipped to [0.3, 2.0] to bound downstream prompt influence. Cells with
+ * insufficient data fall back to 1.0 (neutral). Shared across contexts since
+ * seasonality is a property of the Japanese consumer market, not of the
+ * discovery context.
+ */
+export async function computeCategorySeasonality(): Promise<
+	Record<string, Record<string, number>>
+> {
+	const sb = getServiceClient();
+	const rows: SeasonalRow[] = [];
+	let offset = 0;
+	const PAGE = 1000;
+	while (true) {
+		const { data, error } = await sb
+			.from("sales_weekly")
+			.select("category, total_revenue, week_start")
+			.not("category", "is", null)
+			.not("week_start", "is", null)
+			.range(offset, offset + PAGE - 1);
+		if (error) {
+			console.warn("[learning] seasonality query failed:", error.message);
+			return {};
+		}
+		if (!data || data.length === 0) break;
+		rows.push(...(data as SeasonalRow[]));
+		if (data.length < PAGE) break;
+		offset += PAGE;
+	}
+
+	if (rows.length === 0) return {};
+
+	// cell: category → month(1-12) → { revenue, weekCount }
+	const cells = new Map<
+		string,
+		Map<number, { revenue: number; weeks: number }>
+	>();
+
+	for (const row of rows) {
+		if (!row.category || !row.week_start) continue;
+		const d = new Date(row.week_start);
+		if (Number.isNaN(d.getTime())) continue;
+		const month = d.getUTCMonth() + 1; // 1-12
+		const rev = Number(row.total_revenue ?? 0);
+		let monthMap = cells.get(row.category);
+		if (!monthMap) {
+			monthMap = new Map();
+			cells.set(row.category, monthMap);
+		}
+		const cell = monthMap.get(month) ?? { revenue: 0, weeks: 0 };
+		cell.revenue += rev;
+		cell.weeks += 1;
+		monthMap.set(month, cell);
+	}
+
+	const result: Record<string, Record<string, number>> = {};
+	for (const [category, monthMap] of cells) {
+		let totalRev = 0;
+		for (const { revenue } of monthMap.values()) totalRev += revenue;
+		if (totalRev <= 0) continue;
+		const avgMonthlyRev = totalRev / 12;
+		const perMonth: Record<string, number> = {};
+		for (let m = 1; m <= 12; m++) {
+			const cell = monthMap.get(m);
+			if (!cell || cell.weeks < SEASONAL_MIN_WEEKS_PER_CELL) {
+				perMonth[String(m)] = 1.0;
+				continue;
+			}
+			const raw = cell.revenue / avgMonthlyRev;
+			const clipped = Math.max(
+				SEASONAL_FACTOR_MIN,
+				Math.min(SEASONAL_FACTOR_MAX, raw),
+			);
+			perMonth[String(m)] = Number(clipped.toFixed(2));
+		}
+		result[category] = perMonth;
+	}
+
+	return result;
 }

@@ -76,6 +76,12 @@ export interface RejectedSeeds {
 export interface LearningState {
 	exploration_ratio: number;
 	category_weights: Record<string, number>;
+	/**
+	 * Per-category monthly seasonality factor map.
+	 * { "<category>": { "1".."12": factor } } where 1.0 = annual-average month.
+	 * Empty object during cold-start; populated by daily-learning cron.
+	 */
+	category_seasonal_weights: Record<string, Record<string, number>>;
 	rejected_seeds: RejectedSeeds;
 	recent_rejection_reasons: Array<{ reason: string; count: number }>;
 	feedback_sample_size: number;
@@ -96,6 +102,7 @@ export interface ExclusionContext {
 export const DEFAULT_LEARNING_STATE: LearningState = {
 	exploration_ratio: 0.47,
 	category_weights: {},
+	category_seasonal_weights: {},
 	rejected_seeds: { urls: [], brands: [], terms: [] },
 	recent_rejection_reasons: [],
 	feedback_sample_size: 0,

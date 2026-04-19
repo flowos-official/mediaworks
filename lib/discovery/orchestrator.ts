@@ -6,10 +6,11 @@
  */
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { rakutenRankingSearch } from "@/lib/rakuten";
 import { curatePool } from "./curate";
 import { applyExclusions, loadExclusionContext } from "./exclusion";
 import { buildCategoryPlan, loadRecentPlannedKeywords, loadTopCategories } from "./plan";
-import { buildPool } from "./pool";
+import { buildPool, extractRakutenCode } from "./pool";
 import type {
 	Candidate,
 	CategoryPlan,
@@ -23,6 +24,11 @@ const MODEL_ID = "gemini-3-flash-preview";
 const MAX_ITERATIONS = Number(process.env.DISCOVERY_MAX_ITERATIONS ?? 3);
 const MIN_QUALITY_COUNT = 20; // threshold: need 20+ score>=60 to skip iteration
 const QUALITY_SCORE_THRESHOLD = 60;
+// Additive boost when a candidate's rakutenItemCode appears in Rakuten's
+// overall realtime top-N ranking. Kept modest so it nudges order without
+// swamping the Gemini-computed breakdown.
+const RAKUTEN_HOT_BOOST = 8;
+const RAKUTEN_HOT_RANK_HITS = 30;
 
 export interface OrchestrateResult {
 	candidates: Candidate[];
@@ -80,6 +86,50 @@ async function buildAdditionalPool(keywords: string[]): Promise<PoolItem[]> {
 }
 
 /**
+ * Fetch Rakuten's overall realtime top-N ranking (no keyword/genre filter)
+ * and return the set of rakutenItemCodes in it. Used as a real-time hot
+ * signal: candidates whose code appears here get a score boost.
+ *
+ * Single API call, fail-open (returns empty set on error).
+ */
+async function fetchRakutenHotSet(): Promise<Set<string>> {
+	try {
+		const res = await rakutenRankingSearch(undefined, undefined, RAKUTEN_HOT_RANK_HITS);
+		const codes = new Set<string>();
+		for (const item of res.items) {
+			const code = extractRakutenCode(item.itemUrl);
+			if (code) codes.add(code);
+		}
+		return codes;
+	} catch (err) {
+		console.warn(
+			"[orchestrator] fetchRakutenHotSet failed:",
+			err instanceof Error ? err.message : String(err),
+		);
+		return new Set();
+	}
+}
+
+/**
+ * Apply an additive score boost to candidates whose rakutenItemCode appears
+ * in the realtime hot-set. Mutates candidates in place; annotates the reason.
+ */
+function applyRakutenHotBoost(
+	candidates: Candidate[],
+	hotCodes: Set<string>,
+): void {
+	if (hotCodes.size === 0) return;
+	for (const c of candidates) {
+		if (!c.rakutenItemCode || !hotCodes.has(c.rakutenItemCode)) continue;
+		const boosted = Math.min(100, c.tvFitScore + RAKUTEN_HOT_BOOST);
+		if (boosted === c.tvFitScore) continue;
+		c.tvFitScore = boosted;
+		c.tvFitReason = `${c.tvFitReason} [楽天リアルタイムランキング上位]`.slice(0, 200);
+	}
+	candidates.sort((a, b) => b.tvFitScore - a.tvFitScore);
+}
+
+/**
  * Merge a pool extension into the main pool, deduping by productUrl.
  */
 function mergePools(base: PoolItem[], extension: PoolItem[]): PoolItem[] {
@@ -104,10 +154,12 @@ export async function runStage1(
 	targetCount: number,
 	context: Context = "home_shopping",
 ): Promise<OrchestrateResult> {
-	// Step 1: plan
-	const [topCategories, recentlyUsed] = await Promise.all([
+	// Step 1: plan + realtime hot-set in parallel. Hot-set is independent of
+	// pool/plan inputs, so we can start it early and reuse for the final boost.
+	const [topCategories, recentlyUsed, hotCodes] = await Promise.all([
 		loadTopCategories(),
 		loadRecentPlannedKeywords(),
+		fetchRakutenHotSet(),
 	]);
 	const plan = await buildCategoryPlan(learning, topCategories, recentlyUsed, context);
 
@@ -136,6 +188,10 @@ export async function runStage1(
 			(c) => c.tvFitScore >= QUALITY_SCORE_THRESHOLD,
 		).length;
 	}
+
+	// Step 4: apply realtime hot-set boost and re-sort. Done after iteration so
+	// late-added candidates are eligible too.
+	applyRakutenHotBoost(candidates, hotCodes);
 
 	return {
 		candidates,

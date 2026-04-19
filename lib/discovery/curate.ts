@@ -15,6 +15,33 @@ import type {
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 const MODEL_ID = "gemini-3-flash-preview";
 const POOL_SAMPLE_LIMIT = 150;
+const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
+const SEASONAL_HOT_THRESHOLD = 1.15;
+const SEASONAL_COLD_THRESHOLD = 0.85;
+
+function currentJstMonth(): number {
+	return new Date(Date.now() + JST_OFFSET_MS).getUTCMonth() + 1;
+}
+
+function buildSeasonalCurationHint(
+	seasonal: Record<string, Record<string, number>>,
+	month: number,
+): string {
+	const key = String(month);
+	const hot: string[] = [];
+	const cold: string[] = [];
+	for (const [cat, months] of Object.entries(seasonal)) {
+		const f = months[key];
+		if (typeof f !== "number") continue;
+		if (f >= SEASONAL_HOT_THRESHOLD) hot.push(`${cat}(×${f.toFixed(2)})`);
+		else if (f <= SEASONAL_COLD_THRESHOLD) cold.push(`${cat}(×${f.toFixed(2)})`);
+	}
+	if (hot.length === 0 && cold.length === 0) return "";
+	return `
+【${month}月の季節性シグナル (trend_signal採点に反映)】
+- 旬カテゴリ (加点): ${hot.slice(0, 8).join(", ") || "(該当なし)"}
+- 閑散カテゴリ (減点): ${cold.slice(0, 6).join(", ") || "(該当なし)"}`;
+}
 
 interface GeminiCurationItem {
 	index: number;
@@ -54,6 +81,11 @@ export async function curatePool(
 			.map((r) => `${r.reason}(${r.count}件)`)
 			.join(", ") || "(データ不足)";
 
+	const seasonalHint = buildSeasonalCurationHint(
+		learning.category_seasonal_weights ?? {},
+		currentJstMonth(),
+	);
+
 	const contextBlock =
 		context === "live_commerce"
 			? `
@@ -72,11 +104,20 @@ export async function curatePool(
 ${contextBlock}
 
 【採点基準 (合計0-100)】
-- review_signal (0-35): Rakutenレビュー数と評価の強さ (≥100件→30+, 50-99→20, 5-49→10, <5→0)
+- review_signal (0-35): レビュー評価と数の総合強度。評価(★)を最優先、件数は補強。
+  * ★4.5以上 × 100件以上 → 30-35 (強い社会的証明)
+  * ★4.5以上 × 50-99件 → 24-29
+  * ★4.0-4.4 × 100件以上 → 22-28
+  * ★4.0-4.4 × 50-99件 → 16-22
+  * ★3.5-3.9 × 件数問わず → 8-14 (件数が多くても中評価は中止まり)
+  * ★3.0-3.4 × 件数問わず → 3-8 (低評価は件数多くても減点)
+  * ★3.0未満 → 0-3 (件数多くてもキャップ、どれだけ売れていても品質懸念)
+  * ★? または 5件未満 → 0-5 (データ不足)
 - tv_category_match (0-20): Context実績カテゴリとの一致 (一致=20, 隣接=10, 不一致=0)
-- trend_signal (0-15): 日本市場のトレンド信号の強さ
+- trend_signal (0-15): 日本市場のトレンド信号の強さ。季節性シグナル適用可。
 - price_fit (0-15): Context別価格帯ゾーンに近いほど高い
 - purchase_signal (0-15): Context別の購買トリガー (実演映え or SNS拡散性)
+${seasonalHint}
 
 【除外すべき特性 (採点せず応答から除外)】
 - 単価¥500未満の消耗品

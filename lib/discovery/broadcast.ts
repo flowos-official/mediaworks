@@ -4,7 +4,8 @@
  * Ref: spec §4.2 単階 7.
  *
  * Output tags: broadcast_confirmed | broadcast_likely | unknown.
- * NEVER used as exclusion — only as UI metadata.
+ * Never used as exclusion. Applied as a modest additive ranking boost via
+ * applyBroadcastBoost (below) before persistence.
  */
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
@@ -16,10 +17,43 @@ const MODEL_ID = "gemini-3-flash-preview";
 
 const COMPETITORS = "(QVCジャパン OR ジャパネット OR ショップチャンネル OR テレ東ポシュレ)";
 
+// Additive boosts applied post-curation, pre-save. Kept small so they nudge
+// ranking without overriding the Gemini-computed breakdown.
+const BROADCAST_BOOST: Record<BroadcastTag, number> = {
+	broadcast_confirmed: 8,
+	broadcast_likely: 3,
+	unknown: 0,
+};
+
 export interface BroadcastResult {
 	productUrl: string;
 	tag: BroadcastTag;
 	sources: Array<{ title: string; url: string }>;
+}
+
+/**
+ * Apply the broadcast-evidence boost to each candidate's tvFitScore in place,
+ * capping at 100. Returns the same list (sorted DESC by new score).
+ *
+ * Only confirmed/likely competitor broadcasts move the score; unknown is a
+ * no-op so candidates without evidence are neither rewarded nor penalized.
+ */
+export function applyBroadcastBoost(
+	candidates: Candidate[],
+	tagByUrl: Map<string, BroadcastTag>,
+): Candidate[] {
+	for (const c of candidates) {
+		const tag = tagByUrl.get(c.productUrl) ?? "unknown";
+		const boost = BROADCAST_BOOST[tag];
+		if (boost === 0) continue;
+		const next = Math.min(100, c.tvFitScore + boost);
+		if (next === c.tvFitScore) continue;
+		c.tvFitScore = next;
+		const note = tag === "broadcast_confirmed" ? "放送実績あり" : "放送兆候あり";
+		c.tvFitReason = `${c.tvFitReason} [${note}]`.slice(0, 200);
+	}
+	candidates.sort((a, b) => b.tvFitScore - a.tvFitScore);
+	return candidates;
 }
 
 /**

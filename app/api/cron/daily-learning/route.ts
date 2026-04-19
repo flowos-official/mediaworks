@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { computeContextLearning } from "@/lib/discovery/learning";
+import {
+	computeCategorySeasonality,
+	computeContextLearning,
+} from "@/lib/discovery/learning";
 import { getServiceClient } from "@/lib/supabase";
 import type { Context } from "@/lib/discovery/types";
 
@@ -22,6 +25,18 @@ export async function GET(req: NextRequest) {
 	const sb = getServiceClient();
 	const results: Array<{ context: Context; ok: boolean; error?: string }> = [];
 
+	// Seasonality derives from sales_weekly (context-agnostic), so compute once
+	// and share across contexts. Failure here degrades to empty map, not fatal.
+	let seasonalWeights: Record<string, Record<string, number>> = {};
+	try {
+		seasonalWeights = await computeCategorySeasonality();
+	} catch (err) {
+		console.warn(
+			"[daily-learning] seasonality failed:",
+			err instanceof Error ? err.message : String(err),
+		);
+	}
+
 	for (const context of CONTEXTS) {
 		try {
 			const { data: current } = await sb
@@ -39,6 +54,7 @@ export async function GET(req: NextRequest) {
 					context,
 					exploration_ratio: stats.exploration_ratio,
 					category_weights: stats.category_weights,
+					category_seasonal_weights: seasonalWeights,
 					rejected_seeds: stats.rejected_seeds,
 					recent_rejection_reasons: stats.recent_rejection_reasons,
 					feedback_sample_size: stats.feedback_sample_size,
@@ -59,5 +75,8 @@ export async function GET(req: NextRequest) {
 		}
 	}
 
-	return NextResponse.json({ results });
+	return NextResponse.json({
+		results,
+		seasonal_categories: Object.keys(seasonalWeights).length,
+	});
 }

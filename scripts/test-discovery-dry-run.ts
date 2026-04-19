@@ -25,6 +25,7 @@ async function loadLearningState(): Promise<LearningState> {
 		return {
 			exploration_ratio: data.exploration_ratio,
 			category_weights: data.category_weights ?? {},
+			category_seasonal_weights: data.category_seasonal_weights ?? {},
 			rejected_seeds: data.rejected_seeds ?? {
 				urls: [],
 				brands: [],
