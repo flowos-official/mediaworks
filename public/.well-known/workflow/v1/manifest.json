@@ -17,26 +17,6 @@
         "stepId": "__builtin_response_text"
       }
     },
-    "lib/workflows/live-commerce.workflow.ts": {
-      "closeProgressStep": {
-        "stepId": "step//./lib/workflows/live-commerce.workflow//closeProgressStep"
-      },
-      "emitProgressStep": {
-        "stepId": "step//./lib/workflows/live-commerce.workflow//emitProgressStep"
-      },
-      "fetchContextStep": {
-        "stepId": "step//./lib/workflows/live-commerce.workflow//fetchContextStep"
-      },
-      "runDiscoveryStep": {
-        "stepId": "step//./lib/workflows/live-commerce.workflow//runDiscoveryStep"
-      },
-      "runSkillStep": {
-        "stepId": "step//./lib/workflows/live-commerce.workflow//runSkillStep"
-      },
-      "saveStrategyStep": {
-        "stepId": "step//./lib/workflows/live-commerce.workflow//saveStrategyStep"
-      }
-    },
     "lib/workflows/md-strategy.workflow.ts": {
       "closeProgressStep": {
         "stepId": "step//./lib/workflows/md-strategy.workflow//closeProgressStep"
@@ -56,21 +36,41 @@
       "saveStrategyStep": {
         "stepId": "step//./lib/workflows/md-strategy.workflow//saveStrategyStep"
       }
+    },
+    "lib/workflows/live-commerce.workflow.ts": {
+      "closeProgressStep": {
+        "stepId": "step//./lib/workflows/live-commerce.workflow//closeProgressStep"
+      },
+      "emitProgressStep": {
+        "stepId": "step//./lib/workflows/live-commerce.workflow//emitProgressStep"
+      },
+      "fetchContextStep": {
+        "stepId": "step//./lib/workflows/live-commerce.workflow//fetchContextStep"
+      },
+      "runDiscoveryStep": {
+        "stepId": "step//./lib/workflows/live-commerce.workflow//runDiscoveryStep"
+      },
+      "runSkillStep": {
+        "stepId": "step//./lib/workflows/live-commerce.workflow//runSkillStep"
+      },
+      "saveStrategyStep": {
+        "stepId": "step//./lib/workflows/live-commerce.workflow//saveStrategyStep"
+      }
     }
   },
   "workflows": {
-    "lib/workflows/live-commerce.workflow.ts": {
-      "liveCommerceWorkflow": {
-        "workflowId": "workflow//./lib/workflows/live-commerce.workflow//liveCommerceWorkflow",
+    "lib/workflows/md-strategy.workflow.ts": {
+      "mdStrategyWorkflow": {
+        "workflowId": "workflow//./lib/workflows/md-strategy.workflow//mdStrategyWorkflow",
         "graph": {
           "nodes": [],
           "edges": []
         }
       }
     },
-    "lib/workflows/md-strategy.workflow.ts": {
-      "mdStrategyWorkflow": {
-        "workflowId": "workflow//./lib/workflows/md-strategy.workflow//mdStrategyWorkflow",
+    "lib/workflows/live-commerce.workflow.ts": {
+      "liveCommerceWorkflow": {
+        "workflowId": "workflow//./lib/workflows/live-commerce.workflow//liveCommerceWorkflow",
         "graph": {
           "nodes": [],
           "edges": []

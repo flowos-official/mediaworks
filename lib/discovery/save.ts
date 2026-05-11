@@ -6,6 +6,7 @@
 
 import { getServiceClient } from "@/lib/supabase";
 import { normalizeName } from "./exclusion";
+import { fetchRakutenPage } from "./tools/rakuten-page";
 import type {
 	BroadcastTag,
 	Candidate,
@@ -13,6 +14,11 @@ import type {
 	Context,
 	SessionStatus,
 } from "./types";
+
+const CATEGORY_ENRICH_CONCURRENCY = Math.max(
+	1,
+	Number(process.env.DISCOVERY_CATEGORY_ENRICH_CONCURRENCY ?? 5),
+);
 
 /**
  * Create a new discovery_runs row with status='running'.
@@ -67,25 +73,44 @@ export interface SaveBatch {
 	broadcastSources: Array<{ title: string; url: string }>;
 }
 
-/**
- * Bulk insert discovered_products for a session.
- * Skips rows that violate unique (session_id, product_url) — idempotent on retry.
- */
-export async function saveDiscoveredProducts(
+export interface DiscoveredProductRow {
+	session_id: string;
+	name: string;
+	name_normalized: string;
+	thumbnail_url: string | null;
+	product_url: string;
+	price_jpy: number | null;
+	category: string | null;
+	seed_keyword: string;
+	source: Candidate["source"];
+	rakuten_item_code: string | null;
+	review_count: number | null;
+	review_avg: number | null;
+	seller_name: string | null;
+	stock_status: string | null;
+	tv_fit_score: number;
+	tv_fit_reason: string;
+	broadcast_tag: BroadcastTag;
+	broadcast_sources: Array<{ title: string; url: string }>;
+	track: Candidate["track"];
+	is_tv_applicable: boolean;
+	is_live_applicable: boolean;
+	context: Candidate["context"];
+}
+
+export function buildDiscoveredProductRows(
 	sessionId: string,
 	batch: SaveBatch[],
-): Promise<number> {
-	if (batch.length === 0) return 0;
-	const sb = getServiceClient();
-
-	const rows = batch.map(({ candidate, broadcastTag, broadcastSources }) => ({
+): DiscoveredProductRow[] {
+	return batch.map(({ candidate, broadcastTag, broadcastSources }) => ({
 		session_id: sessionId,
 		name: candidate.name,
 		name_normalized: normalizeName(candidate.name),
 		thumbnail_url: candidate.thumbnailUrl ?? null,
 		product_url: candidate.productUrl,
 		price_jpy: candidate.priceJpy ?? null,
-		category: candidate.seedKeyword,
+		category: candidate.category ?? null,
+		seed_keyword: candidate.seedKeyword,
 		source: candidate.source,
 		rakuten_item_code: candidate.rakutenItemCode ?? null,
 		review_count: candidate.reviewCount ?? null,
@@ -101,6 +126,64 @@ export async function saveDiscoveredProducts(
 		is_live_applicable: candidate.isLiveApplicable,
 		context: candidate.context,
 	}));
+}
+
+async function enrichMissingCategories(batch: SaveBatch[]): Promise<SaveBatch[]> {
+	const next = batch.map((entry) => ({
+		...entry,
+		candidate: { ...entry.candidate },
+	}));
+	const targetIndexes = next
+		.map((entry, index) =>
+			!entry.candidate.category &&
+			entry.candidate.source === "rakuten" &&
+			entry.candidate.productUrl.includes("rakuten.co.jp")
+				? index
+				: -1,
+		)
+		.filter((index) => index >= 0);
+
+	if (targetIndexes.length === 0) {
+		return next;
+	}
+
+	let cursor = 0;
+	const worker = async () => {
+		while (cursor < targetIndexes.length) {
+			const target = targetIndexes[cursor];
+			cursor += 1;
+			const entry = next[target];
+			const info = await fetchRakutenPage(entry.candidate.productUrl);
+			const category =
+				info.categoryPath.length > 0 ? info.categoryPath.join(" > ") : null;
+			if (category) {
+				entry.candidate.category = category;
+			}
+		}
+	};
+
+	await Promise.all(
+		Array.from(
+			{ length: Math.min(CATEGORY_ENRICH_CONCURRENCY, targetIndexes.length) },
+			() => worker(),
+		),
+	);
+
+	return next;
+}
+
+/**
+ * Bulk insert discovered_products for a session.
+ * Skips rows that violate unique (session_id, product_url) — idempotent on retry.
+ */
+export async function saveDiscoveredProducts(
+	sessionId: string,
+	batch: SaveBatch[],
+): Promise<number> {
+	if (batch.length === 0) return 0;
+	const sb = getServiceClient();
+	const enrichedBatch = await enrichMissingCategories(batch);
+	const rows = buildDiscoveredProductRows(sessionId, enrichedBatch);
 
 	const { data, error } = await sb
 		.from("discovered_products")
@@ -114,6 +197,10 @@ export async function saveDiscoveredProducts(
 	}
 	return data?.length ?? 0;
 }
+
+export const __test = {
+	buildDiscoveredProductRows,
+};
 
 /**
  * Finalize session with status, produced_count, iteration count.

@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test:rakuten-page-category": "tsx --env-file=.env.local scripts/test-rakuten-page-category.ts",
+    "test:discovery-row-mapping": "tsx --env-file=.env.local scripts/test-discovery-row-mapping.ts",
     "test:discovery-dry-run": "tsx --env-file=.env.local scripts/test-discovery-dry-run.ts",
     "test:migrations": "tsx --env-file=.env.local scripts/check-migrations.ts",
     "test:user-guide": "tsx --env-file=.env.local scripts/test-user-guide.ts"

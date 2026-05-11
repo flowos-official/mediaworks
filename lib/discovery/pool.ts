@@ -57,6 +57,7 @@ function rakutenItemToPoolItem(
 		productUrl: it.itemUrl,
 		thumbnailUrl: it.imageUrl,
 		priceJpy: it.itemPrice || undefined,
+		category: it.genreName || undefined,
 		reviewCount: it.reviewCount,
 		reviewAvg: it.reviewAverage || undefined,
 		sellerName: it.shopName || undefined,
@@ -80,7 +81,16 @@ async function fetchRakutenForKeyword(
 		if (res.items.length === 0) {
 			res = await rakutenRankingSearch(keyword, undefined, RAKUTEN_PER_KEYWORD);
 		}
-		return res.items.map((it) => rakutenItemToPoolItem(it, keyword, track));
+		return res.items.map((it) =>
+			rakutenItemToPoolItem(
+				{
+					...it,
+					genreName: it.genreName || res.genreName || undefined,
+				},
+				keyword,
+				track,
+			),
+		);
 	} catch (err) {
 		console.warn(
 			`[pool] rakuten "${keyword}" failed:`,

@@ -38,6 +38,7 @@ export interface PoolItem {
 	productUrl: string;
 	thumbnailUrl?: string;
 	priceJpy?: number;
+	category?: string;
 	reviewCount?: number;
 	reviewAvg?: number;
 	sellerName?: string;

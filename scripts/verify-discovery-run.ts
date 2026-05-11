@@ -13,6 +13,8 @@ import type { Context } from "@/lib/discovery/types";
 interface DiscoveredRow {
 	name: string;
 	price_jpy: number | null;
+	category: string | null;
+	seed_keyword: string | null;
 	tv_fit_score: number;
 	tv_fit_reason: string;
 	broadcast_tag: string;
@@ -20,7 +22,6 @@ interface DiscoveredRow {
 	review_count: number | null;
 	review_avg: number | null;
 	rakuten_item_code: string | null;
-	category: string;
 	seller_name: string | null;
 	is_tv_applicable: boolean;
 	is_live_applicable: boolean;
@@ -72,7 +73,7 @@ async function inspectContext(context: Context): Promise<void> {
 	const { data: products, error: prodErr } = await sb
 		.from("discovered_products")
 		.select(
-			"name, price_jpy, tv_fit_score, tv_fit_reason, broadcast_tag, track, review_count, review_avg, rakuten_item_code, category, seller_name, is_tv_applicable, is_live_applicable",
+			"name, price_jpy, category, seed_keyword, tv_fit_score, tv_fit_reason, broadcast_tag, track, review_count, review_avg, rakuten_item_code, seller_name, is_tv_applicable, is_live_applicable",
 		)
 		.eq("session_id", run.id)
 		.order("tv_fit_score", { ascending: false });
@@ -94,7 +95,7 @@ async function inspectContext(context: Context): Promise<void> {
 	for (const r of rows) {
 		tagCounts.set(r.broadcast_tag, (tagCounts.get(r.broadcast_tag) ?? 0) + 1);
 		trackCounts.set(r.track, (trackCounts.get(r.track) ?? 0) + 1);
-		categorySet.add(r.category);
+		if (r.category) categorySet.add(r.category);
 
 		const p = r.price_jpy ?? 0;
 		if (!p) priceBands.noprice++;
@@ -158,7 +159,7 @@ async function inspectContext(context: Context): Promise<void> {
 			.filter(Boolean)
 			.join("/");
 		console.log(
-			`  ${String(i + 1).padStart(2)}. [${String(r.tv_fit_score).padStart(3)}] ${r.name.slice(0, 55).padEnd(55)} ${price.padEnd(10)} ${rev.padEnd(15)} ${flags.padEnd(12)} ${r.track === "exploration" ? "EXP" : "TVP"} | ${r.category}`,
+			`  ${String(i + 1).padStart(2)}. [${String(r.tv_fit_score).padStart(3)}] ${r.name.slice(0, 55).padEnd(55)} ${price.padEnd(10)} ${rev.padEnd(15)} ${flags.padEnd(12)} ${r.track === "exploration" ? "EXP" : "TVP"} | cat=${r.category ?? "(null)"} | seed=${r.seed_keyword ?? "(null)"}`,
 		);
 		if (
 			r.tv_fit_reason.includes("放送") ||

@@ -34,6 +34,7 @@ const REQUIRED_COLUMNS: Record<string, string[]> = {
 		"product_url",
 		"price_jpy",
 		"category",
+		"seed_keyword",
 		"source",
 		"rakuten_item_code",
 		"review_count",

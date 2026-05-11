@@ -59,15 +59,15 @@
     },
     {
       "path": "/api/cron/daily-discovery-home",
-      "schedule": "0 0 * * *"
+      "schedule": "0 23 * * *"
     },
     {
       "path": "/api/cron/daily-discovery-live",
-      "schedule": "30 0 * * *"
+      "schedule": "30 23 * * *"
     },
     {
       "path": "/api/cron/daily-learning",
-      "schedule": "45 23 * * *"
+      "schedule": "45 22 * * *"
     },
     {
       "path": "/api/cron/weekly-insights",

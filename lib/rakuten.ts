@@ -20,6 +20,7 @@ export type RakutenItem = {
 	reviewCount: number;
 	reviewAverage: number;
 	genreId?: string;
+	genreName?: string;
 	imageUrl?: string;
 };
 

@@ -52,7 +52,7 @@ async function main() {
 	const { data: sampleProds } = await sb
 		.from("discovered_products")
 		.select(
-			"id, name, thumbnail_url, product_url, price_jpy, review_avg, tv_fit_score, tv_fit_reason, track, broadcast_tag, context",
+			"id, name, thumbnail_url, product_url, price_jpy, review_avg, tv_fit_score, tv_fit_reason, track, broadcast_tag, context, category, seed_keyword",
 		)
 		.limit(10);
 
@@ -60,10 +60,12 @@ async function main() {
 	const withImages = prods.filter((p) => p.thumbnail_url).length;
 	const withScores = prods.filter((p) => p.tv_fit_score != null).length;
 	const withReasons = prods.filter((p) => p.tv_fit_reason).length;
+	const withSeedKeywords = prods.filter((p) => p.seed_keyword).length;
+	const withActualCategories = prods.filter((p) => p.category).length;
 	if (prods.length >= 5 && withScores === prods.length) {
 		pass(
 			"2.1 Products have B package",
-			`${prods.length} sampled, ${withImages} with images, ${withScores} with scores, ${withReasons} with reasons`,
+			`${prods.length} sampled, ${withImages} with images, ${withScores} with scores, ${withReasons} with reasons, ${withSeedKeywords} with seed keywords, ${withActualCategories} with actual categories`,
 		);
 	} else {
 		fail("2.1 Products B package", `Incomplete: ${withScores}/${prods.length} have scores`);
