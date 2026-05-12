@@ -11,7 +11,7 @@ import type {
 	SalesWeeklyTotal,
 } from "@/lib/supabase";
 import type { SeedContext } from "@/lib/strategy/seed-context";
-import { formatSeedPromptSection } from "@/lib/strategy/seed-context";
+import { formatSeedPromptSection, formatMultiSeedPromptSection } from "@/lib/strategy/seed-context";
 import { CATEGORY_MAPPING } from "@/lib/strategy/category-mapping";
 import { queryDiscoveredPool } from "@/lib/strategy/pool-query";
 
@@ -1654,7 +1654,9 @@ IMPORTANT:
 // ---------------------------------------------------------------------------
 
 function buildProductSelectionPrompt(ctx: StrategyContext): string {
-	const seedSection = formatSeedPromptSection(ctx.seedProduct ?? null);
+	const seedSection = formatMultiSeedPromptSection(
+		ctx.seedProducts ?? (ctx.seedProduct ? [ctx.seedProduct] : []),
+	);
 	// Build Markdown table for products with pre-computed metrics
 	const tableHeader = `| # | 商品名 | カテゴリ | 年売上 | 粗利率 | 週平均 | 3M成長率 | TV単価 | 原価 | EC15%後マージン | EC既存 | 季節ピーク |`;
 	const tableSep = `|---|---|---|---|---|---|---|---|---|---|---|---|`;
@@ -1746,7 +1748,9 @@ const EMPTY_ME: MarketingExecutionOutput = { monthly_plans: [], content_calendar
 const EMPTY_FP: FinancialProjectionOutput = { monthly_forecast: [], roi_timeline: [], scenarios: { conservative: { year1_revenue: 0, year1_profit: 0 }, moderate: { year1_revenue: 0, year1_profit: 0 }, aggressive: { year1_revenue: 0, year1_profit: 0 }, assumptions: [] } };
 
 function buildChannelStrategyPrompt(ctx: StrategyContext, priorOutputs: Record<string, unknown>): string {
-	const seedSection = formatSeedPromptSection(ctx.seedProduct ?? null);
+	const seedSection = formatMultiSeedPromptSection(
+		ctx.seedProducts ?? (ctx.seedProduct ? [ctx.seedProduct] : []),
+	);
 	const ps = (priorOutputs.product_selection as ProductSelectionOutput) ?? EMPTY_PS;
 
 	// Build structured tier1 summary with margin and revenue data
@@ -1834,7 +1838,9 @@ ${buildSourcesSection(ctx)}`;
 }
 
 function buildPricingMarginPrompt(ctx: StrategyContext, priorOutputs: Record<string, unknown>): string {
-	const seedSection = formatSeedPromptSection(ctx.seedProduct ?? null);
+	const seedSection = formatMultiSeedPromptSection(
+		ctx.seedProducts ?? (ctx.seedProduct ? [ctx.seedProduct] : []),
+	);
 	const ps = (priorOutputs.product_selection as ProductSelectionOutput) ?? EMPTY_PS;
 	const cs = (priorOutputs.channel_strategy as ChannelStrategyOutput) ?? EMPTY_CS;
 
@@ -1955,7 +1961,9 @@ ${buildSourcesSection(ctx)}`;
 }
 
 function buildMarketingExecutionPrompt(ctx: StrategyContext, priorOutputs: Record<string, unknown>): string {
-	const seedSection = formatSeedPromptSection(ctx.seedProduct ?? null);
+	const seedSection = formatMultiSeedPromptSection(
+		ctx.seedProducts ?? (ctx.seedProduct ? [ctx.seedProduct] : []),
+	);
 	const ps = (priorOutputs.product_selection as ProductSelectionOutput) ?? EMPTY_PS;
 	const cs = (priorOutputs.channel_strategy as ChannelStrategyOutput) ?? EMPTY_CS;
 	const pm = (priorOutputs.pricing_margin as PricingMarginOutput) ?? EMPTY_PM;
@@ -2082,7 +2090,9 @@ ${buildSourcesSection(ctx)}`;
 }
 
 function buildFinancialProjectionPrompt(ctx: StrategyContext, priorOutputs: Record<string, unknown>): string {
-	const seedSection = formatSeedPromptSection(ctx.seedProduct ?? null);
+	const seedSection = formatMultiSeedPromptSection(
+		ctx.seedProducts ?? (ctx.seedProduct ? [ctx.seedProduct] : []),
+	);
 	const cs = (priorOutputs.channel_strategy as ChannelStrategyOutput) ?? EMPTY_CS;
 	const pm = (priorOutputs.pricing_margin as PricingMarginOutput) ?? EMPTY_PM;
 	const me = (priorOutputs.marketing_execution as MarketingExecutionOutput) ?? EMPTY_ME;
@@ -2205,7 +2215,9 @@ ${buildSourcesSection(ctx)}`;
 }
 
 function buildRiskContingencyPrompt(ctx: StrategyContext, priorOutputs: Record<string, unknown>): string {
-	const seedSection = formatSeedPromptSection(ctx.seedProduct ?? null);
+	const seedSection = formatMultiSeedPromptSection(
+		ctx.seedProducts ?? (ctx.seedProduct ? [ctx.seedProduct] : []),
+	);
 	const cs = (priorOutputs.channel_strategy as ChannelStrategyOutput) ?? EMPTY_CS;
 	const pm = (priorOutputs.pricing_margin as PricingMarginOutput) ?? EMPTY_PM;
 	const fp = (priorOutputs.financial_projection as FinancialProjectionOutput) ?? EMPTY_FP;
