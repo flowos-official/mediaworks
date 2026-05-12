@@ -491,6 +491,25 @@ type DiscoveryPoolItem = {
 	reviewAverage?: number;
 };
 
+// ---------------------------------------------------------------------------
+// Pool-first decision helpers (plan: 2026-05-13 strategy-discovery-pool-integration)
+// ---------------------------------------------------------------------------
+
+type DiscoveryStrategyMode = "pool_only" | "pool_filled" | "fresh_only";
+
+function poolTargetSize(lightweight: boolean): number {
+	return lightweight ? 30 : 12;
+}
+
+function decideDiscoveryStrategy(
+	poolSize: number,
+	target: number,
+): { strategy: DiscoveryStrategyMode; fillNeeded: number } {
+	if (poolSize === 0) return { strategy: "fresh_only", fillNeeded: target };
+	if (poolSize >= target) return { strategy: "pool_only", fillNeeded: 0 };
+	return { strategy: "pool_filled", fillNeeded: target - poolSize };
+}
+
 export async function discoverNewProducts(
 	input: DiscoverInput,
 ): Promise<StrategyContext["recommendedProducts"]> {
@@ -2271,3 +2290,9 @@ export async function runStrategyOrchestrator(
 
 	return outputs as unknown as FullStrategyResult;
 }
+
+export const __test = {
+	decideDiscoveryStrategy,
+	poolTargetSize,
+};
+
