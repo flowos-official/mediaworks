@@ -64,14 +64,17 @@ function normalizeDescription(s: string): string {
 		.toLowerCase();
 }
 
-/** Substring match against the normalized description. Seeds are matched as
- *  given (assume seedKeyword strings are short and already in canonical form). */
-function matchAnySeed(normalized: string, seeds: readonly string[]): boolean {
+/** Find the first seed whose lowercase form appears in the already-normalized
+ *  description. Returns the seed string (in its original case) or null. */
+function findMatchingSeed(
+	normalized: string,
+	seeds: readonly string[],
+): string | null {
 	for (const s of seeds) {
 		if (!s) continue;
-		if (normalized.includes(s.toLowerCase())) return true;
+		if (normalized.includes(s.toLowerCase())) return s;
 	}
-	return false;
+	return null;
 }
 
 interface BroadcastRow {
@@ -174,17 +177,16 @@ async function fetchTvChannelFromBroadcasts(
 		.map((s) => s.toLowerCase().trim())
 		.filter(Boolean);
 
+	const tvProvenLower = new Set(plan.tv_proven.map((s) => s.toLowerCase()));
 	const result: PoolItem[] = [];
 	for (const item of grouped) {
 		const normalized = normalizeDescription(item.name);
-		const matchedSeed = seeds.find((s) => normalized.includes(s));
+		const matchedSeed = findMatchingSeed(normalized, seeds);
 		if (!matchedSeed) continue;
 		result.push({
 			...item,
 			seedKeyword: matchedSeed,
-			track: plan.tv_proven.map((s) => s.toLowerCase()).includes(matchedSeed)
-				? "tv_proven"
-				: "exploration",
+			track: tvProvenLower.has(matchedSeed) ? "tv_proven" : "exploration",
 		});
 	}
 	return result;
@@ -315,7 +317,7 @@ export const __test = {
 	RAKUTEN_PER_KEYWORD,
 	BRAVE_PER_KEYWORD,
 	normalizeDescription,
-	matchAnySeed,
+	findMatchingSeed,
 	groupBroadcastRows,
 	fetchTvChannelFromBroadcasts,
 };

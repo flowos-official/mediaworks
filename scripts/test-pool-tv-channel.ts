@@ -11,12 +11,14 @@ import { __test } from "@/lib/discovery/pool";
 	assert.equal(f("  クッキング\tクックル  "), "クッキング クックル");
 }
 
-// Test B: matchAnySeed (substring match against normalized form)
+// Test B: findMatchingSeed (returns matched seed or null)
 {
-	const f = __test.matchAnySeed;
-	assert.equal(f("blender mixer 300w", ["mixer"]), true);
-	assert.equal(f("blender mixer 300w", ["air fryer"]), false);
-	assert.equal(f("ＢＬＥＮＤＥＲ", ["blender"]), false); // normalize done by caller
+	const f = __test.findMatchingSeed;
+	assert.equal(f("blender mixer 300w", ["mixer"]), "mixer");
+	assert.equal(f("blender mixer 300w", ["air fryer"]), null);
+	assert.equal(f("ＢＬＥＮＤＥＲ", ["blender"]), null); // normalize done by caller
+	// First match wins when multiple seeds match
+	assert.equal(f("blender mixer 300w", ["mixer", "300w"]), "mixer");
 }
 
 // Test C: groupBroadcastRows — same normalized name across channels → one item with both slugs
