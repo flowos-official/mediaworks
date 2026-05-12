@@ -17,6 +17,7 @@
     "test:broadcasts-live": "tsx --env-file=.env.local scripts/test-broadcasts-scrape-live.ts",
     "test:tv-channel-derive": "tsx --env-file=.env.local scripts/test-tv-channel-derive.ts",
     "test:pool-tv-channel": "tsx --env-file=.env.local scripts/test-pool-tv-channel.ts",
+    "test:tv-channel-mapping": "tsx --env-file=.env.local scripts/test-tv-channel-mapping.ts",
     "test:user-guide": "tsx --env-file=.env.local scripts/test-user-guide.ts",
     "backfill:broadcasts": "tsx --env-file=.env.local scripts/backfill-broadcasts.ts",
     "verify:broadcasts": "tsx --env-file=.env.local scripts/verify-broadcasts-run.ts",
