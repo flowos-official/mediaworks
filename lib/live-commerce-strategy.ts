@@ -320,7 +320,8 @@ const STATIC_QUERIES = [
 
 function buildDynamicQueries(goal: ParsedGoal): string[] {
 	const queries: string[] = [];
-	for (const platform of goal.target_platforms.slice(0, 2)) {
+	const platforms = Array.isArray(goal.target_platforms) ? goal.target_platforms : [];
+	for (const platform of platforms.slice(0, 2)) {
 		queries.push(`${platform} ライブコマース 日本 攻略`);
 	}
 	return queries;
@@ -478,11 +479,23 @@ async function runGoalAnalysis(userGoal: string): Promise<ParsedGoal> {
 }
 
 注意:
-- target_platformsが明示されていない場合はTikTok Live, Instagram Live, YouTube Liveをデフォルトで含める
+- primary_objective は必ず文字列で返してください。
+- target_platforms は必ず配列で返してください（null は使わない）。明示されていない場合は ["TikTok Live", "Instagram Live", "YouTube Live"] をデフォルトとして返してください。
+- budget_range / timeline / target_audience は言及がなければ null を返してください。
 - 全てのテキストは日本語で出力`;
 
 	const raw = await callGemini(prompt);
-	return parseJSON<ParsedGoal>(raw);
+	const parsed = parseJSON<Partial<ParsedGoal>>(raw);
+	const platforms = Array.isArray(parsed.target_platforms)
+		? parsed.target_platforms.filter((p): p is string => typeof p === "string")
+		: [];
+	return {
+		primary_objective: typeof parsed.primary_objective === "string" ? parsed.primary_objective : "",
+		target_platforms: platforms.length > 0 ? platforms : ["TikTok Live", "Instagram Live", "YouTube Live"],
+		budget_range: typeof parsed.budget_range === "string" ? parsed.budget_range : undefined,
+		timeline: typeof parsed.timeline === "string" ? parsed.timeline : undefined,
+		target_audience: typeof parsed.target_audience === "string" ? parsed.target_audience : undefined,
+	};
 }
 
 // ---------------------------------------------------------------------------
@@ -503,10 +516,11 @@ function formatPlatformRef(): string {
 function goalSection(ctx: LCContext): string {
 	if (!ctx.parsedGoal) return "";
 	const g = ctx.parsedGoal;
+	const platforms = Array.isArray(g.target_platforms) ? g.target_platforms : [];
 	return `
 === ユーザー目標 ===
-- 主な目的: ${g.primary_objective}
-- 対象プラットフォーム: ${g.target_platforms.join(", ")}
+- 主な目的: ${g.primary_objective || "（未指定）"}
+${platforms.length > 0 ? `- 対象プラットフォーム: ${platforms.join(", ")}` : ""}
 ${g.budget_range ? `- 予算: ${g.budget_range}` : ""}
 ${g.timeline ? `- タイムライン: ${g.timeline}` : ""}
 ${g.target_audience ? `- ターゲット層: ${g.target_audience}` : ""}
