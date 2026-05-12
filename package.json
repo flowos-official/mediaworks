@@ -21,8 +21,10 @@
     "test:discovery-partition": "tsx --env-file=.env.local scripts/test-discovery-partition.ts",
     "test:user-guide": "tsx --env-file=.env.local scripts/test-user-guide.ts",
     "test:pool-query": "tsx --env-file=.env.local scripts/test-pool-query-filters.ts",
+    "test:pool-fallback": "tsx --env-file=.env.local scripts/test-pool-query-fallback.ts",
     "test:multi-seed": "tsx --env-file=.env.local scripts/test-multi-seed-context.ts",
     "test:discovery-pool-first": "tsx --env-file=.env.local scripts/test-discover-pool-first.ts",
+    "test:strategy-pool": "npm run test:pool-query && npm run test:multi-seed && npm run test:discovery-pool-first && npm run test:pool-fallback",
     "backfill:broadcasts": "tsx --env-file=.env.local scripts/backfill-broadcasts.ts",
     "verify:broadcasts": "tsx --env-file=.env.local scripts/verify-broadcasts-run.ts",
     "enrich:qvc-products": "tsx --env-file=.env.local scripts/enrich-qvc-products.ts"
