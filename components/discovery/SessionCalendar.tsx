@@ -87,13 +87,18 @@ export function SessionCalendar({ sessions, month }: { sessions: SessionRow[]; m
 							title={cell.sessions.map((s) => `${s.context === "home_shopping" ? "ホーム" : "ライブ"}: ${s.status} (${s.produced_count})`).join("\n")}
 						>
 							<span className="text-[10px] text-gray-700">{cell.day}</span>
-							<div className="flex gap-0.5 mt-0.5">
+							<div className="flex gap-0.5 mt-0.5 items-center">
 								{cell.sessions.slice(0, 4).map((s) => (
 									<span
 										key={s.id}
 										className={`w-1.5 h-1.5 rounded-full ${statusColor(s.status)} ${s.context === "live_commerce" ? "ring-1 ring-purple-400" : ""}`}
 									/>
 								))}
+								{cell.sessions.length > 4 && (
+									<span className="text-[9px] text-gray-500 ml-0.5">
+										+{cell.sessions.length - 4}
+									</span>
+								)}
 							</div>
 						</Link>
 					);
