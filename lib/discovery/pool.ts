@@ -13,7 +13,7 @@ import {
 	type RakutenItem,
 } from "@/lib/rakuten";
 import { getServiceClient } from "@/lib/supabase";
-import { broadcastsChannelToSlug } from "./tv-channels";
+import { TV_CHANNELS, broadcastsChannelToSlug } from "./tv-channels";
 import type { CategoryPlan, PoolItem, Track } from "./types";
 
 const RAKUTEN_THROTTLE_MS = 1100;
@@ -346,46 +346,77 @@ async function fetchBraveForKeyword(
 
 /**
  * Build the candidate pool for a category plan.
- * Returns unique items (by URL) across Rakuten + Brave sources.
+ * Returns unique items across Rakuten + Brave + TV channel sources.
+ *
+ * Dedup strategy:
+ * - Rakuten + Brave + Pass D (Brave site:): all carry product URLs → URL dedup.
+ *   When a Pass D item collides with an existing Rakuten/Brave entry, channel
+ *   info is merged onto the existing entry (so it gets tier-1 status).
+ * - Pass C (broadcasts): no product URL exists; keyed by normalized description
+ *   within Pass C only, NOT merged with Rakuten/Brave items.
  */
 export async function buildPool(plan: CategoryPlan): Promise<PoolItem[]> {
 	const tvKws = plan.tv_proven.map((kw) => ({ kw, track: "tv_proven" as Track }));
-	const expKws = plan.exploration.map((kw) => ({
-		kw,
-		track: "exploration" as Track,
-	}));
+	const expKws = plan.exploration.map((kw) => ({ kw, track: "exploration" as Track }));
 	const allKws = [...tvKws, ...expKws];
 
-	const pool: PoolItem[] = [];
-	const seenUrls = new Set<string>();
+	const urlIndexed = new Map<string, PoolItem>(); // normalizedUrl → item
+
+	const addUrlItem = (item: PoolItem) => {
+		const key = normalizeUrlForDedup(item.productUrl);
+		const existing = urlIndexed.get(key);
+		if (!existing) {
+			urlIndexed.set(key, item);
+			return;
+		}
+		// Merge tv_channel info onto existing entry.
+		if (item.tvChannel || item.tvChannelMatches) {
+			const merged = new Set<string>();
+			if (existing.tvChannelMatches) {
+				for (const s of existing.tvChannelMatches) merged.add(s);
+			} else if (existing.tvChannel) {
+				merged.add(existing.tvChannel);
+			}
+			if (item.tvChannelMatches) {
+				for (const s of item.tvChannelMatches) merged.add(s);
+			} else if (item.tvChannel) {
+				merged.add(item.tvChannel);
+			}
+			const sorted = Array.from(merged).sort();
+			existing.tvChannelMatches = sorted;
+			if (!existing.tvChannel) existing.tvChannel = sorted[0];
+		}
+	};
 
 	// Rakuten — sequential with throttle
 	for (const { kw, track } of allKws) {
 		const items = await fetchRakutenForKeyword(kw, track);
-		for (const it of items) {
-			const key = normalizeUrlForDedup(it.productUrl);
-			if (seenUrls.has(key)) continue;
-			seenUrls.add(key);
-			pool.push(it);
-		}
+		for (const it of items) addUrlItem(it);
 		await new Promise((r) => setTimeout(r, RAKUTEN_THROTTLE_MS));
 	}
 
-	// Brave — parallel
+	// Brave general — parallel
 	const braveBatches = await Promise.allSettled(
 		allKws.map(({ kw, track }) => fetchBraveForKeyword(kw, track)),
 	);
 	for (const batch of braveBatches) {
 		if (batch.status !== "fulfilled") continue;
-		for (const it of batch.value) {
-			const key = normalizeUrlForDedup(it.productUrl);
-			if (seenUrls.has(key)) continue;
-			seenUrls.add(key);
-			pool.push(it);
-		}
+		for (const it of batch.value) addUrlItem(it);
 	}
 
-	return pool;
+	// Pass D — Brave site:-restricted (10 non-scraped channels)
+	const passD = await fetchTvChannelFromBraveSite(
+		plan,
+		TV_CHANNELS,
+		TV_CHANNEL_BRAVE_BUDGET,
+	);
+	for (const it of passD) addUrlItem(it);
+
+	// Pass C — broadcasts (shopch + qvc). Keyed by normalized name, separate
+	// accumulator (no shared URLs with Rakuten/Brave items).
+	const passC = await fetchTvChannelFromBroadcasts(plan);
+
+	return [...urlIndexed.values(), ...passC];
 }
 
 export const __test = {
