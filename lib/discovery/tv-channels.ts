@@ -20,6 +20,12 @@ export interface TvChannel {
 	scraped: boolean;
 }
 
+/**
+ * The `siteQuery` field goes directly into a Brave `site:` query. For channels
+ * whose shopping section is a subdirectory of a larger host (TBS, ディノス,
+ * せのぶら, らくらく茂), the value includes a path prefix so unrelated content
+ * on the same host is excluded.
+ */
 export const TV_CHANNELS: readonly TvChannel[] = [
 	{ slug: "shopch",    name: "ショップチャンネル",     siteQuery: "shopch.jp",                            scraped: true  },
 	{ slug: "qvc",       name: "QVC",                  siteQuery: "qvc.jp",                              scraped: true  },
@@ -41,7 +47,7 @@ export function getChannelBySlug(slug: string): TvChannel | undefined {
 }
 
 /** Map a Phase A broadcasts.channel value to a TvChannel slug. */
-export function broadcastsChannelToSlug(channel: "shopch" | "qvc"): string {
+export function broadcastsChannelToSlug(channel: "shopch" | "qvc"): "shopch" | "qvc" {
 	return channel;
 }
 
