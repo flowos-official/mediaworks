@@ -5,7 +5,6 @@ import { Loader2 } from 'lucide-react';
 import OverviewCards from '@/components/analytics/OverviewCards';
 import RevenueTrendChart from '@/components/analytics/RevenueTrendChart';
 import ProductMixChart from '@/components/analytics/ProductMixChart';
-import MarginAnalysisChart from '@/components/analytics/MarginAnalysisChart';
 import TopProductsTable from '@/components/analytics/TopProductsTable';
 import ProductDetailModal from '@/components/analytics/ProductDetailModal';
 import { useAnalyticsFilter } from '../layout';
@@ -72,15 +71,10 @@ export default function OverviewPage() {
             data={trends.trends as Parameters<typeof RevenueTrendChart>[0]['data']}
             period={period}
           />
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <ProductMixChart
-              data={(overview as { categoryBreakdown: Parameters<typeof ProductMixChart>[0]['data'] }).categoryBreakdown ?? []}
-              products={(products?.products as { code: string; name: string; category: string | null; totalRevenue: number; totalQuantity: number }[]) ?? []}
-            />
-            <MarginAnalysisChart
-              products={(products.products as Parameters<typeof MarginAnalysisChart>[0]['products'])}
-            />
-          </div>
+          <ProductMixChart
+            data={(overview as { categoryBreakdown: Parameters<typeof ProductMixChart>[0]['data'] }).categoryBreakdown ?? []}
+            products={(products?.products as { code: string; name: string; category: string | null; totalRevenue: number; totalQuantity: number }[]) ?? []}
+          />
           <TopProductsTable
             products={(products.products as Parameters<typeof TopProductsTable>[0]['products'])}
             onSelectProduct={setSelectedProduct}
