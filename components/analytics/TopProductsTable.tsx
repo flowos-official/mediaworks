@@ -18,7 +18,7 @@ type ProductRow = {
   lastDate?: string | null;
 };
 
-type SortKey = 'name' | 'totalRevenue' | 'totalQuantity' | 'marginRate' | 'avgWeeklyQuantity' | 'firstDate';
+type SortKey = 'name' | 'totalRevenue' | 'totalQuantity' | 'avgWeeklyQuantity' | 'firstDate';
 type SortDir = 'asc' | 'desc';
 
 function formatYen(v: number): string {
@@ -101,7 +101,6 @@ export default function TopProductsTable({
                 {([
                   { key: 'totalRevenue' as const, label: '売上' },
                   { key: 'totalQuantity' as const, label: '数量' },
-                  { key: 'marginRate' as const, label: '粗利率' },
                 ]).map((h) => (
                   <th key={h.key} className="text-right px-4 py-2.5 font-medium">
                     <button
@@ -159,19 +158,6 @@ export default function TopProductsTable({
                   )}
                   <td className="px-4 py-2.5 text-right font-mono text-xs">{formatYen(p.totalRevenue)}</td>
                   <td className="px-4 py-2.5 text-right font-mono text-xs">{p.totalQuantity.toLocaleString()}</td>
-                  <td className="px-4 py-2.5 text-right">
-                    <span
-                      className={`font-mono text-xs px-1.5 py-0.5 rounded ${
-                        p.marginRate >= 20
-                          ? 'bg-green-50 text-green-700'
-                          : p.marginRate >= 10
-                            ? 'bg-yellow-50 text-yellow-700'
-                            : 'bg-red-50 text-red-700'
-                      }`}
-                    >
-                      {p.marginRate}%
-                    </span>
-                  </td>
                   {!compact && (
                     <td className="px-4 py-2.5 text-right font-mono text-xs text-gray-500">
                       {p.avgWeeklyQuantity}/週

@@ -227,7 +227,7 @@ Generate a JSON response with these exact fields:
   "marketability_score": <number 0-100>,
   "marketability_description": "<detailed explanation of market potential in 2-3 sentences>",
   "demographics": {
-    "age_group": "<e.g., '25-45 years'>",
+    "age_group": "<choose the bucket that best fits — e.g. '20-30代', '30-50代', '40-60代', '60代以上 (シニア層)', '全年齢'. シニア向け商品 (健康・介護・実演型家電・防災等) は迷わず '60代以上' を選んでよい>",
     "gender": "<e.g., 'Primarily female (70%)'>",
     "interests": ["<interest1>", "<interest2>", "<interest3>"],
     "income_level": "<e.g., 'Middle to upper-middle class'>"
@@ -283,7 +283,7 @@ Generate a JSON response with these exact fields:
     {
       "channel_name": "<channel name>",
       "channel_type": "<TV通販 | EC | SNSコマース | カタログ通販 | クラウドファンディング | メディア | オフライン | その他>",
-      "primary_age_group": "<e.g. 40-60代女性>",
+      "primary_age_group": "<チャネル視聴者層に合わせて選択。e.g. '20-30代女性', '40-60代女性', '60代以上女性', '40代以上男女'. ジャパネット高田・QVC・Shop Channel等のTV通販やシニア向けカタログ通販は '60代以上' を含めること>",
       "fit_score": <MUST equal demographic_match + category_track_record + price_point_fit + presentation_format_fit, max 100>,
       "reason": "<evidence-based explanation citing sources, in Japanese>",
       "monthly_visitors": "<optional, e.g. 月間5,000万人>",
