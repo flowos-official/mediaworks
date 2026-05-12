@@ -116,7 +116,7 @@ export function SessionCalendar({ sessions, month }: { sessions: SessionRow[]; m
 						<Popover.Root key={i}>
 							<Popover.Trigger
 								className="aspect-square flex flex-col items-center justify-start pt-1 rounded hover:bg-gray-50 transition-colors w-full"
-								aria-label={`${mon + 1}月${cell.day}日 — ${cell.sessions.length} sessions`}
+								aria-label={`${mon + 1}月${cell.day}日（${cell.sessions.length}件）`}
 							>
 								<span className="text-[10px] text-gray-700">{cell.day}</span>
 								<div className="flex gap-0.5 mt-0.5 items-center">
@@ -139,7 +139,7 @@ export function SessionCalendar({ sessions, month }: { sessions: SessionRow[]; m
 										<div className="px-3 py-2 text-[11px] font-semibold text-gray-700 border-b border-gray-100 bg-gray-50">
 											{year}年{mon + 1}月{cell.day}日 ({cell.sessions.length})
 										</div>
-										<ul className="divide-y divide-gray-100 max-h-72 overflow-auto">
+										<ul role="list" className="divide-y divide-gray-100 max-h-72 overflow-auto">
 											{cell.sessions.map((s) => {
 												const isHome = s.context === "home_shopping";
 												return (
