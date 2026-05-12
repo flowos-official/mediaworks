@@ -1447,9 +1447,11 @@ function buildGoalSection(parsedGoal?: ParsedGoal): string {
 	if (!parsedGoal) return "";
 	const lines = [
 		`\n=== 目標分析結果（Skill 0） ===`,
-		`- 主要目的: ${parsedGoal.primary_objective}`,
-		`- 対象チャネル: ${parsedGoal.target_channels.join(", ")}`,
+		`- 主要目的: ${parsedGoal.primary_objective || "（未指定）"}`,
 	];
+	if (Array.isArray(parsedGoal.target_channels) && parsedGoal.target_channels.length > 0) {
+		lines.push(`- 対象チャネル: ${parsedGoal.target_channels.join(", ")}`);
+	}
 	if (parsedGoal.target_revenue) lines.push(`- 目標売上: ${parsedGoal.target_revenue}`);
 	if (parsedGoal.target_audience) lines.push(`- ターゲット層: ${parsedGoal.target_audience}`);
 	if (parsedGoal.budget_constraint) lines.push(`- 予算制約: ${parsedGoal.budget_constraint}`);
@@ -1507,10 +1509,24 @@ Return a JSON object (no markdown) with this structure:
   "timeline": "タイムライン（言及されている場合）"
 }
 
-IMPORTANT: すべてのテキストフィールドは日本語で記述してください。言及されていないフィールドはnullにしてください。`;
+IMPORTANT:
+- すべてのテキストフィールドは日本語で記述してください。
+- primary_objective は必ず文字列で返してください（空でも空文字列 ""）。
+- target_channels は必ず配列で返してください。具体的なチャネルが目標から読み取れない場合は [] を返してください。null は使わないでください。
+- target_revenue / target_audience / budget_constraint / timeline は言及されていなければ null を返してください。`;
 
 	const raw = await callGemini(prompt);
-	return parseJSON<ParsedGoal>(raw);
+	const parsed = parseJSON<Partial<ParsedGoal>>(raw);
+	return {
+		primary_objective: typeof parsed.primary_objective === "string" ? parsed.primary_objective : "",
+		target_channels: Array.isArray(parsed.target_channels)
+			? parsed.target_channels.filter((c): c is string => typeof c === "string")
+			: [],
+		target_revenue: typeof parsed.target_revenue === "string" ? parsed.target_revenue : undefined,
+		target_audience: typeof parsed.target_audience === "string" ? parsed.target_audience : undefined,
+		budget_constraint: typeof parsed.budget_constraint === "string" ? parsed.budget_constraint : undefined,
+		timeline: typeof parsed.timeline === "string" ? parsed.timeline : undefined,
+	};
 }
 
 // ---------------------------------------------------------------------------
