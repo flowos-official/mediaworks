@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
+import { loadProductsForBroadcasts } from "@/lib/qvc-products/attach";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const VALID_CHANNELS = new Set(["shopch", "qvc"]);
@@ -39,7 +40,7 @@ export async function GET(req: NextRequest) {
 	let query = sb
 		.from("broadcasts")
 		.select(
-			"id,channel,air_date,start_time,program_title,presenter,description,thumbnail_url,source_url",
+			"id,channel,air_date,start_time,program_title,presenter,description,thumbnail_url,source_url,product_ids",
 		)
 		.gte("air_date", from)
 		.lte("air_date", to)
@@ -55,8 +56,20 @@ export async function GET(req: NextRequest) {
 		return NextResponse.json({ error: "db error" }, { status: 500 });
 	}
 
+	const rows = (data ?? []) as Array<{
+		id: string;
+		channel: "shopch" | "qvc";
+		product_ids: string[] | null;
+		[k: string]: unknown;
+	}>;
+	const productMap = await loadProductsForBroadcasts(rows);
+	const enriched = rows.map((b) => ({
+		...b,
+		products: productMap.get(b.id) ?? null,
+	}));
+
 	return NextResponse.json(
-		{ broadcasts: data ?? [], total: data?.length ?? 0 },
+		{ broadcasts: enriched, total: enriched.length },
 		{
 			headers: {
 				"Cache-Control": "public, max-age=300, stale-while-revalidate=3600",

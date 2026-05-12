@@ -17,7 +17,8 @@
     "test:broadcasts-live": "tsx --env-file=.env.local scripts/test-broadcasts-scrape-live.ts",
     "test:user-guide": "tsx --env-file=.env.local scripts/test-user-guide.ts",
     "backfill:broadcasts": "tsx --env-file=.env.local scripts/backfill-broadcasts.ts",
-    "verify:broadcasts": "tsx --env-file=.env.local scripts/verify-broadcasts-run.ts"
+    "verify:broadcasts": "tsx --env-file=.env.local scripts/verify-broadcasts-run.ts",
+    "enrich:qvc-products": "tsx --env-file=.env.local scripts/enrich-qvc-products.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1016.0",

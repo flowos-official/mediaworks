@@ -113,6 +113,15 @@ export function scrapeQVCFromHTML(html: string, airDate: string): ScrapedSlot[] 
 			$el.find("span.hostImg img").first().attr("src"),
 		);
 
+		// Phase B PoC: data-products="754899|754900|..." → product ID list
+		const rawProducts = $el.attr("data-products");
+		const productIds: string[] | null = rawProducts
+			? rawProducts
+					.split("|")
+					.map((s) => s.trim())
+					.filter((s) => /^\d+$/.test(s))
+			: null;
+
 		slots.push({
 			channel: "qvc",
 			air_date: airDate,
@@ -122,6 +131,7 @@ export function scrapeQVCFromHTML(html: string, airDate: string): ScrapedSlot[] 
 			description,
 			thumbnail_url: thumbnailUrl,
 			source_url: pageSourceUrl,
+			product_ids: productIds && productIds.length > 0 ? productIds : null,
 		});
 	});
 

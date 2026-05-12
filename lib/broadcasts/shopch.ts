@@ -113,6 +113,7 @@ export function scrapeShopChannelFromHTML(
 			description,
 			thumbnail_url: thumbnailUrl,
 			source_url: slotLink ?? sourceUrl,
+			product_ids: null,
 		});
 	});
 

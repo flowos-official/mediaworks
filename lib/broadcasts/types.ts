@@ -9,6 +9,9 @@ export interface ScrapedSlot {
 	description: string | null;
 	thumbnail_url: string | null;
 	source_url: string;
+	// Phase B PoC: QVC slots expose `data-products="ID|ID|..."` on the <li>.
+	// shopch leaves this null until Phase B full implementation.
+	product_ids: string[] | null;
 }
 
 export interface ScrapeHealth {

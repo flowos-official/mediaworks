@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import { getServiceClient } from "@/lib/supabase";
 import BroadcastCalendar from "@/components/broadcasts/BroadcastCalendar";
 import type { Broadcast } from "@/components/broadcasts/BroadcastListItem";
+import { loadProductsForBroadcasts } from "@/lib/qvc-products/attach";
 
 interface PageProps {
   params: Promise<{ locale: string }>;
@@ -42,7 +43,7 @@ export default async function Page({ params, searchParams }: PageProps) {
   const { data } = await sb
     .from("broadcasts")
     .select(
-      "id,channel,air_date,start_time,program_title,presenter,description,thumbnail_url,source_url",
+      "id,channel,air_date,start_time,program_title,presenter,description,thumbnail_url,source_url,product_ids",
     )
     .gte("air_date", from)
     .lte("air_date", to)
@@ -50,7 +51,24 @@ export default async function Page({ params, searchParams }: PageProps) {
     .order("start_time", { ascending: true })
     .order("channel", { ascending: true });
 
-  const initialBroadcasts: Broadcast[] = data ?? [];
+  const rows = (data ?? []) as Array<{
+    id: string;
+    channel: "shopch" | "qvc";
+    air_date: string;
+    start_time: string;
+    program_title: string;
+    presenter: string | null;
+    description: string | null;
+    thumbnail_url: string | null;
+    source_url: string;
+    product_ids: string[] | null;
+  }>;
+  const productMap = await loadProductsForBroadcasts(rows);
+
+  const initialBroadcasts: Broadcast[] = rows.map((r) => ({
+    ...r,
+    products: productMap.get(r.id) ?? null,
+  }));
 
   const hasAny = initialBroadcasts.length > 0;
 
