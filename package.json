@@ -15,7 +15,8 @@
     "test:broadcasts-qvc": "tsx --env-file=.env.local scripts/test-broadcasts-qvc-parser.ts",
     "test:broadcasts-parsers": "npm run test:broadcasts-shopch && npm run test:broadcasts-qvc",
     "test:user-guide": "tsx --env-file=.env.local scripts/test-user-guide.ts",
-    "backfill:broadcasts": "tsx --env-file=.env.local scripts/backfill-broadcasts.ts"
+    "backfill:broadcasts": "tsx --env-file=.env.local scripts/backfill-broadcasts.ts",
+    "verify:broadcasts": "tsx --env-file=.env.local scripts/verify-broadcasts-run.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1016.0",
