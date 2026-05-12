@@ -68,6 +68,17 @@ File Upload → Supabase Storage → Gemini Vision (extract)
 - Env knobs: `TV_CHANNEL_BRAVE_BUDGET` (default 50) caps daily Brave site:-search calls; `TV_CHANNEL_BROADCAST_WINDOW_DAYS` (default 30) sets the broadcasts lookback.
 - Channel registry: `lib/discovery/tv-channels.ts` lists all 12 with slug/name/siteQuery/scraped flags. Only `scraped: true` channels (shopch, qvc) read from `broadcasts`; the rest go through Brave site: search.
 
+### Strategy ↔ Discovery Pool 統合 (2026-05-13)
+
+- 戦略立案 (`/api/analytics/md-strategy`) 의 신상품 발굴 (`discoverNewProducts`) 은 항상 `discovered_products` 풀을 1차 소스로 사용한다.
+- Pool query: `lib/strategy/pool-query.ts` — context · category(fuzzy via `CATEGORY_MAPPING`) · price · 60일 lookback · `tv_tier ASC, tv_fit_score DESC` 정렬.
+- Lightweight 모드(워크플로 기본): pool target 30. Full 모드: target 12. 풀이 채워지면 Rakuten/Brave 외부 호출 skip; 부족분만 fresh search 로 채움.
+- 다중 시드: URL `?seedIds=a,b,c` 또는 body `seedProductIds: string[]` → 모든 시드의 `c_package` 가 Gemini 프롬프트에 주입 (`formatMultiSeedPromptSection`), 시드 ID 는 pool query 에서 자동 제외.
+- 출처 태그: `pool_source: 'discovery_pool' | 'fresh_search' | 'seed'` + `discovered_product_id` 를 추천 상품에 부착해 UI 배지로 노출.
+- Fail-open: 카테고리/가격 필터 결과가 5개 미만이면 해당 필터를 무시 (관대 매치). 풀이 완전히 비면 기존 fresh-only 경로로 폴백.
+- Env: `STRATEGY_POOL_LOOKBACK_DAYS` (default 60).
+- Test alias: `npm run test:strategy-pool`.
+
 ### Supabase Schema (key tables)
 
 - `products` — uploaded product metadata, status lifecycle: pending → extracted → analyzing → completed/failed

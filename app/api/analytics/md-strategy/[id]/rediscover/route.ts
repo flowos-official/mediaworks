@@ -72,6 +72,10 @@ export async function POST(
 		.filter((u): u is string => !!u);
 	const excludeNames = priorHistory.flatMap((b) => b.products.map((p) => p.name));
 
+	const seedIdsFromStrategy = ((strategy.product_selection?.discovered_new_products ?? []) as Array<{ discovered_product_id?: string }>)
+		.map((p) => p.discovered_product_id)
+		.filter((id): id is string => !!id);
+
 	// 3) Run discovery
 	const discovered = await discoverNewProducts({
 		context: "home_shopping",
@@ -86,6 +90,7 @@ export async function POST(
 		tvMarginRate,
 		excludeUrls,
 		excludeNames,
+		seedProductIds: seedIdsFromStrategy,
 		tvProfile,
 		lightweight: true,
 	});

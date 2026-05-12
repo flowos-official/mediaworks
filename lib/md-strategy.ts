@@ -11,7 +11,9 @@ import type {
 	SalesWeeklyTotal,
 } from "@/lib/supabase";
 import type { SeedContext } from "@/lib/strategy/seed-context";
-import { formatSeedPromptSection } from "@/lib/strategy/seed-context";
+import { formatSeedPromptSection, formatMultiSeedPromptSection } from "@/lib/strategy/seed-context";
+import { CATEGORY_MAPPING } from "@/lib/strategy/category-mapping";
+import { queryDiscoveredPool } from "@/lib/strategy/pool-query";
 
 // ---------------------------------------------------------------------------
 // Gemini client
@@ -234,19 +236,9 @@ const CHANNEL_REFERENCE = [
 ] as const;
 
 // ---------------------------------------------------------------------------
-// Category mapping for filtering
+// Category mapping for filtering — shared with pool-query.
 // ---------------------------------------------------------------------------
-
-const CATEGORY_MAPPING: Record<string, string[]> = {
-	"美容・スキンケア": ["美容・運動", "化粧品"],
-	"健康食品": ["食品"],
-	"キッチン用品": ["キッチン"],
-	"ファッション": ["アパレル", "靴・バッグ"],
-	"生活雑貨": ["家電・雑貨", "掃除・洗濯"],
-	"電気機器": ["家電・雑貨"],
-	"フィットネス": ["美容・運動", "医療機器"],
-	"その他": ["その他", "寝具", "宝飾", "防災・防犯", "ゴルフ"],
-};
+// CATEGORY_MAPPING is imported from "@/lib/strategy/category-mapping" (see top of file).
 
 // ---------------------------------------------------------------------------
 // Parsed Goal (Skill 0 output)
@@ -431,6 +423,8 @@ export interface StrategyContext {
 			first_30_days: string[];
 			risks: string[];
 		};
+		pool_source?: "discovery_pool" | "fresh_search" | "seed";
+		discovered_product_id?: string;
 	}>;
 	recommendCategory?: string;
 	recommendTargetMarket?: string;
@@ -441,6 +435,7 @@ export interface StrategyContext {
 	// Parsed user goal (from Skill 0)
 	parsedGoal?: ParsedGoal;
 	seedProduct?: SeedContext;
+	seedProducts?: import("@/lib/strategy/seed-context").SeedContext[];
 }
 
 // ---------------------------------------------------------------------------
@@ -483,6 +478,9 @@ export interface DiscoverInput {
 	tvProfile?: import("@/lib/tv-shopping-profile").TVShoppingProfile;
 	// When true, return more products (20) without sales_strategy (lightweight mode)
 	lightweight?: boolean;
+	// NEW (this plan: pool-first integration)
+	seedProductIds?: string[];          // 다중 시드 ID — pool 에서 제외
+	seedCategories?: string[];          // 시드 상품 카테고리 union (보조 필터)
 }
 
 export type DiscoveredProduct = NonNullable<StrategyContext["recommendedProducts"]>[number];
@@ -498,192 +496,287 @@ type DiscoveryPoolItem = {
 	keyword: string;
 	reviewCount?: number;
 	reviewAverage?: number;
+	// NEW (this plan)
+	pool_source: "discovery_pool" | "fresh_search";
+	discovered_product_id?: string;     // pool 출처일 때만 채움
+	tv_fit_score?: number;
+	tv_fit_reason?: string;
+	tv_channel_source?: string | null;
+	c_package?: Record<string, unknown> | null;
 };
+
+// ---------------------------------------------------------------------------
+// Pool-first decision helpers (plan: 2026-05-13 strategy-discovery-pool-integration)
+// ---------------------------------------------------------------------------
+
+type DiscoveryStrategyMode = "pool_only" | "pool_filled" | "fresh_only";
+
+/**
+ * Pool target size for `discoverNewProducts`.
+ *
+ * Note: `lightweight=true` returns the LARGER target (30) — in this codebase
+ * "lightweight" means "wider scan, lighter per-item detail" (no sales_strategy
+ * field generated per product). Matches the existing RAKUTEN_PER_KW / POOL_CAP
+ * convention inside discoverNewProducts.
+ */
+function poolTargetSize(lightweight: boolean): number {
+	return lightweight ? 30 : 12;
+}
+
+function decideDiscoveryStrategy(
+	poolSize: number,
+	target: number,
+): { strategy: DiscoveryStrategyMode; fillNeeded: number } {
+	if (target <= 0) return { strategy: "pool_only", fillNeeded: 0 };
+	if (poolSize === 0) return { strategy: "fresh_only", fillNeeded: target };
+	if (poolSize >= target) return { strategy: "pool_only", fillNeeded: 0 };
+	return { strategy: "pool_filled", fillNeeded: target - poolSize };
+}
 
 export async function discoverNewProducts(
 	input: DiscoverInput,
 ): Promise<StrategyContext["recommendedProducts"]> {
 	const lw = !!input.lightweight;
 	const RAKUTEN_PER_KW = lw ? 12 : 8;
+	const TARGET = poolTargetSize(lw);
 	const POOL_CAP = lw ? 60 : 40;
 
-	// Build search keywords from TV signals
-	const keywords = Array.from(
-		new Set(
-			[input.explicitCategory, ...input.topCategoryNames]
-				.filter((s): s is string => !!s && s.trim().length > 0),
-		),
-	).slice(0, 4);
+	// --- Pool-first attempt (plan 2026-05-13) ---
+	let poolItems: DiscoveryPoolItem[] = [];
+	try {
+		const priceRange = input.priceRange ? parsePriceRange(input.priceRange) : null;
+		const rows = await queryDiscoveredPool({
+			context: input.context,
+			uiCategory: input.explicitCategory,
+			priceRange: priceRange ?? undefined,
+			limit: TARGET,
+			excludeProductIds: input.seedProductIds,
+			supplementCategoriesFromSeeds: input.seedCategories,
+		});
+		poolItems = rows.map((r) => ({
+			name: r.name,
+			price: r.price_jpy ?? undefined,
+			source: "rakuten",
+			source_url: r.product_url,
+			snippet:
+				`TVフィット:${r.tv_fit_score}/100 (${r.tv_fit_reason ?? "理由なし"}) — ` +
+				`カテゴリ:${r.category ?? "未分類"} — 既存発掘プール由来`,
+			keyword: r.seed_keyword,
+			reviewCount: r.review_count ?? undefined,
+			reviewAverage: r.review_avg ?? undefined,
+			pool_source: "discovery_pool",
+			discovered_product_id: r.id,
+			tv_fit_score: r.tv_fit_score,
+			tv_fit_reason: r.tv_fit_reason ?? undefined,
+			tv_channel_source: r.tv_channel_source,
+			c_package: r.c_package,
+		}));
+	} catch (err) {
+		console.warn(
+			`[discover] pool query failed (continuing with fresh search): ${err instanceof Error ? err.message : String(err)}`,
+		);
+	}
 
-	if (keywords.length === 0) return undefined;
+	const decision = decideDiscoveryStrategy(poolItems.length, TARGET);
+	console.log(
+		`[discover] pool-first decision: poolSize=${poolItems.length} target=${TARGET} strategy=${decision.strategy} fillNeeded=${decision.fillNeeded}`,
+	);
 
-	// Normalize keywords for Rakuten — TV category names like "美容・運動" don't match Rakuten well.
-	// Split on the middle dot and use the first segment as a cleaner search term.
-	const normalizeForRakuten = (kw: string) => kw.split(/[・/／,、]/)[0].trim();
+	// japanMarketContext default — overridden by trend search when fresh-search block runs
+	let japanMarketContext = "(発掘プールベース — 個別市場検索はスキップ)";
+	let cappedPool: DiscoveryPoolItem[] = [...poolItems];
 
-	console.log(`[discover] start context=${input.context} keywords=${JSON.stringify(keywords)} excludeUrls=${input.excludeUrls?.length ?? 0}`);
+	if (decision.fillNeeded > 0) {
+		console.log(`[discover] filling ${decision.fillNeeded} from Rakuten/Brave`);
 
-	// Run Rakuten Item Search (review-count sorted = popularity proxy) + Brave product search
-	// + Brave Japan market trend search (separate, used as context not as products)
-	// Rakuten API: 1 request/sec rate limit → sequential with 1s delay
-	const rakutenResults: { items: RakutenItem[] }[] = [];
-	for (const kw of keywords) {
-		const cleanKw = normalizeForRakuten(kw);
-		const attempt = async () => {
-			const search = await rakutenItemSearch(cleanKw, "-reviewCount", 10);
-			if (search.items.length > 0) return search;
-			console.log(`[discover] rakuten search empty for "${cleanKw}", falling back to Ranking API`);
-			return await rakutenRankingSearch(cleanKw);
-		};
-		try {
-			rakutenResults.push(await attempt());
-		} catch (err) {
-			console.warn(`[discover] rakuten first attempt failed for "${cleanKw}": ${err instanceof Error ? err.message : err}`);
-			await new Promise((r) => setTimeout(r, 1000));
-			try {
-				rakutenResults.push(await attempt());
-			} catch {
-				console.warn(`[discover] rakuten retry also failed for "${cleanKw}" — skipping`);
-				rakutenResults.push({ items: [] });
+		// Build search keywords from TV signals
+		const keywords = Array.from(
+			new Set(
+				[input.explicitCategory, ...input.topCategoryNames]
+					.filter((s): s is string => !!s && s.trim().length > 0),
+			),
+		).slice(0, 4);
+
+		if (keywords.length === 0) {
+			// No keywords for fresh search; if pool already has items, continue with pool only.
+			if (cappedPool.length === 0) return undefined;
+			console.warn(`[discover] no keywords for fresh search — using pool only`);
+		} else {
+			// Normalize keywords for Rakuten — TV category names like "美容・運動" don't match Rakuten well.
+			// Split on the middle dot and use the first segment as a cleaner search term.
+			const normalizeForRakuten = (kw: string) => kw.split(/[・/／,、]/)[0].trim();
+
+			console.log(`[discover] start context=${input.context} keywords=${JSON.stringify(keywords)} excludeUrls=${input.excludeUrls?.length ?? 0}`);
+
+			// Run Rakuten Item Search (review-count sorted = popularity proxy) + Brave product search
+			// + Brave Japan market trend search (separate, used as context not as products)
+			// Rakuten API: 1 request/sec rate limit → sequential with 1s delay
+			const rakutenResults: { items: RakutenItem[] }[] = [];
+			for (const kw of keywords) {
+				const cleanKw = normalizeForRakuten(kw);
+				const attempt = async () => {
+					const search = await rakutenItemSearch(cleanKw, "-reviewCount", 10);
+					if (search.items.length > 0) return search;
+					console.log(`[discover] rakuten search empty for "${cleanKw}", falling back to Ranking API`);
+					return await rakutenRankingSearch(cleanKw);
+				};
+				try {
+					rakutenResults.push(await attempt());
+				} catch (err) {
+					console.warn(`[discover] rakuten first attempt failed for "${cleanKw}": ${err instanceof Error ? err.message : err}`);
+					await new Promise((r) => setTimeout(r, 1000));
+					try {
+						rakutenResults.push(await attempt());
+					} catch {
+						console.warn(`[discover] rakuten retry also failed for "${cleanKw}" — skipping`);
+						rakutenResults.push({ items: [] });
+					}
+				}
+				// Rate limit: wait 1s between Rakuten calls
+				if (keywords.indexOf(kw) < keywords.length - 1) {
+					await new Promise((r) => setTimeout(r, 1000));
+				}
 			}
-		}
-		// Rate limit: wait 1s between Rakuten calls
-		if (keywords.indexOf(kw) < keywords.length - 1) {
-			await new Promise((r) => setTimeout(r, 1000));
+
+			// Brave searches run in parallel (no rate limit concern)
+			const [braveProductResults, braveTrendResults] = await Promise.all([
+				// Brave product discovery — Japanese popularity / new product keywords
+				Promise.all(
+					keywords.map(async (kw) => {
+						try {
+							return await braveSearchStructured(`${kw} 通販 商品 おすすめ 楽天 Amazon 購入`);
+						} catch (err) {
+							console.warn(`[discover] brave search failed for "${kw}": ${err instanceof Error ? err.message : err}`);
+							await new Promise((r) => setTimeout(r, 1000));
+							try {
+								return await braveSearchStructured(`${kw} 人気商品 通販 購入ページ`);
+							} catch {
+								console.warn(`[discover] brave retry also failed for "${kw}" — skipping`);
+								return [];
+							}
+						}
+					}),
+				),
+				// Brave Japan market context — trend signals (NOT products, used as background for Gemini)
+				Promise.all([
+					braveSearchStructured(
+						`${keywords[0] ?? ""} 日本 トレンド 2025 ヒット商品 話題`,
+					).catch(() => []),
+					braveSearchStructured(
+						`日本 通販 売れ筋 ${keywords[0] ?? ""} 消費者 関心`,
+					).catch(() => []),
+				]),
+			]);
+
+			// Build dedup pool, filter out items resembling existing TV products
+			// or items already discovered in prior batches.
+			const seenUrls = new Set<string>(input.excludeUrls ?? []);
+			const tvNames = input.tvProductNames;
+			const isTvLike = (name: string) => {
+				const lower = name.toLowerCase();
+				return tvNames.some((tv) => {
+					const head = tv.slice(0, 8).toLowerCase();
+					return head.length >= 4 && lower.includes(head);
+				});
+			};
+			const excludeNameHeads = (input.excludeNames ?? [])
+				.map((n) => n.slice(0, 10).toLowerCase())
+				.filter((h) => h.length >= 4);
+			const isAlreadyDiscovered = (name: string) => {
+				if (excludeNameHeads.length === 0) return false;
+				const lower = name.toLowerCase();
+				return excludeNameHeads.some((head) => lower.includes(head));
+			};
+
+			const pool: DiscoveryPoolItem[] = [];
+			rakutenResults.forEach((r, i) => {
+				// Take top 6 per keyword (sorted by review count = social proof)
+				for (const item of r.items.slice(0, RAKUTEN_PER_KW)) {
+					if (!item.itemUrl || seenUrls.has(item.itemUrl)) continue;
+					if (isTvLike(item.itemName)) continue;
+					if (isAlreadyDiscovered(item.itemName)) continue;
+					seenUrls.add(item.itemUrl);
+					pool.push({
+						name: item.itemName.slice(0, 80),
+						price: item.itemPrice,
+						source: "rakuten",
+						source_url: item.itemUrl,
+						snippet: item.itemCaption.slice(0, 140),
+						keyword: keywords[i],
+						reviewCount: item.reviewCount,
+						reviewAverage: item.reviewAverage,
+						pool_source: "fresh_search" as const,
+					});
+				}
+			});
+			braveProductResults.forEach((arr, i) => {
+				for (const s of arr.slice(0, 5)) {
+					if (!s.url || seenUrls.has(s.url)) continue;
+					if (isTvLike(s.title)) continue;
+					if (isAlreadyDiscovered(s.title)) continue;
+					seenUrls.add(s.url);
+					pool.push({
+						name: s.title.slice(0, 80),
+						source: "web",
+						source_url: s.url,
+						snippet: s.description.slice(0, 140),
+						keyword: keywords[i],
+						pool_source: "fresh_search" as const,
+					});
+				}
+			});
+
+			// Build Japan market context (trend signals — used as background, not products)
+			const marketContextLines: string[] = [];
+			braveTrendResults.flat().slice(0, 8).forEach((t) => {
+				if (!t.title) return;
+				marketContextLines.push(`- ${t.title}: ${t.description.slice(0, 120)}`);
+			});
+			japanMarketContext = marketContextLines.length > 0
+				? marketContextLines.join("\n")
+				: "(市場トレンド情報を取得できませんでした)";
+
+			let freshCapped = pool.slice(0, POOL_CAP);
+			console.log(`[discover] fresh pool built: total=${pool.length} capped=${freshCapped.length} (rakuten=${pool.filter(p => p.source === 'rakuten').length} web=${pool.filter(p => p.source === 'web').length})`);
+
+			if (freshCapped.length === 0 && cappedPool.length === 0) {
+				console.warn(`[discover] pool empty — retrying with broadened keywords`);
+				const fallbackKeywords = ["人気商品", "売れ筋", "おすすめ"];
+				const fallbackResults = await Promise.all(
+					fallbackKeywords.map(async (kw) => {
+						const search = await rakutenItemSearch(kw, "-reviewCount", 10).catch(() => ({ items: [] }));
+						return search;
+					}),
+				);
+				for (const r of fallbackResults) {
+					for (const item of r.items.slice(0, 8)) {
+						if (!item.itemUrl || seenUrls.has(item.itemUrl)) continue;
+						if (isTvLike(item.itemName)) continue;
+						seenUrls.add(item.itemUrl);
+						pool.push({
+							name: item.itemName.slice(0, 80),
+							price: item.itemPrice,
+							source: "rakuten",
+							source_url: item.itemUrl,
+							snippet: item.itemCaption.slice(0, 140),
+							keyword: "fallback",
+							reviewCount: item.reviewCount,
+							reviewAverage: item.reviewAverage,
+							pool_source: "fresh_search" as const,
+						});
+					}
+				}
+				freshCapped = pool.slice(0, POOL_CAP);
+				console.log(`[discover] fallback pool: ${freshCapped.length} items`);
+			}
+
+			cappedPool = [...cappedPool, ...freshCapped];
 		}
 	}
 
-	// Brave searches run in parallel (no rate limit concern)
-	const [braveProductResults, braveTrendResults] = await Promise.all([
-		// Brave product discovery — Japanese popularity / new product keywords
-		Promise.all(
-			keywords.map(async (kw) => {
-				try {
-					return await braveSearchStructured(`${kw} 通販 商品 おすすめ 楽天 Amazon 購入`);
-				} catch (err) {
-					console.warn(`[discover] brave search failed for "${kw}": ${err instanceof Error ? err.message : err}`);
-					await new Promise((r) => setTimeout(r, 1000));
-					try {
-						return await braveSearchStructured(`${kw} 人気商品 通販 購入ページ`);
-					} catch {
-						console.warn(`[discover] brave retry also failed for "${kw}" — skipping`);
-						return [];
-					}
-				}
-			}),
-		),
-		// Brave Japan market context — trend signals (NOT products, used as background for Gemini)
-		Promise.all([
-			braveSearchStructured(
-				`${keywords[0] ?? ""} 日本 トレンド 2025 ヒット商品 話題`,
-			).catch(() => []),
-			braveSearchStructured(
-				`日本 通販 売れ筋 ${keywords[0] ?? ""} 消費者 関心`,
-			).catch(() => []),
-		]),
-	]);
-
-	// Build dedup pool, filter out items resembling existing TV products
-	// or items already discovered in prior batches.
-	const seenUrls = new Set<string>(input.excludeUrls ?? []);
-	const tvNames = input.tvProductNames;
-	const isTvLike = (name: string) => {
-		const lower = name.toLowerCase();
-		return tvNames.some((tv) => {
-			const head = tv.slice(0, 8).toLowerCase();
-			return head.length >= 4 && lower.includes(head);
-		});
-	};
-	const excludeNameHeads = (input.excludeNames ?? [])
-		.map((n) => n.slice(0, 10).toLowerCase())
-		.filter((h) => h.length >= 4);
-	const isAlreadyDiscovered = (name: string) => {
-		if (excludeNameHeads.length === 0) return false;
-		const lower = name.toLowerCase();
-		return excludeNameHeads.some((head) => lower.includes(head));
-	};
-
-	const pool: DiscoveryPoolItem[] = [];
-	rakutenResults.forEach((r, i) => {
-		// Take top 6 per keyword (sorted by review count = social proof)
-		for (const item of r.items.slice(0, RAKUTEN_PER_KW)) {
-			if (!item.itemUrl || seenUrls.has(item.itemUrl)) continue;
-			if (isTvLike(item.itemName)) continue;
-			if (isAlreadyDiscovered(item.itemName)) continue;
-			seenUrls.add(item.itemUrl);
-			pool.push({
-				name: item.itemName.slice(0, 80),
-				price: item.itemPrice,
-				source: "rakuten",
-				source_url: item.itemUrl,
-				snippet: item.itemCaption.slice(0, 140),
-				keyword: keywords[i],
-				reviewCount: item.reviewCount,
-				reviewAverage: item.reviewAverage,
-			});
-		}
-	});
-	braveProductResults.forEach((arr, i) => {
-		for (const s of arr.slice(0, 5)) {
-			if (!s.url || seenUrls.has(s.url)) continue;
-			if (isTvLike(s.title)) continue;
-			if (isAlreadyDiscovered(s.title)) continue;
-			seenUrls.add(s.url);
-			pool.push({
-				name: s.title.slice(0, 80),
-				source: "web",
-				source_url: s.url,
-				snippet: s.description.slice(0, 140),
-				keyword: keywords[i],
-			});
-		}
-	});
-
-	// Build Japan market context (trend signals — used as background, not products)
-	const marketContextLines: string[] = [];
-	braveTrendResults.flat().slice(0, 8).forEach((t) => {
-		if (!t.title) return;
-		marketContextLines.push(`- ${t.title}: ${t.description.slice(0, 120)}`);
-	});
-	const japanMarketContext = marketContextLines.length > 0
-		? marketContextLines.join("\n")
-		: "(市場トレンド情報を取得できませんでした)";
-
-	let cappedPool = pool.slice(0, POOL_CAP);
-	console.log(`[discover] pool built: total=${pool.length} capped=${cappedPool.length} (rakuten=${pool.filter(p => p.source === 'rakuten').length} web=${pool.filter(p => p.source === 'web').length})`);
-
 	if (cappedPool.length === 0) {
-		console.warn(`[discover] pool empty — retrying with broadened keywords`);
-		const fallbackKeywords = ["人気商品", "売れ筋", "おすすめ"];
-		const fallbackResults = await Promise.all(
-			fallbackKeywords.map(async (kw) => {
-				const search = await rakutenItemSearch(kw, "-reviewCount", 10).catch(() => ({ items: [] }));
-				return search;
-			}),
-		);
-		for (const r of fallbackResults) {
-			for (const item of r.items.slice(0, 8)) {
-				if (!item.itemUrl || seenUrls.has(item.itemUrl)) continue;
-				if (isTvLike(item.itemName)) continue;
-				seenUrls.add(item.itemUrl);
-				pool.push({
-					name: item.itemName.slice(0, 80),
-					price: item.itemPrice,
-					source: "rakuten",
-					source_url: item.itemUrl,
-					snippet: item.itemCaption.slice(0, 140),
-					keyword: "fallback",
-					reviewCount: item.reviewCount,
-					reviewAverage: item.reviewAverage,
-				});
-			}
-		}
-		cappedPool = pool.slice(0, POOL_CAP);
-		console.log(`[discover] fallback pool: ${cappedPool.length} items`);
-		if (cappedPool.length === 0) {
-			console.warn(`[discover] fallback also empty — returning undefined`);
-			return undefined;
-		}
+		console.warn(`[discover] both pool and fresh search empty — returning undefined`);
+		return undefined;
 	}
 
 	// Curate via Gemini — must pick from REAL pool only
@@ -693,7 +786,11 @@ export async function discoverNewProducts(
 			const reviewBadge = p.reviewCount && p.reviewCount > 0
 				? ` ★${p.reviewAverage?.toFixed(1) ?? "?"} (レビュー${p.reviewCount}件)`
 				: "";
-			return `${i}. [${p.source}] ${p.name}${p.price ? ` (¥${p.price.toLocaleString()})` : ""}${reviewBadge} — keyword: ${p.keyword}\n   URL: ${p.source_url}\n   ${p.snippet}`;
+			const sourceTag =
+				p.pool_source === "discovery_pool"
+					? `🟣[発掘プール TVフィット:${p.tv_fit_score ?? "?"}${p.tv_channel_source ? ` 放送実績:${p.tv_channel_source}` : ""}]`
+					: `🟢[新検索 ${p.source}]`;
+			return `${i}. ${sourceTag} ${p.name}${p.price ? ` (¥${p.price.toLocaleString()})` : ""}${reviewBadge} — keyword: ${p.keyword}\n   URL: ${p.source_url}\n   ${p.snippet}`;
 		})
 		.join("\n");
 
@@ -884,9 +981,32 @@ ${salesStrategyFooter}`;
 		if (filtered.length === 0 && parsed.length > 0) {
 			console.warn(`[discover] all ${parsed.length} Gemini items failed sanity-pass — returning all (fallback)`);
 			// Fallback: return all parsed items rather than nothing, since pool existed
-			return parsed.filter((p) => !!p.name && !!p.source_url);
+			return parsed
+				.filter((p) => !!p.name && !!p.source_url)
+				.map((p) => ({ ...p, pool_source: "fresh_search" as const }));
 		}
-		return filtered.length > 0 ? filtered : undefined;
+		if (filtered.length === 0) return undefined;
+
+		// Restore pool_source + discovered_product_id from the pool when URL matches.
+		// Use same URL normalization as the sanity-pass filter so trailing-slash /
+		// protocol variants don't mis-tag pool items as fresh_search.
+		const normalizeUrl = (u: string) => u.replace(/\/+$/, '').replace(/^https?:\/\//, '');
+		const poolIndex = new Map<string, DiscoveryPoolItem>();
+		for (const p of cappedPool) {
+			poolIndex.set(normalizeUrl(p.source_url), p);
+		}
+		const enriched = filtered.map((p) => {
+			const match = poolIndex.get(normalizeUrl(p.source_url));
+			if (match) {
+				return {
+					...p,
+					pool_source: match.pool_source,
+					discovered_product_id: match.discovered_product_id,
+				};
+			}
+			return { ...p, pool_source: "fresh_search" as const };
+		});
+		return enriched;
 	} catch (err) {
 		console.error("[md-strategy] discovery curation failed:", err);
 		return undefined;
@@ -1534,7 +1654,9 @@ IMPORTANT:
 // ---------------------------------------------------------------------------
 
 function buildProductSelectionPrompt(ctx: StrategyContext): string {
-	const seedSection = formatSeedPromptSection(ctx.seedProduct ?? null);
+	const seedSection = formatMultiSeedPromptSection(
+		ctx.seedProducts ?? (ctx.seedProduct ? [ctx.seedProduct] : []),
+	);
 	// Build Markdown table for products with pre-computed metrics
 	const tableHeader = `| # | 商品名 | カテゴリ | 年売上 | 粗利率 | 週平均 | 3M成長率 | TV単価 | 原価 | EC15%後マージン | EC既存 | 季節ピーク |`;
 	const tableSep = `|---|---|---|---|---|---|---|---|---|---|---|---|`;
@@ -1626,7 +1748,9 @@ const EMPTY_ME: MarketingExecutionOutput = { monthly_plans: [], content_calendar
 const EMPTY_FP: FinancialProjectionOutput = { monthly_forecast: [], roi_timeline: [], scenarios: { conservative: { year1_revenue: 0, year1_profit: 0 }, moderate: { year1_revenue: 0, year1_profit: 0 }, aggressive: { year1_revenue: 0, year1_profit: 0 }, assumptions: [] } };
 
 function buildChannelStrategyPrompt(ctx: StrategyContext, priorOutputs: Record<string, unknown>): string {
-	const seedSection = formatSeedPromptSection(ctx.seedProduct ?? null);
+	const seedSection = formatMultiSeedPromptSection(
+		ctx.seedProducts ?? (ctx.seedProduct ? [ctx.seedProduct] : []),
+	);
 	const ps = (priorOutputs.product_selection as ProductSelectionOutput) ?? EMPTY_PS;
 
 	// Build structured tier1 summary with margin and revenue data
@@ -1714,7 +1838,9 @@ ${buildSourcesSection(ctx)}`;
 }
 
 function buildPricingMarginPrompt(ctx: StrategyContext, priorOutputs: Record<string, unknown>): string {
-	const seedSection = formatSeedPromptSection(ctx.seedProduct ?? null);
+	const seedSection = formatMultiSeedPromptSection(
+		ctx.seedProducts ?? (ctx.seedProduct ? [ctx.seedProduct] : []),
+	);
 	const ps = (priorOutputs.product_selection as ProductSelectionOutput) ?? EMPTY_PS;
 	const cs = (priorOutputs.channel_strategy as ChannelStrategyOutput) ?? EMPTY_CS;
 
@@ -1835,7 +1961,9 @@ ${buildSourcesSection(ctx)}`;
 }
 
 function buildMarketingExecutionPrompt(ctx: StrategyContext, priorOutputs: Record<string, unknown>): string {
-	const seedSection = formatSeedPromptSection(ctx.seedProduct ?? null);
+	const seedSection = formatMultiSeedPromptSection(
+		ctx.seedProducts ?? (ctx.seedProduct ? [ctx.seedProduct] : []),
+	);
 	const ps = (priorOutputs.product_selection as ProductSelectionOutput) ?? EMPTY_PS;
 	const cs = (priorOutputs.channel_strategy as ChannelStrategyOutput) ?? EMPTY_CS;
 	const pm = (priorOutputs.pricing_margin as PricingMarginOutput) ?? EMPTY_PM;
@@ -1962,7 +2090,9 @@ ${buildSourcesSection(ctx)}`;
 }
 
 function buildFinancialProjectionPrompt(ctx: StrategyContext, priorOutputs: Record<string, unknown>): string {
-	const seedSection = formatSeedPromptSection(ctx.seedProduct ?? null);
+	const seedSection = formatMultiSeedPromptSection(
+		ctx.seedProducts ?? (ctx.seedProduct ? [ctx.seedProduct] : []),
+	);
 	const cs = (priorOutputs.channel_strategy as ChannelStrategyOutput) ?? EMPTY_CS;
 	const pm = (priorOutputs.pricing_margin as PricingMarginOutput) ?? EMPTY_PM;
 	const me = (priorOutputs.marketing_execution as MarketingExecutionOutput) ?? EMPTY_ME;
@@ -2085,7 +2215,9 @@ ${buildSourcesSection(ctx)}`;
 }
 
 function buildRiskContingencyPrompt(ctx: StrategyContext, priorOutputs: Record<string, unknown>): string {
-	const seedSection = formatSeedPromptSection(ctx.seedProduct ?? null);
+	const seedSection = formatMultiSeedPromptSection(
+		ctx.seedProducts ?? (ctx.seedProduct ? [ctx.seedProduct] : []),
+	);
 	const cs = (priorOutputs.channel_strategy as ChannelStrategyOutput) ?? EMPTY_CS;
 	const pm = (priorOutputs.pricing_margin as PricingMarginOutput) ?? EMPTY_PM;
 	const fp = (priorOutputs.financial_projection as FinancialProjectionOutput) ?? EMPTY_FP;
@@ -2280,3 +2412,9 @@ export async function runStrategyOrchestrator(
 
 	return outputs as unknown as FullStrategyResult;
 }
+
+export const __test = {
+	decideDiscoveryStrategy,
+	poolTargetSize,
+};
+
