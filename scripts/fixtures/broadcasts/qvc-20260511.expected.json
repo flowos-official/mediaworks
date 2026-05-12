@@ -1,0 +1,12 @@
+{
+  "minSlots": 10,
+  "maxSlots": 60,
+  "minPresenterCoverage": 0.9,
+  "minDescriptionCoverage": 0.9,
+  "minThumbnailCoverage": 0.9,
+  "firstSlot": {
+    "channel": "qvc",
+    "startTimePattern": "^\\d{2}:\\d{2}:\\d{2}$",
+    "programTitleMinLength": 2
+  }
+}

@@ -12,6 +12,8 @@
     "test:discovery-dry-run": "tsx --env-file=.env.local scripts/test-discovery-dry-run.ts",
     "test:migrations": "tsx --env-file=.env.local scripts/check-migrations.ts",
     "test:broadcasts-shopch": "tsx --env-file=.env.local scripts/test-broadcasts-shopch-parser.ts",
+    "test:broadcasts-qvc": "tsx --env-file=.env.local scripts/test-broadcasts-qvc-parser.ts",
+    "test:broadcasts-parsers": "npm run test:broadcasts-shopch && npm run test:broadcasts-qvc",
     "test:user-guide": "tsx --env-file=.env.local scripts/test-user-guide.ts"
   },
   "dependencies": {
