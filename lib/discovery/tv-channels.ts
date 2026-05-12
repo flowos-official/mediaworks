@@ -7,6 +7,8 @@
  * Source: docs/検索参考サイト (2).xlsx rows 1-25.
  */
 
+import type { PoolItem } from "./types";
+
 export interface TvChannel {
 	/** Stable identifier persisted in DB. */
 	slug: string;
@@ -68,4 +70,19 @@ export function serializeChannelSlugs(slugs: readonly string[]): string | null {
 export function parseChannelSlugs(value: string | null | undefined): string[] {
 	if (!value) return [];
 	return value.split(",").map((s) => s.trim()).filter(Boolean);
+}
+
+/**
+ * Derive the persisted `tv_channel_source` value for a PoolItem.
+ * Returns null when no channel hit exists. Output is alphabetically
+ * sorted and deduplicated, matching the contract of `serializeChannelSlugs`.
+ */
+export function deriveTvChannelSource(item: PoolItem): string | null {
+	const slugs: string[] = [];
+	if (item.tvChannelMatches && item.tvChannelMatches.length > 0) {
+		slugs.push(...item.tvChannelMatches);
+	} else if (item.tvChannel) {
+		slugs.push(item.tvChannel);
+	}
+	return serializeChannelSlugs(slugs);
 }
