@@ -256,11 +256,10 @@ export default function ProductDetailModal({
                   )}
 
                   {/* KPI */}
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {[
                       { label: '総売上', value: formatYen(data.summary.totalRevenue) },
                       { label: '総粗利', value: formatYen(data.summary.totalProfit) },
-                      { label: '粗利率', value: `${data.summary.marginRate}%` },
                       { label: '週平均', value: `${data.summary.avgWeeklyQuantity}個` },
                       { label: '販売週数', value: `${data.summary.weekCount}週` },
                     ].map((kpi) => (
