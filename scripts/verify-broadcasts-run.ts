@@ -20,10 +20,13 @@ async function main() {
 			.from("broadcasts")
 			.select("channel", { count: "exact" })
 			.eq("air_date", date);
-		const byCh = (data ?? []).reduce<Record<string, number>>((acc, r: any) => {
-			acc[r.channel] = (acc[r.channel] ?? 0) + 1;
-			return acc;
-		}, {});
+		const byCh = (data ?? []).reduce<Record<string, number>>(
+			(acc, r: { channel: string }) => {
+				acc[r.channel] = (acc[r.channel] ?? 0) + 1;
+				return acc;
+			},
+			{},
+		);
 		console.log(
 			`${date}: total=${count ?? 0}, shopch=${byCh.shopch ?? 0}, qvc=${byCh.qvc ?? 0}`,
 		);
@@ -44,10 +47,16 @@ async function main() {
 		.order("scraped_at", { ascending: false })
 		.limit(1000);
 	if (sample && sample.length > 0) {
-		const n = sample.length;
-		const pres = sample.filter((r: any) => r.presenter).length / n;
-		const desc = sample.filter((r: any) => r.description).length / n;
-		const thumb = sample.filter((r: any) => r.thumbnail_url).length / n;
+		type CoverageRow = {
+			presenter: string | null;
+			description: string | null;
+			thumbnail_url: string | null;
+		};
+		const rows = sample as CoverageRow[];
+		const n = rows.length;
+		const pres = rows.filter((r) => r.presenter).length / n;
+		const desc = rows.filter((r) => r.description).length / n;
+		const thumb = rows.filter((r) => r.thumbnail_url).length / n;
 		console.log(`\nField coverage (recent ${n} rows):`);
 		console.log(`  presenter:     ${(pres * 100).toFixed(1)}%`);
 		console.log(`  description:   ${(desc * 100).toFixed(1)}%`);
