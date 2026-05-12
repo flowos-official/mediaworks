@@ -38,3 +38,4 @@ next-env.d.ts
 
 # Test screenshots (in project root)
 /*.png
+.superpowers/
