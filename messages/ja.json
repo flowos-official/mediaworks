@@ -4,7 +4,8 @@
     "products": "商品",
     "reports": "レポート",
     "analytics": "売上分析",
-    "gallery": "商品画像"
+    "gallery": "商品画像",
+    "broadcasts": "番組カレンダー"
   },
   "home": {
     "title": "MediaWorks",
@@ -313,5 +314,35 @@
     "cumulative": "累計",
     "noData": "データなし",
     "allStatuses": "すべて"
+  },
+  "broadcasts": {
+    "title": "番組カレンダー",
+    "subtitle": "Shop Channel と QVC Japan の過去の放送",
+    "channels": {
+      "shopch": "Shop Channel",
+      "qvc": "QVC Japan"
+    },
+    "channelShort": {
+      "shopch": "Shop CH",
+      "qvc": "QVC"
+    },
+    "filters": {
+      "all": "全て",
+      "shopch": "Shop CH",
+      "qvc": "QVC"
+    },
+    "broadcastCount": "{count} 件",
+    "monthNav": {
+      "prev": "前月",
+      "next": "翌月"
+    },
+    "openSource": "原本を見る",
+    "empty": {
+      "all": "まだ番組情報がありません。明日の JST 01:00 以降にデータが入ります。",
+      "day": "この日の番組情報はまだ収集されていません。",
+      "filtered": "このチャネルの番組はありません。フィルターを変更してください。",
+      "apiError": "番組情報の取得に失敗しました。"
+    },
+    "retry": "再試行"
   }
 }
