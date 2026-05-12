@@ -9,6 +9,8 @@ const cases = [
 	{ poolSize: 20, target: 20, expected: { strategy: "pool_only" as const, fillNeeded: 0 } },
 	{ poolSize: 35, target: 20, expected: { strategy: "pool_only" as const, fillNeeded: 0 } },
 	{ poolSize: 8,  target: 12, expected: { strategy: "pool_filled" as const, fillNeeded: 4 } },
+	{ poolSize: 5,  target: 0,  expected: { strategy: "pool_only" as const, fillNeeded: 0 } },
+	{ poolSize: 0,  target: 0,  expected: { strategy: "pool_only" as const, fillNeeded: 0 } },
 ];
 
 for (const c of cases) {

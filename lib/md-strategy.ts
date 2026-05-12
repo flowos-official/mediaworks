@@ -497,6 +497,14 @@ type DiscoveryPoolItem = {
 
 type DiscoveryStrategyMode = "pool_only" | "pool_filled" | "fresh_only";
 
+/**
+ * Pool target size for `discoverNewProducts`.
+ *
+ * Note: `lightweight=true` returns the LARGER target (30) — in this codebase
+ * "lightweight" means "wider scan, lighter per-item detail" (no sales_strategy
+ * field generated per product). Matches the existing RAKUTEN_PER_KW / POOL_CAP
+ * convention inside discoverNewProducts.
+ */
 function poolTargetSize(lightweight: boolean): number {
 	return lightweight ? 30 : 12;
 }
@@ -505,6 +513,7 @@ function decideDiscoveryStrategy(
 	poolSize: number,
 	target: number,
 ): { strategy: DiscoveryStrategyMode; fillNeeded: number } {
+	if (target <= 0) return { strategy: "pool_only", fillNeeded: 0 };
 	if (poolSize === 0) return { strategy: "fresh_only", fillNeeded: target };
 	if (poolSize >= target) return { strategy: "pool_only", fillNeeded: 0 };
 	return { strategy: "pool_filled", fillNeeded: target - poolSize };
