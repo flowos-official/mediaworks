@@ -227,7 +227,7 @@ function SkillResultsView({ results, generatedAt, backHref, strategyId, onRedisc
 // ---------------------------------------------------------------------------
 
 const CATEGORIES = ['指定なし', '美容・スキンケア', '健康食品', 'キッチン用品', 'ファッション', '生活雑貨', '電気機器', 'フィットネス', 'その他'];
-const MARKETS = ['指定なし', '日本全国', '40-60代女性', '20-30代女性', '男女共用'];
+const MARKETS = ['指定なし', '日本全国', '40-60代女性', '60代以上女性', '20-30代女性', '男女共用'];
 
 type SkillStatus = 'pending' | 'running' | 'complete' | 'error';
 

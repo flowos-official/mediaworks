@@ -1,6 +1,6 @@
 'use client';
 
-import { TrendingUp, TrendingDown, DollarSign, Package, BarChart3, Percent } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Package, BarChart3 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 type KpiData = {
@@ -52,13 +52,6 @@ export default function OverviewCards({ data }: { data: KpiData }) {
       yoy: prev && curr ? { current: curr.profit, previous: prev.profit } : null,
     },
     {
-      label: '粗利率',
-      value: `${data.marginRate}%`,
-      icon: Percent,
-      color: 'text-purple-600 bg-purple-50',
-      yoy: null,
-    },
-    {
       label: '総受注数',
       value: data.totalQuantity.toLocaleString(),
       icon: Package,
@@ -75,7 +68,7 @@ export default function OverviewCards({ data }: { data: KpiData }) {
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       {cards.map((card) => (
         <Card key={card.label} className="border-gray-200">
           <CardContent className="p-4">
