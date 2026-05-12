@@ -1,0 +1,157 @@
+/**
+ * Pool query — fetches candidates from discovered_products for strategy generation.
+ *
+ * 決定規則 (plan §Core Decision Rules):
+ * - R1: tv_tier ASC, tv_fit_score DESC, created_at DESC
+ * - R2: exclude user_action IN ('rejected','duplicate')
+ * - R3: context filter
+ * - R4: category fuzzy match (category OR seed_keyword), fail-open at <5
+ * - R5: price range filter, NULL pass-through, fail-open at <5
+ * - R6: lookback window (default 60d, env STRATEGY_POOL_LOOKBACK_DAYS)
+ */
+
+import { getServiceClient } from "@/lib/supabase";
+import { mapUiCategoryToSalesCategories } from "@/lib/strategy/category-mapping";
+
+const FAIL_OPEN_THRESHOLD = 5;
+const DEFAULT_LOOKBACK_DAYS = 60;
+
+export interface PoolQueryInput {
+	context: "home_shopping" | "live_commerce";
+	uiCategory?: string; // 사용자 UI 라벨 (e.g. "美容・スキンケア")
+	priceRange?: { min: number; max: number };
+	limit?: number; // R7
+	excludeProductIds?: string[]; // 이미 시드로 사용된 ID
+	supplementCategoriesFromSeeds?: string[]; // 시드 상품의 카테고리 (보조 신호)
+}
+
+export interface PoolRow {
+	id: string;
+	name: string;
+	product_url: string;
+	price_jpy: number | null;
+	category: string | null;
+	seed_keyword: string;
+	tv_fit_score: number;
+	tv_fit_reason: string | null;
+	tv_channel_source: string | null;
+	tv_tier: number;
+	context: "home_shopping" | "live_commerce";
+	user_action: "sourced" | "interested" | "rejected" | "duplicate" | null;
+	c_package: Record<string, unknown> | null;
+	enrichment_status: "idle" | "queued" | "running" | "completed" | "failed";
+	review_count: number | null;
+	review_avg: number | null;
+	seller_name: string | null;
+	broadcast_tag: "broadcast_confirmed" | "broadcast_likely" | "unknown" | null;
+	thumbnail_url: string | null;
+	created_at: string;
+}
+
+interface FilterOptions {
+	context: "home_shopping" | "live_commerce";
+	uiCategory?: string;
+	priceRange?: { min: number; max: number };
+	supplementCategories?: string[];
+}
+
+function applyFilters(rows: PoolRow[], opts: FilterOptions): PoolRow[] {
+	// R3 + R2 — always strict
+	const baseFiltered = rows.filter(
+		(r) =>
+			r.context === opts.context &&
+			r.user_action !== "rejected" &&
+			r.user_action !== "duplicate",
+	);
+
+	// R4 — category fuzzy match with fail-open
+	// Fail-open kicks in only when the input pool itself is too thin (< THRESHOLD)
+	// to apply a meaningful filter; otherwise honor the strict result even if small.
+	let afterCategory = baseFiltered;
+	if (opts.uiCategory && baseFiltered.length >= FAIL_OPEN_THRESHOLD) {
+		const targets = mapUiCategoryToSalesCategories(opts.uiCategory);
+		const supplement = opts.supplementCategories ?? [];
+		// Split UI label on "・" so each token can match independently
+		// (e.g. "美容・スキンケア" → ["美容", "スキンケア"]). This catches
+		// seed_keyword values like "美容ケア用品" that contain just one token.
+		const uiTokens = opts.uiCategory
+			.split("・")
+			.map((s) => s.trim())
+			.filter((s) => s.length > 0);
+		const matchTerms = [...targets, ...supplement, opts.uiCategory, ...uiTokens]
+			.filter((s) => s.length > 0);
+		if (matchTerms.length > 0) {
+			afterCategory = baseFiltered.filter((r) => {
+				const hay = `${r.category ?? ""} ${r.seed_keyword}`.toLowerCase();
+				return matchTerms.some((t) => hay.includes(t.toLowerCase()));
+			});
+		}
+	}
+
+	// R5 — price filter with NULL pass-through + fail-open (same pool-size gate)
+	let afterPrice = afterCategory;
+	if (opts.priceRange && afterCategory.length >= FAIL_OPEN_THRESHOLD) {
+		const { min, max } = opts.priceRange;
+		afterPrice = afterCategory.filter(
+			(r) =>
+				r.price_jpy === null || (r.price_jpy >= min && r.price_jpy <= max),
+		);
+	}
+
+	return afterPrice;
+}
+
+/**
+ * Query discovered_products with all filters and ordering applied.
+ * Returns up to input.limit rows. Falls back gracefully on DB errors (empty array).
+ */
+export async function queryDiscoveredPool(
+	input: PoolQueryInput,
+): Promise<PoolRow[]> {
+	const sb = getServiceClient();
+	const lookbackDays = Number(
+		process.env.STRATEGY_POOL_LOOKBACK_DAYS ?? DEFAULT_LOOKBACK_DAYS,
+	);
+	const sinceIso = new Date(
+		Date.now() - lookbackDays * 24 * 3600 * 1000,
+	).toISOString();
+	const limit = input.limit ?? 30;
+	// Over-fetch to give filters room; we'll trim after.
+	const fetchLimit = Math.min(500, limit * 5);
+
+	let q = sb
+		.from("discovered_products")
+		.select(
+			"id, name, product_url, price_jpy, category, seed_keyword, tv_fit_score, tv_fit_reason, tv_channel_source, tv_tier, context, user_action, c_package, enrichment_status, review_count, review_avg, seller_name, broadcast_tag, thumbnail_url, created_at",
+		)
+		.eq("context", input.context)
+		.gte("created_at", sinceIso)
+		.order("tv_tier", { ascending: true })
+		.order("tv_fit_score", { ascending: false })
+		.order("created_at", { ascending: false })
+		.limit(fetchLimit);
+
+	if (input.excludeProductIds && input.excludeProductIds.length > 0) {
+		q = q.not("id", "in", `(${input.excludeProductIds.join(",")})`);
+	}
+
+	const { data, error } = await q;
+	if (error) {
+		console.warn("[pool-query] query failed:", error.message);
+		return [];
+	}
+	const rows = (data ?? []) as PoolRow[];
+
+	const filtered = applyFilters(rows, {
+		context: input.context,
+		uiCategory: input.uiCategory,
+		priceRange: input.priceRange,
+		supplementCategories: input.supplementCategoriesFromSeeds,
+	});
+
+	return filtered.slice(0, limit);
+}
+
+export const __test = {
+	applyFilters,
+};
