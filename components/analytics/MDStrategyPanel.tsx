@@ -396,11 +396,21 @@ function ListView({ locale, router }: { locale: string; router: ReturnType<typeo
 	const seedPrice = searchParams?.get("price") ?? null;
 	const seedUrl = searchParams?.get("sourceUrl") ?? null;
 	const seedProductId = searchParams?.get("seedId") ?? null;
+	const seedProductIdsRaw = searchParams?.get("seedIds") ?? null;
+	const seedProductIds = seedProductIdsRaw
+		? seedProductIdsRaw.split(",").map((s) => s.trim()).filter((s) => s.length > 0)
+		: null;
 
 	// Input state
-	const [userGoal, setUserGoal] = useState(
-		seedName ? `新商品「${seedName}」の拡大戦略を立てる。${seedUrl ? ` 参考URL: ${seedUrl}` : ""}` : ''
-	);
+	const [userGoal, setUserGoal] = useState(() => {
+		if (seedProductIds && seedProductIds.length > 1) {
+			return `選択した${seedProductIds.length}件の発掘候補をポートフォリオで戦略立案`;
+		}
+		if (seedName) {
+			return `新商品「${seedName}」の拡大戦略を立てる。${seedUrl ? ` 参考URL: ${seedUrl}` : ""}`;
+		}
+		return "";
+	});
 	const [category, setCategory] = useState(seedCategory ?? '指定なし');
 	const [targetMarket, setTargetMarket] = useState('指定なし');
 	const [priceRange, setPriceRange] = useState(seedPrice ? `¥${Number(seedPrice).toLocaleString()}前後` : '');
@@ -477,6 +487,7 @@ function ListView({ locale, router }: { locale: string; router: ReturnType<typeo
 					targetMarket: targetMarket !== '指定なし' ? targetMarket : undefined,
 					priceRange: priceRange || undefined,
 					seedProductId: seedProductId ?? undefined,
+					seedProductIds: seedProductIds ?? undefined,
 				}),
 			});
 
