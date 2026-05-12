@@ -56,6 +56,8 @@ const REQUIRED_COLUMNS: Record<string, string[]> = {
 		"action_at",
 		"context",
 		"thumbnail_url",
+		"tv_channel_source",
+		"tv_tier",
 	],
 	product_feedback: ["id", "discovered_product_id", "action", "reason", "created_at"],
 	learning_state: [
