@@ -12,6 +12,7 @@ import type {
 } from "@/lib/supabase";
 import type { SeedContext } from "@/lib/strategy/seed-context";
 import { formatSeedPromptSection } from "@/lib/strategy/seed-context";
+import { CATEGORY_MAPPING } from "@/lib/strategy/category-mapping";
 
 // ---------------------------------------------------------------------------
 // Gemini client
@@ -234,19 +235,9 @@ const CHANNEL_REFERENCE = [
 ] as const;
 
 // ---------------------------------------------------------------------------
-// Category mapping for filtering
+// Category mapping for filtering — shared with pool-query.
 // ---------------------------------------------------------------------------
-
-const CATEGORY_MAPPING: Record<string, string[]> = {
-	"美容・スキンケア": ["美容・運動", "化粧品"],
-	"健康食品": ["食品"],
-	"キッチン用品": ["キッチン"],
-	"ファッション": ["アパレル", "靴・バッグ"],
-	"生活雑貨": ["家電・雑貨", "掃除・洗濯"],
-	"電気機器": ["家電・雑貨"],
-	"フィットネス": ["美容・運動", "医療機器"],
-	"その他": ["その他", "寝具", "宝飾", "防災・防犯", "ゴルフ"],
-};
+// CATEGORY_MAPPING is imported from "@/lib/strategy/category-mapping" (see top of file).
 
 // ---------------------------------------------------------------------------
 // Parsed Goal (Skill 0 output)
