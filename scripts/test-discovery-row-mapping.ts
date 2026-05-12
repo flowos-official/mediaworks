@@ -16,6 +16,7 @@ const candidate: Candidate = {
 	rakutenItemCode: "test-shop:test-item",
 	seedKeyword: "布団 乾燥機 ハイパワー",
 	track: "tv_proven",
+	tvChannelSource: "qvc,shopch",
 	context: "home_shopping",
 	tvFitScore: 95,
 	tvFitReason: "実演しやすくレビューも強い",
@@ -43,5 +44,6 @@ assert.equal(rows.length, 1);
 assert.equal(rows[0].category, "Drying Appliances");
 assert.equal(rows[0].seed_keyword, "布団 乾燥機 ハイパワー");
 assert.notEqual(rows[0].category, rows[0].seed_keyword);
+assert.equal(rows[0].tv_channel_source, "qvc,shopch");
 
 console.log("PASS: discovery row mapping keeps category and seed_keyword separate");
