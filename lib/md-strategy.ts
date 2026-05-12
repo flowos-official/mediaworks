@@ -980,7 +980,9 @@ ${salesStrategyFooter}`;
 		if (filtered.length === 0 && parsed.length > 0) {
 			console.warn(`[discover] all ${parsed.length} Gemini items failed sanity-pass — returning all (fallback)`);
 			// Fallback: return all parsed items rather than nothing, since pool existed
-			return parsed.filter((p) => !!p.name && !!p.source_url);
+			return parsed
+				.filter((p) => !!p.name && !!p.source_url)
+				.map((p) => ({ ...p, pool_source: "fresh_search" as const }));
 		}
 		if (filtered.length === 0) return undefined;
 
