@@ -345,6 +345,7 @@
       "filtered": "No broadcasts for this channel. Try a different filter.",
       "apiError": "Failed to load broadcasts."
     },
-    "retry": "Retry"
+    "retry": "Retry",
+    "back": "Back to home"
   }
 }
