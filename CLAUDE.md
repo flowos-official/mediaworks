@@ -48,6 +48,16 @@ File Upload → Supabase Storage → Gemini Vision (extract)
 | Brave Search | Web research queries | `BRAVE_SEARCH_API_KEY` |
 | Rakuten API | Japan market product ranking data | `RAKUTEN_APP_ID` |
 
+### Broadcast Calendar (Phase A — read-only)
+
+- Daily JST 01:00 cron (`16:00 UTC` → `app/api/cron/daily-broadcasts/route.ts`) scrapes yesterday's broadcasts from Shop Channel (`shopch.jp`) and QVC Japan (`qvc.jp`) via cheerio.
+- Read API: `GET /api/broadcasts?from=YYYY-MM-DD&to=YYYY-MM-DD[&channel=shopch|qvc]` (max 62-day range).
+- Admin recovery: `POST /api/broadcasts/refresh` with `{date}` or `{from,to}` (max 7 days), `Bearer ${CRON_SECRET}`.
+- UI: `/[locale]/broadcasts` — month grid + time-sorted unified day list with channel filter.
+- Module layout: `lib/broadcasts/{types,fetch,shopch,qvc,persist,index}.ts`.
+- Fixture-based parser tests: `npm run test:broadcasts-parsers`. Live integration: `npm run test:broadcasts-live`. Operational diagnostic: `npm run verify:broadcasts`. One-shot 7-day backfill: `npm run backfill:broadcasts -- --days=7`.
+- Phases B (product extraction from each broadcast) and C (time-slot analytics) build on this `broadcasts` table without modifying it.
+
 ### Supabase Schema (key tables)
 
 - `products` — uploaded product metadata, status lifecycle: pending → extracted → analyzing → completed/failed
