@@ -1,0 +1,12 @@
+{
+	"minSlots": 20,
+	"maxSlots": 80,
+	"minPresenterCoverage": 0.7,
+	"minDescriptionCoverage": 0.7,
+	"minThumbnailCoverage": 0.7,
+	"firstSlot": {
+		"channel": "shopch",
+		"startTimePattern": "^\\d{2}:\\d{2}:\\d{2}$",
+		"programTitleMinLength": 2
+	}
+}
