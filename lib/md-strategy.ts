@@ -435,6 +435,7 @@ export interface StrategyContext {
 	// Parsed user goal (from Skill 0)
 	parsedGoal?: ParsedGoal;
 	seedProduct?: SeedContext;
+	seedProducts?: import("@/lib/strategy/seed-context").SeedContext[];
 }
 
 // ---------------------------------------------------------------------------

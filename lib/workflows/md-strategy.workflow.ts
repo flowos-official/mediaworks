@@ -20,7 +20,8 @@ export interface MDWorkflowInput {
 	category?: string;
 	targetMarket?: string;
 	priceRange?: string;
-	seedProductId?: string;
+	seedProductId?: string;          // 후방 호환 — 단일 시드
+	seedProductIds?: string[];       // 신규 — 다중 시드
 }
 
 // ---------------------------------------------------------------------------
@@ -34,13 +35,24 @@ async function fetchContextStep(input: MDWorkflowInput): Promise<StrategyContext
 			? { category: input.category, targetMarket: input.targetMarket, priceRange: input.priceRange }
 			: undefined;
 	const ctx = await fetchStrategyContext(input.userGoal || undefined, recommend);
-	if (input.seedProductId) {
-		const seed = await loadSeedContext(input.seedProductId);
-		if (seed) {
-			ctx.seedProduct = seed;
+
+	// Backward compat: 단일 seedProductId 가 들어오면 배열로 정규화.
+	const allSeedIds = [
+		...(input.seedProductId ? [input.seedProductId] : []),
+		...(input.seedProductIds ?? []),
+	];
+	if (allSeedIds.length > 0) {
+		const { loadSeedContexts } = await import("@/lib/strategy/seed-context");
+		const seeds = await loadSeedContexts(allSeedIds);
+		if (seeds.length > 0) {
+			// 단일 시드면 기존 필드 유지 (다른 코드가 의존), 다중이면 신규 필드도 채움.
+			if (seeds.length === 1) {
+				ctx.seedProduct = seeds[0];
+			}
+			ctx.seedProducts = seeds;
 		}
 	}
-	console.log(`[md-workflow] context fetched (discovery deferred to final step)`);
+	console.log(`[md-workflow] context fetched (discovery deferred to final step), seeds=${allSeedIds.length}`);
 	return ctx;
 }
 
@@ -74,6 +86,10 @@ async function runDiscoveryStep(
 			tvMarginRate: context.annualMetrics.marginRate,
 			analysisContext: summary,
 			tvProfile,
+			seedProductIds: (context.seedProducts ?? []).map((s) => s.id),
+			seedCategories: (context.seedProducts ?? [])
+				.map((s) => s.category)
+				.filter((c): c is string => !!c),
 			lightweight: true,
 		});
 		console.log(`[md-workflow] discovery complete: ${products?.length ?? 0} products`);

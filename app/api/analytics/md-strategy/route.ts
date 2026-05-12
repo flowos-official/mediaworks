@@ -29,6 +29,10 @@ export async function POST(request: NextRequest) {
 		category: typeof body.category === "string" ? body.category : undefined,
 		targetMarket: typeof body.targetMarket === "string" ? body.targetMarket : undefined,
 		priceRange: typeof body.priceRange === "string" ? body.priceRange : undefined,
+		seedProductId: typeof body.seedProductId === "string" ? body.seedProductId : undefined,
+		seedProductIds: Array.isArray(body.seedProductIds)
+			? body.seedProductIds.filter((s: unknown): s is string => typeof s === "string")
+			: undefined,
 	};
 	try {
 		const run = await start(mdStrategyWorkflow, [input]);
