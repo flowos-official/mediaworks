@@ -56,7 +56,8 @@ File Upload → Supabase Storage → Gemini Vision (extract)
 - UI: `/[locale]/broadcasts` — month grid + time-sorted unified day list with channel filter.
 - Module layout: `lib/broadcasts/{types,fetch,shopch,qvc,persist,index}.ts`.
 - Fixture-based parser tests: `npm run test:broadcasts-parsers`. Live integration: `npm run test:broadcasts-live`. Operational diagnostic: `npm run verify:broadcasts`. One-shot 7-day backfill: `npm run backfill:broadcasts -- --days=7`.
-- Phases B (product extraction from each broadcast) and C (time-slot analytics) build on this `broadcasts` table without modifying it.
+- Phase B PoC (QVC only): `broadcasts.product_ids text[]` is populated from each slot's `data-products` attribute; `qvc_products` caches OG metadata (name, image, price text, video) fetched from `qvc.jp/product.{id}.html`. The daily cron auto-enriches new IDs; manual run via `npm run enrich:qvc-products`. Shop Channel product detail requires JS rendering (Playwright) and is deferred.
+- Phase C (time-slot analytics) still builds on this `broadcasts` table.
 
 ### Discovery TV Channel Source (extends home_shopping)
 
