@@ -2,6 +2,8 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { Popover } from "@base-ui/react/popover";
+import { Home, Tv } from "lucide-react";
 
 export type SessionRow = {
 	id: string;
@@ -26,6 +28,39 @@ function statusColor(status: SessionRow["status"]): string {
 
 function monthKey(d: Date): string {
 	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function hhmm(iso: string): string {
+	return new Date(iso).toLocaleTimeString("ja-JP", {
+		hour: "2-digit",
+		minute: "2-digit",
+	});
+}
+
+function statusLabel(status: SessionRow["status"]): string {
+	switch (status) {
+		case "completed":
+			return "完了";
+		case "partial":
+			return "部分";
+		case "failed":
+			return "失敗";
+		default:
+			return "実行中";
+	}
+}
+
+function statusBadgeClasses(status: SessionRow["status"]): string {
+	switch (status) {
+		case "completed":
+			return "bg-green-100 text-green-700";
+		case "partial":
+			return "bg-yellow-100 text-yellow-700";
+		case "failed":
+			return "bg-red-100 text-red-700";
+		default:
+			return "bg-blue-100 text-blue-700";
+	}
 }
 
 export function SessionCalendar({ sessions, month }: { sessions: SessionRow[]; month?: Date }) {
@@ -77,30 +112,70 @@ export function SessionCalendar({ sessions, month }: { sessions: SessionRow[]; m
 							</div>
 						);
 					}
-					const first = cell.sessions[0];
-					const href = `/${locale}/analytics/discovery/session/${first.id}`;
 					return (
-						<Link
-							key={i}
-							href={href}
-							className="aspect-square flex flex-col items-center justify-start pt-1 rounded hover:bg-gray-50 transition-colors"
-							title={cell.sessions.map((s) => `${s.context === "home_shopping" ? "ホーム" : "ライブ"}: ${s.status} (${s.produced_count})`).join("\n")}
-						>
-							<span className="text-[10px] text-gray-700">{cell.day}</span>
-							<div className="flex gap-0.5 mt-0.5 items-center">
-								{cell.sessions.slice(0, 4).map((s) => (
-									<span
-										key={s.id}
-										className={`w-1.5 h-1.5 rounded-full ${statusColor(s.status)} ${s.context === "live_commerce" ? "ring-1 ring-purple-400" : ""}`}
-									/>
-								))}
-								{cell.sessions.length > 4 && (
-									<span className="text-[9px] text-gray-500 ml-0.5">
-										+{cell.sessions.length - 4}
-									</span>
-								)}
-							</div>
-						</Link>
+						<Popover.Root key={i}>
+							<Popover.Trigger
+								className="aspect-square flex flex-col items-center justify-start pt-1 rounded hover:bg-gray-50 transition-colors w-full"
+								aria-label={`${mon + 1}月${cell.day}日 — ${cell.sessions.length} sessions`}
+							>
+								<span className="text-[10px] text-gray-700">{cell.day}</span>
+								<div className="flex gap-0.5 mt-0.5 items-center">
+									{cell.sessions.slice(0, 4).map((s) => (
+										<span
+											key={s.id}
+											className={`w-1.5 h-1.5 rounded-full ${statusColor(s.status)} ${s.context === "live_commerce" ? "ring-1 ring-purple-400" : ""}`}
+										/>
+									))}
+									{cell.sessions.length > 4 && (
+										<span className="text-[9px] text-gray-500 ml-0.5">
+											+{cell.sessions.length - 4}
+										</span>
+									)}
+								</div>
+							</Popover.Trigger>
+							<Popover.Portal>
+								<Popover.Positioner sideOffset={6} align="start">
+									<Popover.Popup className="bg-white border border-gray-200 rounded-lg shadow-lg w-56 overflow-hidden">
+										<div className="px-3 py-2 text-[11px] font-semibold text-gray-700 border-b border-gray-100 bg-gray-50">
+											{year}年{mon + 1}月{cell.day}日 ({cell.sessions.length})
+										</div>
+										<ul className="divide-y divide-gray-100 max-h-72 overflow-auto">
+											{cell.sessions.map((s) => {
+												const isHome = s.context === "home_shopping";
+												return (
+													<li key={s.id}>
+														<Link
+															href={`/${locale}/analytics/discovery/session/${s.id}`}
+															className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-gray-50"
+														>
+															<span className="font-mono text-[11px] text-gray-500 w-10 shrink-0">
+																{hhmm(s.run_at)}
+															</span>
+															<span
+																className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${
+																	isHome
+																		? "bg-blue-50 text-blue-700 border border-blue-200"
+																		: "bg-purple-50 text-purple-700 border border-purple-200"
+																}`}
+															>
+																{isHome ? <Home size={9} /> : <Tv size={9} />}
+																{isHome ? "ホーム" : "ライブ"}
+															</span>
+															<span className={`text-[10px] px-1.5 py-0.5 rounded-full ${statusBadgeClasses(s.status)}`}>
+																{statusLabel(s.status)}
+															</span>
+															<span className="ml-auto text-[11px] text-gray-600 shrink-0">
+																{s.produced_count}件
+															</span>
+														</Link>
+													</li>
+												);
+											})}
+										</ul>
+									</Popover.Popup>
+								</Popover.Positioner>
+							</Popover.Portal>
+						</Popover.Root>
 					);
 				})}
 			</div>
