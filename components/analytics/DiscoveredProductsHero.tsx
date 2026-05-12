@@ -46,6 +46,21 @@ function ProductCard({ p, idx, onAnalyze, analyzing }: {
 					>
 						{p.source === 'rakuten' ? '楽天' : 'Web'}
 					</span>
+					{p.pool_source === 'discovery_pool' && (
+						<span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-purple-100 text-purple-700">
+							発掘プール
+						</span>
+					)}
+					{p.pool_source === 'fresh_search' && (
+						<span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-700">
+							新検索
+						</span>
+					)}
+					{p.pool_source === 'seed' && (
+						<span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-700">
+							シード
+						</span>
+					)}
 					<h3 className="font-bold text-sm text-gray-900 truncate" title={p.name}>
 						<span className="text-gray-400 mr-1">#{idx + 1}</span>
 						{p.name}
@@ -362,6 +377,17 @@ export default function DiscoveredProductsHero({
 			<p className="text-xs text-gray-600 mb-4">
 				TV通販の販売シグナルを基に、楽天 / Web 検索で実在する新商品プールから AI が選定。{onAnalyze ? '各商品を個別に分析できます。' : '各商品ごとに詳細な販売戦略付き。'}
 			</p>
+			{(() => {
+				const pool = products.filter((p) => p.pool_source === 'discovery_pool').length;
+				const fresh = products.filter((p) => p.pool_source === 'fresh_search').length;
+				if (pool === 0 && fresh === 0) return null;
+				return (
+					<p className="text-[11px] text-gray-500 mt-1">
+						発掘プール由来: <span className="font-semibold text-purple-700">{pool}件</span> /
+						新検索: <span className="font-semibold text-emerald-700">{fresh}件</span>
+					</p>
+				);
+			})()}
 
 			{/* Re-discover bar */}
 			{onRediscover && (
