@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { scrapeAllForDate } from "@/lib/broadcasts";
+import { enrichQvcProducts } from "@/lib/qvc-products/enrich";
 
 export const maxDuration = 60;
 
@@ -15,7 +16,6 @@ function getYesterdayJST(nowUtc: Date): Date {
 	const jstMs = nowUtc.getTime() + 9 * 3600 * 1000;
 	const jstNow = new Date(jstMs);
 	jstNow.setUTCDate(jstNow.getUTCDate() - 1);
-	// Strip time — only date matters
 	return new Date(
 		Date.UTC(jstNow.getUTCFullYear(), jstNow.getUTCMonth(), jstNow.getUTCDate()),
 	);
@@ -31,6 +31,14 @@ export async function GET(req: NextRequest) {
 	const targetIso = target.toISOString().slice(0, 10);
 
 	const summary = await scrapeAllForDate(target);
+
+	// Enrich QVC products for just the day we scraped. Typical QVC slot has 1-10
+	// products → ~50-100 unique IDs per day, well under maxDuration=60s at concurrency=3.
+	const enrich = await enrichQvcProducts({
+		onlyDates: [targetIso],
+		concurrency: 3,
+		// onProgress intentionally omitted to keep cron logs short
+	});
 
 	const log = {
 		event: "broadcasts.scrape.summary",
@@ -50,6 +58,11 @@ export async function GET(req: NextRequest) {
 			inserted: summary.totalInserted,
 			updated: summary.totalUpdated,
 			errors: summary.totalErrors,
+		},
+		qvcProductEnrichment: {
+			candidates: enrich.candidates,
+			fetched: enrich.fetched,
+			failed: enrich.failed,
 		},
 		durationMs: Date.now() - start,
 	};
