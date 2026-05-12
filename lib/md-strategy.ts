@@ -13,6 +13,7 @@ import type {
 import type { SeedContext } from "@/lib/strategy/seed-context";
 import { formatSeedPromptSection } from "@/lib/strategy/seed-context";
 import { CATEGORY_MAPPING } from "@/lib/strategy/category-mapping";
+import { queryDiscoveredPool } from "@/lib/strategy/pool-query";
 
 // ---------------------------------------------------------------------------
 // Gemini client
@@ -542,7 +543,6 @@ export async function discoverNewProducts(
 	// --- Pool-first attempt (plan 2026-05-13) ---
 	let poolItems: DiscoveryPoolItem[] = [];
 	try {
-		const { queryDiscoveredPool } = await import("@/lib/strategy/pool-query");
 		const priceRange = input.priceRange ? parsePriceRange(input.priceRange) : null;
 		const rows = await queryDiscoveredPool({
 			context: input.context,
@@ -987,12 +987,15 @@ ${salesStrategyFooter}`;
 		if (filtered.length === 0) return undefined;
 
 		// Restore pool_source + discovered_product_id from the pool when URL matches.
+		// Use same URL normalization as the sanity-pass filter so trailing-slash /
+		// protocol variants don't mis-tag pool items as fresh_search.
+		const normalizeUrl = (u: string) => u.replace(/\/+$/, '').replace(/^https?:\/\//, '');
 		const poolIndex = new Map<string, DiscoveryPoolItem>();
 		for (const p of cappedPool) {
-			poolIndex.set(p.source_url, p);
+			poolIndex.set(normalizeUrl(p.source_url), p);
 		}
 		const enriched = filtered.map((p) => {
-			const match = poolIndex.get(p.source_url);
+			const match = poolIndex.get(normalizeUrl(p.source_url));
 			if (match) {
 				return {
 					...p,
