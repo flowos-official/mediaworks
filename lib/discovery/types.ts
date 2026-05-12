@@ -5,7 +5,7 @@
 
 export type Track = "tv_proven" | "exploration";
 export type Context = "home_shopping" | "live_commerce";
-export type CandidateSource = "rakuten" | "brave" | "other";
+export type CandidateSource = "rakuten" | "brave" | "tv_channel" | "other";
 export type BroadcastTag =
 	| "broadcast_confirmed"
 	| "broadcast_likely"
@@ -48,6 +48,10 @@ export interface PoolItem {
 	seedKeyword: string;
 	track: Track;
 	context?: Context;
+	/** Primary channel slug for a tv_channel-sourced PoolItem. */
+	tvChannel?: string;
+	/** All channel slugs that surfaced the same product (post-dedup merge). */
+	tvChannelMatches?: string[];
 }
 
 export interface CurationScore {
@@ -66,6 +70,8 @@ export interface Candidate extends PoolItem {
 	isLiveApplicable: boolean;
 	scoreBreakdown: CurationScore;
 	context: Context;
+	/** Comma-joined alphabetically-sorted channel slugs, or null. */
+	tvChannelSource?: string | null;
 }
 
 export interface RejectedSeeds {
