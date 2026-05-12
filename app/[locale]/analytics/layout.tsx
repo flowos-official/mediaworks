@@ -4,7 +4,6 @@ import { createContext, useContext, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useParams, usePathname } from 'next/navigation';
 import { BarChart3 } from 'lucide-react';
-import Navbar from '@/components/Navbar';
 import DateRangeFilter from '@/components/analytics/DateRangeFilter';
 
 // ---------------------------------------------------------------------------
@@ -63,9 +62,7 @@ export default function AnalyticsLayout({ children }: { children: ReactNode }) {
     <AnalyticsFilterContext.Provider
       value={{ selectedYears, setSelectedYears, period, setPeriod }}
     >
-      <div className="min-h-screen bg-gray-50">
-        <Navbar />
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="mb-6">
             <div className="flex items-center gap-2 mb-1">
               <BarChart3 size={20} className="text-blue-600" />
@@ -114,7 +111,6 @@ export default function AnalyticsLayout({ children }: { children: ReactNode }) {
             {children}
           </div>
         </main>
-      </div>
     </AnalyticsFilterContext.Provider>
   );
 }
