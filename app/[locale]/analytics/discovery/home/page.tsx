@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useParams, useRouter } from "next/navigation";
+import { TrendingUp } from "lucide-react";
 import { DiscoveryHeader } from "@/components/discovery/DiscoveryHeader";
 import { ProductCard, type DiscoveredProductRow } from "@/components/discovery/ProductCard";
 import {
@@ -29,6 +31,18 @@ export default function DiscoveryHomePage() {
 	const [loading, setLoading] = useState(true);
 	const [status, setStatus] = useState<StatusFilter>("all");
 	const [sort, setSort] = useState<SortKey>("score");
+	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+	const router = useRouter();
+	const { locale } = useParams<{ locale: string }>();
+
+	const toggleSelect = (id: string) => {
+		setSelectedIds((prev) => {
+			const next = new Set(prev);
+			if (next.has(id)) next.delete(id);
+			else next.add(id);
+			return next;
+		});
+	};
 
 	const load = async () => {
 		setLoading(true);
@@ -109,7 +123,12 @@ export default function DiscoveryHomePage() {
 										</h3>
 										<div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
 											{tier1.map((p) => (
-												<ProductCard key={p.id} product={p} />
+												<ProductCard
+													key={p.id}
+													product={p}
+													isSelected={selectedIds.has(p.id)}
+													onToggleSelect={toggleSelect}
+												/>
 											))}
 										</div>
 									</section>
@@ -121,7 +140,12 @@ export default function DiscoveryHomePage() {
 										</h3>
 										<div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
 											{tier2.map((p) => (
-												<ProductCard key={p.id} product={p} />
+												<ProductCard
+													key={p.id}
+													product={p}
+													isSelected={selectedIds.has(p.id)}
+													onToggleSelect={toggleSelect}
+												/>
 											))}
 										</div>
 									</section>
@@ -135,6 +159,35 @@ export default function DiscoveryHomePage() {
 						);
 					})()}
 				</>
+			)}
+			{selectedIds.size >= 1 && (
+				<div className="sticky bottom-0 left-0 right-0 z-20 bg-white/95 border-t border-indigo-200 px-4 py-3 mt-4 flex items-center justify-between shadow-lg backdrop-blur">
+					<span className="text-sm font-medium text-gray-700">
+						{selectedIds.size}件選択中
+					</span>
+					<div className="flex gap-2">
+						<button
+							type="button"
+							onClick={() => setSelectedIds(new Set())}
+							className="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700"
+						>
+							クリア
+						</button>
+						<button
+							type="button"
+							onClick={() => {
+								const ids = [...selectedIds].join(",");
+								router.push(
+									`/${locale}/analytics/strategy/expansion?seedIds=${encodeURIComponent(ids)}`,
+								);
+							}}
+							className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg"
+						>
+							<TrendingUp size={14} />
+							選択した{selectedIds.size}件で戦略立案
+						</button>
+					</div>
+				</div>
 			)}
 		</div>
 	);

@@ -44,7 +44,15 @@ function scoreColor(score: number): string {
 	return "text-red-700 bg-red-100 border-red-300";
 }
 
-export function ProductCard({ product }: { product: DiscoveredProductRow }) {
+export function ProductCard({
+	product,
+	isSelected,
+	onToggleSelect,
+}: {
+	product: DiscoveredProductRow;
+	isSelected?: boolean;
+	onToggleSelect?: (id: string) => void;
+}) {
 	const t = useTranslations("discovery");
 	const score = product.tv_fit_score ?? 0;
 	const isTV = product.track === "tv_proven";
@@ -115,11 +123,21 @@ export function ProductCard({ product }: { product: DiscoveredProductRow }) {
 
 	return (
 		<article
-			className={`bg-white border border-amber-200 rounded-xl p-4 shadow-sm flex flex-col hover:shadow-md transition-all ${
+			className={`relative bg-white border border-amber-200 rounded-xl p-4 shadow-sm flex flex-col hover:shadow-md transition-all ${
 				isDimmed ? "opacity-60" : ""
 			}`}
 			title={isRejected && feedbackReason ? `却下理由: ${feedbackReason}` : undefined}
 		>
+			{onToggleSelect && (
+				<input
+					type="checkbox"
+					checked={!!isSelected}
+					onChange={() => onToggleSelect(product.id)}
+					onClick={(e) => e.stopPropagation()}
+					aria-label="Select for strategy"
+					className="absolute top-2 left-2 z-10 w-4 h-4 accent-indigo-600 cursor-pointer"
+				/>
+			)}
 			{/* Header: source badge + name + score */}
 			<div className="flex items-start justify-between gap-2 mb-2">
 				<div className="flex items-center gap-2 flex-1 min-w-0">
