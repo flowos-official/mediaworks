@@ -192,6 +192,82 @@ async function fetchTvChannelFromBroadcasts(
 	return result;
 }
 
+const TV_CHANNEL_BRAVE_BUDGET = Number(process.env.TV_CHANNEL_BRAVE_BUDGET ?? 50);
+const TV_CHANNEL_BRAVE_CONCURRENCY = 4;
+const TV_CHANNEL_BRAVE_PER_CALL = 5;
+
+/**
+ * Pass D: for each non-scraped channel, run budgeted Brave `site:<query>`
+ * searches over the day's keywords. Round-robin so every channel gets at
+ * least one call before any channel doubles. Stops at the budget limit.
+ * Fail-open per-call.
+ */
+async function fetchTvChannelFromBraveSite(
+	plan: CategoryPlan,
+	channels: ReadonlyArray<{ slug: string; siteQuery: string; scraped: boolean }>,
+	budget: number,
+): Promise<PoolItem[]> {
+	const targets = channels.filter((c) => !c.scraped);
+	if (targets.length === 0 || budget <= 0) return [];
+
+	const allKws = [
+		...plan.tv_proven.map((kw) => ({ kw, track: "tv_proven" as Track })),
+		...plan.exploration.map((kw) => ({ kw, track: "exploration" as Track })),
+	];
+	if (allKws.length === 0) return [];
+
+	// Round-robin (channel cycle outer, keyword cycle inner) up to budget.
+	const tasks: Array<{
+		channel: (typeof targets)[number];
+		keyword: string;
+		track: Track;
+	}> = [];
+	const maxRounds = Math.ceil(budget / targets.length);
+	outer: for (let k = 0; k < maxRounds; k++) {
+		for (const channel of targets) {
+			const slot = allKws[(tasks.length) % allKws.length];
+			tasks.push({ channel, keyword: slot.kw, track: slot.track });
+			if (tasks.length >= budget) break outer;
+		}
+	}
+
+	const items: PoolItem[] = [];
+	let cursor = 0;
+	const worker = async () => {
+		while (cursor < tasks.length) {
+			const idx = cursor++;
+			const task = tasks[idx];
+			const query = `${task.keyword} site:${task.channel.siteQuery}`;
+			try {
+				const results = await braveSearchItems(query, TV_CHANNEL_BRAVE_PER_CALL);
+				for (const r of results) {
+					if (!r.url) continue;
+					items.push({
+						name: r.title || r.url,
+						productUrl: r.url,
+						source: "tv_channel",
+						seedKeyword: task.keyword,
+						track: task.track,
+						tvChannel: task.channel.slug,
+					});
+				}
+			} catch (err) {
+				console.warn(
+					`[pool] brave site:${task.channel.siteQuery} "${task.keyword}" failed:`,
+					err instanceof Error ? err.message : String(err),
+				);
+			}
+		}
+	};
+	await Promise.all(
+		Array.from(
+			{ length: Math.min(TV_CHANNEL_BRAVE_CONCURRENCY, tasks.length) },
+			() => worker(),
+		),
+	);
+	return items;
+}
+
 function rakutenItemToPoolItem(
 	it: RakutenItem,
 	seed: string,
@@ -320,4 +396,5 @@ export const __test = {
 	findMatchingSeed,
 	groupBroadcastRows,
 	fetchTvChannelFromBroadcasts,
+	fetchTvChannelFromBraveSite,
 };
