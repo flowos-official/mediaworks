@@ -91,7 +91,7 @@ function mkRow(overrides: Partial<Row>): Row {
 	);
 }
 
-// --- R5 NULL price 통과 ---
+// --- R5 NULL price 통과 + 범위 외 제외 ---
 {
 	const rows = [
 		mkRow({ id: "p1", price_jpy: 5000 }),
@@ -100,12 +100,14 @@ function mkRow(overrides: Partial<Row>): Row {
 		mkRow({ id: "p4", price_jpy: 5800 }),
 		mkRow({ id: "p5", price_jpy: 6000 }),
 		mkRow({ id: "p6", price_jpy: 6300 }),
+		mkRow({ id: "p7", price_jpy: 9000 }), // out of range
 	];
 	const out = __test.applyFilters(rows, {
 		context: "home_shopping",
 		priceRange: { min: 5000, max: 6500 },
 	});
 	assert.ok(out.some((r) => r.id === "p2"), "R5: NULL price passes through");
+	assert.ok(!out.some((r) => r.id === "p7"), "R5: out-of-range row excluded");
 }
 
 // --- R3: context 필터 ---

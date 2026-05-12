@@ -78,8 +78,13 @@ function applyFilters(rows: PoolRow[], opts: FilterOptions): PoolRow[] {
 			.split("・")
 			.map((s) => s.trim())
 			.filter((s) => s.length > 0);
-		const matchTerms = [...targets, ...supplement, opts.uiCategory, ...uiTokens]
-			.filter((s) => s.length > 0);
+		const matchTerms = [
+			...new Set(
+				[...targets, ...supplement, opts.uiCategory, ...uiTokens].filter(
+					(s) => s.length > 0,
+				),
+			),
+		];
 		if (matchTerms.length > 0) {
 			afterCategory = baseFiltered.filter((r) => {
 				const hay = `${r.category ?? ""} ${r.seed_keyword}`.toLowerCase();
@@ -109,9 +114,11 @@ export async function queryDiscoveredPool(
 	input: PoolQueryInput,
 ): Promise<PoolRow[]> {
 	const sb = getServiceClient();
-	const lookbackDays = Number(
-		process.env.STRATEGY_POOL_LOOKBACK_DAYS ?? DEFAULT_LOOKBACK_DAYS,
-	);
+	const parsedLookback = Number(process.env.STRATEGY_POOL_LOOKBACK_DAYS);
+	const lookbackDays =
+		Number.isFinite(parsedLookback) && parsedLookback > 0
+			? parsedLookback
+			: DEFAULT_LOOKBACK_DAYS;
 	const sinceIso = new Date(
 		Date.now() - lookbackDays * 24 * 3600 * 1000,
 	).toISOString();
@@ -132,7 +139,12 @@ export async function queryDiscoveredPool(
 		.limit(fetchLimit);
 
 	if (input.excludeProductIds && input.excludeProductIds.length > 0) {
-		q = q.not("id", "in", `(${input.excludeProductIds.join(",")})`);
+		const UUID_RE =
+			/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+		const validIds = input.excludeProductIds.filter((id) => UUID_RE.test(id));
+		if (validIds.length > 0) {
+			q = q.not("id", "in", `(${validIds.join(",")})`);
+		}
 	}
 
 	const { data, error } = await q;
