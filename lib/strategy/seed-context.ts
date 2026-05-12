@@ -149,3 +149,53 @@ export function formatSeedPromptSection(seed: SeedContext | null): string {
 
 	return `\n【新商品候補データ — 分析対象】\n${basics}\n${enrichedSection}\n\n【分析ガイダンス】\n各スキルは上記の「新商品候補データ」を中心に具体的な戦略を生成してください。\nproduct_summaries (既存MediaWorks実績) は「過去のカテゴリ成功パターン」の参考材料として使用してください。\n`;
 }
+
+/**
+ * Batch loader — loads multiple seed contexts. Skips IDs that 404.
+ * Order is NOT guaranteed to match input.
+ */
+export async function loadSeedContexts(ids: string[]): Promise<SeedContext[]> {
+	if (ids.length === 0) return [];
+	const results = await Promise.all(ids.map((id) => loadSeedContext(id)));
+	return results.filter((s): s is SeedContext => s !== null);
+}
+
+/**
+ * Multi-seed prompt section. If exactly one seed, delegates to formatSeedPromptSection
+ * for backward compatibility. If multiple, renders a comparison block.
+ */
+export function formatMultiSeedPromptSection(seeds: SeedContext[]): string {
+	if (seeds.length === 0) return "";
+	if (seeds.length === 1) return formatSeedPromptSection(seeds[0]);
+
+	const lines: string[] = [];
+	lines.push(`\n【複数候補比較 — ${seeds.length}件のシード商品】`);
+	lines.push(`戦略立案では下記${seeds.length}件の発掘候補を中心に検討してください。`);
+	lines.push(`各候補の共通点・差別化ポイント・補完関係を分析し、ポートフォリオ視点で戦略を構築してください。\n`);
+	seeds.forEach((s, i) => {
+		const idx = i + 1;
+		lines.push(`--- 候補 ${idx}: ${s.name} ---`);
+		lines.push(`- 価格: ${s.priceJpy ? `¥${s.priceJpy.toLocaleString()}` : "不明"}`);
+		lines.push(`- カテゴリ: ${s.category ?? "未分類"}`);
+		lines.push(`- TVフィットスコア: ${s.tvFitScore}/100`);
+		lines.push(`- 楽天評価: ${s.reviewAvg ? `★${s.reviewAvg} (${s.reviewCount ?? 0}件)` : "なし"}`);
+		lines.push(`- URL: ${s.productUrl}`);
+		if (s.enriched) {
+			const m = s.enriched.manufacturer;
+			const w = s.enriched.wholesale;
+			lines.push(`- 製造元: ${m.name ?? "不明"} (信頼度:${m.confidence})`);
+			lines.push(
+				`- 卸値推定: ${
+					w.estimated_cost_jpy !== null
+						? `¥${w.estimated_cost_jpy.toLocaleString()} (マージン${Math.round((w.estimated_margin_rate ?? 0) * 100)}%)`
+						: "推定不可"
+				}`,
+			);
+		}
+		lines.push("");
+	});
+	lines.push(
+		`【分析ガイダンス】\n各スキルは上記の複数候補を比較しながら戦略を生成してください。共通テーマがあればその軸で、補完関係があればクロスセル/バンドル戦略として扱ってください。\n`,
+	);
+	return lines.join("\n");
+}
