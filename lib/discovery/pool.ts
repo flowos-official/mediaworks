@@ -12,11 +12,16 @@ import {
 	rakutenRankingSearch,
 	type RakutenItem,
 } from "@/lib/rakuten";
+import { getServiceClient } from "@/lib/supabase";
+import { broadcastsChannelToSlug } from "./tv-channels";
 import type { CategoryPlan, PoolItem, Track } from "./types";
 
 const RAKUTEN_THROTTLE_MS = 1100;
 const RAKUTEN_PER_KEYWORD = 10;
 const BRAVE_PER_KEYWORD = 5;
+const TV_CHANNEL_BROADCAST_WINDOW_DAYS = Number(
+	process.env.TV_CHANNEL_BROADCAST_WINDOW_DAYS ?? 30,
+);
 
 /**
  * Normalize URL for dedup: force https, strip trailing slash, lowercase hostname.
@@ -45,6 +50,144 @@ function normalizeUrlForDedup(url: string): string {
 export function extractRakutenCode(url: string): string | undefined {
 	const m = url.match(/item\.rakuten\.co\.jp\/([^/]+)\/([^/?#]+)/);
 	return m ? `${m[1]}:${m[2]}` : undefined;
+}
+
+/**
+ * Normalize a description for comparison. Original strings are preserved
+ * separately for display.
+ */
+function normalizeDescription(s: string): string {
+	return s
+		.normalize("NFKC")
+		.replace(/\s+/g, " ")
+		.trim()
+		.toLowerCase();
+}
+
+/** Substring match against the normalized description. Seeds are matched as
+ *  given (assume seedKeyword strings are short and already in canonical form). */
+function matchAnySeed(normalized: string, seeds: readonly string[]): boolean {
+	for (const s of seeds) {
+		if (!s) continue;
+		if (normalized.includes(s.toLowerCase())) return true;
+	}
+	return false;
+}
+
+interface BroadcastRow {
+	channel: "shopch" | "qvc";
+	description: string;
+	thumbnail_url: string | null;
+	source_url: string;
+	air_date: string; // YYYY-MM-DD
+}
+
+/**
+ * Group broadcast rows by normalized description.
+ * - tvChannelMatches: all channels that aired the product, alphabetical.
+ * - thumbnail/url: most recent slot wins.
+ * - name: longest original description seen (preserves type-numbers / full-width).
+ */
+function groupBroadcastRows(rows: readonly BroadcastRow[]): PoolItem[] {
+	const groups = new Map<
+		string,
+		{
+			displayName: string;
+			channels: Set<string>;
+			latest: { airDate: string; thumb: string | null; url: string };
+		}
+	>();
+
+	for (const row of rows) {
+		if (!row.description) continue;
+		const key = normalizeDescription(row.description);
+		if (!key) continue;
+		const slug = broadcastsChannelToSlug(row.channel);
+		const existing = groups.get(key);
+		if (!existing) {
+			groups.set(key, {
+				displayName: row.description,
+				channels: new Set([slug]),
+				latest: { airDate: row.air_date, thumb: row.thumbnail_url, url: row.source_url },
+			});
+			continue;
+		}
+		existing.channels.add(slug);
+		// Keep longest original description as display.
+		if (row.description.length > existing.displayName.length) {
+			existing.displayName = row.description;
+		}
+		// Most recent slot's thumbnail/url.
+		if (row.air_date > existing.latest.airDate) {
+			existing.latest = {
+				airDate: row.air_date,
+				thumb: row.thumbnail_url,
+				url: row.source_url,
+			};
+		}
+	}
+
+	const items: PoolItem[] = [];
+	for (const [, group] of groups) {
+		const channelList = Array.from(group.channels).sort();
+		items.push({
+			name: group.displayName,
+			productUrl: group.latest.url,
+			thumbnailUrl: group.latest.thumb ?? undefined,
+			source: "tv_channel",
+			seedKeyword: "", // filled in by caller after seed match
+			track: "tv_proven",
+			tvChannel: channelList[0],
+			tvChannelMatches: channelList,
+		});
+	}
+	return items;
+}
+
+/**
+ * Pass C: read recent broadcast slots, group by normalized description,
+ * filter to descriptions matching any seed keyword. Returns one PoolItem
+ * per surviving group. Fail-open on DB error.
+ */
+async function fetchTvChannelFromBroadcasts(
+	plan: CategoryPlan,
+	windowDays = TV_CHANNEL_BROADCAST_WINDOW_DAYS,
+): Promise<PoolItem[]> {
+	const sb = getServiceClient();
+	const since = new Date(Date.now() - windowDays * 24 * 3600 * 1000)
+		.toISOString()
+		.slice(0, 10);
+	const { data, error } = await sb
+		.from("broadcasts")
+		.select("channel, description, thumbnail_url, source_url, air_date")
+		.gte("air_date", since)
+		.not("description", "is", null);
+
+	if (error) {
+		console.warn(`[pool] broadcasts SELECT failed: ${error.message}`);
+		return [];
+	}
+	const rows = (data ?? []) as BroadcastRow[];
+	const grouped = groupBroadcastRows(rows);
+
+	const seeds = [...plan.tv_proven, ...plan.exploration]
+		.map((s) => s.toLowerCase().trim())
+		.filter(Boolean);
+
+	const result: PoolItem[] = [];
+	for (const item of grouped) {
+		const normalized = normalizeDescription(item.name);
+		const matchedSeed = seeds.find((s) => normalized.includes(s));
+		if (!matchedSeed) continue;
+		result.push({
+			...item,
+			seedKeyword: matchedSeed,
+			track: plan.tv_proven.map((s) => s.toLowerCase()).includes(matchedSeed)
+				? "tv_proven"
+				: "exploration",
+		});
+	}
+	return result;
 }
 
 function rakutenItemToPoolItem(
@@ -171,4 +314,8 @@ export const __test = {
 	RAKUTEN_THROTTLE_MS,
 	RAKUTEN_PER_KEYWORD,
 	BRAVE_PER_KEYWORD,
+	normalizeDescription,
+	matchAnySeed,
+	groupBroadcastRows,
+	fetchTvChannelFromBroadcasts,
 };
