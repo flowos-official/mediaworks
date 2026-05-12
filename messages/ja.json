@@ -313,7 +313,9 @@
     "thisWeek": "今週",
     "cumulative": "累計",
     "noData": "データなし",
-    "allStatuses": "すべて"
+    "allStatuses": "すべて",
+    "tvChannelSectionTitle": "📺 TV通販チャネル掲載中",
+    "otherSectionTitle": "その他の候補"
   },
   "broadcasts": {
     "title": "番組カレンダー",

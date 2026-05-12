@@ -313,7 +313,9 @@
     "thisWeek": "This week",
     "cumulative": "Cumulative",
     "noData": "No data",
-    "allStatuses": "All"
+    "allStatuses": "All",
+    "tvChannelSectionTitle": "📺 On TV shopping channels",
+    "otherSectionTitle": "Other candidates"
   },
   "broadcasts": {
     "title": "Broadcast Calendar",

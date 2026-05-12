@@ -49,8 +49,21 @@ export default function DiscoveryHomePage() {
 		if (status === "uncategorized") list = list.filter((p) => !(p as unknown as { user_action?: string }).user_action);
 		else if (status !== "all")
 			list = list.filter((p) => (p as unknown as { user_action?: string }).user_action === status);
-		if (sort === "score") list = [...list].sort((a, b) => (b.tv_fit_score ?? 0) - (a.tv_fit_score ?? 0));
-		else if (sort === "price") list = [...list].sort((a, b) => (b.price_jpy ?? 0) - (a.price_jpy ?? 0));
+
+		// Sort tier-first, then by user-chosen criterion inside each tier.
+		const tierOf = (p: DiscoveredProductRow) =>
+			(p as unknown as { tv_channel_source?: string | null }).tv_channel_source
+				? 0
+				: 1;
+		const sortFn = (a: DiscoveredProductRow, b: DiscoveredProductRow) => {
+			const ta = tierOf(a);
+			const tb = tierOf(b);
+			if (ta !== tb) return ta - tb;
+			if (sort === "price") return (b.price_jpy ?? 0) - (a.price_jpy ?? 0);
+			// score is the default
+			return (b.tv_fit_score ?? 0) - (a.tv_fit_score ?? 0);
+		};
+		list = [...list].sort(sortFn);
 		return list;
 	}, [products, status, sort]);
 
@@ -80,16 +93,47 @@ export default function DiscoveryHomePage() {
 						sourcedCount={counts.sourced}
 					/>
 					<DiscoveryFilters status={status} onStatusChange={setStatus} sort={sort} onSortChange={setSort} />
-					<div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-2">
-						{filtered.map((p) => (
-							<ProductCard key={p.id} product={p} />
-						))}
-						{filtered.length === 0 && (
-							<div className="col-span-full py-12 text-center text-sm text-gray-400">
-								(no products match the current filter)
-							</div>
-						)}
-					</div>
+					{(() => {
+						const tier1 = filtered.filter(
+							(p) => (p as { tv_channel_source?: string | null }).tv_channel_source,
+						);
+						const tier2 = filtered.filter(
+							(p) => !(p as { tv_channel_source?: string | null }).tv_channel_source,
+						);
+						return (
+							<>
+								{tier1.length > 0 && (
+									<section className="mt-4">
+										<h3 className="text-sm font-semibold text-gray-800 mb-2">
+											{t("tvChannelSectionTitle")} ({tier1.length})
+										</h3>
+										<div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+											{tier1.map((p) => (
+												<ProductCard key={p.id} product={p} />
+											))}
+										</div>
+									</section>
+								)}
+								{tier2.length > 0 && (
+									<section className="mt-6">
+										<h3 className="text-sm font-semibold text-gray-800 mb-2">
+											{t("otherSectionTitle")} ({tier2.length})
+										</h3>
+										<div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+											{tier2.map((p) => (
+												<ProductCard key={p.id} product={p} />
+											))}
+										</div>
+									</section>
+								)}
+								{filtered.length === 0 && (
+									<div className="py-12 text-center text-sm text-gray-400">
+										(no products match the current filter)
+									</div>
+								)}
+							</>
+						);
+					})()}
 				</>
 			)}
 		</div>
