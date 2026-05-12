@@ -18,6 +18,12 @@
     "app/api/cron/daily-discovery-live/route.ts": {
       "maxDuration": 300
     },
+    "app/api/cron/daily-broadcasts/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/broadcasts/refresh/route.ts": {
+      "maxDuration": 60
+    },
     "app/api/recommend/route.ts": {
       "maxDuration": 60
     },
@@ -64,6 +70,10 @@
     {
       "path": "/api/cron/daily-discovery-live",
       "schedule": "30 23 * * *"
+    },
+    {
+      "path": "/api/cron/daily-broadcasts",
+      "schedule": "0 16 * * *"
     },
     {
       "path": "/api/cron/daily-learning",
