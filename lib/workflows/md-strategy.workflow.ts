@@ -13,7 +13,7 @@ import {
 } from "@/lib/md-strategy";
 import { getServiceClient } from "@/lib/supabase";
 import { buildTVShoppingProfile } from "@/lib/tv-shopping-profile";
-import { loadSeedContext } from "@/lib/strategy/seed-context";
+import { loadSeedContexts } from "@/lib/strategy/seed-context";
 
 export interface MDWorkflowInput {
 	userGoal?: string;
@@ -42,7 +42,6 @@ async function fetchContextStep(input: MDWorkflowInput): Promise<StrategyContext
 		...(input.seedProductIds ?? []),
 	];
 	if (allSeedIds.length > 0) {
-		const { loadSeedContexts } = await import("@/lib/strategy/seed-context");
 		const seeds = await loadSeedContexts(allSeedIds);
 		if (seeds.length > 0) {
 			// 단일 시드면 기존 필드 유지 (다른 코드가 의존), 다중이면 신규 필드도 채움.
