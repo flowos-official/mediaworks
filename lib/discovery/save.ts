@@ -95,6 +95,7 @@ export interface DiscoveredProductRow {
 	track: Candidate["track"];
 	is_tv_applicable: boolean;
 	is_live_applicable: boolean;
+	tv_channel_source: string | null;
 	context: Candidate["context"];
 }
 
@@ -122,6 +123,7 @@ export function buildDiscoveredProductRows(
 		broadcast_tag: broadcastTag,
 		broadcast_sources: broadcastSources,
 		track: candidate.track,
+		tv_channel_source: candidate.tvChannelSource ?? null,
 		is_tv_applicable: candidate.isTvApplicable,
 		is_live_applicable: candidate.isLiveApplicable,
 		context: candidate.context,

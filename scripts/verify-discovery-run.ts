@@ -23,6 +23,7 @@ interface DiscoveredRow {
 	review_avg: number | null;
 	rakuten_item_code: string | null;
 	seller_name: string | null;
+	tv_channel_source: string | null;
 	is_tv_applicable: boolean;
 	is_live_applicable: boolean;
 }
@@ -73,7 +74,7 @@ async function inspectContext(context: Context): Promise<void> {
 	const { data: products, error: prodErr } = await sb
 		.from("discovered_products")
 		.select(
-			"name, price_jpy, category, seed_keyword, tv_fit_score, tv_fit_reason, broadcast_tag, track, review_count, review_avg, rakuten_item_code, seller_name, is_tv_applicable, is_live_applicable",
+			"name, price_jpy, category, seed_keyword, tv_fit_score, tv_fit_reason, broadcast_tag, track, review_count, review_avg, rakuten_item_code, seller_name, is_tv_applicable, is_live_applicable, tv_channel_source",
 		)
 		.eq("session_id", run.id)
 		.order("tv_fit_score", { ascending: false });
@@ -90,6 +91,8 @@ async function inspectContext(context: Context): Promise<void> {
 	const reviewBands = { highQualHigh: 0, highQualLow: 0, midQual: 0, lowQual: 0, none: 0 };
 	let broadcastBoosts = 0;
 	let hotSetBoosts = 0;
+	let tvTier = 0;
+	const channelHits = new Map<string, number>();
 	const categorySet = new Set<string>();
 
 	for (const r of rows) {
@@ -118,6 +121,12 @@ async function inspectContext(context: Context): Promise<void> {
 		)
 			broadcastBoosts++;
 		if (r.tv_fit_reason.includes("楽天リアルタイムランキング上位")) hotSetBoosts++;
+		if (r.tv_channel_source) {
+			tvTier++;
+			for (const slug of r.tv_channel_source.split(",")) {
+				channelHits.set(slug, (channelHits.get(slug) ?? 0) + 1);
+			}
+		}
 	}
 
 	console.log(`\n▸ Distributions (N=${rows.length}):`);
@@ -136,6 +145,9 @@ async function inspectContext(context: Context): Promise<void> {
 	console.log(`   categories: ${categorySet.size} unique seeds`);
 	console.log(
 		`   boost annotations: broadcast=${broadcastBoosts}  rakuten_hot=${hotSetBoosts}`,
+	);
+	console.log(
+		`   tv-tier: ${tvTier}/${rows.length}  channels: ${[...channelHits.entries()].map(([k, v]) => `${k}=${v}`).join(" ") || "(none)"}`,
 	);
 
 	const avg = rows.reduce((s, r) => s + r.tv_fit_score, 0) / (rows.length || 1);

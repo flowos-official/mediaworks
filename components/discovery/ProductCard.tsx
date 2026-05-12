@@ -8,6 +8,7 @@ import { CPackageDrawer } from "./CPackageDrawer";
 import { IntegrationActions } from "./IntegrationActions";
 import { FeedbackButtons, type FeedbackState } from "./FeedbackButtons";
 import type { CPackage } from "@/lib/discovery/types";
+import { getChannelBySlug, parseChannelSlugs } from "@/lib/discovery/tv-channels";
 
 type EnrichmentStatus = "idle" | "queued" | "running" | "completed" | "failed";
 
@@ -26,7 +27,8 @@ export type DiscoveredProductRow = {
 	broadcast_tag: "broadcast_confirmed" | "broadcast_likely" | "unknown" | null;
 	track: "tv_proven" | "exploration";
 	stock_status: string | null;
-	source: "rakuten" | "brave" | "other" | null;
+	source: "rakuten" | "brave" | "tv_channel" | "other" | null;
+	tv_channel_source?: string | null;
 	enrichment_status?: EnrichmentStatus | null;
 	c_package?: CPackage | null;
 	enrichment_error?: string | null;
@@ -46,6 +48,7 @@ export function ProductCard({ product }: { product: DiscoveredProductRow }) {
 	const t = useTranslations("discovery");
 	const score = product.tv_fit_score ?? 0;
 	const isTV = product.track === "tv_proven";
+	const channelSlugs = parseChannelSlugs(product.tv_channel_source ?? null);
 
 	const [status, setStatus] = useState<EnrichmentStatus>(
 		product.enrichment_status ?? "idle",
@@ -124,10 +127,16 @@ export function ProductCard({ product }: { product: DiscoveredProductRow }) {
 						className={`text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0 ${
 							product.source === "rakuten"
 								? "bg-red-100 text-red-700"
+								: product.source === "tv_channel"
+								? "bg-purple-100 text-purple-700"
 								: "bg-blue-100 text-blue-700"
 						}`}
 					>
-						{product.source === "rakuten" ? "楽天" : "Web"}
+						{product.source === "rakuten"
+							? "楽天"
+							: product.source === "tv_channel"
+							? "TV"
+							: "Web"}
 					</span>
 					<h3 className="font-bold text-sm text-gray-900 line-clamp-2" title={product.name}>
 						{product.name}
@@ -190,6 +199,18 @@ export function ProductCard({ product }: { product: DiscoveredProductRow }) {
 								{broadcastBadge.label}
 							</span>
 						)}
+						{channelSlugs.map((slug) => {
+							const ch = getChannelBySlug(slug);
+							return (
+								<span
+									key={slug}
+									className="inline-flex items-center text-[10px] px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200 font-semibold"
+									title={ch?.name ?? slug}
+								>
+									{ch?.name ?? slug}
+								</span>
+							);
+						})}
 					</div>
 					{product.seller_name && (
 						<div className="text-[10px] text-gray-500 truncate" title={product.seller_name}>

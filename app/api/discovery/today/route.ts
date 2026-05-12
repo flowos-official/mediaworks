@@ -36,6 +36,7 @@ export async function GET(req: NextRequest) {
 		.from("discovered_products")
 		.select("*")
 		.eq("session_id", session.id)
+		.order("tv_tier", { ascending: true })
 		.order("tv_fit_score", { ascending: false });
 
 	const statusFilter = searchParams.get("status");

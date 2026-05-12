@@ -4,7 +4,8 @@
     "products": "Products",
     "reports": "Reports",
     "analytics": "Analytics",
-    "gallery": "Gallery"
+    "gallery": "Gallery",
+    "broadcasts": "Broadcast Calendar"
   },
   "home": {
     "title": "MediaWorks",
@@ -312,6 +313,38 @@
     "thisWeek": "This week",
     "cumulative": "Cumulative",
     "noData": "No data",
-    "allStatuses": "All"
+    "allStatuses": "All",
+    "tvChannelSectionTitle": "📺 On TV shopping channels",
+    "otherSectionTitle": "Other candidates"
+  },
+  "broadcasts": {
+    "title": "Broadcast Calendar",
+    "subtitle": "Past broadcasts from Shop Channel and QVC Japan",
+    "channels": {
+      "shopch": "Shop Channel",
+      "qvc": "QVC Japan"
+    },
+    "channelShort": {
+      "shopch": "Shop CH",
+      "qvc": "QVC"
+    },
+    "filters": {
+      "all": "All",
+      "shopch": "Shop CH",
+      "qvc": "QVC"
+    },
+    "broadcastCount": "{count} broadcasts",
+    "monthNav": {
+      "prev": "Prev",
+      "next": "Next"
+    },
+    "openSource": "Open source page",
+    "empty": {
+      "all": "No broadcast data yet. The first batch arrives after JST 01:00 tomorrow.",
+      "day": "No broadcasts collected for this day yet.",
+      "filtered": "No broadcasts for this channel. Try a different filter.",
+      "apiError": "Failed to load broadcasts."
+    },
+    "retry": "Retry"
   }
 }

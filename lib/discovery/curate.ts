@@ -11,6 +11,7 @@ import type {
 	LearningState,
 	PoolItem,
 } from "./types";
+import { deriveTvChannelSource } from "./tv-channels";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 const MODEL_ID = "gemini-3-flash-preview";
@@ -65,6 +66,31 @@ function formatPoolLine(p: PoolItem, i: number): string {
 	const seller = p.sellerName ?? "?";
 	const name = p.name.slice(0, 80);
 	return `${i}: ${name} | ${price} | ${review} | ${seller} | seed=${p.seedKeyword} | track=${p.track}`;
+}
+
+interface CurationFields {
+	tvFitScore: number;
+	tvFitReason: string;
+	isTvApplicable: boolean;
+	isLiveApplicable: boolean;
+	scoreBreakdown: CurationScore;
+	context: Context;
+}
+
+function poolItemToCandidate(
+	source: PoolItem,
+	fields: CurationFields,
+): Candidate {
+	return {
+		...source,
+		context: fields.context,
+		tvFitScore: Math.max(0, Math.min(100, fields.tvFitScore)),
+		tvFitReason: fields.tvFitReason,
+		isTvApplicable: fields.isTvApplicable,
+		isLiveApplicable: fields.isLiveApplicable,
+		scoreBreakdown: fields.scoreBreakdown,
+		tvChannelSource: deriveTvChannelSource(source),
+	};
 }
 
 /**
@@ -184,15 +210,16 @@ ${poolList}
 	for (const c of items) {
 		const source = sampled[c.index];
 		if (!source) continue;
-		candidates.push({
-			...source,
-			context,
-			tvFitScore: Math.max(0, Math.min(100, c.tv_fit_score)),
-			tvFitReason: c.tv_fit_reason,
-			isTvApplicable: c.is_tv_applicable,
-			isLiveApplicable: c.is_live_applicable,
-			scoreBreakdown: c.score_breakdown,
-		});
+		candidates.push(
+			poolItemToCandidate(source, {
+				tvFitScore: c.tv_fit_score,
+				tvFitReason: c.tv_fit_reason,
+				isTvApplicable: c.is_tv_applicable,
+				isLiveApplicable: c.is_live_applicable,
+				scoreBreakdown: c.score_breakdown,
+				context,
+			}),
+		);
 	}
 
 	candidates.sort((a, b) => b.tvFitScore - a.tvFitScore);
@@ -213,3 +240,7 @@ ${poolList}
 	}
 	return result;
 }
+
+export const __test = {
+	poolItemToCandidate,
+};

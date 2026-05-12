@@ -193,10 +193,31 @@ export async function runStage1(
 	// late-added candidates are eligible too.
 	applyRakutenHotBoost(candidates, hotCodes);
 
+	// Step 5: partition into TV-channel tier and other tier, then concatenate.
+	// This is the strict enforcement of the "TV channel first" ordering.
+	const partitioned = partitionByTier(candidates);
+
 	return {
-		candidates,
+		candidates: partitioned,
 		plan,
 		poolSize: pool.length,
 		iterations,
 	};
 }
+
+/**
+ * Partition candidates into tier-1 (TV channel hit) and tier-2 (everything else),
+ * sort each tier by tvFitScore DESC, then concatenate.
+ * This is the single enforcement point for the "TV channel first" requirement.
+ */
+function partitionByTier(candidates: Candidate[]): Candidate[] {
+	const tier1 = candidates.filter((c) => c.tvChannelSource);
+	const tier2 = candidates.filter((c) => !c.tvChannelSource);
+	tier1.sort((a, b) => b.tvFitScore - a.tvFitScore);
+	tier2.sort((a, b) => b.tvFitScore - a.tvFitScore);
+	return [...tier1, ...tier2];
+}
+
+export const __test = {
+	partitionByTier,
+};
