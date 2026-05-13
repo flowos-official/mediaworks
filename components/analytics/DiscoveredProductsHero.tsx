@@ -68,7 +68,7 @@ function ProductCard({ p, idx, onAnalyze, analyzing }: {
 						return (
 							<span
 								key={slug}
-								className="text-[10px] px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200 font-semibold"
+								className="inline-flex items-center text-[10px] px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200 font-semibold"
 								title={ch?.name ?? slug}
 							>
 								{ch?.name ?? slug}
