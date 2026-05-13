@@ -37,6 +37,14 @@ function trajectoryColor(t: string): string {
 	}
 }
 
+function TxdBadge() {
+	return (
+		<span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200 font-semibold shrink-0">
+			TXD
+		</span>
+	);
+}
+
 export default function ProductSelectionSection({ data }: Props) {
 	return (
 		<div className="space-y-4">
@@ -69,8 +77,11 @@ export default function ProductSelectionSection({ data }: Props) {
 								<div className="space-y-2">
 									{(ch.tier1_products ?? []).map((p) => (
 										<div key={p.code} className="bg-white border border-blue-100 rounded-lg px-3 py-2.5">
-											<div className="flex items-center justify-between mb-1">
-												<span className="font-semibold text-sm text-gray-900">{p.name}</span>
+											<div className="flex items-center justify-between mb-1 gap-2">
+												<div className="flex items-center gap-1.5 min-w-0">
+													<TxdBadge />
+													<span className="font-semibold text-sm text-gray-900 truncate">{p.name}</span>
+												</div>
 												<div className="flex items-center gap-1.5">
 													<span className={`text-[10px] px-2 py-0.5 rounded-full border flex items-center gap-1 ${trajectoryColor(p.monthly_trajectory)}`}>
 														<TrajectoryIcon trajectory={p.monthly_trajectory} />
@@ -99,7 +110,10 @@ export default function ProductSelectionSection({ data }: Props) {
 								<div className="space-y-1.5">
 									{(ch.tier2_products ?? []).map((p) => (
 										<div key={p.code} className="bg-gray-50 rounded-lg px-3 py-2">
-											<span className="font-medium text-sm text-gray-800">{p.name}</span>
+											<div className="flex items-center gap-1.5">
+												<TxdBadge />
+												<span className="font-medium text-sm text-gray-800 truncate">{p.name}</span>
+											</div>
 											<p className="text-xs text-gray-500 mt-0.5">{p.reason}</p>
 										</div>
 									))}
