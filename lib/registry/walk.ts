@@ -10,6 +10,7 @@
 
 import { readdirSync, statSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import type { SkillDefinition } from "./types";
 
 const SKILLS_ROOT = join(process.cwd(), "lib", "registry", "skills");
@@ -38,7 +39,9 @@ export async function walkRegistry(): Promise<SkillDefinition[]> {
 			}
 
 			try {
-				const mod = await import(indexPath);
+				// pathToFileURL is required on Windows; absolute paths must be file:// URLs
+				// for the ESM dynamic import to accept them.
+				const mod = await import(pathToFileURL(indexPath).href);
 				const def = mod.default as Omit<SkillDefinition, "versionLabel" | "versionDir">;
 				results.push({ ...def, versionLabel, versionDir });
 			} catch (err) {
