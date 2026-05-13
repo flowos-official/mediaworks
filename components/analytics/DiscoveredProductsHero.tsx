@@ -7,6 +7,7 @@ import {
 	Loader2, TrendingUp, Star,
 } from 'lucide-react';
 import type { DiscoveredProduct, DiscoveryBatch } from '@/lib/md-strategy';
+import { getChannelBySlug, parseChannelSlugs } from "@/lib/discovery/tv-channels";
 
 interface Props {
 	products: DiscoveredProduct[];
@@ -33,12 +34,13 @@ function ProductCard({ p, idx, onAnalyze, analyzing }: {
 }) {
 	const [expanded, setExpanded] = useState(false);
 	const s = p.sales_strategy;
+	const channelSlugs = parseChannelSlugs(p.tv_channel_source ?? null);
 
 	return (
 		<article className="bg-white border border-amber-200 rounded-xl p-4 shadow-sm flex flex-col">
 			{/* Header */}
 			<div className="flex items-start justify-between gap-2 mb-2">
-				<div className="flex items-center gap-2 flex-1 min-w-0">
+				<div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
 					<span
 						className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
 							p.source === 'rakuten' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
@@ -61,6 +63,18 @@ function ProductCard({ p, idx, onAnalyze, analyzing }: {
 							シード
 						</span>
 					)}
+					{channelSlugs.map((slug) => {
+						const ch = getChannelBySlug(slug);
+						return (
+							<span
+								key={slug}
+								className="inline-flex items-center text-[10px] px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200 font-semibold"
+								title={ch?.name ?? slug}
+							>
+								{ch?.name ?? slug}
+							</span>
+						);
+					})}
 					<h3 className="font-bold text-sm text-gray-900 truncate" title={p.name}>
 						<span className="text-gray-400 mr-1">#{idx + 1}</span>
 						{p.name}
