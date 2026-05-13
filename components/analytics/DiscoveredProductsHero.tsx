@@ -40,7 +40,7 @@ function ProductCard({ p, idx, onAnalyze, analyzing }: {
 		<article className="bg-white border border-amber-200 rounded-xl p-4 shadow-sm flex flex-col">
 			{/* Header */}
 			<div className="flex items-start justify-between gap-2 mb-2">
-				<div className="flex items-center gap-2 flex-1 min-w-0">
+				<div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
 					<span
 						className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
 							p.source === 'rakuten' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
