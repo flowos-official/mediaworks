@@ -464,8 +464,8 @@ async function fetchTopProducts(): Promise<LCProduct[]> {
 // Skill 0: Goal Analysis
 // ---------------------------------------------------------------------------
 
-async function runGoalAnalysis(userGoal: string): Promise<ParsedGoal> {
-	const prompt = `あなたはライブコマース戦略コンサルタントです。以下のユーザー目標を構造化してください。
+export function buildLCGoalAnalysisPrompt(userGoal: string): string {
+	return `あなたはライブコマース戦略コンサルタントです。以下のユーザー目標を構造化してください。
 
 ユーザー入力: "${userGoal}"
 
@@ -483,7 +483,10 @@ async function runGoalAnalysis(userGoal: string): Promise<ParsedGoal> {
 - target_platforms は必ず配列で返してください（null は使わない）。明示されていない場合は ["TikTok Live", "Instagram Live", "YouTube Live"] をデフォルトとして返してください。
 - budget_range / timeline / target_audience は言及がなければ null を返してください。
 - 全てのテキストは日本語で出力`;
+}
 
+async function runGoalAnalysis(userGoal: string): Promise<ParsedGoal> {
+	const prompt = buildLCGoalAnalysisPrompt(userGoal);
 	const raw = await callGemini(prompt);
 	const parsed = parseJSON<Partial<ParsedGoal>>(raw);
 	const platforms = Array.isArray(parsed.target_platforms)
@@ -528,16 +531,12 @@ ${g.target_audience ? `- ターゲット層: ${g.target_audience}` : ""}
 `;
 }
 
-const SKILL_PIPELINE: SkillDef[] = [
-	{
-		name: "goal_analysis",
-		buildPrompt: () => "",
-	},
-	{
-		name: "market_research",
-		buildPrompt: (ctx) => {
-			const seedSection = formatSeedPromptSection(ctx.seedProduct ?? null);
-			return `あなたは日本のライブコマース市場の専門アナリストです。
+// Per-skill prompt builders, extracted from the previous inline arrow functions
+// so the registry layer can import them by name. Behavior byte-for-byte identical.
+
+export function buildLCMarketResearchPrompt(ctx: LCContext, _outputs: Record<string, unknown>): string {
+	const seedSection = formatSeedPromptSection(ctx.seedProduct ?? null);
+	return `あなたは日本のライブコマース市場の専門アナリストです。
 以下のウェブ検索結果に基づき、日本のライブコマース市場を分析してください。
 
 === ウェブ検索結果 ===
@@ -561,26 +560,24 @@ ${seedSection}
 - major_playersは5-10個
 - 全てのテキストは日本語で出力
 - ウェブ検索結果を根拠として活用し、sources_referencedで番号を記載`;
-		},
-	},
-	{
-		name: "platform_analysis",
-		buildPrompt: (ctx, outputs) => {
-			const productList = ctx.products.length > 0
-				? `\n=== 自社商品データ（売上上位） ===\n${ctx.products.map((p) =>
-					`- ${p.name} (${p.code}): カテゴリ${p.category ?? "不明"}, 売上¥${p.totalRevenue.toLocaleString()}, 数量${p.totalQuantity}, 粗利率${p.marginRate}%`
-				).join("\n")}\n`
-				: "";
+}
 
-			const discoveredList = (ctx.recommendedProducts && ctx.recommendedProducts.length > 0)
-				? `\n=== 楽天/Web から発掘された新規実在商品 (TVシグナル基準) ===\n${ctx.recommendedProducts.map((p, i) =>
-					`${i + 1}. [${p.source}] ${p.name} — 適合度${p.japan_fit_score}/100, 想定価格${p.estimated_price_jpy}\n   出典: ${p.source_url}\n   シグナル根拠: ${p.signal_basis}`
-				).join("\n")}\nこれらは実在する商品です。ライブコマースで取り扱うべき新商品の候補としてプラットフォーム選定の参考にしてください。\n`
-				: "";
+export function buildLCPlatformAnalysisPrompt(ctx: LCContext, outputs: Record<string, unknown>): string {
+	const productList = ctx.products.length > 0
+		? `\n=== 自社商品データ（売上上位） ===\n${ctx.products.map((p) =>
+			`- ${p.name} (${p.code}): カテゴリ${p.category ?? "不明"}, 売上¥${p.totalRevenue.toLocaleString()}, 数量${p.totalQuantity}, 粗利率${p.marginRate}%`
+		).join("\n")}\n`
+		: "";
 
-			const seedSection = formatSeedPromptSection(ctx.seedProduct ?? null);
+	const discoveredList = (ctx.recommendedProducts && ctx.recommendedProducts.length > 0)
+		? `\n=== 楽天/Web から発掘された新規実在商品 (TVシグナル基準) ===\n${ctx.recommendedProducts.map((p, i) =>
+			`${i + 1}. [${p.source}] ${p.name} — 適合度${p.japan_fit_score}/100, 想定価格${p.estimated_price_jpy}\n   出典: ${p.source_url}\n   シグナル根拠: ${p.signal_basis}`
+		).join("\n")}\nこれらは実在する商品です。ライブコマースで取り扱うべき新商品の候補としてプラットフォーム選定の参考にしてください。\n`
+		: "";
 
-			return `あなたは日本のライブコマースプラットフォーム専門家です。
+	const seedSection = formatSeedPromptSection(ctx.seedProduct ?? null);
+
+	return `あなたは日本のライブコマースプラットフォーム専門家です。
 以下の情報に基づき、各プラットフォームの詳細分析を行ってください。
 
 === プラットフォーム基本情報 ===
@@ -622,13 +619,11 @@ ${seedSection}
 - our_recommended_productsは自社商品データから各プラットフォームに最適な商品を1-5個選択（自社商品データがない場合は空配列）
 - search_keywordsは各プラットフォームで商品を探すための検索キーワード3-5個
 - 全てのテキストは日本語`;
-		},
-	},
-	{
-		name: "content_strategy",
-		buildPrompt: (ctx, outputs) => {
-			const seedSection = formatSeedPromptSection(ctx.seedProduct ?? null);
-			return `あなたはライブコマースのコンテンツ戦略プランナーです。
+}
+
+export function buildLCContentStrategyPrompt(ctx: LCContext, outputs: Record<string, unknown>): string {
+	const seedSection = formatSeedPromptSection(ctx.seedProduct ?? null);
+	return `あなたはライブコマースのコンテンツ戦略プランナーです。
 以下の分析結果に基づき、プラットフォーム別のコンテンツ戦略を策定してください。
 
 === プラットフォーム分析結果 ===
@@ -659,13 +654,11 @@ ${seedSection}
 - engagement_tacticsは各プラットフォーム3-5個
 - sample_script_outlineは実践的な内容
 - 全てのテキストは日本語`;
-		},
-	},
-	{
-		name: "execution_plan",
-		buildPrompt: (ctx, outputs) => {
-			const seedSection = formatSeedPromptSection(ctx.seedProduct ?? null);
-			return `あなたはライブコマース事業の実行計画策定の専門家です。
+}
+
+export function buildLCExecutionPlanPrompt(ctx: LCContext, outputs: Record<string, unknown>): string {
+	const seedSection = formatSeedPromptSection(ctx.seedProduct ?? null);
+	return `あなたはライブコマース事業の実行計画策定の専門家です。
 以下の全分析結果に基づき、具体的な実行ロードマップを策定してください。
 
 === 市場調査 ===
@@ -702,13 +695,11 @@ ${seedSection}
 - kpisは各フェーズ2-4個
 - 全てのテキストは日本語
 - 具体的な数字を含める`;
-		},
-	},
-	{
-		name: "risk_analysis",
-		buildPrompt: (ctx, outputs) => {
-			const seedSection = formatSeedPromptSection(ctx.seedProduct ?? null);
-			return `あなたはライブコマース事業のリスク管理専門家です。
+}
+
+export function buildLCRiskAnalysisPrompt(ctx: LCContext, outputs: Record<string, unknown>): string {
+	const seedSection = formatSeedPromptSection(ctx.seedProduct ?? null);
+	return `あなたはライブコマース事業のリスク管理専門家です。
 以下の全分析結果に基づき、リスク分析と対策を策定してください。
 
 === 実行計画 ===
@@ -739,8 +730,15 @@ ${seedSection}
 - contingency_plansは3-5個
 - success_factorsは5-7個
 - 全てのテキストは日本語`;
-		},
-	},
+}
+
+const SKILL_PIPELINE: SkillDef[] = [
+	{ name: "goal_analysis", buildPrompt: () => "" },
+	{ name: "market_research", buildPrompt: buildLCMarketResearchPrompt },
+	{ name: "platform_analysis", buildPrompt: buildLCPlatformAnalysisPrompt },
+	{ name: "content_strategy", buildPrompt: buildLCContentStrategyPrompt },
+	{ name: "execution_plan", buildPrompt: buildLCExecutionPlanPrompt },
+	{ name: "risk_analysis", buildPrompt: buildLCRiskAnalysisPrompt },
 ];
 
 // ---------------------------------------------------------------------------
