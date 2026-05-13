@@ -1,12 +1,15 @@
 /**
  * Generate a 30-second TV home-shopping broadcast script draft (Japanese).
  * Separate Gemini call so the enrichment agent doesn't waste tool-call budget.
+ *
+ * Routed through Vercel AI Gateway (AI SDK v6) — see
+ * docs/superpowers/specs/2026-05-13-skill-agent-registry-design.md
  */
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generateText, gateway } from "ai";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const MODEL_ID = "gemini-3-flash-preview";
+// Gateway slug (different from Google SDK ID). Verify in AI Gateway dashboard.
+const MODEL_ID = "google/gemini-3-flash";
 
 export interface TvScriptInput {
 	productName: string;
@@ -36,9 +39,20 @@ ${input.tvFitReason ? `- TV適合性: ${input.tvFitReason}` : ""}
 スクリプト本文のみ（日本語）、番号付きセクション形式で300字以内。`;
 
 	try {
-		const model = genAI.getGenerativeModel({ model: MODEL_ID });
-		const res = await model.generateContent(prompt);
-		return res.response.text().trim();
+		const { text } = await generateText({
+			model: gateway(MODEL_ID),
+			prompt,
+			providerOptions: {
+				gateway: {
+					tags: ["skill:generate_tv_script_draft", "agent:discovery"],
+				},
+			},
+			experimental_telemetry: {
+				isEnabled: true,
+				metadata: { skillSlug: "generate_tv_script_draft" },
+			},
+		});
+		return text.trim();
 	} catch (err) {
 		console.warn(
 			"[tvScript] generation failed:",
