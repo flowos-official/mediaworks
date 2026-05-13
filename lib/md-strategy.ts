@@ -425,6 +425,7 @@ export interface StrategyContext {
 		};
 		pool_source?: "discovery_pool" | "fresh_search" | "seed";
 		discovered_product_id?: string;
+		tv_channel_source?: string | null;
 	}>;
 	recommendCategory?: string;
 	recommendTargetMarket?: string;
