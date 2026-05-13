@@ -82,7 +82,7 @@ export default function ProductSelectionSection({ data }: Props) {
 													<TxdBadge />
 													<span className="font-semibold text-sm text-gray-900 truncate">{p.name}</span>
 												</div>
-												<div className="flex items-center gap-1.5">
+												<div className="flex items-center gap-1.5 shrink-0">
 													<span className={`text-[10px] px-2 py-0.5 rounded-full border flex items-center gap-1 ${trajectoryColor(p.monthly_trajectory)}`}>
 														<TrajectoryIcon trajectory={p.monthly_trajectory} />
 														{trajectoryLabel(p.monthly_trajectory)}
@@ -110,7 +110,7 @@ export default function ProductSelectionSection({ data }: Props) {
 								<div className="space-y-1.5">
 									{(ch.tier2_products ?? []).map((p) => (
 										<div key={p.code} className="bg-gray-50 rounded-lg px-3 py-2">
-											<div className="flex items-center gap-1.5">
+											<div className="flex items-center gap-1.5 min-w-0">
 												<TxdBadge />
 												<span className="font-medium text-sm text-gray-800 truncate">{p.name}</span>
 											</div>
