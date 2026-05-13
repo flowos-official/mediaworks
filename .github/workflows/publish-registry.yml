@@ -24,7 +24,12 @@ jobs:
           cache: "npm"
 
       - name: Install dependencies
-        run: npm ci
+        # `npm ci` rejects our lockfile on Linux because it was generated on
+        # Windows; platform-specific optional deps (tailwindcss WASM, swc
+        # native helpers, etc.) resolve to different paths. `npm install`
+        # reconciles the difference on the fly. Trade reproducibility for
+        # working CI until we regenerate the lockfile on a Linux runner.
+        run: npm install --no-audit --no-fund
 
       - name: Publish registry to Supabase
         env:
