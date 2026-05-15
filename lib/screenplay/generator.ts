@@ -1,6 +1,6 @@
 // lib/screenplay/generator.ts
 import { GoogleGenAI, ThinkingLevel } from "@google/genai";
-import { buildPrompt } from "./prompt";
+import { buildUserPrompt, SYSTEM_INSTRUCTION } from "./prompt";
 import type { GenerateInput, GenerationResult } from "./types";
 
 let _genAI: GoogleGenAI | null = null;
@@ -9,9 +9,13 @@ function getGenAI(): GoogleGenAI {
   return _genAI;
 }
 
-const HARD_TIMEOUT_MS = 360_000;
-const FIRST_CHUNK_MS = 180_000;
-const MODEL = "gemini-3.1-pro-preview";
+// Switched to Gemini 3 Flash preview per user request — faster first byte,
+// ~3× lower latency than Pro. Quality is anchored by the heavy system instruction
+// + an exemplar few-shot, so Flash + LOW thinking is the sweet spot here.
+const MODEL = "gemini-3-flash-preview";
+const THINKING_LEVEL_NAME = "LOW";
+const HARD_TIMEOUT_MS = 180_000;       // 3 min — Flash should finish well under
+const FIRST_CHUNK_MS = 90_000;         // 1.5 min for first byte
 
 function isRetryable(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
@@ -25,7 +29,7 @@ function isRetryable(err: unknown): boolean {
   );
 }
 
-async function callOnce(prompt: string, onChunk?: (chars: number) => void): Promise<string> {
+async function callOnce(userPrompt: string, onChunk?: (chars: number) => void): Promise<string> {
   const controller = new AbortController();
   const hardTimer = setTimeout(
     () => controller.abort(new Error(`Gemini hard timeout ${HARD_TIMEOUT_MS}ms`)),
@@ -38,9 +42,10 @@ async function callOnce(prompt: string, onChunk?: (chars: number) => void): Prom
   try {
     const stream = await getGenAI().models.generateContentStream({
       model: MODEL,
-      contents: prompt,
+      contents: userPrompt,
       config: {
-        thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
+        systemInstruction: SYSTEM_INSTRUCTION,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
         abortSignal: controller.signal,
       },
     });
@@ -65,12 +70,12 @@ export async function generateScreenplay(
   input: GenerateInput,
   onChunk?: (chars: number) => void,
 ): Promise<GenerationResult> {
-  const prompt = await buildPrompt(input);
+  const userPrompt = await buildUserPrompt(input);
   const ATTEMPTS = 3;
   let lastErr: unknown;
   for (let i = 1; i <= ATTEMPTS; i++) {
     try {
-      const raw = await callOnce(prompt, onChunk);
+      const raw = await callOnce(userPrompt, onChunk);
       let md = raw.trim();
       const fence = md.match(/^```(?:markdown|md)?\s*\n([\s\S]*?)\n```\s*$/i);
       if (fence) md = fence[1].trim();
@@ -78,7 +83,7 @@ export async function generateScreenplay(
       return {
         markdown: md,
         model: MODEL,
-        thinkingLevel: "HIGH",
+        thinkingLevel: THINKING_LEVEL_NAME,
       };
     } catch (err) {
       lastErr = err;

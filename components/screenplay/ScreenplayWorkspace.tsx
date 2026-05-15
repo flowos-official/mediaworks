@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { GenerationProgress } from "./GenerationProgress";
 import { VersionTimeline } from "./VersionTimeline";
@@ -45,8 +45,31 @@ export function ScreenplayWorkspace({ initialScreenplay, initialVersions }: Prop
     setRunId(newRunId);
   }
 
-  const selected = versions.find((v) => v.id === selectedId);
+  // versions are oldest → newest from the API. Prev = older, Next = newer.
+  const sorted = versions; // already asc by version_number
+  const selectedIndex = sorted.findIndex((v) => v.id === selectedId);
+  const selected = selectedIndex >= 0 ? sorted[selectedIndex] : null;
+  const prev = selectedIndex > 0 ? sorted[selectedIndex - 1] : null;
+  const next = selectedIndex < sorted.length - 1 && selectedIndex >= 0 ? sorted[selectedIndex + 1] : null;
   const isGenerating = !!runId;
+
+  const goPrev = useCallback(() => {
+    if (prev) setSelectedId(prev.id);
+  }, [prev]);
+  const goNext = useCallback(() => {
+    if (next) setSelectedId(next.id);
+  }, [next]);
+
+  // Keyboard shortcuts ⌘/Ctrl + ← / →
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (!(e.metaKey || e.ctrlKey)) return;
+      if (e.key === "ArrowLeft") { e.preventDefault(); goPrev(); }
+      else if (e.key === "ArrowRight") { e.preventDefault(); goNext(); }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [goPrev, goNext]);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)_320px] gap-10 lg:gap-12">
@@ -65,6 +88,9 @@ export function ScreenplayWorkspace({ initialScreenplay, initialVersions }: Prop
           selectedId={selectedId}
           onSelect={setSelectedId}
         />
+        <div className="mt-4 font-mono text-[10px] tracking-[0.2em] text-stone-400 leading-relaxed">
+          ⌘← / ⌘→ で版を移動
+        </div>
       </aside>
 
       {/* CENTER — SCRIPT VIEWER */}
@@ -80,6 +106,12 @@ export function ScreenplayWorkspace({ initialScreenplay, initialVersions }: Prop
             title={initialScreenplay.title}
             versionLabel={`V${pad(selected.version_number, 2)}`}
             createdAt={selected.created_at}
+            hasPrev={!!prev}
+            hasNext={!!next}
+            onPrev={goPrev}
+            onNext={goNext}
+            prevLabel={prev ? `v${pad(prev.version_number, 2)}` : undefined}
+            nextLabel={next ? `v${pad(next.version_number, 2)}` : undefined}
           />
         ) : !isGenerating ? (
           <div className="border border-dashed border-stone-300 bg-white px-10 py-20 text-center">

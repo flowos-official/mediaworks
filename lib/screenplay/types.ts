@@ -15,6 +15,16 @@ export interface ProductBrief {
   bonuses?: string[];
   guarantee?: string;
   notes?: string;
+  // User-customizable knobs (all optional — sane defaults when absent).
+  customization?: {
+    runtimeMinutes?: number;             // target broadcast length (default 25)
+    targetAudience?: string;             // free-text audience description override
+    keyMessage?: string;                 // single-line elevator pitch the writer must echo
+    mustDemos?: string[];                // demos the script MUST include
+    mustAvoid?: string[];                // things the script MUST NOT do (claims, tone, etc.)
+    extraSpeakers?: { role: string; description: string }[];   // additional speakers beyond defaults
+    tonalAdjust?: "calm" | "neutral" | "energetic";            // delivery energy override
+  };
 }
 
 export interface GenerateInput {
