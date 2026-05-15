@@ -150,7 +150,7 @@ export function ScreenplayCreateForm({ locale }: { locale: string }) {
       <div className="mt-12 flex items-center justify-between gap-6">
         <div className="font-mono text-[11px] tracking-[0.25em] uppercase text-stone-500 leading-relaxed">
           ETA <span className="text-stone-900">2 — 5 min</span><br />
-          Gemini 3.1 Pro · Thinking HIGH
+          Gemini 3 Flash · Thinking LOW
         </div>
         <button
           disabled={busy || !name.trim() || !description.trim()}

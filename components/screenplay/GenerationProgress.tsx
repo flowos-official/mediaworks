@@ -115,7 +115,7 @@ export function GenerationProgress({ runId, onComplete }: Props) {
         </span>
         <span className="font-mono text-[10px] tracking-[0.25em] uppercase text-stone-400">·</span>
         <span className="font-mono text-[10px] tracking-[0.2em] uppercase text-stone-500">
-          Gemini 3.1 Pro · Thinking High
+          Gemini 3 Flash · Thinking Low
         </span>
         <span className="ml-auto font-mono text-[11px] tabular-nums text-stone-700">
           {min}:{sec}

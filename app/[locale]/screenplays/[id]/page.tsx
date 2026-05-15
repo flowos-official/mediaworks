@@ -52,7 +52,7 @@ export default async function ScreenplayDetailPage({ params }: { params: Promise
           </div>
           <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-stone-500 text-right leading-relaxed self-end">
             Production · テレ東スタイル<br />
-            Gemini 3.1 Pro · Thinking High
+            Gemini 3 Flash · Thinking Low
           </div>
         </header>
 

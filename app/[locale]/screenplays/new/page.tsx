@@ -22,7 +22,7 @@ export default async function NewScreenplayPage({ params }: { params: Promise<{ 
           新規台本<br />ブリーフ
         </h1>
         <p className="text-sm text-stone-600 leading-relaxed mt-6 mb-10 max-w-xl">
-          下記の項目を埋めると、Gemini 3.1 Pro が商品情報を解釈し、テレ東スタイルの完成版台本（アバン → スタジオ① 〜 ④ → CTA → VTR → CTA）を起こします。
+          下記の項目を埋めると、Gemini 3 Flash が商品情報を解釈し、テレ東スタイルの完成版台本（アバン → スタジオ① 〜 ④ → CTA → VTR → CTA）を起こします。生成は約 30 秒〜2 分で完了します。
         </p>
 
         <ScreenplayCreateForm locale={locale} />

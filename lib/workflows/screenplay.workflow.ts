@@ -17,10 +17,19 @@ export interface ScreenplayWorkflowInput {
   baseVersionId?: string;
 }
 
-export interface ScreenplayWorkflowOutput {
-  screenplayId: string;
-  versionId: string;
-  versionNumber: number;
+async function writeProgressInline(event: ProgressEvent): Promise<void> {
+  const writable = getWritable<ProgressEvent>({ namespace: "progress" });
+  const writer = writable.getWriter();
+  try {
+    await writer.write(event);
+  } finally {
+    writer.releaseLock();
+  }
+}
+
+async function emitProgressStep(event: ProgressEvent): Promise<void> {
+  "use step";
+  await writeProgressInline(event);
 }
 
 async function loadPreviousMarkdownStep(baseVersionId: string): Promise<string> {
@@ -35,22 +44,12 @@ async function loadPreviousMarkdownStep(baseVersionId: string): Promise<string> 
   return data.markdown as string;
 }
 
-async function writeProgress(event: ProgressEvent): Promise<void> {
-  const writable = getWritable<ProgressEvent>({ namespace: "progress" });
-  const writer = writable.getWriter();
-  try {
-    await writer.write(event);
-  } finally {
-    writer.releaseLock();
-  }
-}
-
 async function generateStep(
   input: ScreenplayWorkflowInput,
   previousMarkdown: string | undefined,
 ): Promise<{ markdown: string; model: string; thinkingLevel: string }> {
   "use step";
-  await writeProgress({ type: "step", name: "generate", status: "started" });
+  await writeProgressInline({ type: "step", name: "generate", status: "started" });
   try {
     const result = await generateScreenplay(
       {
@@ -59,13 +58,13 @@ async function generateStep(
         feedback: input.feedback,
         previousMarkdown,
       },
-      (chars) => { void writeProgress({ type: "chunk", chars }); },
+      (chars) => { void writeProgressInline({ type: "chunk", chars }); },
     );
-    await writeProgress({ type: "step", name: "generate", status: "completed" });
+    await writeProgressInline({ type: "step", name: "generate", status: "completed" });
     return { markdown: result.markdown, model: result.model, thinkingLevel: result.thinkingLevel };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    await writeProgress({ type: "step", name: "generate", status: "failed", detail: msg });
+    await writeProgressInline({ type: "step", name: "generate", status: "failed", detail: msg });
     throw err;
   }
 }
@@ -119,9 +118,19 @@ async function persistStep(
   return { versionId: versionRow.id, versionNumber: versionRow.version_number };
 }
 
-export async function screenplayWorkflow(
-  input: ScreenplayWorkflowInput,
-): Promise<ScreenplayWorkflowOutput> {
+async function markFailedStep(screenplayId: string, message: string): Promise<void> {
+  "use step";
+  const supabase = getServiceClient();
+  await supabase
+    .from("screenplays")
+    .update({ status: "failed", updated_at: new Date().toISOString() })
+    .eq("id", screenplayId);
+  await writeProgressInline({ type: "error", message });
+}
+
+export async function screenplayWorkflow(input: ScreenplayWorkflowInput) {
+  "use workflow";
+
   try {
     let previousMarkdown: string | undefined;
     if (input.mode === "refine") {
@@ -139,7 +148,7 @@ export async function screenplayWorkflow(
       gen.thinkingLevel,
     );
 
-    await writeProgress({
+    await emitProgressStep({
       type: "done",
       screenplayId: input.screenplayId,
       versionId: persisted.versionId,
@@ -147,13 +156,8 @@ export async function screenplayWorkflow(
     });
     return { screenplayId: input.screenplayId, ...persisted };
   } catch (err) {
-    const supabase = getServiceClient();
-    await supabase
-      .from("screenplays")
-      .update({ status: "failed", updated_at: new Date().toISOString() })
-      .eq("id", input.screenplayId);
     const msg = err instanceof Error ? err.message : String(err);
-    await writeProgress({ type: "error", message: msg });
+    await markFailedStep(input.screenplayId, msg);
     throw err;
   }
 }
