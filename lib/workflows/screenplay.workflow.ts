@@ -80,30 +80,50 @@ async function persistStep(
   "use step";
   const supabase = getServiceClient();
 
-  const { data: existing } = await supabase
-    .from("screenplay_versions")
-    .select("version_number")
-    .eq("screenplay_id", screenplayId)
-    .order("version_number", { ascending: false })
-    .limit(1);
-  const nextVersion = (existing?.[0]?.version_number ?? 0) + 1;
+  // Retry on unique-constraint races: when multiple refines run in parallel,
+  // they may all read the same max version_number and try to insert the same
+  // next value. Backoff + re-read up to 5 times.
+  let versionRow: Pick<ScreenplayVersionRow, "id" | "version_number"> | null = null;
+  let lastErr: { message?: string } | null = null;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const { data: existing } = await supabase
+      .from("screenplay_versions")
+      .select("version_number")
+      .eq("screenplay_id", screenplayId)
+      .order("version_number", { ascending: false })
+      .limit(1);
+    const nextVersion = (existing?.[0]?.version_number ?? 0) + 1;
 
-  const { data: inserted, error: insErr } = await supabase
-    .from("screenplay_versions")
-    .insert({
-      screenplay_id: screenplayId,
-      version_number: nextVersion,
-      markdown,
-      feedback: feedback ?? null,
-      base_version_id: baseVersionId ?? null,
-      model,
-      thinking_level: thinkingLevel,
-    })
-    .select("id, version_number")
-    .single();
-  if (insErr || !inserted) throw new FatalError(`failed to insert version: ${insErr?.message}`);
+    const { data: inserted, error: insErr } = await supabase
+      .from("screenplay_versions")
+      .insert({
+        screenplay_id: screenplayId,
+        version_number: nextVersion,
+        markdown,
+        feedback: feedback ?? null,
+        base_version_id: baseVersionId ?? null,
+        model,
+        thinking_level: thinkingLevel,
+      })
+      .select("id, version_number")
+      .single();
 
-  const versionRow = inserted as Pick<ScreenplayVersionRow, "id" | "version_number">;
+    if (inserted) {
+      versionRow = inserted as Pick<ScreenplayVersionRow, "id" | "version_number">;
+      break;
+    }
+    lastErr = insErr;
+    // Unique violation = 23505 → retry. Any other error = fatal.
+    const code = (insErr as { code?: string } | null)?.code;
+    if (code !== "23505") {
+      throw new FatalError(`failed to insert version: ${insErr?.message}`);
+    }
+    // Small jittered backoff so racing workflows don't lockstep.
+    await new Promise((r) => setTimeout(r, 50 + Math.floor(Math.random() * 150)));
+  }
+  if (!versionRow) {
+    throw new FatalError(`failed to insert version after retries: ${lastErr?.message ?? "unknown"}`);
+  }
 
   const { error: updErr } = await supabase
     .from("screenplays")
