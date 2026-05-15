@@ -26,6 +26,7 @@
     "test:discovery-pool-first": "tsx --env-file=.env.local scripts/test-discover-pool-first.ts",
     "test:strategy-pool": "npm run test:pool-query && npm run test:multi-seed && npm run test:discovery-pool-first && npm run test:pool-fallback",
     "test:screenplay": "tsx --env-file=.env.local scripts/test-screenplay-generator.ts",
+    "stress:screenplays": "tsx --env-file=.env.local scripts/stress-screenplays.ts",
     "backfill:broadcasts": "tsx --env-file=.env.local scripts/backfill-broadcasts.ts",
     "verify:broadcasts": "tsx --env-file=.env.local scripts/verify-broadcasts-run.ts",
     "enrich:qvc-products": "tsx --env-file=.env.local scripts/enrich-qvc-products.ts",
