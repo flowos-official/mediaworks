@@ -1,0 +1,437 @@
+{
+  "show_profile": {
+    "broadcaster_likely": "TV Tokyo (テレ東 / テレ東ダイレクト)",
+    "program_format": "Studio-based single-product deep dive with pre-recorded VTR segments, expert interviews, and live physical demonstrations.",
+    "product_lineup_observed": [
+      "レイコップ コードレスUVふとんクリーナー レニー (Raycop Cordless UV Futon Cleaner Renie)"
+    ],
+    "primary_audience_profile": "Housewives, families, and older adults concerned with home hygiene, allergies, and the physical strain of daily chores (e.g., sun-drying heavy futons).",
+    "typical_episode_length_estimate": "Likely a 10-15 minute segment within a larger lifestyle/shopping show block, given the precise timings like '1m 30s VTR' and '15s Telephone Attack'.",
+    "tonal_register": "Highly enthusiastic, empathetic to daily struggles, authoritative on technology and health, and urgently compelling during the pitch.",
+    "trust_devices": [
+      "Authority Figures (Environmental Allergen Expert)",
+      "Scientific Data (Guangzhou Institute of Microbiology test results)",
+      "Massive Social Proof (8 million units sold across 20+ countries)",
+      "Brand Recognition ('When you think of futon cleaners, you think of Raycop')",
+      "High-contrast visual proof demonstrations (dirt on black paper)"
+    ]
+  },
+  "macro_structure": {
+    "act_breakdown": [
+      {
+        "act": "The Hook & Problem Setup (アバン / VTR)",
+        "purpose": "Agitate a hidden problem the viewer didn't realize they had (e.g., dust mites surviving sun-drying).",
+        "typical_duration_share": "10-15%",
+        "key_beats": [
+          "Show relatable struggle (poor sleep)",
+          "Introduce invisible threat (dust mites)",
+          "Expert validation of the threat",
+          "Debunking current solutions (sun-drying isn't enough)",
+          "Introduce product as the savior"
+        ],
+        "common_opening_lines_jp": [
+          "あなたの睡眠に欠かせない毎日使う寝具・・・実はダニ由来のハウスダストが潜んでいるかもしれません！"
+        ],
+        "common_closing_lines_jp": [
+          "一体どうすれば！？"
+        ]
+      },
+      {
+        "act": "Studio Intro & Contrast (スタジオ①)",
+        "purpose": "Establish product credibility and reveal the new iteration's physical advantages.",
+        "typical_duration_share": "15%",
+        "key_beats": [
+          "Show previous heavy/famous model to anchor brand trust",
+          "MCs confirm they know the brand",
+          "Surprise reveal of the new, different-looking, lightweight model",
+          "Physical interaction (MCs hold it and react to the weight)"
+        ],
+        "common_opening_lines_jp": [
+          "みなさん、布団クリーナーと言えば、こちら！一度は見たことがありませんか？",
+          "ですが、本日ご紹介するのはこのタイプではないんです。"
+        ],
+        "common_closing_lines_jp": [
+          "従来品と持ち比べてみていかがですか？"
+        ]
+      },
+      {
+        "act": "The Live Demonstrations (スタジオ② / ③)",
+        "purpose": "Provide undeniable visual proof of the product's claims (suction power, ease of use).",
+        "typical_duration_share": "30%",
+        "key_beats": [
+          "Setup an extreme test (powder under a sheet)",
+          "MC performs the test to prove ease of use",
+          "The 'Reveal' (pulling back the sheet / dumping dirt on black paper)",
+          "Shocked reactions from MCs",
+          "Explanation of the tech behind the result (brushes, motor, UV)"
+        ],
+        "common_opening_lines_jp": [
+          "その実力、ぜひ試していただきましょう！",
+          "本当にキレイに吸えます〜？！"
+        ],
+        "common_closing_lines_jp": [
+          "ほら、見てください！",
+          "やっぱり叩きながら吸うっていう事が大切なんですよ。"
+        ]
+      },
+      {
+        "act": "Objection Handling & Versatility (スタジオ④)",
+        "purpose": "Address viewer doubts (battery life, storage, maintenance) before the price drop.",
+        "typical_duration_share": "15%",
+        "key_beats": [
+          "Address battery anxiety (lasts 30 mins)",
+          "Show versatility (sofas, curtains)",
+          "Show easy maintenance (disposable filters)",
+          "Show easy storage (self-standing)"
+        ],
+        "common_opening_lines_jp": [
+          "でもコードレスってすぐ充電切れになるイメージありません？",
+          "ご安心ください！1回の充電で標準モードおよそ30分！"
+        ],
+        "common_closing_lines_jp": [
+          "あとはお値段だけですね。お願いします！"
+        ]
+      },
+      {
+        "act": "The Offer & CTA (価格発表 / テレホンアタック)",
+        "purpose": "Overwhelm the viewer with value, drop the price dramatically, and trigger immediate purchase.",
+        "typical_duration_share": "15%",
+        "key_beats": [
+          "State original manufacturer price",
+          "Add bonus item 1",
+          "Add bonus item 2 (with its monetary value)",
+          "Calculate massive total value",
+          "Drop to the final discounted price ('Price stays the same!')",
+          "15 to 25-second graphic-heavy CTA (Telephone Attack)"
+        ],
+        "common_opening_lines_jp": [
+          "メーカー直販価格 19,800 円のところ、税込み 14,800 円なんですが、今回は特別に..."
+        ],
+        "common_closing_lines_jp": [
+          "お値段そのまま、税込み 14,800 円でのご提供です！"
+        ]
+      },
+      {
+        "act": "VTR Testimonial (VTR / お客様)",
+        "purpose": "Provide real-world social proof to push on-the-fence buyers.",
+        "typical_duration_share": "10%",
+        "key_beats": [
+          "Visit a real home",
+          "Homeowner claims their house is clean",
+          "Homeowner uses product",
+          "Homeowner is shocked by how much dirt is collected"
+        ],
+        "common_opening_lines_jp": [
+          "その実力を片岡さんのお宅で試させて頂くことに！"
+        ],
+        "common_closing_lines_jp": [
+          "いやだ〜〜怖すぎますね…"
+        ]
+      }
+    ],
+    "scene_to_scene_transitions": [
+      "VTR to Studio: Often abrupt, cutting from a high-tension question ('What should we do?!') directly to the live studio hosts.",
+      "Studio to Demo: Guided by the Product Advisor physically walking the MCs to a distinct set piece (indicated by '■スタジオ②').",
+      "Feature to Price: A direct handoff from the MC expressing desire ('Now we just need the price!') to the Advisor or Narrator launching the pitch."
+    ],
+    "narrative_arc_summary": "The segment moves from invisible terror (dust mites causing allergies) to physical relief (lightweight, easy-to-use cordless vacuum), proven by dramatic visual evidence (black paper/sheet tests), culminating in an irresistible stacked-value financial offer."
+  },
+  "speaker_roles": [
+    {
+      "role": "N (ナレーター / Narrator)",
+      "function": "Drives the VTR segments, sets up the stakes, explains complex technical specs rapidly, and delivers the hard-sell price pitches.",
+      "voice_traits": [
+        "High energy",
+        "Authoritative",
+        "Fast-paced during specs",
+        "Dramatic and urgent during price reveals"
+      ],
+      "signature_phrases_jp": [
+        "布団クリーナーと言えば「レイコップ」",
+        "一体どうすれば！？",
+        "早速見ていきましょう！"
+      ],
+      "signature_phrases_en": [
+        "When you think of futon cleaners, you think of 'Raycop'.",
+        "What on earth should we do?!",
+        "Let's take a look right away!"
+      ],
+      "interaction_with_other_roles": "Functions as the Voice of God over VTRs and CTAs; rarely interacts directly with live studio hosts."
+    },
+    {
+      "role": "高橋 (Takahashi / Product Advisor)",
+      "function": "The brand representative. Introduces the product, guides the MCs through demonstrations, answers objections, and reveals the price.",
+      "voice_traits": [
+        "Warm",
+        "Confident",
+        "Reassuring",
+        "Polite (Desu/Masu)"
+      ],
+      "signature_phrases_jp": [
+        "ご安心ください！",
+        "ほら、見てください！",
+        "その実力、ぜひ試していただきましょう！"
+      ],
+      "signature_phrases_en": [
+        "Please rest assured!",
+        "Look, please look at this!",
+        "Let's have you test its power!"
+      ],
+      "interaction_with_other_roles": "Acts as the host/teacher to the MCs, prompting them to try the product and setting them up for their reactions."
+    },
+    {
+      "role": "山内・小島 (Yamauchi & Kojima / MCs / Reaction Talent)",
+      "function": "Audience surrogates. They express the doubts, ask the questions, and provide the exaggerated amazement the home viewer is expected to feel.",
+      "voice_traits": [
+        "Highly expressive",
+        "Conversational",
+        "Easily amazed",
+        "Prone to using onomatopoeia"
+      ],
+      "signature_phrases_jp": [
+        "軽っ！",
+        "うそ、こんなに取れるの！？",
+        "今すぐ家に帰って掃除したい！"
+      ],
+      "signature_phrases_en": [
+        "So light!",
+        "No way, it picked up this much?!",
+        "I want to go home right now and clean!"
+      ],
+      "interaction_with_other_roles": "Follows the Advisor's lead, interacts physically with the product, and reacts to the Narrator/Advisor's reveals."
+    },
+    {
+      "role": "お客様 (Customer / e.g., Kataoka)",
+      "function": "Provides relatable, third-party social proof in VTR segments.",
+      "voice_traits": [
+        "Casual",
+        "Skeptical at first",
+        "Ultimately shocked/delighted"
+      ],
+      "signature_phrases_jp": [
+        "多分そんなに汚れてないんじゃないかな？？",
+        "いやだ〜〜怖すぎますね…"
+      ],
+      "signature_phrases_en": [
+        "It's probably not that dirty, right??",
+        "No way~~ That's too scary..."
+      ],
+      "interaction_with_other_roles": "Responds to off-camera producer questions; reacts privately to the product's performance."
+    }
+  ],
+  "writing_style_dna": {
+    "honorific_register": "A mix of standard polite 'Teineigo' (です/ます - desu/masu) from the Narrator and Advisor, contrasted with casual, emotive speech from the MCs and Customers.",
+    "sentence_rhythms": [
+      "Staccato bursts during tech specs (ファブリックブラシと…フィンパンチブラシで…たたき出します！)",
+      "Long, stacking, breathless run-on sentences during the price reveal.",
+      "Punchy, one-line reactions."
+    ],
+    "rhetorical_devices": [
+      "Rhetorical Questions: 'Is it really suctioning properly?' (ちゃんと吸引できてるんですかね？)",
+      "Hyperbole: 'I want to go home right now and clean!' (今すぐ家に帰って掃除したい！)",
+      "Contrast: 'Compact body, powerful suction' (コンパクトボディながらパワフルな吸引力)"
+    ],
+    "lexical_patterns": [
+      "Heavy use of '〜させていただきます' (humble action verbs).",
+      "Action verbs emphasizing power: たたき出す (knock out), かき出す (scrape out), 吸引する (suction)."
+    ],
+    "filler_and_transition_phrases_jp": [
+      "さらに (Furthermore)",
+      "なんと (Surprisingly)",
+      "だから (That's why)",
+      "ではさっそく (Then right away)"
+    ],
+    "onomatopoeia_usage": [
+      "バーッと (scattering widely)",
+      "スーッと (moving smoothly)",
+      "パーッと (doing something quickly)",
+      "ぎゃー！ (shriek of disgust/shock)"
+    ],
+    "number_and_metric_patterns": [
+      "Extremely specific numbers to build trust: 79,200回 (79,200 times), 99.9%除去 (99.9% removal).",
+      "Sales milestones: 累計800万台突破 (Cumulative 8 million units surpassed)."
+    ],
+    "emphasis_techniques": [
+      "Exclamation marks are used on almost every definitive statement or reaction.",
+      "Visual emphasis using '●' and '○' markers in the script to tie specific words to on-screen text."
+    ],
+    "humor_and_warmth_techniques": [
+      "Self-deprecation regarding household chores ('I never clean my curtains...').",
+      "Playful horror at how dirty one's own bed is ('Eek! Too scary!')."
+    ],
+    "kana_kanji_balance_notes": "Accessible reading level. Technical terms are clearly spelled out in Katakana (ファブリックブラシ), while complex concepts are simplified into easy-to-read phrases (叩き吸い - pounding and sucking)."
+  },
+  "persuasion_playbook": {
+    "hook_templates": [
+      "You do [Common Habit], but did you know [Invisible Threat] is still there?!",
+      "When you think of [Product Category], you think of [Brand], right? Well look at this!"
+    ],
+    "problem_framing_patterns": [
+      "The 'Hidden Danger': Dust mites cause allergies and survive normal sun-drying.",
+      "The 'Chore Burden': Normal vacuums are heavy, corded, and annoying to use."
+    ],
+    "demonstration_patterns": [
+      "The Barrier Test: Vacuuming powder *through* a thick sheet to prove suction depth.",
+      "The High-Contrast Reveal: Emptying collected white dust onto a stark black piece of paper."
+    ],
+    "social_proof_patterns": [
+      "Global sales numbers (8 million units in 20+ countries).",
+      "Real-home VTR tests showing a skeptical customer being proven wrong."
+    ],
+    "authority_signal_patterns": [
+      "Interviewing a titled expert (Representative Director of Environmental Allergens).",
+      "Quoting clinical research data (Guangzhou Institute of Microbiology) in footnotes."
+    ],
+    "objection_handling_patterns": [
+      "Objection: Cordless means weak battery. -> Rebuttal: High-quality BLDC motor + 30 mins runtime.",
+      "Objection: I don't want to buy expensive filters. -> Rebuttal: We are including 45 disposable filters for free.",
+      "Objection: It takes up space. -> Rebuttal: It is compact and stands on its own."
+    ],
+    "urgency_patterns": [
+      "今回は特別に (This time, specially...)",
+      "Telephone Attack graphic segments prompting immediate calls."
+    ],
+    "price_reveal_patterns": [
+      "The Value Stack: State base price. Add Bonus A. Add Bonus B. State total retail value. Drop to final price ('お値段そのまま' - Price stays the same!)."
+    ],
+    "bundle_and_bonus_patterns": [
+      "Include a ridiculous amount of consumables to remove long-term cost objections (e.g., 45 disposable filters total)."
+    ],
+    "guarantee_patterns": [
+      "The brand name itself acts as a guarantee ('その実力は折り紙付きです！' - Its capabilities are guaranteed because it's Raycop!)."
+    ],
+    "closing_and_cta_patterns": [
+      "Hard cut to a 15-25 second graphical 'Telephone Attack' displaying numbers and urgency timers."
+    ]
+  },
+  "visual_and_demo_conventions": {
+    "common_diagram_types": [
+      "Overhead studio floor plans indicating where hosts (represented by smiley faces) and props (stands, sofas) are positioned."
+    ],
+    "on_screen_text_conventions": [
+      "Indicated in script by '○' or '●' or 'テロップ'.",
+      "Disclaimers are mandatory and exact (e.g., '※効果を保証するものではありません' - Not a guarantee of effectiveness).",
+      "Price and bundled numbers must match the audio exactly."
+    ],
+    "camera_or_demo_cues": [
+      "1S: One-shot (close up on product or face).",
+      "2S: Two-shot (capturing the interaction between two hosts).",
+      "インサート (Insert): B-roll footage cutting away from the live studio to show tech animations or usage.",
+      "早送り想定 (Fast-forward assumed): Direction to speed up boring parts of a demo in post/live-playback."
+    ],
+    "stage_direction_vocabulary": [
+      "実演 (Demonstration)",
+      "ヒキ (Pull back camera)",
+      "トメ (Stop/Pause segment)",
+      "リアクション (Reaction)"
+    ],
+    "music_and_sfx_vocabulary": [
+      "Implied through high-energy formatting, but explicit audio cues (BGM/SE) are largely omitted from this specific document, relying instead on timing markers."
+    ]
+  },
+  "page_layout_conventions": {
+    "typical_columns": 2,
+    "annotation_conventions": [
+      "Left column handles all visual cues, timing (e.g., '1s', '2s'), camera shots (1S, 2S), and telop texts.",
+      "Right column handles speaker tags and dialogue.",
+      "Handwritten arrows link specific dialogue lines to camera moves or physical actions (e.g., 'Take out trash -> (arrow down)').",
+      "Hatched lines (////) in the middle column indicate a continuation of the current camera shot."
+    ],
+    "color_or_highlight_usage": [
+      "Gray shading on alternating rows in some tables to separate speaker lines.",
+      "Dark headers indicating Studio changes (e.g., '■スタジオ②')."
+    ],
+    "page_to_segment_mapping_notes": "Each page generally covers one distinct 'beat' or demonstration setup. Timing is tightly controlled down to the second."
+  },
+  "generation_template": {
+    "section_order": [
+      "Avant/Hook (VTR)",
+      "Studio Introduction",
+      "Problem/Pain Point Expansion",
+      "Live Demonstration 1 (Power/Effectiveness)",
+      "Feature Explanation (Tech specs)",
+      "Live Demonstration 2 (Ease of Use/Versatility)",
+      "Objection Handling",
+      "The Stacked Offer & Price Reveal",
+      "Call to Action (Telephone Attack)"
+    ],
+    "for_each_section": [
+      {
+        "section_name": "The Stacked Offer & Price Reveal",
+        "intent": "To make the final price seem like an impossible bargain by front-loading the retail value of the product and its bonuses.",
+        "must_include": [
+          "Manufacturer's original price",
+          "Introduction of Bonus 1",
+          "Introduction of Bonus 2 with its specific retail value",
+          "Calculation of Total Retail Value",
+          "The 'Price Stays the Same' final reveal"
+        ],
+        "style_rules": [
+          "Narrator or Advisor must speak rapidly but with intense emphasis on the numbers.",
+          "Must use the phrase 'ところ' (instead of) to pivot from high to low price."
+        ],
+        "example_lines_jp": [
+          "メーカー直販価格19,800円のところ、税込み14,800円なんですが、今回は特別に…",
+          "合計45枚の使い捨てフィルターをセットにして…",
+          "お値段そのまま、税込み14,800円でのご提供です！"
+        ],
+        "example_lines_en": [
+          "Instead of the direct retail price of 19,800 yen, it's 14,800 yen, but this time specially...",
+          "Setting it up with a total of 45 disposable filters...",
+          "The price stays the same, offered at 14,800 yen including tax!"
+        ],
+        "typical_speaker_role": "高橋 (Advisor) or N (Narrator)",
+        "typical_visual_or_demo": "Graphic telop building the 'stack' block by block, ending with a massive, bold red number for the final price."
+      }
+    ],
+    "global_style_rules": [
+      "Always include enthusiastic, conversational reactions from MCs to break up technical explanations.",
+      "Every major product claim must be backed by either a live visual demonstration or expert/clinical data.",
+      "Address potential negative objections explicitly before asking for the sale."
+    ],
+    "do_not_do": [
+      "Do not have the Narrator casually chat with the MCs; keep roles strictly defined.",
+      "Do not reveal the final price before fully explaining the bonuses.",
+      "Do not forget to include disclaimers (e.g., '※個人の感想です') when showing testimonials or clinical data."
+    ]
+  },
+  "evidence_index": [
+    {
+      "claim": "The show uses an Environmental Allergen Expert to validate the hidden danger of dust mites.",
+      "supporting_pages": [
+        "IMG_2316.HEIC"
+      ]
+    },
+    {
+      "claim": "Live demonstrations use high-contrast visuals, such as vacuuming powder through a sheet or dumping white dust onto black paper.",
+      "supporting_pages": [
+        "IMG_2315.HEIC",
+        "IMG_2318.HEIC",
+        "IMG_2321.HEIC"
+      ]
+    },
+    {
+      "claim": "The price reveal uses a 'value stacking' technique, bundling 45 extra filters to inflate the original retail value before dropping the price.",
+      "supporting_pages": [
+        "IMG_2322.HEIC",
+        "IMG_2326.HEIC"
+      ]
+    },
+    {
+      "claim": "MCs utilize hyperbole and highly expressive onomatopoeia to react to the product.",
+      "supporting_pages": [
+        "IMG_2317.HEIC",
+        "IMG_2321.HEIC",
+        "IMG_2325.HEIC"
+      ]
+    },
+    {
+      "claim": "Specific numerical metrics (79,200 taps, 99.9% removal, 30 minutes battery) are repeatedly cited to build technical trust.",
+      "supporting_pages": [
+        "IMG_2320.HEIC",
+        "IMG_2321.HEIC",
+        "IMG_2325.HEIC"
+      ]
+    }
+  ]
+}
