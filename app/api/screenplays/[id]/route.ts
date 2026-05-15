@@ -3,11 +3,16 @@ import { getServiceClient } from "@/lib/supabase";
 
 export const maxDuration = 30;
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function GET(
 	_request: NextRequest,
 	{ params }: { params: Promise<{ id: string }> },
 ) {
 	const { id } = await params;
+	if (!UUID_RE.test(id)) {
+		return Response.json({ error: "invalid id" }, { status: 404 });
+	}
 	const supabase = getServiceClient();
 
 	const { data: screenplay, error: spErr } = await supabase
@@ -16,10 +21,7 @@ export async function GET(
 		.eq("id", id)
 		.single();
 	if (spErr || !screenplay) {
-		return Response.json(
-			{ error: spErr?.message ?? "Not found" },
-			{ status: 404 },
-		);
+		return Response.json({ error: "not found" }, { status: 404 });
 	}
 
 	const { data: versions, error: vErr } = await supabase
@@ -30,7 +32,8 @@ export async function GET(
 		.eq("screenplay_id", id)
 		.order("version_number", { ascending: true });
 	if (vErr) {
-		return Response.json({ error: vErr.message }, { status: 500 });
+		console.error("[screenplays] versions fetch failed:", vErr);
+		return Response.json({ error: "failed to fetch versions" }, { status: 500 });
 	}
 
 	return Response.json({ screenplay, versions: versions ?? [] });
@@ -41,8 +44,15 @@ export async function DELETE(
 	{ params }: { params: Promise<{ id: string }> },
 ) {
 	const { id } = await params;
+	if (!UUID_RE.test(id)) {
+		// Idempotent: deleting an invalid id is a no-op success.
+		return Response.json({ ok: true });
+	}
 	const supabase = getServiceClient();
 	const { error } = await supabase.from("screenplays").delete().eq("id", id);
-	if (error) return Response.json({ error: error.message }, { status: 500 });
+	if (error) {
+		console.error("[screenplays] delete failed:", error);
+		return Response.json({ error: "failed to delete" }, { status: 500 });
+	}
 	return Response.json({ ok: true });
 }

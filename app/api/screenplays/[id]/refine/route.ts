@@ -6,11 +6,17 @@ import type { ProductBrief } from "@/lib/screenplay/types";
 
 export const maxDuration = 60;
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function POST(
 	request: NextRequest,
 	{ params }: { params: Promise<{ id: string }> },
 ) {
 	const { id } = await params;
+	if (!UUID_RE.test(id)) {
+		return Response.json({ error: "invalid id" }, { status: 404 });
+	}
+
 	const body = await request.json().catch(() => ({}));
 	const feedback: string =
 		typeof body.feedback === "string" ? body.feedback.trim() : "";
@@ -20,8 +26,16 @@ export async function POST(
 			{ status: 400 },
 		);
 	}
+	if (feedback.length > 4000) {
+		return Response.json(
+			{ error: "feedback too long (max 4000 chars)" },
+			{ status: 400 },
+		);
+	}
 	const baseVersionId: string | undefined =
-		typeof body.baseVersionId === "string" ? body.baseVersionId : undefined;
+		typeof body.baseVersionId === "string" && UUID_RE.test(body.baseVersionId)
+			? body.baseVersionId
+			: undefined;
 
 	const supabase = getServiceClient();
 	const { data: sp, error: spErr } = await supabase
@@ -30,11 +44,17 @@ export async function POST(
 		.eq("id", id)
 		.single();
 	if (spErr || !sp) {
+		return Response.json({ error: "screenplay not found" }, { status: 404 });
+	}
+
+	// Block concurrent refines on the same screenplay.
+	if (sp.status === "generating") {
 		return Response.json(
-			{ error: spErr?.message ?? "Not found" },
-			{ status: 404 },
+			{ error: "another generation is already in progress for this screenplay" },
+			{ status: 409 },
 		);
 	}
+
 	const base = baseVersionId ?? sp.current_version_id;
 	if (!base) {
 		return Response.json(

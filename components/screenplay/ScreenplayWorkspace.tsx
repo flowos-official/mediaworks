@@ -1,6 +1,8 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Card, CardContent } from "@/components/ui/card";
+import { FileText } from "lucide-react";
 import { GenerationProgress } from "./GenerationProgress";
 import { VersionTimeline } from "./VersionTimeline";
 import { ScreenplayViewer } from "./ScreenplayViewer";
@@ -8,137 +10,186 @@ import { FeedbackForm } from "./FeedbackForm";
 import type { ScreenplayRow, ScreenplayVersionRow } from "@/lib/screenplay/types";
 
 interface Props {
-  initialScreenplay: ScreenplayRow;
-  initialVersions: ScreenplayVersionRow[];
+	initialScreenplay: ScreenplayRow;
+	initialVersions: ScreenplayVersionRow[];
 }
 
 function pad(n: number, w: number): string {
-  return n.toString().padStart(w, "0");
+	return n.toString().padStart(w, "0");
 }
 
 export function ScreenplayWorkspace({ initialScreenplay, initialVersions }: Props) {
-  const router = useRouter();
-  const search = useSearchParams();
-  const [versions, setVersions] = useState(initialVersions);
-  const [selectedId, setSelectedId] = useState<string | null>(
-    initialScreenplay.current_version_id ?? initialVersions[initialVersions.length - 1]?.id ?? null,
-  );
-  const [runId, setRunId] = useState<string | null>(search.get("run"));
+	const router = useRouter();
+	const search = useSearchParams();
+	const [versions, setVersions] = useState(initialVersions);
+	const [selectedId, setSelectedId] = useState<string | null>(
+		initialScreenplay.current_version_id ?? initialVersions[initialVersions.length - 1]?.id ?? null,
+	);
+	// Refresh-safe: if the URL has no ?run= but the screenplay is currently
+	// generating, reattach to the stored last_run_id so the user sees progress
+	// even after a page reload.
+	const initialRun =
+		search.get("run") ??
+		(initialScreenplay.status === "generating" && initialScreenplay.last_run_id
+			? initialScreenplay.last_run_id
+			: null);
+	const [runId, setRunId] = useState<string | null>(initialRun);
 
-  async function refreshList(newSelectedId?: string) {
-    const res = await fetch(`/api/screenplays/${initialScreenplay.id}`, { cache: "no-store" });
-    if (!res.ok) return;
-    const j = (await res.json()) as { screenplay: ScreenplayRow; versions: ScreenplayVersionRow[] };
-    setVersions(j.versions);
-    setSelectedId(newSelectedId ?? j.screenplay.current_version_id ?? j.versions[j.versions.length - 1]?.id ?? null);
-  }
+	// Belt-and-suspenders: if mounting with no runId but screenplay is still
+	// generating, poll the screenplay row briefly to pick up the run as it
+	// becomes available (race between create POST and detail page nav).
+	useEffect(() => {
+		if (runId || initialScreenplay.status !== "generating") return;
+		let stop = false;
+		(async () => {
+			for (let i = 0; i < 5 && !stop; i++) {
+				await new Promise((r) => setTimeout(r, 1500));
+				const res = await fetch(`/api/screenplays/${initialScreenplay.id}`, { cache: "no-store" });
+				if (!res.ok) continue;
+				const j = (await res.json()) as { screenplay: ScreenplayRow; versions: ScreenplayVersionRow[] };
+				if (j.screenplay.last_run_id && j.screenplay.status === "generating") {
+					setRunId(j.screenplay.last_run_id);
+					return;
+				}
+				if (j.screenplay.status === "ready" || j.screenplay.status === "failed") {
+					setVersions(j.versions);
+					setSelectedId(j.screenplay.current_version_id ?? j.versions[j.versions.length - 1]?.id ?? null);
+					return;
+				}
+			}
+		})();
+		return () => { stop = true; };
+	}, [runId, initialScreenplay.id, initialScreenplay.status]);
 
-  function handleComplete(versionId: string) {
-    setRunId(null);
-    void refreshList(versionId);
-    const params = new URLSearchParams(search);
-    params.delete("run");
-    router.replace(`?${params.toString()}`);
-  }
+	async function refreshList(newSelectedId?: string) {
+		const res = await fetch(`/api/screenplays/${initialScreenplay.id}`, { cache: "no-store" });
+		if (!res.ok) return;
+		const j = (await res.json()) as { screenplay: ScreenplayRow; versions: ScreenplayVersionRow[] };
+		setVersions(j.versions);
+		setSelectedId(newSelectedId ?? j.screenplay.current_version_id ?? j.versions[j.versions.length - 1]?.id ?? null);
+	}
 
-  function handleRefineStart(newRunId: string) {
-    setRunId(newRunId);
-  }
+	function handleComplete(versionId: string) {
+		setRunId(null);
+		void refreshList(versionId);
+		const params = new URLSearchParams(search);
+		params.delete("run");
+		router.replace(`?${params.toString()}`);
+	}
 
-  // versions are oldest → newest from the API. Prev = older, Next = newer.
-  const sorted = versions; // already asc by version_number
-  const selectedIndex = sorted.findIndex((v) => v.id === selectedId);
-  const selected = selectedIndex >= 0 ? sorted[selectedIndex] : null;
-  const prev = selectedIndex > 0 ? sorted[selectedIndex - 1] : null;
-  const next = selectedIndex < sorted.length - 1 && selectedIndex >= 0 ? sorted[selectedIndex + 1] : null;
-  const isGenerating = !!runId;
+	function handleRefineStart(newRunId: string) {
+		setRunId(newRunId);
+	}
 
-  const goPrev = useCallback(() => {
-    if (prev) setSelectedId(prev.id);
-  }, [prev]);
-  const goNext = useCallback(() => {
-    if (next) setSelectedId(next.id);
-  }, [next]);
+	const sorted = versions;
+	const selectedIndex = sorted.findIndex((v) => v.id === selectedId);
+	const selected = selectedIndex >= 0 ? sorted[selectedIndex] : null;
+	const prev = selectedIndex > 0 ? sorted[selectedIndex - 1] : null;
+	const next = selectedIndex < sorted.length - 1 && selectedIndex >= 0 ? sorted[selectedIndex + 1] : null;
+	const isGenerating = !!runId;
 
-  // Keyboard shortcuts ⌘/Ctrl + ← / →
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (!(e.metaKey || e.ctrlKey)) return;
-      if (e.key === "ArrowLeft") { e.preventDefault(); goPrev(); }
-      else if (e.key === "ArrowRight") { e.preventDefault(); goNext(); }
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [goPrev, goNext]);
+	const goPrev = useCallback(() => {
+		if (prev) setSelectedId(prev.id);
+	}, [prev]);
+	const goNext = useCallback(() => {
+		if (next) setSelectedId(next.id);
+	}, [next]);
 
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)_320px] gap-10 lg:gap-12">
-      {/* LEFT RAIL — REVISION TIMELINE */}
-      <aside className="lg:sticky lg:top-8 self-start">
-        <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-stone-500 pb-3 border-b border-stone-300 mb-4">
-          Revisions <span className="text-stone-900 tabular-nums ml-1">({pad(versions.length, 2)})</span>
-        </div>
-        <VersionTimeline
-          versions={versions.map((v) => ({
-            id: v.id,
-            version_number: v.version_number,
-            feedback: v.feedback,
-            created_at: v.created_at,
-          }))}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-        />
-        <div className="mt-4 font-mono text-[10px] tracking-[0.2em] text-stone-400 leading-relaxed">
-          ⌘← / ⌘→ で版を移動
-        </div>
-      </aside>
+	useEffect(() => {
+		function onKey(e: KeyboardEvent) {
+			if (!(e.metaKey || e.ctrlKey)) return;
+			if (e.key === "ArrowLeft") { e.preventDefault(); goPrev(); }
+			else if (e.key === "ArrowRight") { e.preventDefault(); goNext(); }
+		}
+		window.addEventListener("keydown", onKey);
+		return () => window.removeEventListener("keydown", onKey);
+	}, [goPrev, goNext]);
 
-      {/* CENTER — SCRIPT VIEWER */}
-      <section className="min-w-0">
-        {isGenerating && runId && (
-          <div className="mb-6">
-            <GenerationProgress runId={runId} onComplete={(versionId) => handleComplete(versionId)} />
-          </div>
-        )}
-        {selected ? (
-          <ScreenplayViewer
-            markdown={selected.markdown}
-            title={initialScreenplay.title}
-            versionLabel={`V${pad(selected.version_number, 2)}`}
-            createdAt={selected.created_at}
-            hasPrev={!!prev}
-            hasNext={!!next}
-            onPrev={goPrev}
-            onNext={goNext}
-            prevLabel={prev ? `v${pad(prev.version_number, 2)}` : undefined}
-            nextLabel={next ? `v${pad(next.version_number, 2)}` : undefined}
-          />
-        ) : !isGenerating ? (
-          <div className="border border-dashed border-stone-300 bg-white px-10 py-20 text-center">
-            <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-stone-500 mb-2">No Take Yet</div>
-            <p className="text-sm text-stone-600">
-              まだバージョンがありません。<br />
-              右側パネルから最初のテイクを録ってください。
-            </p>
-          </div>
-        ) : null}
-      </section>
+	return (
+		<div className="grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)_340px] gap-6">
+			{/* LEFT — REVISION TIMELINE */}
+			<aside className="lg:sticky lg:top-20 self-start">
+				<Card className="border-gray-200">
+					<CardContent className="p-4">
+						<div className="flex items-center justify-between mb-3">
+							<h2 className="text-sm font-semibold text-gray-900">改稿履歴</h2>
+							<span className="text-[11px] text-gray-400">{versions.length}件</span>
+						</div>
+						{versions.length > 0 ? (
+							<VersionTimeline
+								versions={versions.map((v) => ({
+									id: v.id,
+									version_number: v.version_number,
+									feedback: v.feedback,
+									created_at: v.created_at,
+								}))}
+								selectedId={selectedId}
+								onSelect={setSelectedId}
+							/>
+						) : (
+							<p className="text-xs text-gray-500 py-4 text-center">
+								まだ稿がありません
+							</p>
+						)}
+						<div className="text-[11px] text-gray-400 mt-4 pt-3 border-t border-gray-100 leading-relaxed">
+							⌘← / ⌘→ で版を移動できます
+						</div>
+					</CardContent>
+				</Card>
+			</aside>
 
-      {/* RIGHT RAIL — DIRECTOR'S NOTE */}
-      <aside className="lg:sticky lg:top-8 self-start">
-        {selected ? (
-          <FeedbackForm
-            screenplayId={initialScreenplay.id}
-            baseVersionId={selected.id}
-            disabled={isGenerating}
-            onStart={handleRefineStart}
-          />
-        ) : (
-          <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-stone-500">
-            Awaiting first take…
-          </div>
-        )}
-      </aside>
-    </div>
-  );
+			{/* CENTER — SCRIPT VIEWER */}
+			<section className="min-w-0">
+				{isGenerating && runId && (
+					<div className="mb-4">
+						<GenerationProgress runId={runId} onComplete={(versionId) => handleComplete(versionId)} />
+					</div>
+				)}
+				{selected ? (
+					<ScreenplayViewer
+						markdown={selected.markdown}
+						title={initialScreenplay.title}
+						versionLabel={`第 ${selected.version_number} 稿`}
+						createdAt={selected.created_at}
+						hasPrev={!!prev}
+						hasNext={!!next}
+						onPrev={goPrev}
+						onNext={goNext}
+						prevLabel={prev ? `v${pad(prev.version_number, 2)}` : undefined}
+						nextLabel={next ? `v${pad(next.version_number, 2)}` : undefined}
+					/>
+				) : !isGenerating ? (
+					<Card className="border-gray-200 border-dashed">
+						<CardContent className="py-16 flex flex-col items-center justify-center text-center">
+							<div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+								<FileText size={24} className="text-gray-400" />
+							</div>
+							<p className="text-sm text-gray-900 font-medium">まだ台本がありません</p>
+							<p className="text-xs text-gray-500 mt-1">
+								右側のフォームから最初の台本を生成してください。
+							</p>
+						</CardContent>
+					</Card>
+				) : null}
+			</section>
+
+			{/* RIGHT — DIRECTOR'S NOTE */}
+			<aside className="lg:sticky lg:top-20 self-start">
+				{selected ? (
+					<FeedbackForm
+						screenplayId={initialScreenplay.id}
+						baseVersionId={selected.id}
+						disabled={isGenerating}
+						onStart={handleRefineStart}
+					/>
+				) : (
+					<Card className="border-gray-200">
+						<CardContent className="p-5 text-center text-xs text-gray-500">
+							最初の台本ができたら、ここで改稿できます。
+						</CardContent>
+					</Card>
+				)}
+			</aside>
+		</div>
+	);
 }

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Clapperboard } from "lucide-react";
 import { notFound } from "next/navigation";
 import { ScreenplayWorkspace } from "@/components/screenplay/ScreenplayWorkspace";
 import type { ScreenplayRow, ScreenplayVersionRow } from "@/lib/screenplay/types";
@@ -7,57 +7,53 @@ import type { ScreenplayRow, ScreenplayVersionRow } from "@/lib/screenplay/types
 export const dynamic = "force-dynamic";
 
 async function fetchDetail(id: string) {
-  const base = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-  const res = await fetch(`${base}/api/screenplays/${id}`, { cache: "no-store" });
-  if (!res.ok) return null;
-  return (await res.json()) as { screenplay: ScreenplayRow; versions: ScreenplayVersionRow[] };
+	const base = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+	const res = await fetch(`${base}/api/screenplays/${id}`, { cache: "no-store" });
+	if (!res.ok) return null;
+	return (await res.json()) as { screenplay: ScreenplayRow; versions: ScreenplayVersionRow[] };
 }
 
-const STATUS_LABEL: Record<ScreenplayRow["status"], string> = {
-  pending: "WAIT",
-  generating: "ROLL",
-  ready: "TAKE",
-  failed: "NG",
+const STATUS_BADGE: Record<ScreenplayRow["status"], { cls: string; label: string }> = {
+	pending: { cls: "bg-yellow-100 text-yellow-700", label: "待機中" },
+	generating: { cls: "bg-blue-100 text-blue-700", label: "生成中" },
+	ready: { cls: "bg-green-100 text-green-700", label: "完成" },
+	failed: { cls: "bg-red-100 text-red-700", label: "失敗" },
 };
 
 export default async function ScreenplayDetailPage({ params }: { params: Promise<{ id: string; locale: string }> }) {
-  const { id, locale } = await params;
-  const data = await fetchDetail(id);
-  if (!data) notFound();
-  const { screenplay, versions } = data;
-  const idShort = screenplay.id.slice(0, 8).toUpperCase();
-  return (
-    <main className="min-h-screen bg-stone-50 [font-family:var(--font-jp)]">
-      <div className="mx-auto max-w-[1440px] px-8 py-10">
-        <Link
-          href={`/${locale}/screenplays`}
-          className="inline-flex items-center gap-1.5 font-mono text-[10px] tracking-[0.3em] uppercase text-stone-500 hover:text-stone-900 transition-colors mb-10"
-        >
-          <ChevronLeft className="h-3 w-3" strokeWidth={2} />
-          Registry
-        </Link>
+	const { id, locale } = await params;
+	const data = await fetchDetail(id);
+	if (!data) notFound();
+	const { screenplay, versions } = data;
+	const badge = STATUS_BADGE[screenplay.status];
 
-        <header className="grid grid-cols-1 lg:grid-cols-[1fr_auto] items-end gap-6 border-b-4 border-double border-stone-900 pb-8 mb-12">
-          <div className="min-w-0">
-            <div className="flex items-center gap-3 font-mono text-[10px] tracking-[0.3em] uppercase text-stone-500 mb-3">
-              <span>SP-{idShort}</span>
-              <span className="text-stone-300">/</span>
-              <span>{STATUS_LABEL[screenplay.status]}</span>
-              <span className="text-stone-300">/</span>
-              <span className="tabular-nums">{versions.length.toString().padStart(2, "0")} rev</span>
-            </div>
-            <h1 className="text-[40px] leading-[1.05] font-black tracking-tight text-stone-900">
-              {screenplay.title}
-            </h1>
-          </div>
-          <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-stone-500 text-right leading-relaxed self-end">
-            Production · テレ東スタイル<br />
-            Gemini 3 Flash · Thinking Low
-          </div>
-        </header>
+	return (
+		<main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+			<Link
+				href={`/${locale}/screenplays`}
+				className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 mb-5"
+			>
+				<ChevronLeft size={14} />
+				台本一覧に戻る
+			</Link>
 
-        <ScreenplayWorkspace initialScreenplay={screenplay} initialVersions={versions} />
-      </div>
-    </main>
-  );
+			<header className="flex items-start justify-between gap-4 mb-6">
+				<div className="min-w-0 flex-1">
+					<div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 text-xs font-medium px-2.5 py-1 rounded-full mb-3">
+						<Clapperboard size={12} />
+						テレビショッピング台本
+					</div>
+					<div className="flex items-center gap-3 flex-wrap">
+						<h1 className="text-2xl font-bold text-gray-900">{screenplay.title}</h1>
+						<span className={`inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full ${badge.cls}`}>
+							{badge.label}
+						</span>
+						<span className="text-xs text-gray-400">改稿 {versions.length} 回</span>
+					</div>
+				</div>
+			</header>
+
+			<ScreenplayWorkspace initialScreenplay={screenplay} initialVersions={versions} />
+		</main>
+	);
 }

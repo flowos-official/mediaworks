@@ -1,81 +1,72 @@
 "use client";
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { FileText, Loader2, CheckCircle, AlertCircle, Clock, ArrowRight } from "lucide-react";
 
 interface Row {
-  id: string;
-  title: string;
-  status: "pending" | "generating" | "ready" | "failed";
-  updated_at: string;
+	id: string;
+	title: string;
+	status: "pending" | "generating" | "ready" | "failed";
+	updated_at: string;
 }
 
-const STATUS_LABEL: Record<Row["status"], string> = {
-  pending: "WAIT",
-  generating: "ROLL",
-  ready: "TAKE",
-  failed: "NG",
+const STATUS_CONFIG: Record<Row["status"], { icon: typeof Clock; cls: string; label: string }> = {
+	pending: { icon: Clock, cls: "bg-yellow-100 text-yellow-700", label: "待機中" },
+	generating: { icon: Loader2, cls: "bg-blue-100 text-blue-700", label: "生成中" },
+	ready: { icon: CheckCircle, cls: "bg-green-100 text-green-700", label: "完成" },
+	failed: { icon: AlertCircle, cls: "bg-red-100 text-red-700", label: "失敗" },
 };
-
-const STATUS_DOT: Record<Row["status"], string> = {
-  pending: "bg-stone-300",
-  generating: "bg-stone-900 animate-pulse",
-  ready: "bg-stone-900",
-  failed: "bg-stone-200 border border-stone-900",
-};
-
-function pad(n: number, w: number): string {
-  return n.toString().padStart(w, "0");
-}
 
 function formatStamp(iso: string): string {
-  const d = new Date(iso);
-  return `${d.getFullYear()}.${pad(d.getMonth() + 1, 2)}.${pad(d.getDate(), 2)} · ${pad(d.getHours(), 2)}:${pad(d.getMinutes(), 2)}`;
+	const d = new Date(iso);
+	const pad = (n: number) => n.toString().padStart(2, "0");
+	return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 export function ScreenplayList({ rows, locale }: { rows: Row[]; locale: string }) {
-  if (rows.length === 0) {
-    return (
-      <div className="border-y border-stone-900 py-20 text-center">
-        <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-stone-500 mb-3">no entries</div>
-        <p className="text-sm text-stone-600">
-          まだ台本は登録されていません。<br className="hidden sm:block" />
-          右上「<span className="font-bold text-stone-900">新規台本</span>」から作成を開始してください。
-        </p>
-      </div>
-    );
-  }
-  return (
-    <div className="border-t border-stone-900">
-      <div className="grid grid-cols-[64px_1fr_120px_180px_28px] gap-0 border-b border-stone-200 py-3 px-0 font-mono text-[10px] tracking-[0.25em] uppercase text-stone-500">
-        <div>No.</div>
-        <div>Title</div>
-        <div>Status</div>
-        <div>Last Revised</div>
-        <div></div>
-      </div>
-      <ol>
-        {rows.map((r, i) => (
-          <li key={r.id} className="group border-b border-stone-200 last:border-b-0 hover:bg-stone-100/70 transition-colors">
-            <Link
-              href={`/${locale}/screenplays/${r.id}`}
-              className="grid grid-cols-[64px_1fr_120px_180px_28px] items-baseline gap-0 py-5 px-0"
-            >
-              <div className="font-mono text-xs tracking-widest text-stone-400 tabular-nums">{pad(rows.length - i, 3)}</div>
-              <div className="text-[15px] font-bold leading-snug pr-6 [font-family:var(--font-jp)] text-stone-900">
-                {r.title}
-              </div>
-              <div className="flex items-center gap-2">
-                <span className={`inline-block h-1.5 w-1.5 rounded-full ${STATUS_DOT[r.status]}`} />
-                <span className="font-mono text-[10px] tracking-[0.25em] uppercase text-stone-700">{STATUS_LABEL[r.status]}</span>
-              </div>
-              <div className="font-mono text-[11px] text-stone-500 tabular-nums">{formatStamp(r.updated_at)}</div>
-              <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                <ArrowUpRight className="h-4 w-4 text-stone-900" strokeWidth={1.5} />
-              </div>
-            </Link>
-          </li>
-        ))}
-      </ol>
-    </div>
-  );
+	if (rows.length === 0) {
+		return (
+			<Card className="border-gray-200">
+				<CardContent className="py-16 flex flex-col items-center justify-center text-center">
+					<div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-4">
+						<FileText size={28} className="text-blue-600" />
+					</div>
+					<p className="text-gray-900 font-medium">まだ台本がありません</p>
+					<p className="text-sm text-gray-500 mt-1">
+						「新しい台本を作成」から、商品を選んで生成を開始してください。
+					</p>
+				</CardContent>
+			</Card>
+		);
+	}
+	return (
+		<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+			{rows.map((r) => {
+				const cfg = STATUS_CONFIG[r.status];
+				const Icon = cfg.icon;
+				return (
+					<Link key={r.id} href={`/${locale}/screenplays/${r.id}`} className="group">
+						<Card className="hover:shadow-md hover:border-blue-200 transition-all border-gray-200 h-full">
+							<CardContent className="p-5">
+								<div className="flex items-start justify-between gap-3 mb-3">
+									<div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
+										<FileText size={20} className="text-blue-600" />
+									</div>
+									<span className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${cfg.cls}`}>
+										<Icon size={12} className={r.status === "generating" ? "animate-spin" : ""} />
+										{cfg.label}
+									</span>
+								</div>
+								<h3 className="font-semibold text-gray-900 truncate mb-1">{r.title}</h3>
+								<div className="flex items-center justify-between mt-3">
+									<p className="text-xs text-gray-400">{formatStamp(r.updated_at)}</p>
+									<ArrowRight size={14} className="text-gray-300 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all" />
+								</div>
+							</CardContent>
+						</Card>
+					</Link>
+				);
+			})}
+		</div>
+	);
 }

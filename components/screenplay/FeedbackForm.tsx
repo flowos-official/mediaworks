@@ -1,115 +1,104 @@
 "use client";
 import { useState } from "react";
-import { ArrowRight } from "lucide-react";
+import { Send, Loader2, Sparkles } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 
 interface Props {
-  screenplayId: string;
-  baseVersionId: string;
-  disabled?: boolean;
-  onStart: (runId: string) => void;
+	screenplayId: string;
+	baseVersionId: string;
+	disabled?: boolean;
+	onStart: (runId: string) => void;
 }
 
 const SUGGESTIONS = [
-  "実演デモを最後の方に移動してください。",
-  "値段を見せる前に値引きの理由を一段重ねてください。",
-  "お客様の声を3人に増やして、年代と職業を変えてください。",
-  "この特徴説明を最後に入れてください。",
+	"実演デモを最後の方に移動してください。",
+	"値段を見せる前に値引きの理由を一段重ねてください。",
+	"お客様の声を3人に増やして、年代と職業を変えてください。",
+	"この特徴説明を最後に入れてください。",
 ];
 
 export function FeedbackForm({ screenplayId, baseVersionId, disabled, onStart }: Props) {
-  const [text, setText] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
+	const [text, setText] = useState("");
+	const [busy, setBusy] = useState(false);
+	const [err, setErr] = useState<string | null>(null);
 
-  async function submit() {
-    const feedback = text.trim();
-    if (!feedback) return;
-    setBusy(true);
-    setErr(null);
-    try {
-      const res = await fetch(`/api/screenplays/${screenplayId}/refine`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ feedback, baseVersionId }),
-      });
-      const j = await res.json();
-      if (!res.ok) throw new Error(j.error ?? "refine failed");
-      onStart(j.runId as string);
-      setText("");
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusy(false);
-    }
-  }
+	async function submit() {
+		const feedback = text.trim();
+		if (!feedback) return;
+		setBusy(true);
+		setErr(null);
+		try {
+			const res = await fetch(`/api/screenplays/${screenplayId}/refine`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ feedback, baseVersionId }),
+			});
+			const j = await res.json();
+			if (!res.ok) throw new Error(j.error ?? "改稿に失敗しました");
+			onStart(j.runId as string);
+			setText("");
+		} catch (e) {
+			setErr(e instanceof Error ? e.message : String(e));
+		} finally {
+			setBusy(false);
+		}
+	}
 
-  return (
-    <div className="relative">
-      <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-stone-500 mb-3">
-        Director's Note
-      </div>
-      <div
-        className="border border-stone-900"
-        style={{
-          backgroundImage:
-            "repeating-linear-gradient(to bottom, transparent, transparent 27px, rgb(228 228 231 / 0.6) 27px, rgb(228 228 231 / 0.6) 28px)",
-        }}
-      >
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          rows={6}
-          disabled={disabled || busy}
-          placeholder="例: 実演デモを最後に入れてください。お客様の声を3人に増やして、それぞれの職業を変えてください。"
-          className="w-full bg-transparent px-4 py-2.5 text-[14px] leading-[28px] text-stone-900 placeholder:text-stone-400 focus:outline-none resize-none [font-family:var(--font-jp)]"
-        />
-      </div>
+	return (
+		<Card className="border-gray-200">
+			<CardContent className="p-5">
+				<div className="flex items-center gap-2 mb-3">
+					<div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
+						<Sparkles size={16} className="text-blue-600" />
+					</div>
+					<div>
+						<h3 className="text-sm font-semibold text-gray-900">改稿フィードバック</h3>
+						<p className="text-[11px] text-gray-500">具体的に伝えるほど、自然に反映されます。</p>
+					</div>
+				</div>
 
-      <div className="mt-4">
-        <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-stone-500 mb-2">
-          Quick Inserts
-        </div>
-        <div className="flex flex-col gap-px">
-          {SUGGESTIONS.map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => setText((t) => (t ? t + "\n" : "") + s)}
-              className="text-left text-[12px] leading-relaxed px-3 py-2 border border-stone-200 bg-stone-50 hover:bg-stone-100 hover:border-stone-400 transition-colors text-stone-700 [font-family:var(--font-jp)]"
-            >
-              <span className="font-mono text-stone-400 mr-2 select-none">+</span>
-              {s}
-            </button>
-          ))}
-        </div>
-      </div>
+				<textarea
+					value={text}
+					onChange={(e) => setText(e.target.value)}
+					rows={5}
+					disabled={disabled || busy}
+					placeholder="例: 実演デモを最後に入れてください。お客様の声を3人に増やして、それぞれの職業を変えてください。"
+					className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 resize-none"
+				/>
 
-      {err && (
-        <div className="mt-4 border border-stone-900 bg-stone-50 px-3 py-2 font-mono text-[10px] tracking-wider text-stone-900">
-          NG / {err}
-        </div>
-      )}
+				<div className="mt-3">
+					<div className="text-[11px] font-medium text-gray-500 mb-1.5">よく使うリクエスト</div>
+					<div className="space-y-1.5">
+						{SUGGESTIONS.map((s) => (
+							<button
+								key={s}
+								type="button"
+								onClick={() => setText((t) => (t ? t + "\n" : "") + s)}
+								className="w-full text-left text-xs px-3 py-2 border border-gray-200 rounded-lg hover:border-blue-200 hover:bg-blue-50/40 text-gray-700 transition-colors"
+							>
+								<span className="text-blue-500 mr-1.5">＋</span>
+								{s}
+							</button>
+						))}
+					</div>
+				</div>
 
-      <button
-        type="button"
-        onClick={submit}
-        disabled={disabled || busy || !text.trim()}
-        className="group mt-5 w-full inline-flex items-center justify-between gap-3 bg-stone-900 text-stone-50 pl-5 pr-4 py-3.5 hover:bg-stone-800 disabled:bg-stone-300 disabled:cursor-not-allowed transition-colors"
-      >
-        <span className="font-mono text-[11px] tracking-[0.3em] uppercase">
-          {busy ? "Sending…" : "Reroll Take"}
-        </span>
-        <ArrowRight
-          className={`h-4 w-4 transition-transform ${busy ? "" : "group-hover:translate-x-1"}`}
-          strokeWidth={2}
-        />
-      </button>
+				{err && (
+					<div className="mt-3 p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
+						{err}
+					</div>
+				)}
 
-      <div className="mt-4 font-mono text-[10px] tracking-[0.2em] text-stone-400 leading-relaxed">
-        Tip · 「最後に」「もっと劇的に」「○人に増やして」のように、
-        <span className="text-stone-700">具体的な要望</span>
-        ほど改稿が安定します。
-      </div>
-    </div>
-  );
+				<button
+					type="button"
+					onClick={submit}
+					disabled={disabled || busy || !text.trim()}
+					className="mt-4 w-full inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+				>
+					{busy ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+					{busy ? "送信中..." : "この内容で改稿する"}
+				</button>
+			</CardContent>
+		</Card>
+	);
 }
