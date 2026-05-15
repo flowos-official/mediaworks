@@ -9,13 +9,13 @@ function getGenAI(): GoogleGenAI {
   return _genAI;
 }
 
-// Switched to Gemini 3 Flash preview per user request — faster first byte,
-// ~3× lower latency than Pro. Quality is anchored by the heavy system instruction
-// + an exemplar few-shot, so Flash + LOW thinking is the sweet spot here.
-const MODEL = "gemini-3-flash-preview";
-const THINKING_LEVEL_NAME = "LOW";
-const HARD_TIMEOUT_MS = 180_000;       // 3 min — Flash should finish well under
-const FIRST_CHUNK_MS = 90_000;         // 1.5 min for first byte
+// Per user request: switched back to Gemini 3.1 Pro preview with HIGH thinking.
+// Pro+HIGH produces denser, more faithful Japanese output and obeys
+// "100% Japanese, no English" instructions more reliably than Flash.
+const MODEL = "gemini-3.1-pro-preview";
+const THINKING_LEVEL_NAME = "HIGH";
+const HARD_TIMEOUT_MS = 540_000;       // 9 min — Pro+HIGH can take 3-6 min
+const FIRST_CHUNK_MS = 240_000;        // 4 min for first byte (Pro thinks longer before streaming)
 
 function isRetryable(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
@@ -45,7 +45,7 @@ async function callOnce(userPrompt: string, onChunk?: (chars: number) => void): 
       contents: userPrompt,
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
         abortSignal: controller.signal,
       },
     });

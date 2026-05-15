@@ -385,7 +385,7 @@ export function ScreenplayCreateForm({ locale }: { locale: string }) {
 						<div className="text-sm text-gray-500">商品名と特徴を入力してください</div>
 					)}
 					<div className="text-[11px] text-gray-400 mt-1">
-						生成には約30秒〜2分かかります。完了後にフィードバックで改稿できます。
+						生成には約2〜6分かかります。完了後にフィードバックで改稿できます。
 					</div>
 				</div>
 				<button
