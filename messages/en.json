@@ -5,7 +5,8 @@
     "reports": "Reports",
     "analytics": "Analytics",
     "gallery": "Gallery",
-    "broadcasts": "Broadcast Calendar"
+    "broadcasts": "Broadcast Calendar",
+    "screenplays": "Screenplays"
   },
   "home": {
     "title": "MediaWorks",
@@ -347,5 +348,34 @@
     },
     "retry": "Retry",
     "back": "Back to home"
+  },
+  "screenplay": {
+    "navLabel": "Screenplays",
+    "title": "TV Shopping Screenplay",
+    "subtitle": "Generate and iteratively refine a TV-shopping screenplay per product.",
+    "new": "New",
+    "noneYet": "No screenplays yet. Click 'New' to begin.",
+    "status": { "pending": "Pending", "generating": "Generating", "ready": "Ready", "failed": "Failed" },
+    "form": {
+      "productName": "Product name",
+      "category": "Category",
+      "description": "Features / specs",
+      "listPrice": "List price (¥)",
+      "salePrice": "Sale price (¥)",
+      "submit": "Generate screenplay"
+    },
+    "workspace": {
+      "history": "Revisions",
+      "v1": "Initial",
+      "downloadMd": "Download .md",
+      "copyMd": "Copy Markdown",
+      "copied": "Copied"
+    },
+    "feedback": {
+      "label": "Type feedback to refine",
+      "placeholder": "e.g. Move the live demo later. Increase customer testimonials to 3 with different occupations.",
+      "submit": "Refine with this",
+      "sending": "Sending…"
+    }
   }
 }

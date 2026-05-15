@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
 import LanguageSwitcher from './LanguageSwitcher';
-import { BarChart3, Calendar } from 'lucide-react';
+import { BarChart3, Calendar, Clapperboard } from 'lucide-react';
 
 export default function Navbar() {
   const t = useTranslations('nav');
@@ -30,6 +30,13 @@ export default function Navbar() {
             >
               <Calendar size={14} />
               {t('broadcasts')}
+            </Link>
+            <Link
+              href={`/${locale}/screenplays`}
+              className="text-sm text-gray-600 hover:text-gray-900 font-medium flex items-center gap-1"
+            >
+              <Clapperboard size={14} />
+              {t('screenplays')}
             </Link>
             <Link
               href={`/${locale}/analytics`}

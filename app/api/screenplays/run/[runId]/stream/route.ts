@@ -1,0 +1,48 @@
+import { NextRequest } from "next/server";
+import { getRun } from "workflow/api";
+import type { ProgressEvent } from "@/lib/screenplay/types";
+
+export const maxDuration = 800;
+
+export async function GET(
+	_request: NextRequest,
+	{ params }: { params: Promise<{ runId: string }> },
+) {
+	const { runId } = await params;
+
+	// Validate runId shape early to avoid unhandled rejections from the SDK
+	// when an unknown / malformed runId is passed.
+	if (!/^wrun_[A-Z0-9]+$/i.test(runId)) {
+		return Response.json({ error: "invalid runId" }, { status: 404 });
+	}
+
+	try {
+		const run = getRun(runId);
+		// Probe existence before opening the stream — surfaces 404 cleanly.
+		try {
+			await run.status;
+		} catch (probeErr) {
+			const msg = probeErr instanceof Error ? probeErr.message : String(probeErr);
+			return Response.json({ error: msg }, { status: 404 });
+		}
+		const source = run.getReadable<ProgressEvent>({ namespace: "progress" });
+		const encoder = new TextEncoder();
+		const ndjson = source.pipeThrough(
+			new TransformStream<ProgressEvent, Uint8Array>({
+				transform(event, controller) {
+					controller.enqueue(encoder.encode(JSON.stringify(event) + "\n"));
+				},
+			}),
+		);
+		return new Response(ndjson, {
+			headers: {
+				"Content-Type": "application/x-ndjson; charset=utf-8",
+				"Cache-Control": "no-cache, no-transform",
+				"X-Accel-Buffering": "no",
+			},
+		});
+	} catch (err) {
+		const msg = err instanceof Error ? err.message : String(err);
+		return Response.json({ error: msg }, { status: 500 });
+	}
+}

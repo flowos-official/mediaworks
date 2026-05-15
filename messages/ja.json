@@ -5,7 +5,8 @@
     "reports": "レポート",
     "analytics": "売上分析",
     "gallery": "商品画像",
-    "broadcasts": "番組カレンダー"
+    "broadcasts": "番組カレンダー",
+    "screenplays": "台本"
   },
   "home": {
     "title": "MediaWorks",
@@ -347,5 +348,34 @@
     },
     "retry": "再試行",
     "back": "ホームに戻る"
+  },
+  "screenplay": {
+    "navLabel": "台本",
+    "title": "テレビショッピング 台本",
+    "subtitle": "商品ごとに、生放送さながらの台本を生成・改稿できます。",
+    "new": "新規作成",
+    "noneYet": "まだ台本はありません。「新規作成」から始めてください。",
+    "status": { "pending": "待機", "generating": "生成中", "ready": "完成", "failed": "失敗" },
+    "form": {
+      "productName": "商品名",
+      "category": "カテゴリ",
+      "description": "特徴・スペック",
+      "listPrice": "メーカー直販価格 (¥)",
+      "salePrice": "本日特別価格 (¥)",
+      "submit": "台本を生成する"
+    },
+    "workspace": {
+      "history": "改稿履歴",
+      "v1": "初回生成",
+      "downloadMd": ".md ダウンロード",
+      "copyMd": "Markdown コピー",
+      "copied": "コピー済み"
+    },
+    "feedback": {
+      "label": "フィードバックを入力して改稿",
+      "placeholder": "例: 実演デモを最後に入れてください。お客様の声を3人に増やして、それぞれの職業を変えてください。",
+      "submit": "この内容で改稿する",
+      "sending": "送信中…"
+    }
   }
 }
