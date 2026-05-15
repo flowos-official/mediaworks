@@ -1654,7 +1654,7 @@ IMPORTANT:
 // Prompt Builders (rewritten with DATA-first, TASK-last structure)
 // ---------------------------------------------------------------------------
 
-function buildProductSelectionPrompt(ctx: StrategyContext): string {
+export function buildProductSelectionPrompt(ctx: StrategyContext): string {
 	const seedSection = formatMultiSeedPromptSection(
 		ctx.seedProducts ?? (ctx.seedProduct ? [ctx.seedProduct] : []),
 	);
@@ -1748,7 +1748,7 @@ const EMPTY_PM: PricingMarginOutput = { product_pricing: [], bep_analysis: [], m
 const EMPTY_ME: MarketingExecutionOutput = { monthly_plans: [], content_calendar: [], influencer_plan: [], budget_summary: { total_6month: 0, by_channel: {}, by_type: {} } };
 const EMPTY_FP: FinancialProjectionOutput = { monthly_forecast: [], roi_timeline: [], scenarios: { conservative: { year1_revenue: 0, year1_profit: 0 }, moderate: { year1_revenue: 0, year1_profit: 0 }, aggressive: { year1_revenue: 0, year1_profit: 0 }, assumptions: [] } };
 
-function buildChannelStrategyPrompt(ctx: StrategyContext, priorOutputs: Record<string, unknown>): string {
+export function buildChannelStrategyPrompt(ctx: StrategyContext, priorOutputs: Record<string, unknown>): string {
 	const seedSection = formatMultiSeedPromptSection(
 		ctx.seedProducts ?? (ctx.seedProduct ? [ctx.seedProduct] : []),
 	);
@@ -1838,7 +1838,7 @@ Return a JSON object (no markdown) with this structure:
 ${buildSourcesSection(ctx)}`;
 }
 
-function buildPricingMarginPrompt(ctx: StrategyContext, priorOutputs: Record<string, unknown>): string {
+export function buildPricingMarginPrompt(ctx: StrategyContext, priorOutputs: Record<string, unknown>): string {
 	const seedSection = formatMultiSeedPromptSection(
 		ctx.seedProducts ?? (ctx.seedProduct ? [ctx.seedProduct] : []),
 	);
@@ -1961,7 +1961,7 @@ Return a JSON object (no markdown) with this structure:
 ${buildSourcesSection(ctx)}`;
 }
 
-function buildMarketingExecutionPrompt(ctx: StrategyContext, priorOutputs: Record<string, unknown>): string {
+export function buildMarketingExecutionPrompt(ctx: StrategyContext, priorOutputs: Record<string, unknown>): string {
 	const seedSection = formatMultiSeedPromptSection(
 		ctx.seedProducts ?? (ctx.seedProduct ? [ctx.seedProduct] : []),
 	);
@@ -2090,7 +2090,7 @@ Return a JSON object (no markdown) with this structure:
 ${buildSourcesSection(ctx)}`;
 }
 
-function buildFinancialProjectionPrompt(ctx: StrategyContext, priorOutputs: Record<string, unknown>): string {
+export function buildFinancialProjectionPrompt(ctx: StrategyContext, priorOutputs: Record<string, unknown>): string {
 	const seedSection = formatMultiSeedPromptSection(
 		ctx.seedProducts ?? (ctx.seedProduct ? [ctx.seedProduct] : []),
 	);
@@ -2215,7 +2215,7 @@ Return a JSON object (no markdown) with this structure:
 ${buildSourcesSection(ctx)}`;
 }
 
-function buildRiskContingencyPrompt(ctx: StrategyContext, priorOutputs: Record<string, unknown>): string {
+export function buildRiskContingencyPrompt(ctx: StrategyContext, priorOutputs: Record<string, unknown>): string {
 	const seedSection = formatMultiSeedPromptSection(
 		ctx.seedProducts ?? (ctx.seedProduct ? [ctx.seedProduct] : []),
 	);
