@@ -1,5 +1,4 @@
 "use client";
-import { Check, FileText } from "lucide-react";
 import type { ScreenplayVersionRow } from "@/lib/screenplay/types";
 
 interface Props {
@@ -8,29 +7,50 @@ interface Props {
   onSelect: (id: string) => void;
 }
 
+function pad(n: number, w: number): string {
+  return n.toString().padStart(w, "0");
+}
+
+function relative(iso: string): string {
+  const t = new Date(iso).getTime();
+  const diff = (Date.now() - t) / 1000;
+  if (diff < 60) return "just now";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
+
 export function VersionTimeline({ versions, selectedId, onSelect }: Props) {
+  // newest first reads better in a revision sidebar
+  const ordered = [...versions].reverse();
   return (
-    <ol className="space-y-2">
-      {versions.map((v) => {
+    <ol className="relative">
+      <span aria-hidden className="absolute left-[10px] top-2 bottom-2 w-px bg-stone-300" />
+      {ordered.map((v) => {
         const active = v.id === selectedId;
         return (
-          <li key={v.id}>
+          <li key={v.id} className="relative pl-7">
             <button
               type="button"
               onClick={() => onSelect(v.id)}
-              className={`w-full text-left rounded border px-3 py-2 flex gap-3 items-start transition-colors ${active ? "border-zinc-900 bg-zinc-900 text-zinc-50" : "border-zinc-200 bg-white hover:border-zinc-400"}`}
+              className={`w-full text-left py-3 pr-3 -mr-3 transition-colors ${active ? "" : "hover:bg-stone-100"}`}
             >
-              <div className="mt-0.5">
-                {active ? <Check className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+              <span
+                aria-hidden
+                className={`absolute left-[6px] top-[18px] h-2.5 w-2.5 rounded-full border-2 ${active ? "border-stone-900 bg-stone-900" : "border-stone-400 bg-stone-50"}`}
+              />
+              <div className="flex items-baseline justify-between gap-2">
+                <span className={`font-mono text-xs font-bold tabular-nums tracking-widest ${active ? "text-stone-900" : "text-stone-500"}`}>
+                  V{pad(v.version_number, 2)}
+                </span>
+                <span className="font-mono text-[10px] text-stone-400 tabular-nums">{relative(v.created_at)}</span>
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-bold">v{v.version_number}</div>
-                <div className={`text-xs truncate ${active ? "text-zinc-300" : "text-zinc-500"}`}>
-                  {v.feedback ? `「${v.feedback}」` : "初回生成"}
-                </div>
-                <div className={`text-[10px] ${active ? "text-zinc-400" : "text-zinc-400"}`}>
-                  {new Date(v.created_at).toLocaleString("ja-JP")}
-                </div>
+              <div className={`mt-1 text-xs leading-relaxed line-clamp-3 ${active ? "text-stone-900" : "text-stone-500"}`}>
+                {v.feedback ? (
+                  <span className="border-l-2 border-stone-300 pl-2 italic">{v.feedback}</span>
+                ) : (
+                  <span className="font-mono text-[10px] tracking-[0.25em] uppercase">Initial Draft</span>
+                )}
               </div>
             </button>
           </li>
