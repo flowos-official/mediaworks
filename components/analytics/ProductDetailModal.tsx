@@ -78,14 +78,15 @@ type ProductDetailData = {
   category: string | null;
   summary: {
     totalRevenue: number;
-    totalProfit: number;
+    totalProfit: number | null;
     totalQuantity: number;
-    marginRate: number;
+    marginRate: number | null;
     weekCount: number;
     avgWeeklyQuantity: number;
   };
-  weekly: Array<{ date: string; revenue: number; profit: number; quantity: number }>;
+  weekly: Array<{ date: string; revenue: number; profit: number | null; quantity: number }>;
   detail: DetailData | null;
+  viewer?: boolean;
 };
 
 type ImageData = {
@@ -157,12 +158,14 @@ export default function ProductDetailModal({
   }, [productCode]);
 
   const d = data?.detail;
+  const isViewer = data?.viewer === true;
 
   const tabs: { key: ModalTab; label: string; icon: typeof Package }[] = [
     { key: 'overview', label: '概要', icon: BarChart3 },
     { key: 'sku', label: 'SKU・FAQ', icon: Tag },
     { key: 'logistics', label: '物流・規定', icon: Truck },
-    { key: 'confidential', label: '社外秘', icon: ShieldCheck },
+    // 社外秘 tab is hidden for viewer role
+    ...(isViewer ? [] : [{ key: 'confidential' as ModalTab, label: '社外秘', icon: ShieldCheck }]),
     { key: 'contacts', label: '取引先', icon: Users },
     { key: 'images', label: '商品画像', icon: ImageIcon },
   ];
@@ -255,14 +258,16 @@ export default function ProductDetailModal({
                     </div>
                   )}
 
-                  {/* KPI */}
+                  {/* KPI — 総粗利 hidden for viewer */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {[
+                    {([
                       { label: '総売上', value: formatYen(data.summary.totalRevenue) },
-                      { label: '総粗利', value: formatYen(data.summary.totalProfit) },
+                      data.summary.totalProfit != null
+                        ? { label: '総粗利', value: formatYen(data.summary.totalProfit) }
+                        : null,
                       { label: '週平均', value: `${data.summary.avgWeeklyQuantity}個` },
                       { label: '販売週数', value: `${data.summary.weekCount}週` },
-                    ].map((kpi) => (
+                    ].filter((x): x is { label: string; value: string } => x !== null)).map((kpi) => (
                       <div key={kpi.label} className="bg-gray-50 rounded-xl p-3 text-center">
                         <div className="text-[10px] text-gray-500 uppercase">{kpi.label}</div>
                         <div className="text-lg font-bold text-gray-900">{kpi.value}</div>
@@ -570,8 +575,8 @@ export default function ProductDetailModal({
                 </div>
               )}
 
-              {/* ========== TAB: 社外秘 ========== */}
-              {activeTab === 'confidential' && d && (
+              {/* ========== TAB: 社外秘 — hidden for viewer ========== */}
+              {activeTab === 'confidential' && d && !isViewer && (
                 <div className="space-y-5">
                   {/* Pricing */}
                   <Card className="border-orange-200 bg-orange-50/30">

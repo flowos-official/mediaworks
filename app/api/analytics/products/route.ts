@@ -87,6 +87,8 @@ export async function GET(request: NextRequest) {
 		productMap[key].weekCount += row.week_count ?? 0;
 	}
 
+	const isViewer = auth.role === "viewer";
+
 	let products = Object.values(productMap).map((p) => ({
 		...p,
 		marginRate: p.totalRevenue > 0
@@ -103,7 +105,10 @@ export async function GET(request: NextRequest) {
 			products.sort((a, b) => b.totalQuantity - a.totalQuantity);
 			break;
 		case "margin":
-			products.sort((a, b) => b.marginRate - a.marginRate);
+			// viewer can't sort by a field they can't see — fall back to revenue
+			products.sort((a, b) =>
+				isViewer ? b.totalRevenue - a.totalRevenue : b.marginRate - a.marginRate,
+			);
 			break;
 		default:
 			products.sort((a, b) => b.totalRevenue - a.totalRevenue);
@@ -111,5 +116,18 @@ export async function GET(request: NextRequest) {
 
 	products = products.slice(0, limitParam);
 
-	return NextResponse.json({ products, total: Object.keys(productMap).length });
+	if (isViewer) {
+		products = products.map((p) => ({
+			...p,
+			totalCost: null as unknown as number,
+			totalProfit: null as unknown as number,
+			marginRate: null as unknown as number,
+		}));
+	}
+
+	return NextResponse.json({
+		products,
+		total: Object.keys(productMap).length,
+		viewer: isViewer,
+	});
 }

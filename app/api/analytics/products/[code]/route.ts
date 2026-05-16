@@ -61,6 +61,11 @@ export async function GET(
 	const totalRevenue = rows.reduce((s, r) => s + (r.total_revenue ?? 0), 0);
 	const totalProfit = rows.reduce((s, r) => s + (r.gross_profit ?? 0), 0);
 	const totalQuantity = rows.reduce((s, r) => s + (r.order_quantity ?? 0), 0);
+	const isViewer = auth.role === "viewer";
+
+	const maskedDetail = detail && isViewer
+		? { ...detail, cost_price: null, wholesale_rate: null }
+		: detail;
 
 	return NextResponse.json({
 		code,
@@ -68,9 +73,13 @@ export async function GET(
 		category: rows[0].category,
 		summary: {
 			totalRevenue,
-			totalProfit,
+			totalProfit: isViewer ? null : totalProfit,
 			totalQuantity,
-			marginRate: totalRevenue > 0 ? Math.round((totalProfit / totalRevenue) * 10000) / 100 : 0,
+			marginRate: isViewer
+				? null
+				: totalRevenue > 0
+					? Math.round((totalProfit / totalRevenue) * 10000) / 100
+					: 0,
 			weekCount: rows.length,
 			avgWeeklyQuantity: Math.round(totalQuantity / rows.length),
 		},
@@ -79,10 +88,11 @@ export async function GET(
 			dateEnd: r.week_end,
 			quantity: r.order_quantity,
 			revenue: r.total_revenue,
-			profit: r.gross_profit,
-			cost: r.order_cost,
+			profit: isViewer ? null : r.gross_profit,
+			cost: isViewer ? null : r.order_cost,
 		})),
 		monthly,
-		detail: detail ?? null,
+		detail: maskedDetail ?? null,
+		viewer: isViewer,
 	});
 }
