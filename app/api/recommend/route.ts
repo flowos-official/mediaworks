@@ -1,3 +1,4 @@
+import { requireUser } from "@/lib/auth/require-user";
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getServiceClient } from "@/lib/supabase";
@@ -159,6 +160,10 @@ async function annotateWithMarketPrices(
 }
 
 export async function POST(request: NextRequest) {
+	// auth: requireUser
+	const auth = await requireUser(["member", "admin"]);
+	if ("error" in auth) return auth.error;
+
 	const body = await request.json().catch(() => ({}));
 	const { category, targetMarket, priceRange } = body;
 

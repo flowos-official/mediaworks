@@ -1,3 +1,4 @@
+import { requireUser } from "@/lib/auth/require-user";
 import { NextRequest, NextResponse } from "next/server";
 import { after } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
@@ -12,6 +13,10 @@ export async function POST(
 	req: NextRequest,
 	ctx: { params: Promise<{ productId: string }> },
 ) {
+	// auth: requireUser
+	const auth = await requireUser(["member", "admin"]);
+	if ("error" in auth) return auth.error;
+
 	const { productId } = await ctx.params;
 	const sb = getServiceClient();
 
@@ -94,6 +99,10 @@ export async function GET(
 	_req: NextRequest,
 	ctx: { params: Promise<{ productId: string }> },
 ) {
+	// auth: requireUser
+	const auth = await requireUser(["member", "admin"]);
+	if ("error" in auth) return auth.error;
+
 	const { productId } = await ctx.params;
 	const sb = getServiceClient();
 

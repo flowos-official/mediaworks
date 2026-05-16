@@ -1,3 +1,4 @@
+import { requireUser } from "@/lib/auth/require-user";
 import { NextRequest } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
 
@@ -5,6 +6,10 @@ export async function GET(
 	_request: NextRequest,
 	{ params }: { params: Promise<{ id: string }> },
 ) {
+	// auth: requireUser
+	const auth = await requireUser(["member", "admin"]);
+	if ("error" in auth) return auth.error;
+
 	const { id } = await params;
 	const supabase = getServiceClient();
 
@@ -24,6 +29,10 @@ export async function DELETE(
 	_request: NextRequest,
 	{ params }: { params: Promise<{ id: string }> },
 ) {
+	// auth: requireUser
+	const auth = await requireUser(["member", "admin"]);
+	if ("error" in auth) return auth.error;
+
 	const { id } = await params;
 	const supabase = getServiceClient();
 

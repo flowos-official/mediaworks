@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { enrichProduct } from "@/lib/discovery/enrich-agent";
 import { getServiceClient } from "@/lib/supabase";
+import { hasInternalSecret } from "@/lib/auth/require-user";
 
 export const maxDuration = 60;
 
@@ -12,12 +13,8 @@ export async function POST(
 	req: NextRequest,
 	ctx: { params: Promise<{ productId: string }> },
 ) {
-	const secret = process.env.CRON_SECRET;
-	if (secret) {
-		const header = req.headers.get("authorization");
-		if (header !== `Bearer ${secret}`) {
-			return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-		}
+	if (!hasInternalSecret(req)) {
+		return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 	}
 
 	const { productId } = await ctx.params;

@@ -1,3 +1,4 @@
+import { requireUser } from "@/lib/auth/require-user";
 import { type NextRequest, NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
 import { loadProductsForBroadcasts } from "@/lib/qvc-products/attach";
@@ -7,6 +8,10 @@ const VALID_CHANNELS = new Set(["shopch", "qvc"]);
 const MAX_RANGE_DAYS = 62;
 
 export async function GET(req: NextRequest) {
+	// auth: requireUser
+	const auth = await requireUser(["member", "admin"]);
+	if ("error" in auth) return auth.error;
+
 	const { searchParams } = new URL(req.url);
 	const from = searchParams.get("from");
 	const to = searchParams.get("to");

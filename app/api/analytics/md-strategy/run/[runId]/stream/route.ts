@@ -1,3 +1,4 @@
+import { requireUser } from "@/lib/auth/require-user";
 import { NextRequest } from "next/server";
 import { getRun } from "workflow/api";
 import type { ProgressEvent } from "@/lib/md-strategy";
@@ -13,6 +14,10 @@ export async function GET(
 	_request: NextRequest,
 	{ params }: { params: Promise<{ runId: string }> },
 ) {
+	// auth: requireUser
+	const auth = await requireUser(["member", "admin"]);
+	if ("error" in auth) return auth.error;
+
 	const { runId } = await params;
 	const run = getRun(runId);
 	const source = run.getReadable<ProgressEvent>({ namespace: "progress" });

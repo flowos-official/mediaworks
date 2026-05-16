@@ -1,3 +1,4 @@
+import { requireUser } from "@/lib/auth/require-user";
 import { NextRequest } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
 import { discoverNewProducts, type DiscoveryBatch } from "@/lib/md-strategy";
@@ -7,6 +8,10 @@ export const maxDuration = 120;
 
 // POST: Run product discovery (new session or append to existing)
 export async function POST(request: NextRequest) {
+	// auth: requireUser
+	const auth = await requireUser(["member", "admin"]);
+	if ("error" in auth) return auth.error;
+
 	const body = await request.json().catch(() => ({}));
 	const {
 		sessionId,
@@ -156,6 +161,10 @@ export async function POST(request: NextRequest) {
 
 // GET: Load saved discovery sessions list
 export async function GET() {
+	// auth: requireUser
+	const auth = await requireUser(["member", "admin"]);
+	if ("error" in auth) return auth.error;
+
 	const supabase = getServiceClient();
 	const { data, error } = await supabase
 		.from("discovery_sessions")

@@ -1,3 +1,4 @@
+import { requireUser } from "@/lib/auth/require-user";
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
 
@@ -12,6 +13,10 @@ const DEFAULT_LIMIT = 30;
  *   - offset (default 0)
  */
 export async function GET(req: NextRequest) {
+	// auth: requireUser
+	const auth = await requireUser(["member", "admin"]);
+	if ("error" in auth) return auth.error;
+
 	const sb = getServiceClient();
 	const { searchParams } = new URL(req.url);
 

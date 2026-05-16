@@ -1,3 +1,4 @@
+import { requireUser } from "@/lib/auth/require-user";
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
 import { extractProductInfo } from "@/lib/gemini";
@@ -5,6 +6,10 @@ import { extractProductInfo } from "@/lib/gemini";
 export const maxDuration = 120; // Extract only — fast, but buffer for large files
 
 export async function POST(request: NextRequest) {
+	// auth: requireUser
+	const auth = await requireUser(["member", "admin"]);
+	if ("error" in auth) return auth.error;
+
 	const { productId, fileBase64, mimeType, fileName } = await request.json();
 
 	const supabase = getServiceClient();
@@ -40,7 +45,10 @@ export async function POST(request: NextRequest) {
 			process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 		fetch(`${baseUrl}/api/analyze/synthesize`, {
 			method: "POST",
-			headers: { "Content-Type": "application/json" },
+			headers: {
+				"Content-Type": "application/json",
+				Authorization: `Bearer ${process.env.CRON_SECRET ?? ""}`,
+			},
 			body: JSON.stringify({ productId }),
 		}).catch((err) => {
 			console.error(`[${productId}] Failed to trigger synthesize:`, err);

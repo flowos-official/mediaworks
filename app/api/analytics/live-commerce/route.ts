@@ -1,3 +1,4 @@
+import { requireUser } from "@/lib/auth/require-user";
 import { NextRequest } from "next/server";
 import { start } from "workflow/api";
 import { liveCommerceWorkflow } from "@/lib/workflows/live-commerce.workflow";
@@ -6,6 +7,10 @@ import { getServiceClient } from "@/lib/supabase";
 export const maxDuration = 60;
 
 export async function GET() {
+	// auth: requireUser
+	const auth = await requireUser(["member", "admin"]);
+	if ("error" in auth) return auth.error;
+
 	const supabase = getServiceClient();
 	const { data, error } = await supabase
 		.from("live_commerce_strategies")
@@ -20,6 +25,10 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+	// auth: requireUser
+	const auth = await requireUser(["member", "admin"]);
+	if ("error" in auth) return auth.error;
+
 	const body = await request.json().catch(() => ({}));
 	const input = {
 		userGoal: typeof body.userGoal === "string" ? body.userGoal : "",

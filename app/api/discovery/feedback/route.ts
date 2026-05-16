@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
+import { requireUser } from "@/lib/auth/require-user";
 
 export const maxDuration = 10;
 
@@ -28,6 +29,9 @@ interface FeedbackBody {
 }
 
 export async function POST(req: NextRequest) {
+	const auth = await requireUser(["member", "admin"]);
+	if ("error" in auth) return auth.error;
+
 	let body: FeedbackBody;
 	try {
 		body = (await req.json()) as FeedbackBody;
@@ -91,6 +95,7 @@ export async function POST(req: NextRequest) {
 			discovered_product_id: body.productId,
 			action: body.action,
 			reason,
+			user_id: auth.user.id,
 		}),
 		sb
 			.from("discovered_products")
