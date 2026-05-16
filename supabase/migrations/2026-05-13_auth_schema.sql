@@ -42,11 +42,15 @@ create or replace function public.current_user_role() returns text
     select role from public.profiles where id = auth.uid()
 $$;
 
--- Trigger to forbid non-admin role changes
+-- Trigger to forbid non-admin role changes. Direct Postgres connections
+-- (current_user = 'postgres' or 'supabase_admin') and PostgREST-via-service-role
+-- (current_user = 'service_role') bypass the check so admin bootstrap and
+-- Admin SDK calls can still mutate roles.
 create or replace function public.prevent_role_self_escalation() returns trigger
   language plpgsql as $$
 begin
   if new.role is distinct from old.role
+     and current_user not in ('service_role', 'postgres', 'supabase_admin')
      and (public.current_user_role() is null or public.current_user_role() <> 'admin') then
     raise exception 'role can only be changed by admin';
   end if;
