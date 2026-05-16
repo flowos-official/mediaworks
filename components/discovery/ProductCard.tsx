@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Sparkles, Star, TrendingUp, ShoppingBag, Tv, Compass } from "lucide-react";
+import { Sparkles, Star, TrendingUp, ShoppingBag, Tv, Compass, ChevronDown } from "lucide-react";
 import { EnrichmentProgress } from "./EnrichmentProgress";
 import { CPackageDrawer } from "./CPackageDrawer";
 import { IntegrationActions } from "./IntegrationActions";
 import { FeedbackButtons, type FeedbackState } from "./FeedbackButtons";
-import type { CPackage } from "@/lib/discovery/types";
+import type { CPackage, CurationScore } from "@/lib/discovery/types";
 import { getChannelBySlug, parseChannelSlugs } from "@/lib/discovery/tv-channels";
 
 type EnrichmentStatus = "idle" | "queued" | "running" | "completed" | "failed";
@@ -24,6 +24,7 @@ export type DiscoveredProductRow = {
 	review_avg: number | null;
 	tv_fit_score: number | null;
 	tv_fit_reason: string | null;
+	score_breakdown?: CurationScore | null;
 	broadcast_tag: "broadcast_confirmed" | "broadcast_likely" | "unknown" | null;
 	track: "tv_proven" | "exploration";
 	stock_status: string | null;
@@ -42,6 +43,47 @@ function scoreColor(score: number): string {
 	if (score >= 60) return "text-blue-700 bg-blue-100 border-blue-300";
 	if (score >= 40) return "text-yellow-700 bg-yellow-100 border-yellow-300";
 	return "text-red-700 bg-red-100 border-red-300";
+}
+
+// max points per signal — mirrors lib/discovery/curate.ts §採点基準
+const SCORE_MAX: Record<keyof Omit<CurationScore, "total">, { max: number; label: string; color: string }> = {
+	review_signal:     { max: 35, label: "レビュー",   color: "bg-amber-400" },
+	tv_category_match: { max: 20, label: "カテゴリ",   color: "bg-purple-400" },
+	trend_signal:      { max: 15, label: "トレンド",   color: "bg-pink-400" },
+	price_fit:         { max: 15, label: "価格",       color: "bg-blue-400" },
+	purchase_signal:   { max: 15, label: "購買",       color: "bg-emerald-400" },
+};
+
+function ScoreBreakdownBars({ breakdown }: { breakdown: CurationScore }) {
+	const keys = Object.keys(SCORE_MAX) as (keyof typeof SCORE_MAX)[];
+	const totalMax = keys.reduce((s, k) => s + SCORE_MAX[k].max, 0); // 100
+	return (
+		<div className="mt-2 space-y-1">
+			{keys.map((k) => {
+				const { max, label, color } = SCORE_MAX[k];
+				const v = breakdown[k] ?? 0;
+				const widthPct = Math.max(0, Math.min(100, (v / max) * 100));
+				const shareOfTotalPct = Math.round((v / totalMax) * 100);
+				return (
+					<div key={k} className="flex items-center gap-2 text-[10px]">
+						<span className="w-14 shrink-0 text-gray-600 font-medium">{label}</span>
+						<div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+							<div
+								className={`h-full ${color} transition-all`}
+								style={{ width: `${widthPct}%` }}
+							/>
+						</div>
+						<span className="w-12 shrink-0 text-right font-mono text-gray-700">
+							{v}/{max}
+						</span>
+						<span className="w-8 shrink-0 text-right text-gray-400 tabular-nums">
+							{shareOfTotalPct}%
+						</span>
+					</div>
+				);
+			})}
+		</div>
+	);
 }
 
 export function ProductCard({
@@ -68,6 +110,7 @@ export function ProductCard({
 
 	const [feedbackState, setFeedbackState] = useState<FeedbackState>(product.user_action ?? null);
 	const [feedbackReason, setFeedbackReason] = useState<string | null>(product.action_reason ?? null);
+	const [showBreakdown, setShowBreakdown] = useState(false);
 
 	const isRejected = feedbackState === "rejected";
 	const isDimmed = feedbackState === "rejected" || feedbackState === "duplicate";
@@ -238,18 +281,39 @@ export function ProductCard({
 				</div>
 			</div>
 
-			{/* TV fit reason */}
-			{product.tv_fit_reason && (
+			{/* TV fit reason + score breakdown toggle */}
+			{(product.tv_fit_reason || product.score_breakdown) && (
 				<div className="bg-amber-50 border border-amber-100 rounded px-3 py-2 mb-3">
-					<div className="flex items-center gap-1 mb-0.5">
-						<TrendingUp size={11} className="text-amber-600" />
-						<span className="text-[10px] font-bold text-amber-700 uppercase tracking-wide">
-							TV適合性
-						</span>
+					<div className="flex items-center justify-between gap-2 mb-0.5">
+						<div className="flex items-center gap-1">
+							<TrendingUp size={11} className="text-amber-600" />
+							<span className="text-[10px] font-bold text-amber-700 uppercase tracking-wide">
+								TV適合性
+							</span>
+						</div>
+						{product.score_breakdown && (
+							<button
+								type="button"
+								onClick={() => setShowBreakdown((v) => !v)}
+								className="flex items-center gap-0.5 text-[10px] text-amber-700 hover:text-amber-900 font-semibold"
+								aria-expanded={showBreakdown}
+							>
+								内訳
+								<ChevronDown
+									size={11}
+									className={`transition-transform ${showBreakdown ? "rotate-180" : ""}`}
+								/>
+							</button>
+						)}
 					</div>
-					<p className="text-[11px] text-amber-900 leading-relaxed">
-						{product.tv_fit_reason}
-					</p>
+					{product.tv_fit_reason && (
+						<p className="text-[11px] text-amber-900 leading-relaxed">
+							{product.tv_fit_reason}
+						</p>
+					)}
+					{showBreakdown && product.score_breakdown && (
+						<ScoreBreakdownBars breakdown={product.score_breakdown} />
+					)}
 				</div>
 			)}
 

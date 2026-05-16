@@ -12,6 +12,7 @@ import type {
 	Candidate,
 	CategoryPlan,
 	Context,
+	CurationScore,
 	SessionStatus,
 } from "./types";
 
@@ -90,6 +91,7 @@ export interface DiscoveredProductRow {
 	stock_status: string | null;
 	tv_fit_score: number;
 	tv_fit_reason: string;
+	score_breakdown: CurationScore;
 	broadcast_tag: BroadcastTag;
 	broadcast_sources: Array<{ title: string; url: string }>;
 	track: Candidate["track"];
@@ -120,6 +122,7 @@ export function buildDiscoveredProductRows(
 		stock_status: candidate.stockStatus ?? null,
 		tv_fit_score: candidate.tvFitScore,
 		tv_fit_reason: candidate.tvFitReason,
+		score_breakdown: candidate.scoreBreakdown,
 		broadcast_tag: broadcastTag,
 		broadcast_sources: broadcastSources,
 		track: candidate.track,
