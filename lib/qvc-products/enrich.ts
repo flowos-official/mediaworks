@@ -86,6 +86,10 @@ async function fetchInBatches(
 				video_url: r.detail!.video_url,
 				price_text: r.detail!.price_text,
 				source_url: r.detail!.source_url,
+				description_long: r.detail!.description_long,
+				sku_variants: r.detail!.sku_variants,
+				video_upload_date: r.detail!.video_upload_date,
+				jsonld_raw: r.detail!.jsonld_raw,
 				fetched_at: new Date().toISOString(),
 			}));
 

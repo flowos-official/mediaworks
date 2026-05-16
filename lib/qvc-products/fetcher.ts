@@ -1,5 +1,6 @@
 import * as cheerio from "cheerio";
 import { politeFetch } from "@/lib/broadcasts/fetch";
+import { extractJsonLd, type JsonLdOffer } from "@/lib/archive/jsonld";
 
 export interface QvcProductDetail {
 	id: string;
@@ -10,6 +11,11 @@ export interface QvcProductDetail {
 	video_url: string | null;
 	price_text: string | null;
 	source_url: string;
+	// New JSON-LD-derived fields
+	description_long: string | null;       // VideoObject.description (typically richer, with <br>)
+	sku_variants: JsonLdOffer[] | null;    // Product.offers[]
+	video_upload_date: string | null;      // VideoObject.uploadDate (ISO)
+	jsonld_raw: unknown[] | null;          // raw blocks for future re-extraction
 }
 
 const BASE = "https://qvc.jp";
@@ -61,6 +67,13 @@ export function parseQvcProductHTML(html: string, id: string): QvcProductDetail 
 		if (inline) price_text = inline;
 	}
 
+	// JSON-LD enrichment — Product + VideoObject typically present on QVC pages
+	const ld = extractJsonLd(html);
+	const description_long = ld.video?.description ?? ld.product?.description ?? null;
+	const sku_variants = ld.product?.offers ?? null;
+	const video_upload_date = ld.video?.uploadDate ?? null;
+	const jsonld_raw = ld.blocks.length > 0 ? ld.blocks : null;
+
 	return {
 		id,
 		name,
@@ -70,6 +83,10 @@ export function parseQvcProductHTML(html: string, id: string): QvcProductDetail 
 		video_url,
 		price_text,
 		source_url: productUrl(id),
+		description_long,
+		sku_variants,
+		video_upload_date,
+		jsonld_raw,
 	};
 }
 

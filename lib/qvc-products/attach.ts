@@ -8,6 +8,21 @@ export interface QvcProductView {
 	video_url: string | null;
 	price_text: string | null;
 	source_url: string;
+	archived_thumbnail_s3: string | null;
+	archived_video_s3: string | null;
+}
+
+export interface ShopchProductView {
+	id: string;
+	name: string | null;
+	brand: string | null;
+	category: string | null;
+	price_jpy: number | null;
+	compare_price_jpy: number | null;
+	off_rate: number | null;
+	image_url: string | null;
+	source_url: string;
+	archived_thumbnail_s3: string | null;
 }
 
 interface BroadcastWithProductIds {
@@ -17,44 +32,78 @@ interface BroadcastWithProductIds {
 }
 
 /**
- * Given a list of broadcasts (with product_ids), batch-fetch matching qvc_products rows
- * and return a Map keyed by broadcast id → product views (in the order they appeared in product_ids).
+ * Given a list of broadcasts (with product_ids), batch-fetch matching
+ * qvc_products / shopch_products rows and return Maps keyed by broadcast id.
+ * Product order matches `product_ids`.
  */
 export async function loadProductsForBroadcasts<
 	B extends BroadcastWithProductIds,
->(broadcasts: B[]): Promise<Map<string, QvcProductView[]>> {
-	const map = new Map<string, QvcProductView[]>();
+>(
+	broadcasts: B[],
+): Promise<{
+	qvc: Map<string, QvcProductView[]>;
+	shopch: Map<string, ShopchProductView[]>;
+}> {
+	const qvcMap = new Map<string, QvcProductView[]>();
+	const shopchMap = new Map<string, ShopchProductView[]>();
 
-	const allIds = new Set<string>();
+	const qvcIds = new Set<string>();
+	const shopchIds = new Set<string>();
 	for (const b of broadcasts) {
-		if (b.channel !== "qvc" || !b.product_ids) continue;
-		for (const pid of b.product_ids) allIds.add(pid);
+		if (!b.product_ids) continue;
+		const target = b.channel === "qvc" ? qvcIds : shopchIds;
+		for (const pid of b.product_ids) target.add(pid);
 	}
-	if (allIds.size === 0) return map;
 
 	const sb = getServiceClient();
-	const { data, error } = await sb
-		.from("qvc_products")
-		.select("id,name,description,image_url,video_url,price_text,source_url")
-		.in("id", [...allIds]);
-	if (error) {
-		console.warn("loadProductsForBroadcasts: qvc_products fetch failed", error.message);
-		return map;
-	}
 
-	const byId = new Map<string, QvcProductView>();
-	for (const row of data ?? []) {
-		byId.set((row as { id: string }).id, row as QvcProductView);
-	}
-
-	for (const b of broadcasts) {
-		if (b.channel !== "qvc" || !b.product_ids) continue;
-		const views: QvcProductView[] = [];
-		for (const pid of b.product_ids) {
-			const p = byId.get(pid);
-			if (p) views.push(p);
+	if (qvcIds.size > 0) {
+		const { data, error } = await sb
+			.from("qvc_products")
+			.select(
+				"id,name,description,image_url,video_url,price_text,source_url,archived_thumbnail_s3,archived_video_s3",
+			)
+			.in("id", [...qvcIds]);
+		if (error) {
+			console.warn("loadProductsForBroadcasts: qvc_products fetch failed", error.message);
+		} else {
+			const byId = new Map<string, QvcProductView>();
+			for (const row of data ?? []) byId.set((row as { id: string }).id, row as QvcProductView);
+			for (const b of broadcasts) {
+				if (b.channel !== "qvc" || !b.product_ids) continue;
+				const views: QvcProductView[] = [];
+				for (const pid of b.product_ids) {
+					const p = byId.get(pid);
+					if (p) views.push(p);
+				}
+				if (views.length > 0) qvcMap.set(b.id, views);
+			}
 		}
-		if (views.length > 0) map.set(b.id, views);
 	}
-	return map;
+
+	if (shopchIds.size > 0) {
+		const { data, error } = await sb
+			.from("shopch_products")
+			.select(
+				"id,name,brand,category,price_jpy,compare_price_jpy,off_rate,image_url,source_url,archived_thumbnail_s3",
+			)
+			.in("id", [...shopchIds]);
+		if (error) {
+			console.warn("loadProductsForBroadcasts: shopch_products fetch failed", error.message);
+		} else {
+			const byId = new Map<string, ShopchProductView>();
+			for (const row of data ?? []) byId.set((row as { id: string }).id, row as ShopchProductView);
+			for (const b of broadcasts) {
+				if (b.channel !== "shopch" || !b.product_ids) continue;
+				const views: ShopchProductView[] = [];
+				for (const pid of b.product_ids) {
+					const p = byId.get(pid);
+					if (p) views.push(p);
+				}
+				if (views.length > 0) shopchMap.set(b.id, views);
+			}
+		}
+	}
+
+	return { qvc: qvcMap, shopch: shopchMap };
 }
