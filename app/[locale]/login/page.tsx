@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
-import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,7 +10,6 @@ import { ROLE_LANDING, type Role } from '@/lib/auth/route-permissions';
 export default function LoginPage() {
   const t = useTranslations('auth.login');
   const locale = useLocale();
-  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [err, setErr] = useState<string | null>(null);
@@ -38,7 +36,8 @@ export default function LoginPage() {
         .from('profiles').select('role').eq('id', userId).maybeSingle();
       if (profile?.role) role = profile.role as Role;
     }
-    router.replace(`/${locale}${ROLE_LANDING[role]}`);
+    // Hard navigation so the Server-Component Navbar re-renders with the new session
+    window.location.assign(`/${locale}${ROLE_LANDING[role]}`);
   }
 
   return (

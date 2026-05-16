@@ -13,7 +13,10 @@ enable_anonymous_sign_ins = false
 enable_manual_linking = false
 
 [auth.email]
-enable_signup = false
+# Note: enable_signup controls the whole email provider in Supabase CLI's auth
+# config (not just new signups). Keep true here so existing accounts can log in;
+# new-user signup is blocked via the top-level [auth].enable_signup = false.
+enable_signup = true
 double_confirm_changes = true
 enable_confirmations = false
 secure_password_change = false
