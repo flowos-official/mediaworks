@@ -12,6 +12,10 @@ export interface ScrapedSlot {
 	// Phase B PoC: QVC slots expose `data-products="ID|ID|..."` on the <li>.
 	// shopch leaves this null until Phase B full implementation.
 	product_ids: string[] | null;
+	// Phase 1-C: category attached by the scraper after extraction or AI
+	// classification. Slots with a category not in `channel_categories` are
+	// dropped at scrape time and never reach the DB.
+	category: string | null;
 }
 
 export interface ScrapeHealth {

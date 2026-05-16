@@ -5,6 +5,7 @@ export interface QvcProductDetail {
 	id: string;
 	name: string | null;
 	description: string | null;
+	category: string | null;
 	image_url: string | null;
 	image_urls: string[];
 	video_url: string | null;
@@ -22,6 +23,51 @@ function clean(s: string | undefined | null): string | null {
 	if (!s) return null;
 	const v = s.trim();
 	return v.length === 0 ? null : v;
+}
+
+/**
+ * Best-effort extraction of the product's top category from the page.
+ * Sources, in order: (1) JSON-LD Product schema, (2) breadcrumb DOM.
+ * Result is normalized to the top-level segment of the path (e.g.
+ * "ビューティー/化粧水" → "ビューティー"). null when no signal found.
+ */
+function extractCategoryFromHTML($: cheerio.CheerioAPI): string | null {
+	// 1) JSON-LD Product schema with a `category` field.
+	const ldNodes = $('script[type="application/ld+json"]').toArray();
+	for (const el of ldNodes) {
+		const text = $(el).text();
+		if (!text) continue;
+		try {
+			const parsed = JSON.parse(text);
+			const items: unknown[] = Array.isArray(parsed) ? parsed : [parsed];
+			for (const item of items) {
+				if (typeof item !== "object" || item === null) continue;
+				const obj = item as Record<string, unknown>;
+				if (obj["@type"] !== "Product") continue;
+				const raw = obj.category;
+				if (typeof raw !== "string") continue;
+				const cleaned = clean(raw);
+				if (!cleaned) continue;
+				// "/" or " > "-separated paths → take the top-level segment.
+				const top = cleaned.split(/[/>]/)[0]?.trim();
+				if (top) return top;
+			}
+		} catch {
+			// ignore parse failures; fall through to breadcrumb
+		}
+	}
+
+	// 2) Breadcrumb fallback — first non-home crumb is usually the top category.
+	const crumb = $(
+		".breadcrumb a, nav[aria-label='breadcrumb'] a, ol.breadcrumb a",
+	)
+		.map((_, el) => clean($(el).text()))
+		.toArray()
+		.filter((s): s is string => s !== null);
+	const interesting = crumb.filter(
+		(c) => c !== "QVC.jp" && c !== "Home" && c !== "ホーム",
+	);
+	return interesting[0] ?? null;
 }
 
 /**
@@ -61,10 +107,13 @@ export function parseQvcProductHTML(html: string, id: string): QvcProductDetail 
 		if (inline) price_text = inline;
 	}
 
+	const category = extractCategoryFromHTML($);
+
 	return {
 		id,
 		name,
 		description,
+		category,
 		image_url,
 		image_urls,
 		video_url,

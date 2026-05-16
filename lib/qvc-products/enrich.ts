@@ -81,6 +81,7 @@ async function fetchInBatches(
 				id: r.id,
 				name: r.detail!.name,
 				description: r.detail!.description,
+				category: r.detail!.category,
 				image_url: r.detail!.image_url,
 				image_urls: r.detail!.image_urls,
 				video_url: r.detail!.video_url,

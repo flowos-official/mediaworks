@@ -1,5 +1,7 @@
 import * as cheerio from "cheerio";
+import { getServiceClient } from "@/lib/supabase";
 import { politeFetch } from "./fetch";
+import { isAllowed, loadWhitelist } from "./category-filter";
 import { computeHealth, type ScrapeResult, type ScrapedSlot } from "./types";
 
 const BASE_HOST = "https://qvc.jp";
@@ -132,11 +134,48 @@ export function scrapeQVCFromHTML(html: string, airDate: string): ScrapedSlot[] 
 			thumbnail_url: thumbnailUrl,
 			source_url: pageSourceUrl,
 			product_ids: productIds && productIds.length > 0 ? productIds : null,
+			category: null, // attached later by attachQVCCategories
 		});
 	});
 
 	slots.sort((a, b) => a.start_time.localeCompare(b.start_time));
 	return slots;
+}
+
+/**
+ * For each slot, look up its first product id in `qvc_products` and attach
+ * the cached category. Returns a new array (does not mutate input).
+ *
+ * Chicken-and-egg: brand-new products that haven't been enriched yet have
+ * NULL category here. The daily `enrich:qvc-products` cron fills the cache
+ * on a separate cadence, so today's slot may be dropped by the whitelist
+ * filter and re-appear from tomorrow onward. Acceptable trade-off vs.
+ * synchronous fetch fanout from inside the scraper.
+ */
+async function attachQVCCategories(slots: ScrapedSlot[]): Promise<ScrapedSlot[]> {
+	if (slots.length === 0) return slots;
+	const firstIds = slots
+		.map((s) => s.product_ids?.[0])
+		.filter((x): x is string => typeof x === "string" && x.length > 0);
+	if (firstIds.length === 0) return slots;
+
+	const sb = getServiceClient();
+	const { data, error } = await sb
+		.from("qvc_products")
+		.select("id, category")
+		.in("id", firstIds);
+	if (error) {
+		console.warn("[qvc] category lookup failed:", error.message);
+		return slots;
+	}
+	const byId = new Map<string, string | null>();
+	for (const row of (data ?? []) as { id: string; category: string | null }[]) {
+		byId.set(row.id, row.category);
+	}
+	return slots.map((s) => {
+		const fid = s.product_ids?.[0] ?? null;
+		return { ...s, category: fid ? (byId.get(fid) ?? null) : null };
+	});
 }
 
 export async function scrapeQVCForDate(date: Date): Promise<ScrapeResult> {
@@ -157,12 +196,15 @@ export async function scrapeQVCForDate(date: Date): Promise<ScrapeResult> {
 	}
 
 	const slots = scrapeQVCFromHTML(fetched.body, iso);
+	const enriched = await attachQVCCategories(slots);
+	const wl = await loadWhitelist();
+	const allowed = enriched.filter((s) => isAllowed(wl, "qvc", s.category));
 
 	return {
 		channel: "qvc",
 		date: iso,
-		slots,
+		slots: allowed,
 		ok: true,
-		health: computeHealth(slots, true),
+		health: computeHealth(allowed, true),
 	};
 }
