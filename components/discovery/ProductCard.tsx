@@ -46,9 +46,10 @@ function scoreColor(score: number): string {
 }
 
 // max points per signal — mirrors lib/discovery/curate.ts §採点基準
+// review_signal + purchase_signal は「過去データ寄与」の合算上限 40% (25+15)。
 const SCORE_MAX: Record<keyof Omit<CurationScore, "total">, { max: number; label: string; color: string }> = {
-	review_signal:     { max: 35, label: "レビュー",   color: "bg-amber-400" },
-	tv_category_match: { max: 20, label: "カテゴリ",   color: "bg-purple-400" },
+	review_signal:     { max: 25, label: "レビュー",   color: "bg-amber-400" },
+	tv_category_match: { max: 30, label: "カテゴリ",   color: "bg-purple-400" },
 	trend_signal:      { max: 15, label: "トレンド",   color: "bg-pink-400" },
 	price_fit:         { max: 15, label: "価格",       color: "bg-blue-400" },
 	purchase_signal:   { max: 15, label: "購買",       color: "bg-emerald-400" },
