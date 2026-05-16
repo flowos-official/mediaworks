@@ -1,5 +1,7 @@
 import * as cheerio from "cheerio";
 import { politeFetch } from "./fetch";
+import { isAllowed, loadWhitelist } from "./category-filter";
+import { classifyShopChSlots } from "./shopch-category";
 import { computeHealth, type ScrapeResult, type ScrapedSlot } from "./types";
 
 const BASE_URL = "https://www.shopch.jp/pc/tv/programlist";
@@ -114,6 +116,7 @@ export function scrapeShopChannelFromHTML(
 			thumbnail_url: thumbnailUrl,
 			source_url: slotLink ?? sourceUrl,
 			product_ids: null,
+			category: null, // attached later by classifyShopChSlots
 		});
 	});
 
@@ -139,12 +142,15 @@ export async function scrapeShopChannelForDate(date: Date): Promise<ScrapeResult
 	}
 
 	const slots = scrapeShopChannelFromHTML(fetched.body, iso);
+	const classified = await classifyShopChSlots(slots);
+	const wl = await loadWhitelist();
+	const allowed = classified.filter((s) => isAllowed(wl, "shopch", s.category));
 
 	return {
 		channel: "shopch",
 		date: iso,
-		slots,
+		slots: allowed,
 		ok: true,
-		health: computeHealth(slots, true),
+		health: computeHealth(allowed, true),
 	};
 }
