@@ -1,3 +1,4 @@
+import { requireUser } from "@/lib/auth/require-user";
 import { NextRequest } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
 import { analyzeDiscoveredProduct, type DiscoveredProduct, type DiscoveryBatch } from "@/lib/md-strategy";
@@ -6,6 +7,10 @@ import { buildTVShoppingProfile } from "@/lib/tv-shopping-profile";
 export const maxDuration = 120;
 
 export async function POST(request: NextRequest) {
+	// auth: requireUser
+	const auth = await requireUser(["member", "admin"]);
+	if ("error" in auth) return auth.error;
+
 	const body = await request.json().catch(() => ({}));
 	const {
 		sessionId,

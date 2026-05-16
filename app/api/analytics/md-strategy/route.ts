@@ -1,3 +1,4 @@
+import { requireUser } from "@/lib/auth/require-user";
 import { NextRequest } from "next/server";
 import { start } from "workflow/api";
 import { mdStrategyWorkflow } from "@/lib/workflows/md-strategy.workflow";
@@ -7,6 +8,10 @@ export const maxDuration = 60;
 
 // GET: List saved strategies (lightweight — no skill results)
 export async function GET() {
+	// auth: requireUser
+	const auth = await requireUser(["member", "admin"]);
+	if ("error" in auth) return auth.error;
+
 	const supabase = getServiceClient();
 	const { data, error } = await supabase
 		.from("md_strategies")
@@ -23,6 +28,10 @@ export async function GET() {
 // POST: Start a durable workflow run. Returns runId immediately;
 // the client connects to /run/[runId]/stream for progress updates.
 export async function POST(request: NextRequest) {
+	// auth: requireUser
+	const auth = await requireUser(["member", "admin"]);
+	if ("error" in auth) return auth.error;
+
 	const body = await request.json().catch(() => ({}));
 	const input = {
 		userGoal: typeof body.userGoal === "string" ? body.userGoal : "",

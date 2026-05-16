@@ -1,3 +1,4 @@
+import { requireUser } from "@/lib/auth/require-user";
 import { NextRequest, NextResponse } from "next/server";
 import { GET as runHomeCron } from "@/app/api/cron/daily-discovery-home/route";
 import { GET as runLiveCron } from "@/app/api/cron/daily-discovery-live/route";
@@ -10,13 +11,10 @@ export const maxDuration = 300;
  * Protected by CRON_SECRET.
  */
 export async function POST(req: NextRequest) {
-	const secret = process.env.CRON_SECRET;
-	if (secret) {
-		const header = req.headers.get("authorization");
-		if (header !== `Bearer ${secret}`) {
-			return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-		}
-	}
+	// auth: requireUser — admin only; replaces the prior CRON_SECRET gate so admins
+	// can trigger from the UI without forging the header.
+	const auth = await requireUser(["admin"]);
+	if ("error" in auth) return auth.error;
 
 	let context: "home_shopping" | "live_commerce" = "home_shopping";
 	try {

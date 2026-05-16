@@ -1,7 +1,12 @@
+import { requireUser } from "@/lib/auth/require-user";
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
 
 export async function GET(request: NextRequest) {
+	// auth: requireUser
+	const auth = await requireUser(["member", "admin"]);
+	if ("error" in auth) return auth.error;
+
 	const { searchParams } = new URL(request.url);
 	const yearParam = searchParams.get("year") || "2025,2026";
 	const period = searchParams.get("period") || "weekly"; // weekly | monthly

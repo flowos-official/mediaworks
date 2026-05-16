@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
+import { hasInternalSecret } from "@/lib/auth/require-user";
 import { synthesizeResearch } from "@/lib/gemini";
 import { runProductResearch } from "@/lib/brave";
 import type { ProductInfo } from "@/lib/gemini";
@@ -7,6 +8,10 @@ import type { ProductInfo } from "@/lib/gemini";
 export const maxDuration = 300; // Vercel Pro max (800s)
 
 export async function POST(request: NextRequest) {
+	if (!hasInternalSecret(request)) {
+		return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+	}
+
 	const { productId } = await request.json();
 
 	if (!productId) {

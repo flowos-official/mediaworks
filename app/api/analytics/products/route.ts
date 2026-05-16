@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
+import { requireUser } from "@/lib/auth/require-user";
 
 export async function GET(request: NextRequest) {
+	const auth = await requireUser(["admin", "member", "viewer"]);
+	if ("error" in auth) return auth.error;
+
 	const { searchParams } = new URL(request.url);
 	const yearParam = searchParams.get("year") || "2025,2026";
 	const sortBy = searchParams.get("sort") || "revenue";

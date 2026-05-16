@@ -1,3 +1,4 @@
+import { requireUser } from "@/lib/auth/require-user";
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
 import { analyzeExpansionStrategy } from "@/lib/gemini";
@@ -5,6 +6,10 @@ import { analyzeExpansionStrategy } from "@/lib/gemini";
 export const maxDuration = 120;
 
 export async function POST(request: NextRequest) {
+	// auth: requireUser
+	const auth = await requireUser(["member", "admin"]);
+	if ("error" in auth) return auth.error;
+
 	const body = await request.json().catch(() => ({}));
 	const userGoal: string = body.userGoal || "";
 

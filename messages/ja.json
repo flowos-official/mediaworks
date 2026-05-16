@@ -6,7 +6,8 @@
     "analytics": "売上分析",
     "gallery": "商品画像",
     "broadcasts": "番組カレンダー",
-    "screenplays": "台本"
+    "screenplays": "台本",
+    "userManagement": "ユーザー管理"
   },
   "home": {
     "title": "MediaWorks",
@@ -305,9 +306,9 @@
     "weeklyInsightPatterns": "探索成果",
     "weeklyInsightSuggestions": "来週の提案",
     "chartCategorySourcing": "カテゴリ別ソーシング率",
-    "chartDailyFeedback": "日別フィードバック",
+    "chartDailyFeedback": "日별 フィードバック",
     "chartExplorationTrend": "探索比率推移",
-    "chartRejectionReasons": "却下理由分布",
+    "chartRejectionReasons": "却下理由分포",
     "periodFilter7": "7日",
     "periodFilter30": "30日",
     "periodFilter90": "90日",
@@ -376,6 +377,52 @@
       "placeholder": "例: 実演デモを最後に入れてください。お客様の声を3人に増やして、それぞれの職業を変えてください。",
       "submit": "この内容で改稿する",
       "sending": "送信中…"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "ログイン",
+      "email": "メールアドレス",
+      "password": "パスワード",
+      "submit": "ログイン",
+      "forgot": "パスワードをお忘れですか?",
+      "errors": {
+        "invalid": "メールまたはパスワードが正しくありません",
+        "generic": "ログインに失敗しました。時間をおいて再度お試しください。"
+      }
+    },
+    "resetPassword": {
+      "requestTitle": "パスワードを再設定",
+      "requestSubmit": "再設定メールを送信",
+      "requestSent": "メールを送信しました。受信ボックスを確認してください。",
+      "confirmTitle": "新しいパスワードを設定",
+      "newPassword": "新しいパスワード",
+      "confirmSubmit": "更新",
+      "confirmDone": "パスワードを更新しました。ログインしてください。"
+    },
+    "logout": "ログアウト",
+    "roleBadge": {
+      "admin": "管理者",
+      "member": "メンバー",
+      "viewer": "閲覧者"
+    }
+  },
+  "admin": {
+    "users": {
+      "title": "ユーザー管理",
+      "columns": {
+        "email": "メール",
+        "role": "ロール",
+        "created": "作成日",
+        "actions": "操作"
+      },
+      "delete": "削除",
+      "confirmDelete": "本当に削除しますか?",
+      "roles": {
+        "admin": "管理者",
+        "member": "メンバー",
+        "viewer": "閲覧者"
+      }
     }
   }
 }

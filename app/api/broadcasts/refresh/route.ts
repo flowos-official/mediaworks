@@ -1,16 +1,17 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { scrapeAllForDate } from "@/lib/broadcasts";
 import { sleep } from "@/lib/broadcasts/fetch";
+import { hasInternalSecret, requireUser } from "@/lib/auth/require-user";
 
 export const maxDuration = 60;
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-function verifyAuth(req: NextRequest): boolean {
-	const secret = process.env.CRON_SECRET;
-	if (!secret) return true;
-	const header = req.headers.get("authorization");
-	return header === `Bearer ${secret}`;
+async function verifyAdminOrCron(req: NextRequest): Promise<NextResponse | null> {
+	if (hasInternalSecret(req)) return null;
+	const auth = await requireUser(["admin"]);
+	if ("error" in auth) return auth.error;
+	return null;
 }
 
 function parseISO(d: string): Date | null {
@@ -31,9 +32,8 @@ interface RefreshBody {
 }
 
 export async function POST(req: NextRequest) {
-	if (!verifyAuth(req)) {
-		return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-	}
+	const denied = await verifyAdminOrCron(req);
+	if (denied) return denied;
 
 	let body: RefreshBody;
 	try {
