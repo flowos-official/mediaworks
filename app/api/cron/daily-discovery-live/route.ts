@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { applyBroadcastBoost, tagBroadcastEvidence } from "@/lib/discovery/broadcast";
+import { applyRecentBroadcastPenalty } from "@/lib/discovery/recent-broadcast-penalty";
 import { runStage1 } from "@/lib/discovery/orchestrator";
 import {
 	attachPlanToSession,
@@ -72,6 +73,11 @@ export async function GET(req: NextRequest) {
 			orchestrated.candidates,
 			new Map(broadcasts.map((b) => [b.productUrl, b.tag])),
 		);
+
+		// Soft penalty for products MediaWorks just aired on QVC. Only
+		// candidates whose productUrl is a qvc.jp/product.{id}.html page
+		// are considered; others are unaffected.
+		await applyRecentBroadcastPenalty(orchestrated.candidates);
 
 		const batch = orchestrated.candidates.map((c) => {
 			const bc = broadcastMap.get(c.productUrl);
