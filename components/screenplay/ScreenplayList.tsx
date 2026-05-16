@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { FileText, Loader2, CheckCircle, AlertCircle, Clock, ArrowRight } from "lucide-react";
+import { localePath } from "@/lib/i18n/locale-path";
 
 interface Row {
 	id: string;
@@ -45,7 +46,7 @@ export function ScreenplayList({ rows, locale }: { rows: Row[]; locale: string }
 				const cfg = STATUS_CONFIG[r.status];
 				const Icon = cfg.icon;
 				return (
-					<Link key={r.id} href={`/${locale}/screenplays/${r.id}`} className="group">
+					<Link key={r.id} href={localePath(locale, `/screenplays/${r.id}`)} className="group">
 						<Card className="hover:shadow-md hover:border-blue-200 transition-all border-gray-200 h-full">
 							<CardContent className="p-5">
 								<div className="flex items-start justify-between gap-3 mb-3">

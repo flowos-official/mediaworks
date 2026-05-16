@@ -5,6 +5,7 @@ import UserMenu from './UserMenu';
 import { BarChart3, Calendar, Clapperboard, Users } from 'lucide-react';
 import { getServerClient } from '@/lib/supabase/server';
 import type { Role } from '@/lib/auth/route-permissions';
+import { localePath } from '@/lib/i18n/locale-path';
 
 export default async function Navbar() {
   const t = await getTranslations('nav');
@@ -24,7 +25,7 @@ export default async function Navbar() {
 
   const isViewer = role === 'viewer';
   const isAdmin = role === 'admin';
-  const homeHref = isViewer ? `/${locale}/analytics/products` : `/${locale}`;
+  const homeHref = isViewer ? localePath(locale, '/analytics/products') : localePath(locale);
 
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -40,27 +41,27 @@ export default async function Navbar() {
             {role && !isViewer && (
               <>
                 <Link
-                  href={`/${locale}`}
+                  href={localePath(locale)}
                   className="text-sm text-gray-600 hover:text-gray-900 font-medium"
                 >
                   {t('home')}
                 </Link>
                 <Link
-                  href={`/${locale}/broadcasts`}
+                  href={localePath(locale, '/broadcasts')}
                   className="text-sm text-gray-600 hover:text-gray-900 font-medium flex items-center gap-1"
                 >
                   <Calendar size={14} />
                   {t('broadcasts')}
                 </Link>
                 <Link
-                  href={`/${locale}/screenplays`}
+                  href={localePath(locale, '/screenplays')}
                   className="text-sm text-gray-600 hover:text-gray-900 font-medium flex items-center gap-1"
                 >
                   <Clapperboard size={14} />
                   {t('screenplays')}
                 </Link>
                 <Link
-                  href={`/${locale}/analytics`}
+                  href={localePath(locale, '/analytics')}
                   className="text-sm text-gray-600 hover:text-gray-900 font-medium flex items-center gap-1"
                 >
                   <BarChart3 size={14} />
@@ -70,7 +71,7 @@ export default async function Navbar() {
             )}
             {isViewer && (
               <Link
-                href={`/${locale}/analytics/products`}
+                href={localePath(locale, '/analytics/products')}
                 className="text-sm text-gray-600 hover:text-gray-900 font-medium flex items-center gap-1"
               >
                 <BarChart3 size={14} />
@@ -79,7 +80,7 @@ export default async function Navbar() {
             )}
             {isAdmin && (
               <Link
-                href={`/${locale}/admin/users`}
+                href={localePath(locale, '/admin/users')}
                 className="text-sm text-gray-600 hover:text-gray-900 font-medium flex items-center gap-1"
               >
                 <Users size={14} />

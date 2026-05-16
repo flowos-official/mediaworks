@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { localePath } from "@/lib/i18n/locale-path";
 
 export default async function StrategyIndexPage({
 	params,
@@ -6,5 +7,5 @@ export default async function StrategyIndexPage({
 	params: Promise<{ locale: string }>;
 }) {
 	const { locale } = await params;
-	redirect(`/${locale}/analytics/strategy/expansion`);
+	redirect(localePath(locale, "/analytics/strategy/expansion"));
 }

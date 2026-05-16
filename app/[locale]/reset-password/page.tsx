@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { localePath } from '@/lib/i18n/locale-path';
 
 type Mode = 'request' | 'confirm';
 
@@ -34,7 +35,7 @@ export default function ResetPasswordPage() {
   async function requestReset(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
-    const redirectTo = `${window.location.origin}/${locale}/reset-password`;
+    const redirectTo = `${window.location.origin}${localePath(locale, '/reset-password')}`;
     const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo });
     if (error) { setErr(error.message); return; }
     setDone(t('requestSent'));
@@ -46,7 +47,7 @@ export default function ResetPasswordPage() {
     const { error } = await sb.auth.updateUser({ password });
     if (error) { setErr(error.message); return; }
     setDone(t('confirmDone'));
-    setTimeout(() => router.replace(`/${locale}/login`), 1500);
+    setTimeout(() => router.replace(localePath(locale, '/login')), 1500);
   }
 
   return (

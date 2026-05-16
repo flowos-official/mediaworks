@@ -3,7 +3,7 @@ import { getMessages } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 
-const locales = ['en', 'ja'];
+const locales = ['ja', 'ko'];
 
 export default async function LocaleLayout({
   children,

@@ -4,10 +4,15 @@ import { updateSession } from '@/lib/supabase/middleware';
 import { isViewerAllowedPath, ROLE_LANDING } from '@/lib/auth/route-permissions';
 
 const intl = createIntlMiddleware({
-  locales: ['en', 'ja'],
+  locales: ['ja', 'ko'],
   defaultLocale: 'ja',
-  localePrefix: 'always',
+  localePrefix: 'as-needed',
 });
+
+function localePath(locale: string, path: string): string {
+  const p = path.startsWith('/') ? path : `/${path}`;
+  return locale === 'ja' ? p : `/${locale}${p}`;
+}
 
 const PUBLIC_SUFFIXES = [/\/login$/, /\/reset-password$/];
 
@@ -31,12 +36,14 @@ export default async function middleware(req: NextRequest) {
     return intlRes;
   }
 
+  const pathLocale = pathname.startsWith('/ko/') || pathname === '/ko' ? 'ko' : 'ja';
+
   if (!user) {
-    return NextResponse.redirect(new URL('/ja/login', req.url));
+    return NextResponse.redirect(new URL(localePath(pathLocale, '/login'), req.url));
   }
 
   if (role === 'viewer' && !isViewerAllowedPath(pathname)) {
-    return NextResponse.redirect(new URL(`/ja${ROLE_LANDING.viewer}`, req.url));
+    return NextResponse.redirect(new URL(localePath(pathLocale, ROLE_LANDING.viewer), req.url));
   }
 
   const intlRes = intl(req);

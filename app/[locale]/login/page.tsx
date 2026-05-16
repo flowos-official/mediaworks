@@ -6,6 +6,7 @@ import { createBrowserClient } from '@supabase/ssr';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ROLE_LANDING, type Role } from '@/lib/auth/route-permissions';
+import { localePath } from '@/lib/i18n/locale-path';
 
 export default function LoginPage() {
   const t = useTranslations('auth.login');
@@ -37,7 +38,7 @@ export default function LoginPage() {
       if (profile?.role) role = profile.role as Role;
     }
     // Hard navigation so the Server-Component Navbar re-renders with the new session
-    window.location.assign(`/${locale}${ROLE_LANDING[role]}`);
+    window.location.assign(localePath(locale, ROLE_LANDING[role]));
   }
 
   return (
@@ -69,7 +70,7 @@ export default function LoginPage() {
           </Button>
         </form>
         <p className="text-sm text-center">
-          <a href={`/${locale}/reset-password`} className="text-blue-600 hover:underline">
+          <a href={localePath(locale, '/reset-password')} className="text-blue-600 hover:underline">
             {t('forgot')}
           </a>
         </p>

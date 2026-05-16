@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getServiceClient } from "@/lib/supabase";
+import { localePath } from "@/lib/i18n/locale-path";
 
 export const dynamic = "force-dynamic";
 
@@ -97,7 +98,7 @@ export default async function SkillDetailPage({ params, searchParams }: PageProp
 		<div className="min-h-screen bg-gray-50 px-6 py-8">
 			<div className="mx-auto max-w-6xl">
 				<div className="mb-4 text-xs text-gray-500">
-					<Link href={`/${locale}/admin/registry`} className="hover:text-blue-600">
+					<Link href={localePath(locale, "/admin/registry")} className="hover:text-blue-600">
 						← All skills
 					</Link>
 				</div>
@@ -167,7 +168,7 @@ export default async function SkillDetailPage({ params, searchParams }: PageProp
 											</td>
 											<td className="px-4 py-2 text-right">
 												<Link
-													href={`/${locale}/admin/registry/${skill.slug}?version=${v.version_label}`}
+													href={localePath(locale, `/admin/registry/${skill.slug}?version=${v.version_label}`)}
 													className="text-[10px] text-blue-600 hover:underline"
 												>
 													view ↓

@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { Role } from '@/lib/auth/route-permissions';
+import { localePath } from '@/lib/i18n/locale-path';
 
 export default function UserMenu({
   email,
@@ -22,7 +23,7 @@ export default function UserMenu({
   if (!email || !role) {
     return (
       <a
-        href={`/${locale}/login`}
+        href={localePath(locale, '/login')}
         className="text-sm font-medium text-blue-600 hover:underline"
       >
         {t('login.submit')}
@@ -36,7 +37,7 @@ export default function UserMenu({
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     );
     await sb.auth.signOut();
-    router.replace(`/${locale}/login`);
+    router.replace(localePath(locale, '/login'));
     router.refresh();
   }
 

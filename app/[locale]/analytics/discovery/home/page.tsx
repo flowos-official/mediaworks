@@ -13,6 +13,7 @@ import {
 } from "@/components/discovery/DiscoveryFilters";
 import { ContextSubTabs } from "@/components/discovery/ContextSubTabs";
 import { ManualTriggerButton } from "@/components/discovery/ManualTriggerButton";
+import { localePath } from "@/lib/i18n/locale-path";
 
 type Session = {
 	id: string;
@@ -178,7 +179,7 @@ export default function DiscoveryHomePage() {
 							onClick={() => {
 								const ids = [...selectedIds].join(",");
 								router.push(
-									`/${locale}/analytics/strategy/expansion?seedIds=${encodeURIComponent(ids)}`,
+									localePath(locale, `/analytics/strategy/expansion?seedIds=${encodeURIComponent(ids)}`),
 								);
 							}}
 							className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg"

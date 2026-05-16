@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { TrendingUp, Radio } from "lucide-react";
+import { localePath } from "@/lib/i18n/locale-path";
 
 type SubTab = "expansion" | "live";
 
@@ -24,7 +25,7 @@ export function StrategySubTabs() {
 	return (
 		<div className="flex gap-1 p-1 bg-white border border-gray-200 rounded-lg shadow-sm mb-4 w-fit">
 			{TABS.map((tab) => {
-				const href = `/${locale}/analytics/strategy/${tab.key}`;
+				const href = localePath(locale, `/analytics/strategy/${tab.key}`);
 				const active = activeTab === tab.key;
 				return (
 					<Link

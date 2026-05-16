@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const formData = await request.formData();
-    const locale = (formData.get('locale') as string) || 'en';
+    const locale = (formData.get('locale') as string) || 'ja';
 
     // Support both single 'file' and multiple 'files' fields
     let files = formData.getAll('files') as File[];

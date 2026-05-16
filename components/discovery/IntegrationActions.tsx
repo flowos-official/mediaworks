@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { TrendingUp, Radio } from "lucide-react";
 import { SeedEnrichGateModal } from "./SeedEnrichGate";
+import { localePath } from "@/lib/i18n/locale-path";
 
 interface Props {
 	productId: string;
@@ -33,8 +34,8 @@ export function IntegrationActions({
 
 	const targetPath =
 		context === "live_commerce"
-			? `/${locale}/analytics/strategy/live`
-			: `/${locale}/analytics/strategy/expansion`;
+			? localePath(locale, "/analytics/strategy/live")
+			: localePath(locale, "/analytics/strategy/expansion");
 
 	const params = new URLSearchParams();
 	params.set("seedId", productId);

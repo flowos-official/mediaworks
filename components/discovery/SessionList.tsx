@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Home, Tv } from "lucide-react";
 import type { SessionRow } from "./SessionCalendar";
+import { localePath } from "@/lib/i18n/locale-path";
 
 function statusBadge(status: SessionRow["status"]): { label: string; color: string } {
 	switch (status) {
@@ -36,7 +37,7 @@ export function SessionList({ sessions }: { sessions: SessionRow[] }) {
 				return (
 					<Link
 						key={s.id}
-						href={`/${locale}/analytics/discovery/session/${s.id}`}
+						href={localePath(locale, `/analytics/discovery/session/${s.id}`)}
 						className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors text-sm"
 					>
 						<span className="text-xs font-mono text-gray-500 w-32 shrink-0">
