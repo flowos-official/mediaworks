@@ -60,6 +60,7 @@ export default function HistoricalBroadcasts({
 
 	const [date, setDate] = useState<string>(urlDate);
 	const [channel, setChannel] = useState<string>("all");
+	const [category, setCategory] = useState<string>("all");
 	const [search, setSearch] = useState("");
 	const [searchInput, setSearchInput] = useState("");
 	const [rows, setRows] = useState<HistoricalBroadcastRow[]>(initialRows);
@@ -79,6 +80,7 @@ export default function HistoricalBroadcasts({
 		async (
 			nextDate: string,
 			nextChannel: string,
+			nextCategory: string,
 			nextSearch: string,
 			nextOffset: number,
 			signal?: AbortSignal,
@@ -93,6 +95,7 @@ export default function HistoricalBroadcasts({
 					qs.set("date", nextDate);
 				}
 				if (nextChannel !== "all") qs.set("channel", nextChannel);
+				if (nextCategory !== "all") qs.set("category", nextCategory);
 				qs.set("limit", String(PAGE_SIZE));
 				qs.set("offset", String(nextOffset));
 				const r = await fetch(`/api/historical-broadcasts?${qs}`, { signal });
@@ -115,14 +118,18 @@ export default function HistoricalBroadcasts({
 	);
 
 	const isInitial =
-		date === initialDate && channel === "all" && !search && offset === 0;
+		date === initialDate &&
+		channel === "all" &&
+		category === "all" &&
+		!search &&
+		offset === 0;
 
 	useEffect(() => {
 		if (isInitial) return;
 		const ctrl = new AbortController();
-		void fetchPage(date, channel, search, offset, ctrl.signal);
+		void fetchPage(date, channel, category, search, offset, ctrl.signal);
 		return () => ctrl.abort();
-	}, [date, channel, search, offset, fetchPage, isInitial]);
+	}, [date, channel, category, search, offset, fetchPage, isInitial]);
 
 	const handleChannelClick = (slug: string) => {
 		setChannel(slug);

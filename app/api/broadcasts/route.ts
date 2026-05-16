@@ -16,6 +16,7 @@ export async function GET(req: NextRequest) {
 	const from = searchParams.get("from");
 	const to = searchParams.get("to");
 	const channel = searchParams.get("channel");
+	const category = searchParams.get("category");
 
 	if (!from || !ISO_DATE.test(from)) {
 		return NextResponse.json({ error: "missing or invalid 'from'" }, { status: 400 });
@@ -45,7 +46,7 @@ export async function GET(req: NextRequest) {
 	let query = sb
 		.from("broadcasts")
 		.select(
-			"id,channel,air_date,start_time,program_title,presenter,description,thumbnail_url,source_url,product_ids",
+			"id,channel,air_date,start_time,program_title,presenter,description,thumbnail_url,source_url,product_ids,category",
 		)
 		.gte("air_date", from)
 		.lte("air_date", to)
@@ -54,6 +55,7 @@ export async function GET(req: NextRequest) {
 		.order("channel", { ascending: true });
 
 	if (channel) query = query.eq("channel", channel);
+	if (category) query = query.eq("category", category);
 
 	const { data, error } = await query;
 	if (error) {

@@ -24,6 +24,7 @@ export interface Broadcast {
   source_url: string;
   product_ids?: string[] | null;
   products?: QvcProduct[] | null;
+  category?: string | null;
 }
 
 interface Props {

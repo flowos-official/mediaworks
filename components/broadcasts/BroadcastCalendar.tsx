@@ -49,6 +49,9 @@ export default function BroadcastCalendar({
   const [channelFilter, setChannelFilter] = useState<ChannelFilterValue>(
     (searchParams.get("ch") as ChannelFilterValue) ?? "all",
   );
+  const [categoryFilter, setCategoryFilter] = useState<string>(
+    searchParams.get("cat") ?? "all",
+  );
 
   const initialKey = monthKey(initialYear, initialMonth);
   const [cache, setCache] = useState<Map<string, Broadcast[]>>(
@@ -89,10 +92,11 @@ export default function BroadcastCalendar({
   }, [currentKey, year, month, cache]);
 
   const syncUrl = useCallback(
-    (date: string | null, ch: ChannelFilterValue) => {
+    (date: string | null, ch: ChannelFilterValue, cat: string) => {
       const params = new URLSearchParams();
       if (date) params.set("date", date);
       if (ch !== "all") params.set("ch", ch);
+      if (cat !== "all") params.set("cat", cat);
       const qs = params.toString();
       router.replace(qs ? `?${qs}` : "?", { scroll: false });
     },
@@ -107,17 +111,28 @@ export default function BroadcastCalendar({
         setYear(y);
         setMonth(m);
       }
-      syncUrl(iso, channelFilter);
+      syncUrl(iso, channelFilter, categoryFilter);
     },
-    [year, month, channelFilter, syncUrl],
+    [year, month, channelFilter, categoryFilter, syncUrl],
   );
 
   const handleFilterChange = useCallback(
     (v: ChannelFilterValue) => {
       setChannelFilter(v);
-      syncUrl(selectedDate, v);
+      // Reset category when changing channel — categories are per-channel.
+      const nextCat = v === "all" ? categoryFilter : "all";
+      if (nextCat !== categoryFilter) setCategoryFilter(nextCat);
+      syncUrl(selectedDate, v, nextCat);
     },
-    [selectedDate, syncUrl],
+    [selectedDate, categoryFilter, syncUrl],
+  );
+
+  const handleCategoryFilterChange = useCallback(
+    (v: string) => {
+      setCategoryFilter(v);
+      syncUrl(selectedDate, channelFilter, v);
+    },
+    [selectedDate, channelFilter, syncUrl],
   );
 
   const goPrev = useCallback(() => {
@@ -195,6 +210,8 @@ export default function BroadcastCalendar({
           broadcasts={dayBroadcasts}
           channelFilter={channelFilter}
           onChannelFilterChange={handleFilterChange}
+          categoryFilter={categoryFilter}
+          onCategoryFilterChange={handleCategoryFilterChange}
         />
       </div>
     </div>

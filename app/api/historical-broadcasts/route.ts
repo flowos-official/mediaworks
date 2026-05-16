@@ -24,6 +24,7 @@ export interface HistoricalBroadcastRow {
 	price_jpy: number | null;
 	price_is_tax_incl: boolean | null;
 	source_url: string | null;
+	category: string | null;
 }
 
 export async function GET(req: NextRequest) {
@@ -36,6 +37,7 @@ export async function GET(req: NextRequest) {
 	const to = searchParams.get("to");
 	const date = searchParams.get("date");
 	const search = searchParams.get("search");
+	const category = searchParams.get("category");
 	const limitRaw = searchParams.get("limit");
 	const offsetRaw = searchParams.get("offset");
 
@@ -61,7 +63,7 @@ export async function GET(req: NextRequest) {
 	let q = auth.sb
 		.from("historical_broadcasts")
 		.select(
-			"id,channel,air_date,day_of_week,product_name,price_text,price_jpy,price_is_tax_incl,source_url",
+			"id,channel,air_date,day_of_week,product_name,price_text,price_jpy,price_is_tax_incl,source_url,category",
 			{ count: "exact" },
 		)
 		.order("air_date", { ascending: false })
@@ -73,6 +75,7 @@ export async function GET(req: NextRequest) {
 	if (from) q = q.gte("air_date", from);
 	if (to) q = q.lte("air_date", to);
 	if (search) q = q.ilike("product_name", `%${search}%`);
+	if (category) q = q.eq("category", category);
 
 	const { data, count, error } = await q;
 	if (error) {
