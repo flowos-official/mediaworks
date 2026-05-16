@@ -39,3 +39,6 @@ next-env.d.ts
 # Test screenshots (in project root)
 /*.png
 .superpowers/
+
+# Supabase CLI working dir
+supabase/.temp/

@@ -1,0 +1,27 @@
+project_id = "sdgxuyigfpmzgxnnoiwf"
+
+[auth]
+enabled = true
+site_url = "https://mediaworks-six.vercel.app"
+additional_redirect_urls = [
+  "http://localhost:3000",
+  "http://localhost:3000/**",
+  "https://mediaworks-six.vercel.app/**",
+]
+enable_signup = false
+enable_anonymous_sign_ins = false
+enable_manual_linking = false
+
+[auth.email]
+enable_signup = false
+double_confirm_changes = true
+enable_confirmations = false
+secure_password_change = false
+max_frequency = "1m"
+otp_length = 6
+otp_expiry = 3600
+
+# Restore MFA defaults that the CLI clears when unspecified
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
