@@ -7,7 +7,8 @@
     "gallery": "商品画像",
     "broadcasts": "番組カレンダー",
     "screenplays": "台本",
-    "userManagement": "ユーザー管理"
+    "userManagement": "ユーザー管理",
+    "historicalCrawl": "他局OA収集"
   },
   "home": {
     "title": "MediaWorks",
@@ -443,6 +444,23 @@
         "admin": "管理者",
         "member": "メンバー",
         "viewer": "閲覧者"
+      }
+    },
+    "historicalCrawl": {
+      "title": "他局OA収集モニター",
+      "subtitle": "8チャネルの日次クロール状況と異常検知",
+      "baselineHeading": "チャネル別ベースライン (直近7日中央値)",
+      "baselineEmpty": "まだ十分なサンプルがありません。数日後に再表示されます。",
+      "samples": "{n}回のサンプル",
+      "recentRuns": "直近の実行",
+      "runsEmpty": "まだ実行履歴がありません。",
+      "col": {
+        "runAt": "実行時刻",
+        "status": "状態",
+        "totalRows": "総件数",
+        "upserted": "新規",
+        "duration": "所要",
+        "channels": "チャネル別件数 (赤=失敗/-50%以下、橙=-80%以下)"
       }
     }
   }

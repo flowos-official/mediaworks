@@ -1,6 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { crawlAll } from "@/lib/historical-crawl";
 import { jstToday } from "@/lib/historical-crawl/types";
+import {
+	finalizeRun,
+	startRun,
+	type PerChannelRunEntry,
+	type RunStatus,
+} from "@/lib/historical-crawl/runs";
 
 export const maxDuration = 300;
 
@@ -18,31 +24,78 @@ export async function GET(req: NextRequest) {
 
 	const start = Date.now();
 	const date = jstToday();
-	const summary = await crawlAll(date);
+	const runId = await startRun(date);
 
-	const log = {
-		event: "historical_broadcasts.crawl.summary",
-		date,
-		channels: Object.fromEntries(
-			summary.results.map((r) => [
-				r.channel,
-				{
-					ok: r.ok,
-					count: r.rows.length,
-					durationMs: r.durationMs,
-					...(r.error ? { error: r.error } : {}),
-				},
-			]),
-		),
-		totals: {
-			rowsCollected: summary.totalRows,
+	try {
+		const summary = await crawlAll(date);
+		const channels: PerChannelRunEntry[] = summary.results.map((r) => ({
+			channel: r.channel,
+			ok: r.ok,
+			rowCount: r.rows.length,
+			durationMs: r.durationMs,
+			...(r.error ? { error: r.error } : {}),
+		}));
+
+		const status: RunStatus = summary.results.every((r) => r.ok)
+			? "completed"
+			: summary.results.some((r) => r.ok)
+				? "partial"
+				: "failed";
+
+		await finalizeRun({
+			runId,
+			status,
+			totalRows: summary.totalRows,
 			upserted: summary.persist.upserted,
-			skippedDuplicate: summary.persist.skippedDuplicate,
-			errors: summary.persist.errors,
-		},
-		durationMs: Date.now() - start,
-	};
-	console.log(JSON.stringify(log));
+			skippedDup: summary.persist.skippedDuplicate,
+			channels,
+			durationMs: Date.now() - start,
+		});
 
-	return NextResponse.json({ ok: true, ...log });
+		// Keep the same console log shape so external log search continues to work.
+		const log = {
+			event: "historical_broadcasts.crawl.summary",
+			runId,
+			date,
+			status,
+			channels: Object.fromEntries(
+				channels.map((c) => [
+					c.channel,
+					{
+						ok: c.ok,
+						count: c.rowCount,
+						durationMs: c.durationMs,
+						...(c.error ? { error: c.error } : {}),
+					},
+				]),
+			),
+			totals: {
+				rowsCollected: summary.totalRows,
+				upserted: summary.persist.upserted,
+				skippedDuplicate: summary.persist.skippedDuplicate,
+				errors: summary.persist.errors,
+			},
+			durationMs: Date.now() - start,
+		};
+		console.log(JSON.stringify(log));
+
+		return NextResponse.json({ ok: true, ...log });
+	} catch (err) {
+		const msg = err instanceof Error ? err.message : String(err);
+		await finalizeRun({
+			runId,
+			status: "failed",
+			totalRows: 0,
+			upserted: 0,
+			skippedDup: 0,
+			channels: [],
+			durationMs: Date.now() - start,
+			error: msg.slice(0, 500),
+		});
+		console.error("[cron daily-historical-broadcasts] failed:", msg);
+		return NextResponse.json(
+			{ ok: false, runId, error: msg },
+			{ status: 500 },
+		);
+	}
 }
