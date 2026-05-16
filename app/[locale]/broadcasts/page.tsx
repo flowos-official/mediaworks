@@ -3,8 +3,22 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { getServiceClient } from "@/lib/supabase";
 import BroadcastCalendar from "@/components/broadcasts/BroadcastCalendar";
+import HistoricalBroadcasts from "@/components/broadcasts/HistoricalBroadcasts";
 import type { Broadcast } from "@/components/broadcasts/BroadcastListItem";
+import type { HistoricalBroadcastRow } from "@/app/api/historical-broadcasts/route";
 import { loadProductsForBroadcasts } from "@/lib/qvc-products/attach";
+import { localePath } from "@/lib/i18n/locale-path";
+
+const OA_CHANNEL_SLUGS = [
+  "japanet",
+  "junsanpo",
+  "ntv",
+  "tbs",
+  "dinos",
+  "senobura",
+  "uranoura",
+  "btops",
+] as const;
 
 interface PageProps {
   params: Promise<{ locale: string }>;
@@ -72,13 +86,40 @@ export default async function Page({ params, searchParams }: PageProps) {
     products: productMap.get(r.id) ?? null,
   }));
 
+  // Excel-imported rows span 2020-04 ~ today; per-channel counts cover the whole history.
+  // The list view is scoped to the calendar's selected date only.
+  const [{ data: historicalData, count: historicalTotal }, channelCountResults] =
+    await Promise.all([
+      sb
+        .from("historical_broadcasts")
+        .select(
+          "id,channel,air_date,day_of_week,product_name,price_text,price_jpy,price_is_tax_incl,source_url",
+          { count: "exact" },
+        )
+        .eq("air_date", selected)
+        .order("channel", { ascending: true })
+        .range(0, 49),
+      Promise.all(
+        OA_CHANNEL_SLUGS.map(async (slug) => {
+          const { count } = await sb
+            .from("historical_broadcasts")
+            .select("id", { count: "exact", head: true })
+            .eq("channel", slug);
+          return [slug, count ?? 0] as const;
+        }),
+      ),
+    ]);
+
+  const initialHistorical = (historicalData ?? []) as HistoricalBroadcastRow[];
+  const channelCounts: Record<string, number> = Object.fromEntries(channelCountResults);
+
   const hasAny = initialBroadcasts.length > 0;
 
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <header className="mb-6">
         <Link
-          href={`/${locale}`}
+          href={localePath(locale)}
           className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-3"
         >
           <ArrowLeft size={16} />
@@ -100,6 +141,13 @@ export default async function Page({ params, searchParams }: PageProps) {
           initialBroadcasts={initialBroadcasts}
         />
       )}
+
+      <HistoricalBroadcasts
+        initialRows={initialHistorical}
+        initialTotal={historicalTotal ?? 0}
+        initialDate={selected}
+        channelCounts={channelCounts}
+      />
     </main>
   );
 }

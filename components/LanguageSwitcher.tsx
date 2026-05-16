@@ -11,16 +11,16 @@ export default function LanguageSwitcher() {
   const t = useTranslations('language');
 
   const switchLocale = (newLocale: string) => {
-    // Replace locale prefix in pathname
-    const segments = pathname.split('/');
-    segments[1] = newLocale;
-    router.push(segments.join('/'));
+    // Strip current locale prefix (only present for non-default 'ko'); then re-prefix if target is non-default.
+    const stripped = pathname.replace(/^\/(ja|ko)(?=\/|$)/, '') || '/';
+    const target = newLocale === 'ja' ? stripped : `/${newLocale}${stripped === '/' ? '' : stripped}`;
+    router.push(target);
   };
 
   return (
     <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
       <Globe size={14} className="text-gray-500 ml-1" />
-      {['en', 'ja'].map((loc) => (
+      {['ja', 'ko'].map((loc) => (
         <button
           key={loc}
           onClick={() => switchLocale(loc)}

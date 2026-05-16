@@ -31,16 +31,20 @@ export interface TvChannel {
 export const TV_CHANNELS: readonly TvChannel[] = [
 	{ slug: "shopch",    name: "ショップチャンネル",     siteQuery: "shopch.jp",                            scraped: true  },
 	{ slug: "qvc",       name: "QVC",                  siteQuery: "qvc.jp",                              scraped: true  },
-	{ slug: "ntv",       name: "日テレ",                siteQuery: "shop.ntv.co.jp",                      scraped: false },
-	{ slug: "tbs",       name: "TBS",                  siteQuery: "tbs.co.jp/shopping",                  scraped: false },
-	{ slug: "dinos",     name: "ディノス",              siteQuery: "dinos.co.jp/tv",                      scraped: false },
+	{ slug: "ntv",       name: "日テレポシュレ",        siteQuery: "shop.ntv.co.jp",                      scraped: false },
+	{ slug: "tbs",       name: "TBSキニナル",           siteQuery: "shopping.tbs.co.jp",                  scraped: false },
+	{ slug: "dinos",     name: "フジDinos",            siteQuery: "dinos.co.jp/tv",                      scraped: false },
 	{ slug: "ropping",   name: "ロッピングライフ",       siteQuery: "ropping.tv-asahi.co.jp",              scraped: false },
-	{ slug: "senobura",  name: "せのぶら本舗",          siteQuery: "shop.asahi.co.jp/category/SENOBURA",  scraped: false },
+	{ slug: "senobura",  name: "ABCせのぶら本舗",       siteQuery: "shop.asahi.co.jp/category/SENOBURA",  scraped: false },
 	{ slug: "rakurakum", name: "らくらく茂",            siteQuery: "shop.asahi.co.jp/category/RAKURAKU",  scraped: false },
 	{ slug: "ichiban",   name: "いちばん本舗",          siteQuery: "shop.tokai-tv.com",                   scraped: false },
 	{ slug: "kachimo",   name: "カチモ",                siteQuery: "kachimo.jp",                          scraped: false },
 	{ slug: "kaidoki",   name: "買いドキ！マーケット",   siteQuery: "satv.shop",                           scraped: false },
 	{ slug: "kantv",     name: "関テレ",                siteQuery: "ktvolm.jp",                           scraped: false },
+	{ slug: "japanet",   name: "ジャパネット",          siteQuery: "japanet.co.jp",                       scraped: false },
+	{ slug: "junsanpo",  name: "テレ朝じゅん散歩",       siteQuery: "ropping.tv-asahi.co.jp/junsanpo",     scraped: false },
+	{ slug: "uranoura",  name: "ABCウラのウラまで",      siteQuery: "shop.asahi.co.jp/category/URANADJA",  scraped: false },
+	{ slug: "btops",     name: "読売B-tops",           siteQuery: "b-tops.com",                          scraped: false },
 ];
 
 /** Look up a channel by its slug. Returns undefined if not registered. */

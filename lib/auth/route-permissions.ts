@@ -7,11 +7,12 @@ export const VIEWER_ALLOWED_PATH_PREFIXES = [
 ] as const;
 
 /**
- * Given a pathname like "/ja/analytics/products/12345", returns true if a
- * viewer is permitted to load it. Locale segment is stripped first.
+ * Given a pathname like "/ko/analytics/products/12345" (or "/analytics/products/12345"
+ * for the default locale), returns true if a viewer is permitted to load it.
+ * Non-default locale segment is stripped first.
  */
 export function isViewerAllowedPath(pathname: string): boolean {
-  const stripped = pathname.replace(/^\/(?:en|ja)(?=\/|$)/, '') || '/';
+  const stripped = pathname.replace(/^\/(?:ja|ko)(?=\/|$)/, '') || '/';
   return VIEWER_ALLOWED_PATH_PREFIXES.some((prefix) =>
     stripped === prefix || stripped.startsWith(prefix + '/'),
   );

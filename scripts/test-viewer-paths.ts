@@ -8,12 +8,14 @@ interface Case { path: string; expect: boolean }
 const CASES: Case[] = [
   // Allowed (TXD analytics)
   { path: '/ja/analytics/products', expect: true },
-  { path: '/en/analytics/products', expect: true },
+  { path: '/ko/analytics/products', expect: true },
   { path: '/ja/analytics/products/12345', expect: true },
-  { path: '/en/analytics/products/abc123', expect: true },
+  { path: '/ko/analytics/products/abc123', expect: true },
+  { path: '/analytics/products', expect: true }, // default locale (no prefix)
+  { path: '/analytics/products/12345', expect: true },
   // Disallowed
   { path: '/ja', expect: false },
-  { path: '/en', expect: false },
+  { path: '/ko', expect: false },
   { path: '/ja/broadcasts', expect: false },
   { path: '/ja/analytics', expect: false },
   { path: '/ja/analytics/discovery', expect: false },
@@ -22,7 +24,6 @@ const CASES: Case[] = [
   { path: '/ja/admin/users', expect: false },
   // Edge cases
   { path: '/', expect: false },
-  { path: '/analytics/products', expect: true }, // locale-less, defensive
   { path: '/ja/analytics/products-other', expect: false }, // prefix-trap
 ];
 

@@ -208,8 +208,8 @@
     "downloadPdf": "PDF戦略書ダウンロード"
   },
   "language": {
-    "en": "English",
-    "ja": "日本語"
+    "ja": "日本語",
+    "ko": "한국어"
   },
   "discovery": {
     "title": "本日の発掘",
@@ -348,7 +348,28 @@
       "apiError": "番組情報の取得に失敗しました。"
     },
     "retry": "再試行",
-    "back": "ホームに戻る"
+    "back": "ホームに戻る",
+    "historical": {
+      "titleForDate": "{date} のOA放送（8チャネル）",
+      "subtitle": "ジャパネット・テレ朝じゅん散歩・日テレポシュレ 等 8チャネル。カレンダーで日付を選択してください。チャネル別の件数は全期間。",
+      "all": "全て",
+      "search": "検索",
+      "clear": "クリア",
+      "searchPlaceholder": "商品名で検索…",
+      "loading": "読み込み中…",
+      "resultCount": "{total} 件",
+      "emptyForDate": "{date} のOA放送はありません。",
+      "prev": "前へ",
+      "next": "次へ",
+      "page": "{current} / {total} ページ",
+      "col": {
+        "date": "日付",
+        "channel": "チャネル",
+        "product": "商品名",
+        "price": "価格",
+        "openSource": "原本を見る"
+      }
+    }
   },
   "screenplay": {
     "navLabel": "台本",

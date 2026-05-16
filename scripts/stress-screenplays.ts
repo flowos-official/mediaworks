@@ -166,7 +166,7 @@ async function runAll() {
 				productBrief: { name: "<script>alert('xss')</script>", description: "x" },
 			}),
 		});
-		const htmlRes = await fetch(`${BASE}/ja/screenplays`);
+		const htmlRes = await fetch(`${BASE}/screenplays`);
 		const html = await htmlRes.text();
 		const unsafe = html.includes("<script>alert('xss')</script>");
 		return unsafe ? "raw script tag rendered — XSS" : true;

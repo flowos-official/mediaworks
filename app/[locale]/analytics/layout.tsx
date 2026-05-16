@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams, usePathname } from 'next/navigation';
 import { BarChart3 } from 'lucide-react';
 import DateRangeFilter from '@/components/analytics/DateRangeFilter';
+import { localePath } from '@/lib/i18n/locale-path';
 
 // ---------------------------------------------------------------------------
 // Filter context — shared by overview/products pages, ignored by expansion/live-commerce
@@ -78,7 +79,7 @@ export default function AnalyticsLayout({ children }: { children: ReactNode }) {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="flex gap-1 p-1 bg-white border border-gray-200 rounded-xl shadow-sm">
                 {TABS.map((tab) => {
-                  const href = `/${locale}/analytics/${tab.key}`;
+                  const href = localePath(locale, `/analytics/${tab.key}`);
                   const isActive = activeTab === tab.key;
                   return (
                     <Link

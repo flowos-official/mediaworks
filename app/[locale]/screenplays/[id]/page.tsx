@@ -3,6 +3,7 @@ import { ChevronLeft, Clapperboard } from "lucide-react";
 import { notFound } from "next/navigation";
 import { ScreenplayWorkspace } from "@/components/screenplay/ScreenplayWorkspace";
 import type { ScreenplayRow, ScreenplayVersionRow } from "@/lib/screenplay/types";
+import { localePath } from "@/lib/i18n/locale-path";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,7 @@ export default async function ScreenplayDetailPage({ params }: { params: Promise
 	return (
 		<main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
 			<Link
-				href={`/${locale}/screenplays`}
+				href={localePath(locale, "/screenplays")}
 				className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 mb-5"
 			>
 				<ChevronLeft size={14} />

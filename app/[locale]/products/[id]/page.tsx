@@ -19,6 +19,7 @@ import ResearchSourcesSection from "@/components/report/ResearchSourcesSection";
 import PdfDownload from '@/components/report/PdfDownload';
 import { ArrowLeft, Package, Calendar } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { localePath } from '@/lib/i18n/locale-path';
 
 async function getProduct(id: string) {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
@@ -49,7 +50,7 @@ export default async function ProductReportPage({
         <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
           <div className="flex items-center gap-4">
             <Link
-              href={`/${locale}`}
+              href={localePath(locale)}
               className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
             >
               <ArrowLeft size={16} />

@@ -12,6 +12,7 @@ import StrategyProgress from './md-strategy/StrategyProgress';
 import StrategyHistory from './md-strategy/StrategyHistory';
 import ProductSelectionSection from './md-strategy/ProductSelectionSection';
 import DiscoveredProductsHero from './DiscoveredProductsHero';
+import { localePath } from '@/lib/i18n/locale-path';
 import type {
 	SkillName,
 	ParsedGoal,
@@ -258,7 +259,7 @@ const INITIAL_STATUSES: Record<SkillName, SkillStatus> = {
 export default function MDStrategyPanel({ mode, initialData }: MDStrategyPanelProps) {
 	const router = useRouter();
 	const { locale } = useParams<{ locale: string }>();
-	const listHref = `/${locale}/analytics/strategy/expansion`;
+	const listHref = localePath(locale, '/analytics/strategy/expansion');
 
 	if (mode === 'detail' && initialData) {
 		return <DetailView initialData={initialData} backHref={listHref} />;
@@ -449,7 +450,7 @@ function ListView({ locale, router }: { locale: string; router: ReturnType<typeo
 			setHistoryRefresh((n) => n + 1);
 			// R2: navigate to detail URL on successful generation
 			if (data?.strategyId) {
-				router.push(`/${locale}/analytics/strategy/expansion/${data.strategyId}`);
+				router.push(localePath(locale, `/analytics/strategy/expansion/${data.strategyId}`));
 			}
 			return;
 		}
@@ -559,7 +560,7 @@ function ListView({ locale, router }: { locale: string; router: ReturnType<typeo
 	}, [userGoal, category, targetMarket, priceRange, handleWorkflowEvent]);
 
 	const handleViewSaved = (id: string) => {
-		router.push(`/${locale}/analytics/strategy/expansion/${id}`);
+		router.push(localePath(locale, `/analytics/strategy/expansion/${id}`));
 	};
 
 	const hasGeneratedResults = !!(

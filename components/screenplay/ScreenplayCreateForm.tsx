@@ -3,6 +3,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Sparkles, Search, X, Package, Loader2, CheckCircle, ArrowRight, PencilLine, ListChecks } from "lucide-react";
+import { localePath } from "@/lib/i18n/locale-path";
 
 type ProductRow = {
 	id: string;
@@ -116,7 +117,7 @@ export function ScreenplayCreateForm({ locale }: { locale: string }) {
 			});
 			const j = await res.json();
 			if (!res.ok) throw new Error(j.error ?? "作成に失敗しました");
-			router.push(`/${locale}/screenplays/${j.id}?run=${j.runId}`);
+			router.push(localePath(locale, `/screenplays/${j.id}?run=${j.runId}`));
 		} catch (e) {
 			setErr(e instanceof Error ? e.message : String(e));
 			setSubmitting(false);

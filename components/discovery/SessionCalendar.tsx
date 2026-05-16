@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Popover } from "@base-ui/react/popover";
 import { Home, Tv } from "lucide-react";
+import { localePath } from "@/lib/i18n/locale-path";
 
 export type SessionRow = {
 	id: string;
@@ -145,7 +146,7 @@ export function SessionCalendar({ sessions, month }: { sessions: SessionRow[]; m
 												return (
 													<li key={s.id}>
 														<Link
-															href={`/${locale}/analytics/discovery/session/${s.id}`}
+															href={localePath(locale, `/analytics/discovery/session/${s.id}`)}
 															className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-gray-50"
 														>
 															<span className="font-mono text-[11px] text-gray-500 w-10 shrink-0">

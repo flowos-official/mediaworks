@@ -18,6 +18,7 @@ import { LC_SKILL_META } from '@/lib/live-commerce-strategy';
 
 import dynamic from 'next/dynamic';
 import DiscoveredProductsHero from './DiscoveredProductsHero';
+import { localePath } from '@/lib/i18n/locale-path';
 const MarketOverviewSection = dynamic(() => import('./live-commerce/MarketOverviewSection'), { ssr: false });
 const PlatformAnalysisSection = dynamic(() => import('./live-commerce/PlatformAnalysisSection'), { ssr: false });
 const ContentStrategySection = dynamic(() => import('./live-commerce/ContentStrategySection'), { ssr: false });
@@ -302,7 +303,7 @@ function ResultsView({ results, sources, generatedAt, backHref, strategyId, onRe
 export default function LiveCommercePanel({ mode, initialData }: LiveCommercePanelProps) {
 	const router = useRouter();
 	const { locale } = useParams<{ locale: string }>();
-	const listHref = `/${locale}/analytics/strategy/live`;
+	const listHref = localePath(locale, '/analytics/strategy/live');
 
 	if (mode === 'detail' && initialData) {
 		return <LCDetailView initialData={initialData} backHref={listHref} />;
@@ -512,7 +513,7 @@ function LCListView({ locale, router }: { locale: string; router: ReturnType<typ
 				setStatus('complete');
 				setHistoryRefresh((n) => n + 1);
 				if (data?.strategyId) {
-					router.push(`/${locale}/analytics/strategy/live/${data.strategyId}`);
+					router.push(localePath(locale, `/analytics/strategy/live/${data.strategyId}`));
 				}
 			};
 
@@ -582,7 +583,7 @@ function LCListView({ locale, router }: { locale: string; router: ReturnType<typ
 	}, [userGoal, selectedPlatforms, locale, router]);
 
 	const handleViewSaved = (id: string) => {
-		router.push(`/${locale}/analytics/strategy/live/${id}`);
+		router.push(localePath(locale, `/analytics/strategy/live/${id}`));
 	};
 
 	const hasResults = !!(

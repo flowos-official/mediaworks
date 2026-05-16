@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Plus, Clapperboard } from "lucide-react";
 import { ScreenplayList } from "@/components/screenplay/ScreenplayList";
+import { localePath } from "@/lib/i18n/locale-path";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,7 @@ export default async function ScreenplaysPage({ params }: { params: Promise<{ lo
 					</p>
 				</div>
 				<Link
-					href={`/${locale}/screenplays/new`}
+					href={localePath(locale, "/screenplays/new")}
 					className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors shrink-0"
 				>
 					<Plus size={16} />

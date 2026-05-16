@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Product } from "@/lib/supabase";
+import { localePath } from "@/lib/i18n/locale-path";
 
 interface ProductCardProps {
 	product: Product;
@@ -106,7 +107,7 @@ export default function ProductCard({ product }: ProductCardProps) {
 				{product.status === "completed" && (
 					<div className="mt-4 pt-4 border-t border-gray-100">
 						<Link
-							href={`/${locale}/products/${product.id}`}
+							href={localePath(locale, `/products/${product.id}`)}
 							className="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors"
 						>
 							{t("viewReport")}
