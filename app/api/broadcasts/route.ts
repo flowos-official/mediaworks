@@ -62,10 +62,24 @@ export async function GET(req: NextRequest) {
 		product_ids: string[] | null;
 		[k: string]: unknown;
 	}>;
-	const productMap = await loadProductsForBroadcasts(rows);
+	// Also pull the slot-level archived video URL on broadcasts (for Shop Channel)
+	const idsForVideo = rows.map((r) => r.id);
+	const videoMap = new Map<string, string | null>();
+	if (idsForVideo.length > 0) {
+		const { data: videoRows } = await sb
+			.from("broadcasts")
+			.select("id,archived_video_s3")
+			.in("id", idsForVideo);
+		for (const v of videoRows ?? []) {
+			videoMap.set((v as { id: string }).id, (v as { archived_video_s3: string | null }).archived_video_s3);
+		}
+	}
+
+	const { qvc: qvcMap, shopch: shopchMap } = await loadProductsForBroadcasts(rows);
 	const enriched = rows.map((b) => ({
 		...b,
-		products: productMap.get(b.id) ?? null,
+		products: b.channel === "qvc" ? (qvcMap.get(b.id) ?? null) : (shopchMap.get(b.id) ?? null),
+		archived_video_s3: videoMap.get(b.id) ?? null,
 	}));
 
 	return NextResponse.json(

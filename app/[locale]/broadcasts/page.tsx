@@ -65,11 +65,11 @@ export default async function Page({ params, searchParams }: PageProps) {
     source_url: string;
     product_ids: string[] | null;
   }>;
-  const productMap = await loadProductsForBroadcasts(rows);
+  const { qvc: qvcMap, shopch: shopchMap } = await loadProductsForBroadcasts(rows);
 
   const initialBroadcasts: Broadcast[] = rows.map((r) => ({
     ...r,
-    products: productMap.get(r.id) ?? null,
+    products: r.channel === "qvc" ? (qvcMap.get(r.id) ?? null) : (shopchMap.get(r.id) ?? null),
   }));
 
   const hasAny = initialBroadcasts.length > 0;
