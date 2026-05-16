@@ -1,11 +1,6 @@
 {
   "version": "1.0.0",
   "steps": {
-    "node_modules/workflow/dist/stdlib.js": {
-      "fetch": {
-        "stepId": "step//workflow@4.2.0-beta.76//fetch"
-      }
-    },
     "node_modules/workflow/dist/internal/builtins.js": {
       "__builtin_response_array_buffer": {
         "stepId": "__builtin_response_array_buffer"
@@ -17,24 +12,9 @@
         "stepId": "__builtin_response_text"
       }
     },
-    "lib/workflows/md-strategy.workflow.ts": {
-      "closeProgressStep": {
-        "stepId": "step//./lib/workflows/md-strategy.workflow//closeProgressStep"
-      },
-      "emitProgressStep": {
-        "stepId": "step//./lib/workflows/md-strategy.workflow//emitProgressStep"
-      },
-      "fetchContextStep": {
-        "stepId": "step//./lib/workflows/md-strategy.workflow//fetchContextStep"
-      },
-      "runDiscoveryStep": {
-        "stepId": "step//./lib/workflows/md-strategy.workflow//runDiscoveryStep"
-      },
-      "runSkillStep": {
-        "stepId": "step//./lib/workflows/md-strategy.workflow//runSkillStep"
-      },
-      "saveStrategyStep": {
-        "stepId": "step//./lib/workflows/md-strategy.workflow//saveStrategyStep"
+    "node_modules/workflow/dist/stdlib.js": {
+      "fetch": {
+        "stepId": "step//workflow@4.2.0-beta.76//fetch"
       }
     },
     "lib/workflows/live-commerce.workflow.ts": {
@@ -56,21 +36,41 @@
       "saveStrategyStep": {
         "stepId": "step//./lib/workflows/live-commerce.workflow//saveStrategyStep"
       }
+    },
+    "lib/workflows/md-strategy.workflow.ts": {
+      "closeProgressStep": {
+        "stepId": "step//./lib/workflows/md-strategy.workflow//closeProgressStep"
+      },
+      "emitProgressStep": {
+        "stepId": "step//./lib/workflows/md-strategy.workflow//emitProgressStep"
+      },
+      "fetchContextStep": {
+        "stepId": "step//./lib/workflows/md-strategy.workflow//fetchContextStep"
+      },
+      "runDiscoveryStep": {
+        "stepId": "step//./lib/workflows/md-strategy.workflow//runDiscoveryStep"
+      },
+      "runSkillStep": {
+        "stepId": "step//./lib/workflows/md-strategy.workflow//runSkillStep"
+      },
+      "saveStrategyStep": {
+        "stepId": "step//./lib/workflows/md-strategy.workflow//saveStrategyStep"
+      }
     }
   },
   "workflows": {
-    "lib/workflows/md-strategy.workflow.ts": {
-      "mdStrategyWorkflow": {
-        "workflowId": "workflow//./lib/workflows/md-strategy.workflow//mdStrategyWorkflow",
+    "lib/workflows/live-commerce.workflow.ts": {
+      "liveCommerceWorkflow": {
+        "workflowId": "workflow//./lib/workflows/live-commerce.workflow//liveCommerceWorkflow",
         "graph": {
           "nodes": [],
           "edges": []
         }
       }
     },
-    "lib/workflows/live-commerce.workflow.ts": {
-      "liveCommerceWorkflow": {
-        "workflowId": "workflow//./lib/workflows/live-commerce.workflow//liveCommerceWorkflow",
+    "lib/workflows/md-strategy.workflow.ts": {
+      "mdStrategyWorkflow": {
+        "workflowId": "workflow//./lib/workflows/md-strategy.workflow//mdStrategyWorkflow",
         "graph": {
           "nodes": [],
           "edges": []
