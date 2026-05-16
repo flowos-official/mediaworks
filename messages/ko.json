@@ -7,7 +7,8 @@
     "gallery": "상품 이미지",
     "broadcasts": "방송 캘린더",
     "screenplays": "대본",
-    "userManagement": "사용자 관리"
+    "userManagement": "사용자 관리",
+    "historicalCrawl": "타사방송수집"
   },
   "home": {
     "title": "MediaWorks",

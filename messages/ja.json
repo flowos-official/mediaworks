@@ -7,7 +7,8 @@
     "gallery": "商品画像",
     "broadcasts": "番組カレンダー",
     "screenplays": "台本",
-    "userManagement": "ユーザー管理"
+    "userManagement": "ユーザー管理",
+    "historicalCrawl": "他局OA収集"
   },
   "home": {
     "title": "MediaWorks",
