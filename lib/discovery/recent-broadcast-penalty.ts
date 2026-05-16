@@ -19,11 +19,20 @@
 import { getServiceClient } from "@/lib/supabase";
 import type { Candidate } from "./types";
 
-const BROADCAST_RECENT_PENALTY = Number(
-	process.env.BROADCAST_RECENT_PENALTY ?? 10,
-);
-const BROADCAST_RECENT_LOOKBACK_DAYS = Number(
-	process.env.BROADCAST_RECENT_LOOKBACK_DAYS ?? 30,
+// `??` only short-circuits on null/undefined, so an env var set to "" would
+// fall through to `Number("") = 0` and silently disable the penalty. This
+// helper guards against empty strings and non-finite values.
+function envInt(name: string, defaultValue: number): number {
+	const raw = process.env[name];
+	if (raw === undefined || raw === "") return defaultValue;
+	const n = Number(raw);
+	return Number.isFinite(n) && n >= 0 ? n : defaultValue;
+}
+
+const BROADCAST_RECENT_PENALTY = envInt("BROADCAST_RECENT_PENALTY", 10);
+const BROADCAST_RECENT_LOOKBACK_DAYS = envInt(
+	"BROADCAST_RECENT_LOOKBACK_DAYS",
+	30,
 );
 
 const QVC_PRODUCT_URL_RE = /qvc\.jp\/product\.([0-9]+)\.html/i;
