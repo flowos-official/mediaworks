@@ -444,6 +444,23 @@
         "member": "멤버",
         "viewer": "뷰어"
       }
+    },
+    "historicalCrawl": {
+      "title": "타사 방송 수집 모니터",
+      "subtitle": "8개 채널 일일 크롤 상태 + 이상 감지",
+      "baselineHeading": "채널별 기준 (최근 7일 중앙값)",
+      "baselineEmpty": "아직 표본이 충분하지 않습니다. 며칠 뒤 다시 표시됩니다.",
+      "samples": "{n}회 표본",
+      "recentRuns": "최근 실행",
+      "runsEmpty": "아직 실행 이력이 없습니다.",
+      "col": {
+        "runAt": "실행시각",
+        "status": "상태",
+        "totalRows": "총 건수",
+        "upserted": "신규",
+        "duration": "소요",
+        "channels": "채널별 건수 (적색=실패/-50% 이하, 황색=-80% 이하)"
+      }
     }
   }
 }
