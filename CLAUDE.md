@@ -51,6 +51,7 @@ File Upload → Supabase Storage → Gemini Vision (extract)
 ### Broadcast Calendar (Phase A — read-only)
 
 - Daily JST 01:00 cron (`16:00 UTC` → `app/api/cron/daily-broadcasts/route.ts`) scrapes yesterday's broadcasts from Shop Channel (`shopch.jp`) and QVC Japan (`qvc.jp`) via cheerio.
+- Daily JST 02:00 cron (`17:00 UTC` → `app/api/cron/qvc-monthly-refresh/route.ts`) re-scrapes the QVC programme guide for the **previous month + current month** (Phase 1-B) via `lib/broadcasts/qvc-monthly.ts::refreshQVCMonthlyRange`. The QVC site exposes ~2 months of schedule data; this catches slots published ahead of time and corrects any backfill gaps. Upserts are idempotent (channel,air_date,start_time conflict key), so daily reruns are cheap.
 - Read API: `GET /api/broadcasts?from=YYYY-MM-DD&to=YYYY-MM-DD[&channel=shopch|qvc]` (max 62-day range).
 - Admin recovery: `POST /api/broadcasts/refresh` with `{date}` or `{from,to}` (max 7 days), `Bearer ${CRON_SECRET}`.
 - UI: `/[locale]/broadcasts` — month grid + time-sorted unified day list with channel filter.

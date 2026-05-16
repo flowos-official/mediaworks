@@ -24,6 +24,9 @@
     "app/api/cron/daily-historical-broadcasts/route.ts": {
       "maxDuration": 300
     },
+    "app/api/cron/qvc-monthly-refresh/route.ts": {
+      "maxDuration": 300
+    },
     "app/api/broadcasts/refresh/route.ts": {
       "maxDuration": 60
     },
@@ -81,6 +84,10 @@
     {
       "path": "/api/cron/daily-historical-broadcasts",
       "schedule": "30 16 * * *"
+    },
+    {
+      "path": "/api/cron/qvc-monthly-refresh",
+      "schedule": "0 17 * * *"
     },
     {
       "path": "/api/cron/daily-learning",
