@@ -37,6 +37,7 @@ const rows = __test.buildDiscoveredProductRows("session-1", [
 		candidate,
 		broadcastTag: "broadcast_confirmed",
 		broadcastSources: [{ title: "source", url: "https://example.com" }],
+		tvEvidence: null,
 	},
 ]);
 
