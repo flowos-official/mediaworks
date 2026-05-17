@@ -57,6 +57,7 @@ export function percentile(values: number[], q: number): number {
 }
 
 import type { TvEvidence, TvEvidenceMatchBasis, TvEvidenceTimeslot } from "./types";
+import { normalizeCategory } from "./category-normalize";
 
 const DOW: Array<TvEvidenceTimeslot["dow"]> = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
@@ -220,21 +221,21 @@ function cutoffIso(days: number): string {
 export async function fetchMatchingBroadcastRows(
 	sb: SupabaseClient,
 	candidate: CandidateInput,
+	whitelistCategories?: string[],
 ): Promise<BroadcastRow[]> {
-	const categoryKeywords = splitCategoryToKeywords(candidate.category ?? "");
-	if (categoryKeywords.length === 0) return [];
+	const resolved = whitelistCategories ?? (await normalizeCategory(sb, candidate.category));
+	if (resolved.length === 0) return [];
 
 	const priceBand = priceBandFor(candidate.price_jpy);
 	const nameTokens = tokenizeName(candidate.name);
 	const cutoff = cutoffIso(HISTORICAL_LOOKBACK_DAYS);
 
-	// 1. broadcasts (shopch + qvc). Category match required; we filter further
-	//    in-process because broadcasts.category is a single string, not array.
+	// 1. broadcasts (shopch + qvc). Category exact-match via whitelist IN(...).
 	const bRes = await sb
 		.from("broadcasts")
 		.select("channel, air_date, start_time, program_title, category, product_ids")
 		.gte("air_date", cutoff)
-		.not("category", "is", null);
+		.in("category", resolved);
 
 	if (bRes.error) {
 		console.warn(`[tv-evidence] broadcasts query failed: ${bRes.error.message}`);
@@ -246,7 +247,7 @@ export async function fetchMatchingBroadcastRows(
 		.from("historical_broadcasts")
 		.select("channel, air_date, product_name, price_jpy, category")
 		.gte("air_date", cutoff)
-		.not("category", "is", null);
+		.in("category", resolved);
 
 	if (hRes.error) {
 		console.warn(`[tv-evidence] historical query failed: ${hRes.error.message}`);
@@ -276,13 +277,6 @@ export async function fetchMatchingBroadcastRows(
 		}
 	}
 
-	const candidateKwSet = new Set(categoryKeywords);
-
-	function categoryMatches(broadcastCategory: string): boolean {
-		const bKws = splitCategoryToKeywords(broadcastCategory);
-		return bKws.some((k) => candidateKwSet.has(k));
-	}
-
 	function nameMatches(title: string): boolean {
 		if (nameTokens.length === 0) return false;
 		const hay = title.normalize("NFKC").toLowerCase();
@@ -305,7 +299,7 @@ export async function fetchMatchingBroadcastRows(
 		category: string | null;
 		product_ids: string[] | null;
 	}>) {
-		if (!row.category || !categoryMatches(row.category)) continue;
+		if (!row.category) continue; // IN(...) already filtered; defensive only
 		const inferredPrice =
 			row.channel === "qvc" && row.product_ids?.[0]
 				? qPriceMap.get(row.product_ids[0]) ?? null
@@ -336,7 +330,7 @@ export async function fetchMatchingBroadcastRows(
 		price_jpy: number | null;
 		category: string | null;
 	}>) {
-		if (!row.category || !categoryMatches(row.category)) continue;
+		if (!row.category) continue; // IN(...) already filtered; defensive only
 		const noCorroborationAvailable = priceBand === null && nameTokens.length === 0;
 		const corroborated =
 			noCorroborationAvailable ||
@@ -360,14 +354,14 @@ export async function computeTvEvidence(
 	sb: SupabaseClient,
 	candidate: CandidateInput,
 ): Promise<TvEvidence | null> {
-	const categoryKeywords = splitCategoryToKeywords(candidate.category ?? "");
-	if (categoryKeywords.length === 0) return null;
+	const whitelistCategories = await normalizeCategory(sb, candidate.category);
+	if (whitelistCategories.length === 0) return null;
 
-	const rows = await fetchMatchingBroadcastRows(sb, candidate);
+	const rows = await fetchMatchingBroadcastRows(sb, candidate, whitelistCategories);
 	if (rows.length === 0) return null;
 
 	return aggregateBroadcastRows(rows, {
-		category_keywords: categoryKeywords,
+		category_keywords: whitelistCategories, // now holds whitelist labels
 		price_band: priceBandFor(candidate.price_jpy),
 		name_tokens: tokenizeName(candidate.name),
 	});
