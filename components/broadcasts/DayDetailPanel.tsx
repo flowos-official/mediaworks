@@ -56,10 +56,17 @@ export default function DayDetailPanel({
     );
   }
 
+  // "全カテゴリ" still narrows to the per-channel whitelist so non-whitelist
+  // slots (e.g. ジュエリー, グルメ・お酒) collected for analytics don't show in
+  // the default operator view. A specific chip selection is exact-match.
   const filtered = broadcasts.filter((b) => {
     if (channelFilter !== "all" && b.channel !== channelFilter) return false;
-    if (categoryFilter !== "all" && b.category !== categoryFilter) return false;
-    return true;
+    if (categoryFilter === "all") {
+      if (!b.category) return false;
+      const wl = CATEGORIES_BY_CHANNEL[b.channel];
+      return wl.includes(b.category);
+    }
+    return b.category === categoryFilter;
   });
 
   const sorted = [...filtered].sort((a, b) => {
