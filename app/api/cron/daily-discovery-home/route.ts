@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { applyBroadcastBoost, tagBroadcastEvidence } from "@/lib/discovery/broadcast";
 import { applyRecentBroadcastPenalty } from "@/lib/discovery/recent-broadcast-penalty";
+import { applyCompetitorTrendBoost } from "@/lib/discovery/competitor-trend-boost";
 import { runStage1 } from "@/lib/discovery/orchestrator";
 import {
 	attachPlanToSession,
@@ -80,6 +81,10 @@ export async function GET(req: NextRequest) {
 		// candidates whose productUrl is a qvc.jp/product.{id}.html page
 		// are considered; others are unaffected.
 		await applyRecentBroadcastPenalty(orchestrated.candidates);
+
+		// Phase 3-C: small boost when the candidate aligns with categories
+		// that are hot on competitor channels (QVC + ShopCh, last 30 days).
+		await applyCompetitorTrendBoost(orchestrated.candidates);
 
 		const batch = orchestrated.candidates.map((c) => {
 			const bc = broadcastMap.get(c.productUrl);
