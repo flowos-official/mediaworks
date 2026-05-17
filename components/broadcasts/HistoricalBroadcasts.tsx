@@ -193,10 +193,9 @@ export default function HistoricalBroadcasts({ channelCounts }: Props) {
 	const hasQuery = !!search || channel !== "all";
 
 	return (
-		<section className="mt-12 pt-8 border-t border-gray-200">
-			<header className="mb-4">
-				<h2 className="text-xl font-bold text-gray-900">{t("searchTitle")}</h2>
-				<p className="text-sm text-gray-500 mt-1">{t("subtitle")}</p>
+		<section>
+			<header className="mb-4 pt-4">
+				<p className="text-sm text-gray-500">{t("subtitle")}</p>
 			</header>
 
 			<div className="flex flex-wrap items-center gap-2 mb-4">
