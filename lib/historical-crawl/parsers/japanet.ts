@@ -26,6 +26,7 @@ function parseJapanet(html: string, jstDate: string): HistoricalRow[] {
 			channel: "japanet",
 			air_date: jstDate,
 			day_of_week: dow,
+			start_time: null,
 			product_name: name.slice(0, 500),
 			price_text: null,
 			price_jpy: null,

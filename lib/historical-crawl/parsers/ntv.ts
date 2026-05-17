@@ -35,6 +35,7 @@ function parse(html: string, jstDate: string): HistoricalRow[] {
 			channel: "ntv",
 			air_date: jstDate,
 			day_of_week: dow,
+			start_time: null,
 			product_name: name.slice(0, 500),
 			price_text: rawPrice ? rawPrice.slice(0, 200) : null,
 			price_jpy: price,
