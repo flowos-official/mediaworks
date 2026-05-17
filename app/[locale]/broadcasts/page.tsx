@@ -1,7 +1,8 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { getServiceClient } from "@/lib/supabase";
+import { requireUser } from "@/lib/auth/require-user";
 import BroadcastCalendar from "@/components/broadcasts/BroadcastCalendar";
 import HistoricalBroadcasts from "@/components/broadcasts/HistoricalBroadcasts";
 import type { Broadcast } from "@/components/broadcasts/BroadcastListItem";
@@ -50,16 +51,23 @@ export default async function Page({ params, searchParams }: PageProps) {
   const sp = await searchParams;
   const t = await getTranslations({ locale, namespace: "broadcasts" });
 
+  // Auth gate: /broadcasts is member/admin only. Use auth.sb so RLS applies.
+  // Per CLAUDE.md: getServiceClient is reserved for cron/workflow paths.
+  const auth = await requireUser(["member", "admin"]);
+  if ("error" in auth) {
+    redirect(localePath(locale, "/login"));
+  }
+  const sb = auth.sb;
+
   const today = new Date();
   const todayIso = today.toISOString().slice(0, 10);
   const selected = sp.date && /^\d{4}-\d{2}-\d{2}$/.test(sp.date) ? sp.date : todayIso;
   const { y, m, from, to } = monthBoundsAround(selected);
 
-  const sb = getServiceClient();
   const { data } = await sb
     .from("broadcasts")
     .select(
-      "id,channel,air_date,start_time,program_title,presenter,description,thumbnail_url,source_url,product_ids",
+      "id,channel,air_date,start_time,program_title,presenter,description,thumbnail_url,source_url,product_ids,category",
     )
     .gte("air_date", from)
     .lte("air_date", to)
@@ -78,6 +86,7 @@ export default async function Page({ params, searchParams }: PageProps) {
     thumbnail_url: string | null;
     source_url: string;
     product_ids: string[] | null;
+    category: string | null;
   }>;
   const productMap = await loadProductsForBroadcasts(rows);
 
@@ -93,7 +102,7 @@ export default async function Page({ params, searchParams }: PageProps) {
       sb
         .from("historical_broadcasts")
         .select(
-          "id,channel,air_date,day_of_week,product_name,price_text,price_jpy,price_is_tax_incl,source_url",
+          "id,channel,air_date,day_of_week,product_name,price_text,price_jpy,price_is_tax_incl,source_url,category",
           { count: "exact" },
         )
         .eq("air_date", selected)

@@ -1,6 +1,5 @@
 import { requireUser } from "@/lib/auth/require-user";
 import { type NextRequest, NextResponse } from "next/server";
-import { getServiceClient } from "@/lib/supabase";
 import { loadProductsForBroadcasts } from "@/lib/qvc-products/attach";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -42,8 +41,9 @@ export async function GET(req: NextRequest) {
 		return NextResponse.json({ error: "invalid channel" }, { status: 400 });
 	}
 
-	const sb = getServiceClient();
-	let query = sb
+	// Use the server client returned by requireUser so RLS still applies.
+	// Per CLAUDE.md: getServiceClient is reserved for cron/workflow paths.
+	let query = auth.sb
 		.from("broadcasts")
 		.select(
 			"id,channel,air_date,start_time,program_title,presenter,description,thumbnail_url,source_url,product_ids,category",
@@ -79,7 +79,9 @@ export async function GET(req: NextRequest) {
 		{ broadcasts: enriched, total: enriched.length },
 		{
 			headers: {
-				"Cache-Control": "public, max-age=300, stale-while-revalidate=3600",
+				// `private`: response is auth-gated, must not be served by
+				// shared caches (CDN/proxy) to other users.
+				"Cache-Control": "private, max-age=300, stale-while-revalidate=3600",
 			},
 		},
 	);
