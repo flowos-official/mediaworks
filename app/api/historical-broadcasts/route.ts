@@ -11,7 +11,6 @@ const OA_CHANNELS = new Set([
 	"dinos",
 	"senobura",
 	"uranoura",
-	"btops",
 ]);
 
 export interface HistoricalBroadcastRow {
@@ -19,6 +18,7 @@ export interface HistoricalBroadcastRow {
 	channel: string;
 	air_date: string;
 	day_of_week: string | null;
+	start_time: string | null;
 	product_name: string;
 	price_text: string | null;
 	price_jpy: number | null;
@@ -63,10 +63,11 @@ export async function GET(req: NextRequest) {
 	let q = auth.sb
 		.from("historical_broadcasts")
 		.select(
-			"id,channel,air_date,day_of_week,product_name,price_text,price_jpy,price_is_tax_incl,source_url,category",
+			"id,channel,air_date,day_of_week,start_time,product_name,price_text,price_jpy,price_is_tax_incl,source_url,category",
 			{ count: "exact" },
 		)
 		.order("air_date", { ascending: false })
+		.order("start_time", { ascending: true, nullsFirst: false })
 		.order("channel", { ascending: true })
 		.range(offset, offset + limit - 1);
 

@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { getTranslations, getLocale } from 'next-intl/server';
 import LanguageSwitcher from './LanguageSwitcher';
 import UserMenu from './UserMenu';
-import { BarChart3, Calendar, Clapperboard, Users, Activity } from 'lucide-react';
+import { BarChart3, Calendar, Clapperboard, Users } from 'lucide-react';
 import { getServerClient } from '@/lib/supabase/server';
 import type { Role } from '@/lib/auth/route-permissions';
 import { localePath } from '@/lib/i18n/locale-path';
@@ -79,22 +79,13 @@ export default async function Navbar() {
               </Link>
             )}
             {isAdmin && (
-              <>
-                <Link
-                  href={localePath(locale, '/admin/users')}
-                  className="text-sm text-gray-600 hover:text-gray-900 font-medium flex items-center gap-1"
-                >
-                  <Users size={14} />
-                  {t('userManagement')}
-                </Link>
-                <Link
-                  href={localePath(locale, '/admin/historical-crawl')}
-                  className="text-sm text-gray-600 hover:text-gray-900 font-medium flex items-center gap-1"
-                >
-                  <Activity size={14} />
-                  {t('historicalCrawl')}
-                </Link>
-              </>
+              <Link
+                href={localePath(locale, '/admin/users')}
+                className="text-sm text-gray-600 hover:text-gray-900 font-medium flex items-center gap-1"
+              >
+                <Users size={14} />
+                {t('userManagement')}
+              </Link>
             )}
             <LanguageSwitcher />
             <UserMenu email={user?.email ?? null} role={role} locale={locale} />

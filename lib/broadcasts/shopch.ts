@@ -43,6 +43,25 @@ function absoluteUrl(href: string | undefined): string | null {
 }
 
 /**
+ * Derive the lead-product detail URL from the slot's thumbnail image path.
+ *
+ * ShopCh image paths encode the 6-digit reqprno as the two path segments
+ * directly under /img/prod/, e.g.
+ *   /img/prod/820/002/82000201M.jpg → reqprno=820002
+ *
+ * The canonical product detail page is then:
+ *   https://www.shopch.jp/pc/product/proddetail?reqprno=820002
+ *
+ * Returns null when the src does not match (e.g. /navigator/ placeholders).
+ */
+export function deriveShopChProductUrl(imgSrc: string | undefined | null): string | null {
+	if (!imgSrc) return null;
+	const m = imgSrc.match(/\/img\/prod\/(\d{3})\/(\d{3})\//);
+	if (!m) return null;
+	return `https://www.shopch.jp/pc/product/proddetail?reqprno=${m[1]}${m[2]}`;
+}
+
+/**
  * Pure HTML parser — takes the raw HTML of shopch.jp/pc/tv/programlist?onAirDay=YYYYMMDD
  * and returns scraped slots for the given airDate only.
  *
@@ -84,9 +103,8 @@ export function scrapeShopChannelFromHTML(
 		const description = $el.find(".pg-item-name").first().text().trim() || null;
 
 		// Thumbnail
-		const thumbnailUrl = absoluteUrl(
-			$el.find("figure.pg-item-figure img").first().attr("src"),
-		);
+		const rawImgSrc = $el.find("figure.pg-item-figure img").first().attr("src");
+		const thumbnailUrl = absoluteUrl(rawImgSrc);
 
 		// Cast: find キャスト row, grab the second cell text
 		let presenter: string | null = null;
@@ -102,8 +120,10 @@ export function scrapeShopChannelFromHTML(
 			}
 		});
 
-		// Source URL: link inside the article (if any), else fall back to schedule URL
-		const slotLink = absoluteUrl($el.find("a.js-unclickable").first().attr("href") ?? undefined);
+		// Source URL: derive product detail URL from the thumbnail image path.
+		// The article only contains presenter-profile <a> tags (js-unclickable),
+		// so we must NOT use those — they'd land on the host's profile page.
+		const productUrl = deriveShopChProductUrl(rawImgSrc);
 
 		slots.push({
 			channel: "shopch",
@@ -113,7 +133,7 @@ export function scrapeShopChannelFromHTML(
 			presenter,
 			description,
 			thumbnail_url: thumbnailUrl,
-			source_url: slotLink ?? sourceUrl,
+			source_url: productUrl ?? sourceUrl,
 			product_ids: null,
 			category: null, // attached later by classifyShopChSlots
 		});

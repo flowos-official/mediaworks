@@ -25,7 +25,6 @@ const SHEET_MAP: SheetMap[] = [
 	{ sheet: "フジDinos",                    channel: "dinos",    source_url: "https://www.dinos.co.jp/tv/premium/" },
 	{ sheet: "ABCせのぶら",                  channel: "senobura", source_url: "https://shop.asahi.co.jp/category/SENOBURA/" },
 	{ sheet: "ABCウラのウラまで失礼します", channel: "uranoura", source_url: "https://shop.asahi.co.jp/category/URANADJA/" },
-	{ sheet: "読売B-tops",                   channel: "btops",    source_url: "https://www.b-tops.com/" },
 ];
 
 interface HistoricalRow {
