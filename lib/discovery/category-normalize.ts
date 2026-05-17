@@ -140,3 +140,105 @@ export const __test = {
 	classifyBatchViaGemini,
 	BATCH_SIZE,
 };
+
+// ---------------------------------------------------------------------------
+// Public cache-aware API
+// ---------------------------------------------------------------------------
+
+interface CacheRow {
+	raw_category: string;
+	whitelist_categories: string[];
+}
+
+/**
+ * Normalize a single raw category. Cache hit → immediate. Miss → Gemini
+ * single-item classify (batch of 1) → upsert → return. Returns [] on
+ * null/empty input or any failure (fail-open).
+ *
+ * Does NOT overwrite rows with source='manual'.
+ */
+export async function normalizeCategory(
+	sb: SupabaseClient,
+	rawCategory: string | null,
+): Promise<string[]> {
+	const raw = (rawCategory ?? "").trim();
+	if (!raw) return [];
+
+	const hit = await sb
+		.from("discovered_category_normalization")
+		.select("whitelist_categories")
+		.eq("raw_category", raw)
+		.maybeSingle();
+	if (hit.data) return hit.data.whitelist_categories as string[];
+
+	const whitelist = await loadWhitelist(sb);
+	if (whitelist.length === 0) return [];
+
+	const batch = await classifyBatchViaGemini(whitelist, [raw]);
+	if (!batch.has(raw)) return []; // classification failed; do NOT cache
+
+	const matches = batch.get(raw)!;
+	await sb
+		.from("discovered_category_normalization")
+		.upsert(
+			{ raw_category: raw, whitelist_categories: matches, source: "gemini" },
+			{ onConflict: "raw_category", ignoreDuplicates: false },
+		);
+	return matches;
+}
+
+/**
+ * Batch version for cron / backfill. Dedups input, fetches cached hits
+ * in one IN(...) query, classifies misses in chunks of BATCH_SIZE, upserts,
+ * returns a Map for every distinct input (empty array for failed
+ * classifications — but those entries are NOT cached so the next call
+ * will retry).
+ */
+export async function normalizeCategoriesBatch(
+	sb: SupabaseClient,
+	rawCategories: string[],
+): Promise<Map<string, string[]>> {
+	const deduped = [...new Set(rawCategories.map((s) => s.trim()).filter(Boolean))];
+	if (deduped.length === 0) return new Map();
+
+	const result = new Map<string, string[]>();
+	for (const raw of deduped) result.set(raw, []);
+
+	const hits = await sb
+		.from("discovered_category_normalization")
+		.select("raw_category, whitelist_categories")
+		.in("raw_category", deduped);
+	if (hits.data) {
+		for (const row of hits.data as CacheRow[]) {
+			result.set(row.raw_category, row.whitelist_categories);
+		}
+	}
+
+	const cachedSet = new Set((hits.data ?? []).map((h: CacheRow) => h.raw_category));
+	const misses = deduped.filter((r) => !cachedSet.has(r));
+	if (misses.length === 0) return result;
+
+	const whitelist = await loadWhitelist(sb);
+	if (whitelist.length === 0) return result;
+
+	for (let i = 0; i < misses.length; i += BATCH_SIZE) {
+		const chunk = misses.slice(i, i + BATCH_SIZE);
+		const classified = await classifyBatchViaGemini(whitelist, chunk);
+		const upserts: Array<{ raw_category: string; whitelist_categories: string[]; source: "gemini" }> = [];
+		for (const raw of chunk) {
+			if (!classified.has(raw)) continue;
+			const matches = classified.get(raw)!;
+			result.set(raw, matches);
+			upserts.push({ raw_category: raw, whitelist_categories: matches, source: "gemini" });
+		}
+		if (upserts.length > 0) {
+			const upd = await sb
+				.from("discovered_category_normalization")
+				.upsert(upserts, { onConflict: "raw_category", ignoreDuplicates: false });
+			if (upd.error) {
+				console.warn(`[category-normalize] batch upsert failed: ${upd.error.message}`);
+			}
+		}
+	}
+	return result;
+}
