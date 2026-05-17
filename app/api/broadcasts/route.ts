@@ -3,6 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { loadProductsForBroadcasts } from "@/lib/qvc-products/attach";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const INT_PARAM = /^\d+$/;
 const VALID_CHANNELS = new Set(["shopch", "qvc"]);
 const MAX_RANGE_DAYS = 62;
 
@@ -16,27 +17,59 @@ export async function GET(req: NextRequest) {
 	const to = searchParams.get("to");
 	const channel = searchParams.get("channel");
 	const category = searchParams.get("category");
+	const search = searchParams.get("search");
+	const limitRaw = searchParams.get("limit");
+	const offsetRaw = searchParams.get("offset");
 
-	if (!from || !ISO_DATE.test(from)) {
-		return NextResponse.json({ error: "missing or invalid 'from'" }, { status: 400 });
+	// In search mode, from/to are optional. In calendar mode, both are required.
+	if (!search) {
+		if (!from || !ISO_DATE.test(from)) {
+			return NextResponse.json(
+				{ error: "missing or invalid 'from'" },
+				{ status: 400 },
+			);
+		}
+		if (!to || !ISO_DATE.test(to)) {
+			return NextResponse.json(
+				{ error: "missing or invalid 'to'" },
+				{ status: 400 },
+			);
+		}
+		if (to < from) {
+			return NextResponse.json({ error: "to < from" }, { status: 400 });
+		}
+		const days =
+			Math.round(
+				(new Date(`${to}T00:00:00Z`).getTime() -
+					new Date(`${from}T00:00:00Z`).getTime()) /
+					86_400_000,
+			) + 1;
+		if (days > MAX_RANGE_DAYS) {
+			return NextResponse.json(
+				{ error: `range > ${MAX_RANGE_DAYS} days` },
+				{ status: 400 },
+			);
+		}
+	} else {
+		// Optional date refinement in search mode.
+		if (from && !ISO_DATE.test(from)) {
+			return NextResponse.json({ error: "invalid 'from'" }, { status: 400 });
+		}
+		if (to && !ISO_DATE.test(to)) {
+			return NextResponse.json({ error: "invalid 'to'" }, { status: 400 });
+		}
 	}
-	if (!to || !ISO_DATE.test(to)) {
-		return NextResponse.json({ error: "missing or invalid 'to'" }, { status: 400 });
+	for (const [name, raw] of [
+		["limit", limitRaw],
+		["offset", offsetRaw],
+	] as const) {
+		if (raw !== null && !INT_PARAM.test(raw)) {
+			return NextResponse.json({ error: `invalid ${name}` }, { status: 400 });
+		}
 	}
-	if (to < from) {
-		return NextResponse.json({ error: "to < from" }, { status: 400 });
-	}
-	const days =
-		Math.round(
-			(new Date(`${to}T00:00:00Z`).getTime() - new Date(`${from}T00:00:00Z`).getTime()) /
-				86_400_000,
-		) + 1;
-	if (days > MAX_RANGE_DAYS) {
-		return NextResponse.json(
-			{ error: `range > ${MAX_RANGE_DAYS} days` },
-			{ status: 400 },
-		);
-	}
+	const limit = Math.min(limitRaw === null ? 200 : parseInt(limitRaw, 10), 500);
+	const offset = offsetRaw === null ? 0 : parseInt(offsetRaw, 10);
+
 	if (channel && !VALID_CHANNELS.has(channel)) {
 		return NextResponse.json({ error: "invalid channel" }, { status: 400 });
 	}
@@ -47,17 +80,20 @@ export async function GET(req: NextRequest) {
 		.from("broadcasts")
 		.select(
 			"id,channel,air_date,start_time,program_title,presenter,description,thumbnail_url,source_url,product_ids,category",
+			{ count: "exact" },
 		)
-		.gte("air_date", from)
-		.lte("air_date", to)
-		.order("air_date", { ascending: true })
+		.order("air_date", { ascending: !search })
 		.order("start_time", { ascending: true })
-		.order("channel", { ascending: true });
+		.order("channel", { ascending: true })
+		.range(offset, offset + limit - 1);
 
+	if (from) query = query.gte("air_date", from);
+	if (to) query = query.lte("air_date", to);
 	if (channel) query = query.eq("channel", channel);
 	if (category) query = query.eq("category", category);
+	if (search) query = query.ilike("program_title", `%${search}%`);
 
-	const { data, error } = await query;
+	const { data, count, error } = await query;
 	if (error) {
 		console.error("broadcasts list error", error);
 		return NextResponse.json({ error: "db error" }, { status: 500 });
@@ -76,7 +112,7 @@ export async function GET(req: NextRequest) {
 	}));
 
 	return NextResponse.json(
-		{ broadcasts: enriched, total: enriched.length },
+		{ broadcasts: enriched, total: count ?? enriched.length },
 		{
 			headers: {
 				// `private`: response is auth-gated, must not be served by

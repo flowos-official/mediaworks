@@ -364,9 +364,9 @@
     "back": "홈으로",
     "historical": {
       "titleForDate": "{date} OA 방송 (8 채널)",
-      "searchTitle": "전체 이력 검색 (OA 8채널)",
+      "searchTitle": "전체 이력 검색 (12채널)",
       "emptyNoQuery": "검색어를 입력해주세요.",
-      "subtitle": "자파넷·테레아사 쥰산포·닛테레 포슈레 등 8개 채널. 상품명으로 검색하거나 특정 채널 선택. 채널별 카운트는 전체 기간.",
+      "subtitle": "QVC·Shop CH·자파넷 등 12채널 전체 기간 검색. 상품/프로그램명으로 검색하거나 특정 채널 선택.",
       "all": "전체",
       "search": "검색",
       "clear": "초기화",

@@ -4,67 +4,158 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { Search, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 import type { HistoricalBroadcastRow } from "@/app/api/historical-broadcasts/route";
+import type { Broadcast } from "./BroadcastListItem";
 import {
-	OA_CHANNELS,
+	ALL_CHANNELS,
 	CHANNEL_BADGE,
 	channelDisplayName,
 } from "@/lib/broadcasts/channel-style";
 
 interface Props {
-	initialRows: HistoricalBroadcastRow[];
-	initialTotal: number;
 	channelCounts: Record<string, number>;
 }
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 100;
 
-function formatPrice(row: HistoricalBroadcastRow): string {
+// Unified row shape merging broadcasts (QVC/ShopCh) and historical_broadcasts (8 OA).
+interface UnifiedRow {
+	id: string;
+	channel: string;
+	air_date: string;
+	day_of_week: string | null;
+	name: string;
+	priceText: string | null;
+	source_url: string | null;
+	category: string | null;
+}
+
+function formatHistoricalPrice(row: HistoricalBroadcastRow): string {
 	if (row.price_jpy == null) return row.price_text ?? "—";
 	const fmt = `¥${row.price_jpy.toLocaleString("ja-JP")}`;
 	if (row.price_is_tax_incl === false) return `${fmt}（税抜）`;
 	return fmt;
 }
 
-export default function HistoricalBroadcasts({
-	initialRows,
-	initialTotal,
-	channelCounts,
-}: Props) {
+function broadcastToUnified(b: Broadcast): UnifiedRow {
+	return {
+		id: `b:${b.id}`,
+		channel: b.channel,
+		air_date: b.air_date,
+		day_of_week: null,
+		name: b.program_title,
+		priceText: null,
+		source_url: b.source_url,
+		category: b.category ?? null,
+	};
+}
+
+function historicalToUnified(r: HistoricalBroadcastRow): UnifiedRow {
+	return {
+		id: `h:${r.id}`,
+		channel: r.channel,
+		air_date: r.air_date,
+		day_of_week: r.day_of_week,
+		name: r.product_name,
+		priceText: formatHistoricalPrice(r),
+		source_url: r.source_url,
+		category: r.category,
+	};
+}
+
+function isOAChannelSlug(slug: string): boolean {
+	return slug !== "qvc" && slug !== "shopch";
+}
+
+export default function HistoricalBroadcasts({ channelCounts }: Props) {
 	const t = useTranslations("broadcasts.historical");
 
 	const [channel, setChannel] = useState<string>("all");
-	const [category] = useState<string>("all");
 	const [search, setSearch] = useState("");
 	const [searchInput, setSearchInput] = useState("");
-	const [rows, setRows] = useState<HistoricalBroadcastRow[]>(initialRows);
-	const [total, setTotal] = useState(initialTotal);
+	const [rows, setRows] = useState<UnifiedRow[]>([]);
+	const [total, setTotal] = useState(0);
 	const [offset, setOffset] = useState(0);
 	const [loading, setLoading] = useState(false);
 
 	const fetchPage = useCallback(
 		async (
 			nextChannel: string,
-			nextCategory: string,
 			nextSearch: string,
 			nextOffset: number,
 			signal?: AbortSignal,
 		) => {
 			setLoading(true);
 			try {
-				const qs = new URLSearchParams();
-				if (nextSearch) qs.set("search", nextSearch);
-				if (nextChannel !== "all") qs.set("channel", nextChannel);
-				if (nextCategory !== "all") qs.set("category", nextCategory);
-				qs.set("limit", String(PAGE_SIZE));
-				qs.set("offset", String(nextOffset));
-				const r = await fetch(`/api/historical-broadcasts?${qs}`, { signal });
-				if (!r.ok) throw new Error(r.statusText);
-				const json = (await r.json()) as {
-					rows: HistoricalBroadcastRow[];
-					total: number;
-				};
-				setRows(json.rows);
-				setTotal(json.total);
+				const queryBroadcasts =
+					nextChannel === "all" ||
+					nextChannel === "qvc" ||
+					nextChannel === "shopch";
+				const queryHistorical =
+					nextChannel === "all" || isOAChannelSlug(nextChannel);
+
+				const broadcastsQs = new URLSearchParams();
+				if (nextSearch) broadcastsQs.set("search", nextSearch);
+				if (nextChannel !== "all" && !isOAChannelSlug(nextChannel)) {
+					broadcastsQs.set("channel", nextChannel);
+				}
+				broadcastsQs.set("limit", String(PAGE_SIZE));
+				broadcastsQs.set("offset", String(nextOffset));
+
+				const historicalQs = new URLSearchParams();
+				if (nextSearch) historicalQs.set("search", nextSearch);
+				if (nextChannel !== "all" && isOAChannelSlug(nextChannel)) {
+					historicalQs.set("channel", nextChannel);
+				}
+				historicalQs.set("limit", String(PAGE_SIZE));
+				historicalQs.set("offset", String(nextOffset));
+
+				const [bRes, hRes] = await Promise.allSettled([
+					queryBroadcasts
+						? fetch(`/api/broadcasts?${broadcastsQs}`, { signal })
+						: Promise.resolve(null),
+					queryHistorical
+						? fetch(`/api/historical-broadcasts?${historicalQs}`, { signal })
+						: Promise.resolve(null),
+				]);
+
+				const merged: UnifiedRow[] = [];
+				let totalCount = 0;
+
+				if (
+					bRes.status === "fulfilled" &&
+					bRes.value &&
+					bRes.value.ok
+				) {
+					const json = (await bRes.value.json()) as {
+						broadcasts: Broadcast[];
+						total: number;
+					};
+					for (const b of json.broadcasts ?? []) {
+						merged.push(broadcastToUnified(b));
+					}
+					totalCount += json.total ?? 0;
+				}
+				if (
+					hRes.status === "fulfilled" &&
+					hRes.value &&
+					hRes.value.ok
+				) {
+					const json = (await hRes.value.json()) as {
+						rows: HistoricalBroadcastRow[];
+						total: number;
+					};
+					for (const r of json.rows ?? []) {
+						merged.push(historicalToUnified(r));
+					}
+					totalCount += json.total ?? 0;
+				}
+
+				merged.sort((a, b) => {
+					if (a.air_date !== b.air_date) return b.air_date.localeCompare(a.air_date);
+					return a.channel.localeCompare(b.channel);
+				});
+				setRows(merged);
+				setTotal(totalCount);
 			} catch (e) {
 				if ((e as { name?: string }).name !== "AbortError") {
 					console.error(e);
@@ -77,17 +168,14 @@ export default function HistoricalBroadcasts({
 	);
 
 	useEffect(() => {
-		// Search-only mode: stay empty until the user enters a query (or
-		// picks a channel chip). Skip the fetch entirely in the default
-		// "no query, no chip" state so we never re-issue the SSR-equivalent
-		// empty load.
+		// Search-only mode: stay empty until the user enters a query or picks a channel chip.
 		if (!search && channel === "all" && offset === 0) {
 			return;
 		}
 		const ctrl = new AbortController();
-		void fetchPage(channel, category, search, offset, ctrl.signal);
+		void fetchPage(channel, search, offset, ctrl.signal);
 		return () => ctrl.abort();
-	}, [channel, category, search, offset, fetchPage]);
+	}, [channel, search, offset, fetchPage]);
 
 	const handleChannelClick = (slug: string) => {
 		setChannel(slug);
@@ -123,7 +211,7 @@ export default function HistoricalBroadcasts({
 				>
 					{t("all")}
 				</button>
-				{OA_CHANNELS.map((c) => {
+				{ALL_CHANNELS.map((c) => {
 					const n = channelCounts[c.slug] ?? 0;
 					const active = channel === c.slug;
 					const colorClass =
@@ -235,9 +323,9 @@ export default function HistoricalBroadcasts({
 												{channelDisplayName(r.channel)}
 											</span>
 										</td>
-										<td className="px-3 py-2 text-gray-900">{r.product_name}</td>
+										<td className="px-3 py-2 text-gray-900">{r.name}</td>
 										<td className="px-3 py-2 text-right text-gray-700 whitespace-nowrap">
-											{formatPrice(r)}
+											{r.priceText ?? "—"}
 										</td>
 										<td className="px-3 py-2 text-right">
 											{r.source_url && (
