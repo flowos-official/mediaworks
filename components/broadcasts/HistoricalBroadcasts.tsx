@@ -1,45 +1,22 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Search, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 import type { HistoricalBroadcastRow } from "@/app/api/historical-broadcasts/route";
+import {
+	OA_CHANNELS,
+	CHANNEL_BADGE,
+	channelDisplayName,
+} from "@/lib/broadcasts/channel-style";
 
 interface Props {
 	initialRows: HistoricalBroadcastRow[];
 	initialTotal: number;
-	initialDate: string;
 	channelCounts: Record<string, number>;
 }
 
-const OA_CHANNELS: { slug: string; name: string }[] = [
-	{ slug: "japanet", name: "ジャパネット" },
-	{ slug: "junsanpo", name: "テレ朝じゅん散歩" },
-	{ slug: "ntv", name: "日テレポシュレ" },
-	{ slug: "tbs", name: "TBSキニナル" },
-	{ slug: "dinos", name: "フジDinos" },
-	{ slug: "senobura", name: "ABCせのぶら" },
-	{ slug: "uranoura", name: "ABCウラのウラまで" },
-	{ slug: "btops", name: "読売B-tops" },
-];
-
-const CHANNEL_BADGE: Record<string, string> = {
-	japanet: "bg-red-100 text-red-800 border-red-200",
-	junsanpo: "bg-cyan-100 text-cyan-800 border-cyan-200",
-	ntv: "bg-amber-100 text-amber-800 border-amber-200",
-	tbs: "bg-sky-100 text-sky-800 border-sky-200",
-	dinos: "bg-rose-100 text-rose-800 border-rose-200",
-	senobura: "bg-indigo-100 text-indigo-800 border-indigo-200",
-	uranoura: "bg-purple-100 text-purple-800 border-purple-200",
-	btops: "bg-emerald-100 text-emerald-800 border-emerald-200",
-};
-
 const PAGE_SIZE = 50;
-
-function channelName(slug: string): string {
-	return OA_CHANNELS.find((c) => c.slug === slug)?.name ?? slug;
-}
 
 function formatPrice(row: HistoricalBroadcastRow): string {
 	if (row.price_jpy == null) return row.price_text ?? "—";
@@ -51,16 +28,12 @@ function formatPrice(row: HistoricalBroadcastRow): string {
 export default function HistoricalBroadcasts({
 	initialRows,
 	initialTotal,
-	initialDate,
 	channelCounts,
 }: Props) {
 	const t = useTranslations("broadcasts.historical");
-	const searchParams = useSearchParams();
-	const urlDate = searchParams.get("date") ?? initialDate;
 
-	const [date, setDate] = useState<string>(urlDate);
 	const [channel, setChannel] = useState<string>("all");
-	const [category, setCategory] = useState<string>("all");
+	const [category] = useState<string>("all");
 	const [search, setSearch] = useState("");
 	const [searchInput, setSearchInput] = useState("");
 	const [rows, setRows] = useState<HistoricalBroadcastRow[]>(initialRows);
@@ -68,21 +41,8 @@ export default function HistoricalBroadcasts({
 	const [offset, setOffset] = useState(0);
 	const [loading, setLoading] = useState(false);
 
-	// React to URL date param changes from BroadcastCalendar. Clear rows so
-	// the previous date's data doesn't linger while the new fetch is in
-	// flight or while the new date has zero rows.
-	useEffect(() => {
-		if (urlDate !== date) {
-			setDate(urlDate);
-			setOffset(0);
-			setRows([]);
-			setTotal(0);
-		}
-	}, [urlDate, date]);
-
 	const fetchPage = useCallback(
 		async (
-			nextDate: string,
 			nextChannel: string,
 			nextCategory: string,
 			nextSearch: string,
@@ -92,12 +52,7 @@ export default function HistoricalBroadcasts({
 			setLoading(true);
 			try {
 				const qs = new URLSearchParams();
-				// Search spans the whole history; otherwise show only the picked date.
-				if (nextSearch) {
-					qs.set("search", nextSearch);
-				} else {
-					qs.set("date", nextDate);
-				}
+				if (nextSearch) qs.set("search", nextSearch);
 				if (nextChannel !== "all") qs.set("channel", nextChannel);
 				if (nextCategory !== "all") qs.set("category", nextCategory);
 				qs.set("limit", String(PAGE_SIZE));
@@ -121,19 +76,18 @@ export default function HistoricalBroadcasts({
 		[],
 	);
 
-	const isInitial =
-		date === initialDate &&
-		channel === "all" &&
-		category === "all" &&
-		!search &&
-		offset === 0;
-
 	useEffect(() => {
-		if (isInitial) return;
+		// Search-only mode: stay empty until the user enters a query (or
+		// picks a channel chip). Skip the fetch entirely in the default
+		// "no query, no chip" state so we never re-issue the SSR-equivalent
+		// empty load.
+		if (!search && channel === "all" && offset === 0) {
+			return;
+		}
 		const ctrl = new AbortController();
-		void fetchPage(date, channel, category, search, offset, ctrl.signal);
+		void fetchPage(channel, category, search, offset, ctrl.signal);
 		return () => ctrl.abort();
-	}, [date, channel, category, search, offset, fetchPage, isInitial]);
+	}, [channel, category, search, offset, fetchPage]);
 
 	const handleChannelClick = (slug: string) => {
 		setChannel(slug);
@@ -148,13 +102,12 @@ export default function HistoricalBroadcasts({
 
 	const totalPages = Math.ceil(total / PAGE_SIZE);
 	const currentPage = Math.floor(offset / PAGE_SIZE) + 1;
+	const hasQuery = !!search || channel !== "all";
 
 	return (
 		<section className="mt-12 pt-8 border-t border-gray-200">
 			<header className="mb-4">
-				<h2 className="text-xl font-bold text-gray-900">
-					{t("titleForDate", { date })}
-				</h2>
+				<h2 className="text-xl font-bold text-gray-900">{t("searchTitle")}</h2>
 				<p className="text-sm text-gray-500 mt-1">{t("subtitle")}</p>
 			</header>
 
@@ -238,7 +191,7 @@ export default function HistoricalBroadcasts({
 
 			{rows.length === 0 ? (
 				<div className="text-sm text-gray-500 p-12 text-center border border-dashed border-gray-200 rounded-lg">
-					{t("emptyForDate", { date })}
+					{hasQuery ? t("emptyForDate", { date: "" }) : t("emptyNoQuery")}
 				</div>
 			) : (
 				<div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -263,7 +216,7 @@ export default function HistoricalBroadcasts({
 						<tbody className="divide-y divide-gray-100">
 							{rows.map((r) => {
 								const badge =
-									CHANNEL_BADGE[r.channel] ??
+									CHANNEL_BADGE[r.channel as keyof typeof CHANNEL_BADGE] ??
 									"bg-gray-100 text-gray-700 border-gray-200";
 								return (
 									<tr key={r.id} className="hover:bg-gray-50">
@@ -279,7 +232,7 @@ export default function HistoricalBroadcasts({
 											<span
 												className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium border ${badge}`}
 											>
-												{channelName(r.channel)}
+												{channelDisplayName(r.channel)}
 											</span>
 										</td>
 										<td className="px-3 py-2 text-gray-900">{r.product_name}</td>
