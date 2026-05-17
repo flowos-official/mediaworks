@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   ImageIcon, Search, Upload, X, Loader2, ChevronLeft, ChevronRight,
 } from 'lucide-react';
+import FirmSubNav from '@/components/nav/FirmSubNav';
 
 type GalleryProduct = {
   code: string;
@@ -118,6 +119,9 @@ export default function GalleryPage() {
 
     return (
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="mb-6">
+            <FirmSubNav />
+          </div>
           <button
             type="button"
             onClick={() => { setSelectedCode(null); setSelectedImages([]); }}
@@ -235,6 +239,9 @@ export default function GalleryPage() {
   // Main gallery grid
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-6">
+          <FirmSubNav />
+        </div>
         <div className="flex items-center justify-between mb-6">
           <div>
             <div className="flex items-center gap-2 mb-1">
