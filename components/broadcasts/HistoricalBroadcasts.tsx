@@ -68,11 +68,15 @@ export default function HistoricalBroadcasts({
 	const [offset, setOffset] = useState(0);
 	const [loading, setLoading] = useState(false);
 
-	// React to URL date param changes from BroadcastCalendar.
+	// React to URL date param changes from BroadcastCalendar. Clear rows so
+	// the previous date's data doesn't linger while the new fetch is in
+	// flight or while the new date has zero rows.
 	useEffect(() => {
 		if (urlDate !== date) {
 			setDate(urlDate);
 			setOffset(0);
+			setRows([]);
+			setTotal(0);
 		}
 	}, [urlDate, date]);
 

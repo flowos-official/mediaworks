@@ -56,16 +56,13 @@ export default function DayDetailPanel({
     );
   }
 
-  // "全カテゴリ" still narrows to the per-channel whitelist so non-whitelist
-  // slots (e.g. ジュエリー, グルメ・お酒) collected for analytics don't show in
-  // the default operator view. A specific chip selection is exact-match.
+  // Policy (2026-05-17): "全カテゴリ" means literally every slot, including
+  // those whose category is NULL or outside the whitelist. The whitelist
+  // only narrows when a specific chip is selected. This matches the user's
+  // intuitive expectation that "전체" = no filter.
   const filtered = broadcasts.filter((b) => {
     if (channelFilter !== "all" && b.channel !== channelFilter) return false;
-    if (categoryFilter === "all") {
-      if (!b.category) return false;
-      const wl = CATEGORIES_BY_CHANNEL[b.channel];
-      return wl.includes(b.category);
-    }
+    if (categoryFilter === "all") return true;
     return b.category === categoryFilter;
   });
 
