@@ -62,6 +62,9 @@
     },
     "app/api/cron/weekly-insights/route.ts": {
       "maxDuration": 120
+    },
+    "app/api/cron/refresh-tv-evidence/route.ts": {
+      "maxDuration": 300
     }
   },
   "crons": [
@@ -96,6 +99,10 @@
     {
       "path": "/api/cron/weekly-insights",
       "schedule": "0 1 * * 1"
+    },
+    {
+      "path": "/api/cron/refresh-tv-evidence",
+      "schedule": "30 17 * * 0"
     }
   ]
 }
