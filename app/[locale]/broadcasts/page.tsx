@@ -8,6 +8,7 @@ import BroadcastSearchOverlay from "@/components/broadcasts/BroadcastSearchOverl
 import type { Broadcast } from "@/components/broadcasts/BroadcastListItem";
 import { loadProductsForBroadcasts } from "@/lib/qvc-products/attach";
 import { localePath } from "@/lib/i18n/locale-path";
+import MarketSubNav from "@/components/nav/MarketSubNav";
 
 const OA_CHANNEL_SLUGS = [
   "japanet",
@@ -125,6 +126,9 @@ export default async function Page({ params, searchParams }: PageProps) {
 
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="mb-6">
+        <MarketSubNav />
+      </div>
       <header className="mb-6">
         <Link
           href={localePath(locale)}
