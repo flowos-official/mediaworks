@@ -1,6 +1,5 @@
 import * as cheerio from "cheerio";
 import { politeFetch } from "./fetch";
-import { isAllowed, loadWhitelist } from "./category-filter";
 import { classifyShopChSlots } from "./shopch-category";
 import { computeHealth, type ScrapeResult, type ScrapedSlot } from "./types";
 
@@ -142,15 +141,15 @@ export async function scrapeShopChannelForDate(date: Date): Promise<ScrapeResult
 	}
 
 	const slots = scrapeShopChannelFromHTML(fetched.body, iso);
+	// Classify category via Gemini but DO NOT drop non-whitelist slots.
+	// Policy update (2026-05-17): collect everything, filter for whitelist in the UI.
 	const classified = await classifyShopChSlots(slots);
-	const wl = await loadWhitelist();
-	const allowed = classified.filter((s) => isAllowed(wl, "shopch", s.category));
 
 	return {
 		channel: "shopch",
 		date: iso,
-		slots: allowed,
+		slots: classified,
 		ok: true,
-		health: computeHealth(allowed, true),
+		health: computeHealth(classified, true),
 	};
 }

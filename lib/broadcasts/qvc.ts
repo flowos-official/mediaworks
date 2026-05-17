@@ -1,7 +1,6 @@
 import * as cheerio from "cheerio";
 import { getServiceClient } from "@/lib/supabase";
 import { politeFetch } from "./fetch";
-import { isAllowed, loadWhitelist } from "./category-filter";
 import { computeHealth, type ScrapeResult, type ScrapedSlot } from "./types";
 
 const BASE_HOST = "https://qvc.jp";
@@ -196,15 +195,17 @@ export async function scrapeQVCForDate(date: Date): Promise<ScrapeResult> {
 	}
 
 	const slots = scrapeQVCFromHTML(fetched.body, iso);
+	// Attach category from cached qvc_products but DO NOT drop non-whitelist slots.
+	// Policy update (2026-05-17): collect everything, filter for whitelist in the UI
+	// so that operators can inspect what competitors actually broadcast outside our
+	// curated category set when needed.
 	const enriched = await attachQVCCategories(slots);
-	const wl = await loadWhitelist();
-	const allowed = enriched.filter((s) => isAllowed(wl, "qvc", s.category));
 
 	return {
 		channel: "qvc",
 		date: iso,
-		slots: allowed,
+		slots: enriched,
 		ok: true,
-		health: computeHealth(allowed, true),
+		health: computeHealth(enriched, true),
 	};
 }
