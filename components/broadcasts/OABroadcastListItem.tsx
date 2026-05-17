@@ -8,6 +8,7 @@ export interface OARow {
 	channel: string;
 	air_date: string;
 	day_of_week: string | null;
+	start_time: string | null;
 	product_name: string;
 	price_text: string | null;
 	price_jpy: number | null;
@@ -23,12 +24,19 @@ function formatPrice(row: OARow): string {
 	return fmt;
 }
 
+function formatTime(t: string): string {
+	return t.slice(0, 5);
+}
+
 export default function OABroadcastListItem({ row }: { row: OARow }) {
 	const badge =
 		CHANNEL_BADGE[row.channel as keyof typeof CHANNEL_BADGE] ??
 		"bg-gray-100 text-gray-700 border-gray-200";
 	return (
 		<div className="flex items-start gap-3 py-2 px-3 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50">
+			<span className="shrink-0 font-mono text-[11px] text-gray-700 w-10 text-right tabular-nums pt-0.5">
+				{row.start_time ? formatTime(row.start_time) : "—"}
+			</span>
 			<span
 				className={`shrink-0 inline-block px-1.5 py-0.5 rounded text-[10px] font-medium border ${badge}`}
 			>

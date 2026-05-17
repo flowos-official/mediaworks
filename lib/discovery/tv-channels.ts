@@ -44,7 +44,6 @@ export const TV_CHANNELS: readonly TvChannel[] = [
 	{ slug: "japanet",   name: "ジャパネット",          siteQuery: "japanet.co.jp",                       scraped: false },
 	{ slug: "junsanpo",  name: "テレ朝じゅん散歩",       siteQuery: "ropping.tv-asahi.co.jp/junsanpo",     scraped: false },
 	{ slug: "uranoura",  name: "ABCウラのウラまで",      siteQuery: "shop.asahi.co.jp/category/URANADJA",  scraped: false },
-	{ slug: "btops",     name: "読売B-tops",           siteQuery: "b-tops.com",                          scraped: false },
 ];
 
 /** Look up a channel by its slug. Returns undefined if not registered. */

@@ -5,8 +5,7 @@ export type OAChannelSlug =
 	| "tbs"
 	| "dinos"
 	| "senobura"
-	| "uranoura"
-	| "btops";
+	| "uranoura";
 
 /**
  * Row to upsert into public.historical_broadcasts.
@@ -27,7 +26,7 @@ export interface HistoricalRow {
 	price_text: string | null;
 	price_jpy: number | null;
 	price_is_tax_incl: boolean | null;
-	source_url: string;
+	source_url: string | null;
 	source_sheet: string; // for traceability — "live-crawl:<slug>" when scraped (not from xlsx)
 }
 
@@ -42,7 +41,6 @@ export interface CrawlResult {
 export interface ChannelParser {
 	slug: OAChannelSlug;
 	name: string;
-	/** Crawl today's broadcasts. May return [] for closed channels (e.g. btops). */
 	fetchToday: (jstDate: string) => Promise<HistoricalRow[]>;
 }
 
