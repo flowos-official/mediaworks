@@ -53,5 +53,14 @@ assert(
 	"cap at distinct whitelist length (no spurious cap of 3)",
 );
 
+// Task 3 tests — buildPrompt
+const { buildPrompt } = __test;
+
+const prompt = buildPrompt(["家電", "コスメ"], ["自動 豆乳 メーカー", "口紅"]);
+assert(prompt.includes("家電") && prompt.includes("コスメ"), "prompt includes whitelist");
+assert(prompt.includes("[0] 自動 豆乳 メーカー"), "prompt includes input 0");
+assert(prompt.includes("[1] 口紅"), "prompt includes input 1");
+assert(prompt.includes("results"), "prompt asks for JSON results array");
+
 if (process.exitCode === 1) process.exit(1);
 console.log("\nAll unit tests passed.");
