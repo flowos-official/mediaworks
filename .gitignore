@@ -29,6 +29,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# Vercel Workflow DevKit dev-mode build output (regenerated on every change)
+/app/.well-known/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
