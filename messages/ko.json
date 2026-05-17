@@ -1,13 +1,5 @@
 {
   "nav": {
-    "home": "홈",
-    "products": "상품",
-    "reports": "리포트",
-    "analytics": "매출 분석",
-    "gallery": "상품 이미지",
-    "broadcasts": "방송 캘린더",
-    "screenplays": "대본",
-    "userManagement": "사용자 관리",
     "groups": {
       "firm": "자사",
       "market": "시장",
