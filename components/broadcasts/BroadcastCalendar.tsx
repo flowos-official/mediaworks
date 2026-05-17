@@ -204,7 +204,7 @@ export default function BroadcastCalendar({
         />
       </div>
 
-      <div>
+      <div className="md:max-h-[calc(100vh-12rem)] md:overflow-y-auto md:sticky md:top-4 pr-1">
         <DayDetailPanel
           date={selectedDate}
           broadcasts={dayBroadcasts}
