@@ -170,6 +170,30 @@ export const __test = {
 	aggregateBroadcastRows,
 };
 
+import type { Candidate } from "./types";
+
+const EVIDENCE_BONUS_MAX = 15;
+
+export function applyEvidenceBonus(
+	candidates: Candidate[],
+	evidenceByUrl: Map<string, TvEvidence | null>,
+): number {
+	let count = 0;
+	for (const c of candidates) {
+		const ev = evidenceByUrl.get(c.productUrl);
+		if (!ev) continue;
+		const bonus = Math.round(ev.evidence_strength * EVIDENCE_BONUS_MAX);
+		if (bonus === 0) continue;
+		const next = Math.min(100, c.tvFitScore + bonus);
+		if (next === c.tvFitScore) continue;
+		c.tvFitScore = next;
+		c.tvFitReason = `${c.tvFitReason} [実測放送${ev.airing_count}回]`.slice(0, 200);
+		count += 1;
+	}
+	candidates.sort((a, b) => b.tvFitScore - a.tvFitScore);
+	return count;
+}
+
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export interface CandidateInput {

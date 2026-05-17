@@ -105,3 +105,49 @@ assert(emptyEv.price_jpy === null, "empty input → price_jpy null");
 
 if (process.exitCode === 1) process.exit(1);
 console.log("\nAll unit tests passed.");
+
+// ────────────────────────────────────────────────────────────────────────────
+// applyEvidenceBonus tests
+// ────────────────────────────────────────────────────────────────────────────
+import { applyEvidenceBonus } from "../lib/discovery/tv-evidence";
+
+const baseCandidate = (score: number) => ({
+	name: "test",
+	productUrl: "https://example.com/x",
+	source: "rakuten" as const,
+	seedKeyword: "kw",
+	track: "tv_proven" as const,
+	context: "home_shopping" as const,
+	tvFitScore: score,
+	tvFitReason: "test",
+	isTvApplicable: true,
+	isLiveApplicable: false,
+	scoreBreakdown: { review_signal: 0, tv_category_match: 0, trend_signal: 0, price_fit: 0, purchase_signal: 0, total: 0 },
+});
+
+const c1 = baseCandidate(50);
+c1.productUrl = "https://example.com/x";
+const c2 = baseCandidate(60);
+c2.productUrl = "https://example.com/y";
+
+const evMap = new Map([
+	[c1.productUrl, { evidence_strength: 0.8 } as any],
+	[c2.productUrl, null],
+]);
+
+const bonusCount = applyEvidenceBonus([c1, c2], evMap);
+
+assert(bonusCount === 1, "exactly one candidate received a bonus");
+assert(c1.tvFitScore === 50 + Math.round(0.8 * 15), "c1 bonus = round(0.8*15) = 12");
+assert(c2.tvFitScore === 60, "c2 unchanged (null evidence)");
+assert(c1.tvFitReason.includes("実測"), "c1 reason annotated");
+
+// Cap at 100
+const c3 = baseCandidate(95);
+c3.productUrl = "https://example.com/z";
+const evMap2 = new Map([[c3.productUrl, { evidence_strength: 1.0 } as any]]);
+applyEvidenceBonus([c3], evMap2);
+assert(c3.tvFitScore === 100, "score capped at 100");
+
+if (process.exitCode === 1) process.exit(1);
+console.log("\nAll applyEvidenceBonus tests passed.");
