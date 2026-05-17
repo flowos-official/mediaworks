@@ -6,7 +6,6 @@ import { requireUser } from "@/lib/auth/require-user";
 import BroadcastCalendar from "@/components/broadcasts/BroadcastCalendar";
 import HistoricalBroadcasts from "@/components/broadcasts/HistoricalBroadcasts";
 import type { Broadcast } from "@/components/broadcasts/BroadcastListItem";
-import type { HistoricalBroadcastRow } from "@/app/api/historical-broadcasts/route";
 import { loadProductsForBroadcasts } from "@/lib/qvc-products/attach";
 import { localePath } from "@/lib/i18n/locale-path";
 
@@ -95,31 +94,18 @@ export default async function Page({ params, searchParams }: PageProps) {
     products: productMap.get(r.id) ?? null,
   }));
 
-  // Excel-imported rows span 2020-04 ~ today; per-channel counts cover the whole history.
-  // The list view is scoped to the calendar's selected date only.
-  const [{ data: historicalData, count: historicalTotal }, channelCountResults] =
-    await Promise.all([
-      sb
+  // Per-channel total counts (across all dates) drive the chip "(N)" labels
+  // in the bottom search panel. The panel itself is search-only — no
+  // selected-date fetch is needed here anymore.
+  const channelCountResults = await Promise.all(
+    OA_CHANNEL_SLUGS.map(async (slug) => {
+      const { count } = await sb
         .from("historical_broadcasts")
-        .select(
-          "id,channel,air_date,day_of_week,product_name,price_text,price_jpy,price_is_tax_incl,source_url,category",
-          { count: "exact" },
-        )
-        .eq("air_date", selected)
-        .order("channel", { ascending: true })
-        .range(0, 49),
-      Promise.all(
-        OA_CHANNEL_SLUGS.map(async (slug) => {
-          const { count } = await sb
-            .from("historical_broadcasts")
-            .select("id", { count: "exact", head: true })
-            .eq("channel", slug);
-          return [slug, count ?? 0] as const;
-        }),
-      ),
-    ]);
-
-  const initialHistorical = (historicalData ?? []) as HistoricalBroadcastRow[];
+        .select("id", { count: "exact", head: true })
+        .eq("channel", slug);
+      return [slug, count ?? 0] as const;
+    }),
+  );
   const channelCounts: Record<string, number> = Object.fromEntries(channelCountResults);
 
   const hasAny = initialBroadcasts.length > 0;
@@ -152,9 +138,8 @@ export default async function Page({ params, searchParams }: PageProps) {
       )}
 
       <HistoricalBroadcasts
-        initialRows={initialHistorical}
-        initialTotal={historicalTotal ?? 0}
-        initialDate={selected}
+        initialRows={[]}
+        initialTotal={0}
         channelCounts={channelCounts}
       />
     </main>

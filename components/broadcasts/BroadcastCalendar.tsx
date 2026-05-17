@@ -1,12 +1,11 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { Broadcast } from "./BroadcastListItem";
-import type { ChannelFilterValue } from "./ChannelFilter";
-import DayDetailPanel from "./DayDetailPanel";
+import UnifiedDayDetailPanel from "./UnifiedDayDetailPanel";
 import MonthGrid from "./MonthGrid";
 
 interface Props {
@@ -41,17 +40,10 @@ export default function BroadcastCalendar({
 }: Props) {
   const t = useTranslations("broadcasts");
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   const [year, setYear] = useState(initialYear);
   const [month, setMonth] = useState(initialMonth);
   const [selectedDate, setSelectedDate] = useState<string | null>(initialDate);
-  const [channelFilter, setChannelFilter] = useState<ChannelFilterValue>(
-    (searchParams.get("ch") as ChannelFilterValue) ?? "all",
-  );
-  const [categoryFilter, setCategoryFilter] = useState<string>(
-    searchParams.get("cat") ?? "all",
-  );
 
   const initialKey = monthKey(initialYear, initialMonth);
   const [cache, setCache] = useState<Map<string, Broadcast[]>>(
@@ -91,12 +83,12 @@ export default function BroadcastCalendar({
     return () => controller.abort();
   }, [currentKey, year, month, cache]);
 
+  // URL only carries the selected date now. Channel/category state moved
+  // into UnifiedDayDetailPanel and is no longer shared with the page URL.
   const syncUrl = useCallback(
-    (date: string | null, ch: ChannelFilterValue, cat: string) => {
+    (date: string | null) => {
       const params = new URLSearchParams();
       if (date) params.set("date", date);
-      if (ch !== "all") params.set("ch", ch);
-      if (cat !== "all") params.set("cat", cat);
       const qs = params.toString();
       router.replace(qs ? `?${qs}` : "?", { scroll: false });
     },
@@ -111,28 +103,9 @@ export default function BroadcastCalendar({
         setYear(y);
         setMonth(m);
       }
-      syncUrl(iso, channelFilter, categoryFilter);
+      syncUrl(iso);
     },
-    [year, month, channelFilter, categoryFilter, syncUrl],
-  );
-
-  const handleFilterChange = useCallback(
-    (v: ChannelFilterValue) => {
-      setChannelFilter(v);
-      // Reset category when changing channel — categories are per-channel.
-      const nextCat = v === "all" ? categoryFilter : "all";
-      if (nextCat !== categoryFilter) setCategoryFilter(nextCat);
-      syncUrl(selectedDate, v, nextCat);
-    },
-    [selectedDate, categoryFilter, syncUrl],
-  );
-
-  const handleCategoryFilterChange = useCallback(
-    (v: string) => {
-      setCategoryFilter(v);
-      syncUrl(selectedDate, channelFilter, v);
-    },
-    [selectedDate, channelFilter, syncUrl],
+    [year, month, syncUrl],
   );
 
   const goPrev = useCallback(() => {
@@ -154,14 +127,6 @@ export default function BroadcastCalendar({
     }
     setSelectedDate(null);
   }, [year, month]);
-
-  const dayBroadcasts = useMemo(
-    () =>
-      selectedDate
-        ? currentMonthData.filter((b) => b.air_date === selectedDate)
-        : [],
-    [selectedDate, currentMonthData],
-  );
 
   const monthLabel = `${year}年 ${month}月`;
 
@@ -205,14 +170,7 @@ export default function BroadcastCalendar({
       </div>
 
       <div className="md:max-h-[calc(100vh-12rem)] md:overflow-y-auto md:sticky md:top-4 pr-1">
-        <DayDetailPanel
-          date={selectedDate}
-          broadcasts={dayBroadcasts}
-          channelFilter={channelFilter}
-          onChannelFilterChange={handleFilterChange}
-          categoryFilter={categoryFilter}
-          onCategoryFilterChange={handleCategoryFilterChange}
-        />
+        <UnifiedDayDetailPanel date={selectedDate} />
       </div>
     </div>
   );
