@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { requireUser } from "@/lib/auth/require-user";
 import BroadcastCalendar from "@/components/broadcasts/BroadcastCalendar";
-import HistoricalBroadcasts from "@/components/broadcasts/HistoricalBroadcasts";
+import BroadcastSearchOverlay from "@/components/broadcasts/BroadcastSearchOverlay";
 import type { Broadcast } from "@/components/broadcasts/BroadcastListItem";
 import { loadProductsForBroadcasts } from "@/lib/qvc-products/attach";
 import { localePath } from "@/lib/i18n/locale-path";
@@ -133,8 +133,13 @@ export default async function Page({ params, searchParams }: PageProps) {
           <ArrowLeft size={16} />
           {t("back")}
         </Link>
-        <h1 className="text-2xl font-bold text-gray-900">{t("title")}</h1>
-        <p className="text-sm text-gray-500 mt-1">{t("subtitle")}</p>
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">{t("title")}</h1>
+            <p className="text-sm text-gray-500 mt-1">{t("subtitle")}</p>
+          </div>
+          <BroadcastSearchOverlay channelCounts={channelCounts} />
+        </div>
       </header>
 
       {!hasAny ? (
@@ -150,7 +155,6 @@ export default async function Page({ params, searchParams }: PageProps) {
         />
       )}
 
-      <HistoricalBroadcasts channelCounts={channelCounts} />
     </main>
   );
 }
