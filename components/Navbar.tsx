@@ -1,14 +1,17 @@
+// components/Navbar.tsx
 import Link from 'next/link';
-import { getTranslations, getLocale } from 'next-intl/server';
+import { getLocale } from 'next-intl/server';
 import LanguageSwitcher from './LanguageSwitcher';
 import UserMenu from './UserMenu';
-import { BarChart3, Calendar, Clapperboard, Users, Activity } from 'lucide-react';
+import GroupDropdown from './nav/GroupDropdown';
+import MobileNavSheet from './nav/MobileNavSheet';
+import { BarChart3 } from 'lucide-react';
 import { getServerClient } from '@/lib/supabase/server';
 import type { Role } from '@/lib/auth/route-permissions';
 import { localePath } from '@/lib/i18n/locale-path';
+import { NAV_GROUPS } from '@/lib/nav/groups';
 
 export default async function Navbar() {
-  const t = await getTranslations('nav');
   const locale = await getLocale();
 
   const sb = await getServerClient();
@@ -23,82 +26,52 @@ export default async function Navbar() {
     role = (profile?.role ?? null) as Role | null;
   }
 
-  const isViewer = role === 'viewer';
-  const isAdmin = role === 'admin';
-  const homeHref = isViewer ? localePath(locale, '/analytics/products') : localePath(locale);
+  // Logo landing: viewer → /analytics/products, others → /analytics/overview, no role → root.
+  const logoHref =
+    role === 'viewer'
+      ? localePath(locale, '/analytics/products')
+      : role
+      ? localePath(locale, '/analytics/overview')
+      : localePath(locale);
 
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          <Link href={homeHref} className="flex items-center gap-2">
+          <Link href={logoHref} className="flex items-center gap-2">
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
               <BarChart3 size={18} className="text-white" />
             </div>
             <span className="text-lg font-bold text-gray-900">MediaWorks</span>
           </Link>
-          <div className="flex items-center gap-4">
-            {role && !isViewer && (
-              <>
-                <Link
-                  href={localePath(locale)}
-                  className="text-sm text-gray-600 hover:text-gray-900 font-medium"
-                >
-                  {t('home')}
-                </Link>
-                <Link
-                  href={localePath(locale, '/broadcasts')}
-                  className="text-sm text-gray-600 hover:text-gray-900 font-medium flex items-center gap-1"
-                >
-                  <Calendar size={14} />
-                  {t('broadcasts')}
-                </Link>
-                <Link
-                  href={localePath(locale, '/screenplays')}
-                  className="text-sm text-gray-600 hover:text-gray-900 font-medium flex items-center gap-1"
-                >
-                  <Clapperboard size={14} />
-                  {t('screenplays')}
-                </Link>
-                <Link
-                  href={localePath(locale, '/analytics')}
-                  className="text-sm text-gray-600 hover:text-gray-900 font-medium flex items-center gap-1"
-                >
-                  <BarChart3 size={14} />
-                  {t('analytics')}
-                </Link>
-              </>
-            )}
-            {isViewer && (
-              <Link
-                href={localePath(locale, '/analytics/products')}
-                className="text-sm text-gray-600 hover:text-gray-900 font-medium flex items-center gap-1"
-              >
-                <BarChart3 size={14} />
-                {t('analytics')}
-              </Link>
-            )}
-            {isAdmin && (
-              <>
-                <Link
-                  href={localePath(locale, '/admin/users')}
-                  className="text-sm text-gray-600 hover:text-gray-900 font-medium flex items-center gap-1"
-                >
-                  <Users size={14} />
-                  {t('userManagement')}
-                </Link>
-                <Link
-                  href={localePath(locale, '/admin/historical-crawl')}
-                  className="text-sm text-gray-600 hover:text-gray-900 font-medium flex items-center gap-1"
-                >
-                  <Activity size={14} />
-                  {t('historicalCrawl')}
-                </Link>
-              </>
-            )}
-            <LanguageSwitcher />
-            <UserMenu email={user?.email ?? null} role={role} locale={locale} />
-          </div>
+
+          {/* Desktop nav */}
+          {role && (
+            <div className="hidden md:flex items-center gap-6">
+              {NAV_GROUPS.map((g) => (
+                <GroupDropdown key={g.key} group={g} role={role!} locale={locale} />
+              ))}
+              <LanguageSwitcher />
+              <UserMenu email={user?.email ?? null} role={role} locale={locale} />
+            </div>
+          )}
+
+          {/* Mobile nav */}
+          {role && (
+            <div className="flex md:hidden items-center gap-2">
+              <LanguageSwitcher />
+              <UserMenu email={user?.email ?? null} role={role} locale={locale} />
+              <MobileNavSheet role={role} locale={locale} />
+            </div>
+          )}
+
+          {/* Logged-out fallback (login page itself) */}
+          {!role && (
+            <div className="flex items-center gap-2">
+              <LanguageSwitcher />
+              <UserMenu email={null} role={null} locale={locale} />
+            </div>
+          )}
         </div>
       </div>
     </nav>
