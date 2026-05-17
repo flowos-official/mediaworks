@@ -4,11 +4,33 @@ import { useTranslations } from "next-intl";
 import BroadcastListItem, { type Broadcast } from "./BroadcastListItem";
 import ChannelFilter, { type ChannelFilterValue } from "./ChannelFilter";
 
+// Whitelist categories per channel — mirrors channel_categories seed (Phase 1-C).
+const CATEGORIES_BY_CHANNEL: Record<"qvc" | "shopch", readonly string[]> = {
+  qvc: [
+    "ビューティー",
+    "ファッション小物",
+    "健康・ダイエット",
+    "ホーム",
+    "キッチングッズ",
+    "レジャー・ホビー",
+    "家電",
+  ],
+  shopch: [
+    "靴・バッグ・小物・インナー",
+    "コスメ",
+    "美容・ダイエット・フィットネス",
+    "ホーム・インテリア",
+    "家電",
+  ],
+};
+
 interface Props {
   date: string | null;
   broadcasts: Broadcast[];
   channelFilter: ChannelFilterValue;
   onChannelFilterChange: (v: ChannelFilterValue) => void;
+  categoryFilter: string;
+  onCategoryFilterChange: (v: string) => void;
 }
 
 function formatDateLabel(iso: string): string {
@@ -21,6 +43,8 @@ export default function DayDetailPanel({
   broadcasts,
   channelFilter,
   onChannelFilterChange,
+  categoryFilter,
+  onCategoryFilterChange,
 }: Props) {
   const t = useTranslations("broadcasts");
 
@@ -32,15 +56,24 @@ export default function DayDetailPanel({
     );
   }
 
-  const filtered =
-    channelFilter === "all"
-      ? broadcasts
-      : broadcasts.filter((b) => b.channel === channelFilter);
+  const filtered = broadcasts.filter((b) => {
+    if (channelFilter !== "all" && b.channel !== channelFilter) return false;
+    if (categoryFilter !== "all" && b.category !== categoryFilter) return false;
+    return true;
+  });
 
   const sorted = [...filtered].sort((a, b) => {
     if (a.start_time !== b.start_time) return a.start_time.localeCompare(b.start_time);
     return a.channel.localeCompare(b.channel);
   });
+
+  // Show categories from the active channel filter, or both channels' merged set when "all".
+  const visibleCategories =
+    channelFilter === "all"
+      ? Array.from(
+          new Set([...CATEGORIES_BY_CHANNEL.qvc, ...CATEGORIES_BY_CHANNEL.shopch]),
+        )
+      : CATEGORIES_BY_CHANNEL[channelFilter];
 
   return (
     <div>
@@ -52,6 +85,34 @@ export default function DayDetailPanel({
           </p>
         </div>
         <ChannelFilter value={channelFilter} onChange={onChannelFilterChange} />
+      </div>
+
+      <div className="flex flex-wrap gap-1.5 mb-3">
+        <button
+          type="button"
+          onClick={() => onCategoryFilterChange("all")}
+          className={`px-2.5 py-0.5 rounded-full text-[11px] font-medium border transition-colors ${
+            categoryFilter === "all"
+              ? "bg-gray-900 text-white border-gray-900"
+              : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+          }`}
+        >
+          {t("categoryFilter.all")}
+        </button>
+        {visibleCategories.map((c) => (
+          <button
+            key={c}
+            type="button"
+            onClick={() => onCategoryFilterChange(c)}
+            className={`px-2.5 py-0.5 rounded-full text-[11px] font-medium border transition-colors ${
+              categoryFilter === c
+                ? "bg-gray-900 text-white border-gray-900"
+                : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+            }`}
+          >
+            {c}
+          </button>
+        ))}
       </div>
 
       {sorted.length === 0 ? (
