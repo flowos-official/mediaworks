@@ -43,5 +43,8 @@ next-env.d.ts
 /*.png
 .superpowers/
 
+# Claude Code harness metadata (worktrees, agent state, settings)
+.claude/
+
 # Supabase CLI working dir
 supabase/.temp/
