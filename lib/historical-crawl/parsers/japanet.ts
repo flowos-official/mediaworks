@@ -10,6 +10,12 @@ const PAGE_URL =
  * Japanet 「快適ショッピングスタジオ」 (baitaicd=T105) lists today's products
  * as <td class="list_item"> entries containing "[N] 商品名". Page is Shift-JIS,
  * decoded by politeFetch. Prices live on detail pages and are not collected here.
+ *
+ * source_url is intentionally null: each row's anchor uses JS form-POST
+ * navigation (doRefer/doList), so there is no GET-addressable per-product URL.
+ * The previous fallback to PAGE_URL was misleading — that listing always shows
+ * TODAY's broadcasts, not the row's air_date — so we leave source_url empty
+ * and let the UI hide the external-link icon.
  */
 function parseJapanet(html: string, jstDate: string): HistoricalRow[] {
 	const $ = cheerio.load(html);
@@ -31,7 +37,7 @@ function parseJapanet(html: string, jstDate: string): HistoricalRow[] {
 			price_text: null,
 			price_jpy: null,
 			price_is_tax_incl: null,
-			source_url: PAGE_URL,
+			source_url: null,
 			source_sheet: "live-crawl:japanet",
 		});
 	});

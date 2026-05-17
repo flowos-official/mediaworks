@@ -10,8 +10,7 @@ export type BroadcastChannelSlug =
 	| "tbs"
 	| "dinos"
 	| "senobura"
-	| "uranoura"
-	| "btops";
+	| "uranoura";
 
 export const OA_CHANNELS: { slug: BroadcastChannelSlug; name: string }[] = [
 	{ slug: "japanet", name: "ジャパネット" },
@@ -21,7 +20,6 @@ export const OA_CHANNELS: { slug: BroadcastChannelSlug; name: string }[] = [
 	{ slug: "dinos", name: "フジDinos" },
 	{ slug: "senobura", name: "ABCせのぶら" },
 	{ slug: "uranoura", name: "ABCウラのウラまで" },
-	{ slug: "btops", name: "読売B-tops" },
 ];
 
 export const ALL_CHANNELS: { slug: BroadcastChannelSlug; name: string }[] = [
@@ -40,7 +38,6 @@ export const CHANNEL_BADGE: Record<BroadcastChannelSlug, string> = {
 	dinos: "bg-rose-100 text-rose-800 border-rose-200",
 	senobura: "bg-indigo-100 text-indigo-800 border-indigo-200",
 	uranoura: "bg-purple-100 text-purple-800 border-purple-200",
-	btops: "bg-emerald-100 text-emerald-800 border-emerald-200",
 };
 
 export function channelDisplayName(slug: string): string {

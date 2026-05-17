@@ -13,9 +13,13 @@ function parse(html: string, jstDate: string): HistoricalRow[] {
 
 	$("dl.clearfix").each((_, el) => {
 		const dl = $(el);
-		// product detail anchor lives in dt; the product title appears in cms_datatitle dt or via img alt
-		const link = dl.find("a[href*='/p/']").first();
-		const href = link.attr("href") ?? "";
+		// Product detail link can be either:
+		//   (a) an inner <a href="/p/..."> on the title/image, or
+		//   (b) a parent <a href="//www.dinos.co.jp/p/..."> wrapping the whole dl.
+		// Most rows on /tv/premium/ today use the wrapper form.
+		const innerHref = dl.find("a[href*='/p/']").first().attr("href");
+		const parentHref = dl.parent("a[href]").attr("href");
+		const href = innerHref ?? parentHref ?? "";
 		const titleText = dl.find("div.cms_datatitle").first().text().replace(/\s+/g, " ").trim();
 		const imgAlt = dl.find("img[alt]").first().attr("alt") ?? "";
 		const name = titleText || imgAlt.trim();
@@ -38,7 +42,7 @@ function parse(html: string, jstDate: string): HistoricalRow[] {
 			price_text: priceText ? priceText.slice(0, 200) : null,
 			price_jpy: price,
 			price_is_tax_incl: incl,
-			source_url: href ? new URL(href, PAGE_URL).toString() : PAGE_URL,
+			source_url: href ? new URL(href, PAGE_URL).toString() : null,
 			source_sheet: "live-crawl:dinos",
 		});
 	});
