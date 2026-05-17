@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { applyBroadcastBoost, tagBroadcastEvidence } from "@/lib/discovery/broadcast";
 import { applyRecentBroadcastPenalty } from "@/lib/discovery/recent-broadcast-penalty";
 import { applyCompetitorTrendBoost } from "@/lib/discovery/competitor-trend-boost";
+import { applyEvidenceBonus, computeTvEvidence } from "@/lib/discovery/tv-evidence";
 import { runStage1 } from "@/lib/discovery/orchestrator";
 import {
 	attachPlanToSession,
@@ -84,12 +85,32 @@ export async function GET(req: NextRequest) {
 		// that are hot on competitor channels (QVC + ShopCh, last 30 days).
 		await applyCompetitorTrendBoost(orchestrated.candidates);
 
+		// TV evidence: per-candidate broadcast-history aggregate.
+		// Spec: docs/superpowers/specs/2026-05-17-tv-evidence-mining-design.md
+		const sb = getServiceClient();
+		const evidenceEntries = await Promise.all(
+			orchestrated.candidates.map(async (c) => {
+				const ev = await computeTvEvidence(sb, {
+					name: c.name,
+					category: c.category ?? null,
+					price_jpy: c.priceJpy ?? null,
+				}).catch((err) => {
+					console.warn(`[tv-evidence] compute failed for ${c.productUrl}:`, err?.message ?? err);
+					return null;
+				});
+				return [c.productUrl, ev] as const;
+			}),
+		);
+		const evidenceMap = new Map(evidenceEntries);
+		applyEvidenceBonus(orchestrated.candidates, evidenceMap);
+
 		const batch = orchestrated.candidates.map((c) => {
 			const bc = broadcastMap.get(c.productUrl);
 			return {
 				candidate: c,
 				broadcastTag: bc?.tag ?? ("unknown" as const),
 				broadcastSources: bc?.sources ?? [],
+				tvEvidence: evidenceMap.get(c.productUrl) ?? null,
 			};
 		});
 		const savedCount = await saveDiscoveredProducts(sessionId, batch);

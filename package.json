@@ -25,13 +25,17 @@
     "test:multi-seed": "tsx --env-file=.env.local scripts/test-multi-seed-context.ts",
     "test:discovery-pool-first": "tsx --env-file=.env.local scripts/test-discover-pool-first.ts",
     "test:strategy-pool": "npm run test:pool-query && npm run test:multi-seed && npm run test:discovery-pool-first && npm run test:pool-fallback",
+    "test:tv-evidence-unit": "tsx scripts/test-tv-evidence-unit.ts",
+    "test:tv-evidence-integration": "tsx --env-file=.env.local scripts/test-tv-evidence-integration.ts",
+    "test:tv-evidence": "npm run test:tv-evidence-unit && npm run test:tv-evidence-integration",
     "test:screenplay": "tsx --env-file=.env.local scripts/test-screenplay-generator.ts",
     "stress:screenplays": "tsx --env-file=.env.local scripts/stress-screenplays.ts",
     "backfill:broadcasts": "tsx --env-file=.env.local scripts/backfill-broadcasts.ts",
     "backfill:broadcasts-category": "tsx --env-file=.env.local scripts/backfill-broadcasts-category.ts",
     "verify:broadcasts": "tsx --env-file=.env.local scripts/verify-broadcasts-run.ts",
     "enrich:qvc-products": "tsx --env-file=.env.local scripts/enrich-qvc-products.ts",
-    "publish-registry": "tsx --env-file=.env.local scripts/publish-registry.ts"
+    "publish-registry": "tsx --env-file=.env.local scripts/publish-registry.ts",
+    "check:tv-evidence": "tsx --env-file=.env.local scripts/check-tv-evidence.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1016.0",

@@ -152,3 +152,43 @@ export interface CPackage {
 	partial: boolean;
 	error?: string;
 }
+
+export interface TvEvidenceSample {
+	channel: string;
+	air_date: string; // YYYY-MM-DD
+	title: string;
+	price_jpy: number | null;
+}
+
+export interface TvEvidenceTimeslot {
+	channel: "qvc" | "shopch";
+	dow: "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
+	hour_bucket: number; // 0..23
+	count: number;
+}
+
+export interface TvEvidencePriceStats {
+	median: number;
+	p25: number;
+	p75: number;
+	count: number;
+}
+
+export interface TvEvidenceMatchBasis {
+	category_keywords: string[]; // empty if no category
+	price_band: [number, number] | null;
+	name_tokens: string[];
+}
+
+export interface TvEvidence {
+	matched_at: string; // ISO timestamp
+	match_basis: TvEvidenceMatchBasis;
+	airing_count: number;
+	recent_30d_count: number;
+	recent_90d_count: number;
+	channel_breakdown: Record<string, number>;
+	price_jpy: TvEvidencePriceStats | null;
+	top_timeslots: TvEvidenceTimeslot[];
+	samples: TvEvidenceSample[];
+	evidence_strength: number; // 0..1
+}

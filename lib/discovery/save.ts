@@ -72,6 +72,7 @@ export interface SaveBatch {
 	candidate: Candidate;
 	broadcastTag: BroadcastTag;
 	broadcastSources: Array<{ title: string; url: string }>;
+	tvEvidence: import("./types").TvEvidence | null;
 }
 
 export interface DiscoveredProductRow {
@@ -99,13 +100,15 @@ export interface DiscoveredProductRow {
 	is_live_applicable: boolean;
 	tv_channel_source: string | null;
 	context: Candidate["context"];
+	tv_evidence: import("./types").TvEvidence | null;
+	tv_evidence_at: string | null;
 }
 
 export function buildDiscoveredProductRows(
 	sessionId: string,
 	batch: SaveBatch[],
 ): DiscoveredProductRow[] {
-	return batch.map(({ candidate, broadcastTag, broadcastSources }) => ({
+	return batch.map(({ candidate, broadcastTag, broadcastSources, tvEvidence }) => ({
 		session_id: sessionId,
 		name: candidate.name,
 		name_normalized: normalizeName(candidate.name),
@@ -130,6 +133,8 @@ export function buildDiscoveredProductRows(
 		is_tv_applicable: candidate.isTvApplicable,
 		is_live_applicable: candidate.isLiveApplicable,
 		context: candidate.context,
+		tv_evidence: tvEvidence,
+		tv_evidence_at: tvEvidence ? new Date().toISOString() : null,
 	}));
 }
 

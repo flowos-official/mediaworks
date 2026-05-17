@@ -26,6 +26,7 @@ function mkRow(overrides: Partial<Row>): Row {
 		broadcast_tag: "unknown",
 		thumbnail_url: null,
 		created_at: new Date().toISOString(),
+		tv_evidence: null,
 		...overrides,
 	};
 }

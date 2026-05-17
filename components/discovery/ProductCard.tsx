@@ -9,6 +9,7 @@ import { IntegrationActions } from "./IntegrationActions";
 import { FeedbackButtons, type FeedbackState } from "./FeedbackButtons";
 import type { CPackage, CurationScore } from "@/lib/discovery/types";
 import { getChannelBySlug, parseChannelSlugs } from "@/lib/discovery/tv-channels";
+import TvEvidenceBadge from "@/components/discovery/TvEvidenceBadge";
 
 type EnrichmentStatus = "idle" | "queued" | "running" | "completed" | "failed";
 
@@ -312,6 +313,9 @@ export function ProductCard({
 							{product.tv_fit_reason}
 						</p>
 					)}
+					<div className="mt-1.5">
+						<TvEvidenceBadge productId={product.id} />
+					</div>
 					{showBreakdown && product.score_breakdown && (
 						<ScoreBreakdownBars breakdown={product.score_breakdown} />
 					)}
