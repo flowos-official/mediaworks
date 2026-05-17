@@ -1,7 +1,7 @@
 // components/nav/MobileNavSheet.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { Menu, X } from 'lucide-react';
@@ -17,6 +17,13 @@ interface Props {
 export default function MobileNavSheet({ role, locale }: Props) {
   const [open, setOpen] = useState(false);
   const t = useTranslations();
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open]);
 
   const groups = NAV_GROUPS.filter((g) => g.visibility[role] !== 'hidden');
 
