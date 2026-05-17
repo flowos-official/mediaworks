@@ -8,7 +8,31 @@
     "broadcasts": "방송 캘린더",
     "screenplays": "대본",
     "userManagement": "사용자 관리",
-    "historicalCrawl": "OA 수집 상태"
+    "groups": {
+      "firm": "자사",
+      "market": "시장",
+      "produce": "제작",
+      "admin": "관리"
+    },
+    "firm": {
+      "overview": "매출 개요",
+      "products": "상품 분석",
+      "gallery": "상품 이미지"
+    },
+    "market": {
+      "broadcasts": "방송 캘린더",
+      "discovery": "신규 상품 발굴",
+      "strategy": "신규 상품 추천"
+    },
+    "produce": {
+      "screenplays": "방송 대본",
+      "research": "신규 리서치"
+    },
+    "admin": {
+      "users": "사용자 관리",
+      "historicalCrawl": "OA 수집 상태",
+      "registry": "스킬 레지스트리"
+    }
   },
   "home": {
     "title": "MediaWorks",
