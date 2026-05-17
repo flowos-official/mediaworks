@@ -95,9 +95,10 @@ export default async function Page({ params, searchParams }: PageProps) {
   }));
 
   // Per-channel total counts (across all dates) drive the chip "(N)" labels
-  // in the bottom search panel. The panel itself is search-only — no
-  // selected-date fetch is needed here anymore.
-  const channelCountResults = await Promise.all(
+  // in the bottom search panel. QVC/ShopCh counts come from `broadcasts`;
+  // OA counts come from `historical_broadcasts`. All searches client-side
+  // span both tables.
+  const oaCountResults = await Promise.all(
     OA_CHANNEL_SLUGS.map(async (slug) => {
       const { count } = await sb
         .from("historical_broadcasts")
@@ -106,7 +107,19 @@ export default async function Page({ params, searchParams }: PageProps) {
       return [slug, count ?? 0] as const;
     }),
   );
-  const channelCounts: Record<string, number> = Object.fromEntries(channelCountResults);
+  const tvCountResults = await Promise.all(
+    (["qvc", "shopch"] as const).map(async (slug) => {
+      const { count } = await sb
+        .from("broadcasts")
+        .select("id", { count: "exact", head: true })
+        .eq("channel", slug);
+      return [slug, count ?? 0] as const;
+    }),
+  );
+  const channelCounts: Record<string, number> = Object.fromEntries([
+    ...tvCountResults,
+    ...oaCountResults,
+  ]);
 
   const hasAny = initialBroadcasts.length > 0;
 
@@ -137,11 +150,7 @@ export default async function Page({ params, searchParams }: PageProps) {
         />
       )}
 
-      <HistoricalBroadcasts
-        initialRows={[]}
-        initialTotal={0}
-        channelCounts={channelCounts}
-      />
+      <HistoricalBroadcasts channelCounts={channelCounts} />
     </main>
   );
 }
