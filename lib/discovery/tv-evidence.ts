@@ -169,3 +169,182 @@ export const __test = {
 	percentile,
 	aggregateBroadcastRows,
 };
+
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+export interface CandidateInput {
+	name: string;
+	category: string | null;
+	price_jpy: number | null;
+}
+
+const PRICE_BAND_RATIO = 0.25;
+const HISTORICAL_LOOKBACK_DAYS = 365 * 2; // 2 years; older rows rarely useful
+
+function priceBandFor(price: number | null): [number, number] | null {
+	if (price === null || price <= 0) return null;
+	return [
+		Math.round(price * (1 - PRICE_BAND_RATIO)),
+		Math.round(price * (1 + PRICE_BAND_RATIO)),
+	];
+}
+
+function cutoffIso(days: number): string {
+	return new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
+}
+
+export async function fetchMatchingBroadcastRows(
+	sb: SupabaseClient,
+	candidate: CandidateInput,
+): Promise<BroadcastRow[]> {
+	const categoryKeywords = splitCategoryToKeywords(candidate.category ?? "");
+	if (categoryKeywords.length === 0) return [];
+
+	const priceBand = priceBandFor(candidate.price_jpy);
+	const nameTokens = tokenizeName(candidate.name);
+	const cutoff = cutoffIso(HISTORICAL_LOOKBACK_DAYS);
+
+	// 1. broadcasts (shopch + qvc). Category match required; we filter further
+	//    in-process because broadcasts.category is a single string, not array.
+	const bRes = await sb
+		.from("broadcasts")
+		.select("channel, air_date, start_time, program_title, category, product_ids")
+		.gte("air_date", cutoff)
+		.not("category", "is", null);
+
+	if (bRes.error) {
+		console.warn(`[tv-evidence] broadcasts query failed: ${bRes.error.message}`);
+		return [];
+	}
+
+	// 2. historical_broadcasts (8 OA channels, date-only, price).
+	const hRes = await sb
+		.from("historical_broadcasts")
+		.select("channel, air_date, product_name, price_jpy, category")
+		.gte("air_date", cutoff)
+		.not("category", "is", null);
+
+	if (hRes.error) {
+		console.warn(`[tv-evidence] historical query failed: ${hRes.error.message}`);
+	}
+
+	// 3. qvc_products price lookup keyed by product id for broadcasts join.
+	//    Only fetch if we actually have qvc broadcasts that need price.
+	const qvcProductIds = new Set<string>();
+	for (const row of (bRes.data ?? []) as Array<{ channel: string; product_ids: string[] | null }>) {
+		if (row.channel !== "qvc" || !row.product_ids) continue;
+		for (const id of row.product_ids) qvcProductIds.add(id);
+	}
+	const qPriceMap = new Map<string, number>();
+	if (qvcProductIds.size > 0) {
+		const qRes = await sb
+			.from("qvc_products")
+			.select("product_id, price_text")
+			.in("product_id", [...qvcProductIds]);
+		if (!qRes.error && qRes.data) {
+			for (const q of qRes.data as Array<{ product_id: string; price_text: string | null }>) {
+				if (!q.price_text) continue;
+				const m = q.price_text.match(/([0-9][0-9,]{2,})\s*円/);
+				if (!m) continue;
+				const n = parseInt(m[1].replace(/,/g, ""), 10);
+				if (Number.isFinite(n) && n > 0) qPriceMap.set(q.product_id, n);
+			}
+		}
+	}
+
+	const candidateKwSet = new Set(categoryKeywords);
+
+	function categoryMatches(broadcastCategory: string): boolean {
+		const bKws = splitCategoryToKeywords(broadcastCategory);
+		return bKws.some((k) => candidateKwSet.has(k));
+	}
+
+	function nameMatches(title: string): boolean {
+		if (nameTokens.length === 0) return false;
+		const hay = title.normalize("NFKC").toLowerCase();
+		return nameTokens.some((t) => hay.includes(t.toLowerCase()));
+	}
+
+	function priceMatches(p: number | null): boolean {
+		if (priceBand === null) return false;
+		if (p === null) return false;
+		return p >= priceBand[0] && p <= priceBand[1];
+	}
+
+	const out: BroadcastRow[] = [];
+
+	for (const row of (bRes.data ?? []) as Array<{
+		channel: string;
+		air_date: string;
+		start_time: string;
+		program_title: string;
+		category: string | null;
+		product_ids: string[] | null;
+	}>) {
+		if (!row.category || !categoryMatches(row.category)) continue;
+		const inferredPrice =
+			row.channel === "qvc" && row.product_ids?.[0]
+				? qPriceMap.get(row.product_ids[0]) ?? null
+				: null;
+		// Require price OR name corroboration in addition to category, unless
+		// the candidate provided neither (price=null AND no name tokens) — in
+		// which case category alone is the floor.
+		const noCorroborationAvailable = priceBand === null && nameTokens.length === 0;
+		const corroborated =
+			noCorroborationAvailable ||
+			priceMatches(inferredPrice) ||
+			nameMatches(row.program_title);
+		if (!corroborated) continue;
+		out.push({
+			source: "broadcasts",
+			channel: row.channel,
+			air_date: row.air_date,
+			start_time: row.start_time,
+			title: row.program_title,
+			price_jpy: inferredPrice,
+		});
+	}
+
+	for (const row of (hRes.data ?? []) as Array<{
+		channel: string;
+		air_date: string;
+		product_name: string;
+		price_jpy: number | null;
+		category: string | null;
+	}>) {
+		if (!row.category || !categoryMatches(row.category)) continue;
+		const noCorroborationAvailable = priceBand === null && nameTokens.length === 0;
+		const corroborated =
+			noCorroborationAvailable ||
+			priceMatches(row.price_jpy) ||
+			nameMatches(row.product_name);
+		if (!corroborated) continue;
+		out.push({
+			source: "historical",
+			channel: row.channel,
+			air_date: row.air_date,
+			start_time: null,
+			title: row.product_name,
+			price_jpy: row.price_jpy,
+		});
+	}
+
+	return out;
+}
+
+export async function computeTvEvidence(
+	sb: SupabaseClient,
+	candidate: CandidateInput,
+): Promise<TvEvidence | null> {
+	const categoryKeywords = splitCategoryToKeywords(candidate.category ?? "");
+	if (categoryKeywords.length === 0) return null;
+
+	const rows = await fetchMatchingBroadcastRows(sb, candidate);
+	if (rows.length === 0) return null;
+
+	return aggregateBroadcastRows(rows, {
+		category_keywords: categoryKeywords,
+		price_band: priceBandFor(candidate.price_jpy),
+		name_tokens: tokenizeName(candidate.name),
+	});
+}
