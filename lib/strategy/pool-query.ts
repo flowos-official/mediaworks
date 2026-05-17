@@ -46,6 +46,7 @@ export interface PoolRow {
 	broadcast_tag: "broadcast_confirmed" | "broadcast_likely" | "unknown" | null;
 	thumbnail_url: string | null;
 	created_at: string;
+	tv_evidence: import("@/lib/discovery/types").TvEvidence | null;
 }
 
 interface FilterOptions {
@@ -129,7 +130,7 @@ export async function queryDiscoveredPool(
 	let q = sb
 		.from("discovered_products")
 		.select(
-			"id, name, product_url, price_jpy, category, seed_keyword, tv_fit_score, tv_fit_reason, tv_channel_source, tv_tier, context, user_action, c_package, enrichment_status, review_count, review_avg, seller_name, broadcast_tag, thumbnail_url, created_at",
+			"id, name, product_url, price_jpy, category, seed_keyword, tv_fit_score, tv_fit_reason, tv_channel_source, tv_tier, context, user_action, c_package, enrichment_status, review_count, review_avg, seller_name, broadcast_tag, thumbnail_url, created_at, tv_evidence",
 		)
 		.eq("context", input.context)
 		.gte("created_at", sinceIso)

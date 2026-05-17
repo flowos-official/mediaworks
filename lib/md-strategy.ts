@@ -504,6 +504,7 @@ type DiscoveryPoolItem = {
 	tv_fit_reason?: string;
 	tv_channel_source?: string | null;
 	c_package?: Record<string, unknown> | null;
+	tv_evidence?: import("@/lib/discovery/types").TvEvidence | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -571,6 +572,7 @@ export async function discoverNewProducts(
 			tv_fit_reason: r.tv_fit_reason ?? undefined,
 			tv_channel_source: r.tv_channel_source,
 			c_package: r.c_package,
+			tv_evidence: r.tv_evidence,
 		}));
 	} catch (err) {
 		console.warn(
@@ -791,7 +793,10 @@ export async function discoverNewProducts(
 				p.pool_source === "discovery_pool"
 					? `🟣[発掘プール TVフィット:${p.tv_fit_score ?? "?"}${p.tv_channel_source ? ` 放送実績:${p.tv_channel_source}` : ""}]`
 					: `🟢[新検索 ${p.source}]`;
-			return `${i}. ${sourceTag} ${p.name}${p.price ? ` (¥${p.price.toLocaleString()})` : ""}${reviewBadge} — keyword: ${p.keyword}\n   URL: ${p.source_url}\n   ${p.snippet}`;
+			const evidenceLine = p.tv_evidence
+				? `\n  実測放送: ${p.tv_evidence.airing_count}回 (直近30日 ${p.tv_evidence.recent_30d_count}回, 中央値 ¥${p.tv_evidence.price_jpy?.median ?? "—"})`
+				: "";
+			return `${i}. ${sourceTag} ${p.name}${p.price ? ` (¥${p.price.toLocaleString()})` : ""}${reviewBadge} — keyword: ${p.keyword}\n   URL: ${p.source_url}\n   ${p.snippet}${evidenceLine}`;
 		})
 		.join("\n");
 
