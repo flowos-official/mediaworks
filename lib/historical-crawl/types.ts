@@ -16,6 +16,13 @@ export interface HistoricalRow {
 	channel: OAChannelSlug;
 	air_date: string; // YYYY-MM-DD JST
 	day_of_week: string | null; // 月/火/水/木/金/土/日
+	/**
+	 * HH:MM:SS (JST) when the source page exposes it. Most OA channel
+	 * schedule pages do not expose per-slot start times, so this is
+	 * typically null. Future parsers / re-audits can fill it without a
+	 * schema change. Phase 1-D.
+	 */
+	start_time: string | null;
 	product_name: string;
 	price_text: string | null;
 	price_jpy: number | null;
