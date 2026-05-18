@@ -5,7 +5,7 @@ import { Loader2, FileSpreadsheet, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import TopProductsTable from '@/components/analytics/TopProductsTable';
 import ProductDetailModal from '@/components/analytics/ProductDetailModal';
-import { useAnalyticsFilter } from '../layout';
+import { useAnalyticsFilter } from '@/lib/analytics/firm-filter-context';
 
 export default function ProductsPage() {
   const tg = useTranslations('gallery');

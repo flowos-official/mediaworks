@@ -6,6 +6,12 @@
       "produce": "制作",
       "admin": "管理"
     },
+    "groupHeader": {
+      "firm": { "title": "自社データ", "subtitle": "売上・商品・ギャラリー" },
+      "market": { "title": "市場リサーチ", "subtitle": "番組カレンダー・新規発掘・MD戦略" },
+      "produce": { "title": "制作", "subtitle": "テレビショッピング台本・新規リサーチ" },
+      "admin": { "title": "管理", "subtitle": "ユーザー・履歴クロール・スキルレジストリ" }
+    },
     "firm": {
       "overview": "売上概要",
       "products": "商品分析",
