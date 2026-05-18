@@ -12,11 +12,14 @@ type Role = 'admin' | 'member' | 'viewer';
 const REDIRECT_TO = 'https://mediaworks-six.vercel.app/ja/reset-password';
 
 async function main(): Promise<void> {
-  const email = process.argv[2];
-  if (!email) {
+  const emailArg = process.argv[2];
+  if (!emailArg) {
     console.error('usage: tsx scripts/invite-admin.ts <email>');
     process.exit(1);
   }
+  // Supabase stores emails lowercase; normalize for both invite + lookup so
+  // re-runs find the existing user instead of trying to re-invite.
+  const email = emailArg.toLowerCase();
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -25,7 +28,7 @@ async function main(): Promise<void> {
   });
 
   const { data: list } = await sb.auth.admin.listUsers();
-  const existing = list.users.find((u) => u.email === email);
+  const existing = list.users.find((u) => u.email?.toLowerCase() === email);
 
   let userId: string;
   let invited = false;
@@ -38,11 +41,32 @@ async function main(): Promise<void> {
       .eq('id', userId)
       .maybeSingle();
     const role = (profile?.role ?? 'viewer') as Role;
-    if (role === 'admin') {
-      console.log(`[invite-admin] ${email} already admin — no-op`);
-      return;
+    console.log(`[invite-admin] ${email} exists with role=${role}, ensuring admin + sending password recovery email`);
+
+    // Original invite links are single-use; if the user lost/consumed it,
+    // try to send a recovery email so they can set their password via the
+    // reset-password page (which also handles type=recovery).
+    const { error: recoverErr } = await sb.auth.resetPasswordForEmail(email, {
+      redirectTo: REDIRECT_TO,
+    });
+    if (recoverErr) {
+      console.warn(`[invite-admin] recovery email failed: ${recoverErr.message}`);
+      // Email blocked (rate limit, SMTP issue, etc.) — fall back to admin-
+      // generated recovery link the operator can forward manually.
+      const { data: linkData, error: linkErr } = await sb.auth.admin.generateLink({
+        type: 'recovery',
+        email,
+        options: { redirectTo: REDIRECT_TO },
+      });
+      if (linkErr || !linkData?.properties?.action_link) {
+        console.error(`[invite-admin] generateLink also failed: ${linkErr?.message ?? 'no link'}`);
+      } else {
+        console.log('\n[invite-admin] manual recovery link (forward to user):');
+        console.log(`  ${linkData.properties.action_link}\n`);
+      }
+    } else {
+      console.log(`[invite-admin] recovery email sent (redirectTo=${REDIRECT_TO})`);
     }
-    console.log(`[invite-admin] ${email} exists with role=${role}, promoting to admin`);
   } else {
     const { data, error } = await sb.auth.admin.inviteUserByEmail(email, {
       redirectTo: REDIRECT_TO,
