@@ -334,7 +334,9 @@
     "noData": "데이터 없음",
     "allStatuses": "전체",
     "tvChannelSectionTitle": "📺 TV 홈쇼핑 채널 방송 중",
-    "otherSectionTitle": "기타 후보"
+    "otherSectionTitle": "기타 후보",
+    "categoryShareTitle": "최근 {days}일 동안 타사 방송 카테고리 분포 (총 {slots}회) — 오늘의 발굴은 이 경향을 기반으로 합니다",
+    "categoryShareTooltip": "{count}회 / 전체의 {share}%"
   },
   "broadcasts": {
     "title": "방송 캘린더",

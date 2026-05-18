@@ -1,7 +1,9 @@
 "use client";
 
-import { ExternalLink } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, ExternalLink } from "lucide-react";
 import { CHANNEL_BADGE, channelDisplayName } from "@/lib/broadcasts/channel-style";
+import { CompetitorFitPanel } from "./CompetitorFitPanel";
 
 export interface OARow {
 	id: string;
@@ -29,38 +31,65 @@ function formatTime(t: string): string {
 }
 
 export default function OABroadcastListItem({ row }: { row: OARow }) {
+	const [open, setOpen] = useState(false);
 	const badge =
 		CHANNEL_BADGE[row.channel as keyof typeof CHANNEL_BADGE] ??
 		"bg-gray-100 text-gray-700 border-gray-200";
 	return (
-		<div className="flex items-start gap-3 py-2 px-3 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50">
-			<span className="shrink-0 font-mono text-[11px] text-gray-700 w-10 text-right tabular-nums pt-0.5">
-				{row.start_time ? formatTime(row.start_time) : "—"}
-			</span>
-			<span
-				className={`shrink-0 inline-block px-1.5 py-0.5 rounded text-[10px] font-medium border ${badge}`}
-			>
-				{channelDisplayName(row.channel)}
-			</span>
-			<div className="flex-1 min-w-0">
-				<div className="text-sm text-gray-900 truncate">{row.product_name}</div>
-				{row.category && (
-					<div className="text-[10px] text-gray-500 mt-0.5">{row.category}</div>
+		<div className="border-b border-gray-100 last:border-b-0">
+			<div className="flex items-start gap-3 py-2 px-3 hover:bg-gray-50/50">
+				<span className="shrink-0 font-mono text-[11px] text-gray-700 w-10 text-right tabular-nums pt-0.5">
+					{row.start_time ? formatTime(row.start_time) : "—"}
+				</span>
+				<span
+					className={`shrink-0 inline-block px-1.5 py-0.5 rounded text-[10px] font-medium border ${badge}`}
+				>
+					{channelDisplayName(row.channel)}
+				</span>
+				<div className="flex-1 min-w-0">
+					<div className="text-sm text-gray-900 truncate">{row.product_name}</div>
+					{row.category && (
+						<div className="text-[10px] text-gray-500 mt-0.5">{row.category}</div>
+					)}
+				</div>
+				<div className="shrink-0 text-right text-xs text-gray-700 font-mono whitespace-nowrap">
+					{formatPrice(row)}
+				</div>
+				<button
+					type="button"
+					onClick={() => setOpen((v) => !v)}
+					className={`shrink-0 text-gray-400 hover:text-indigo-600 transition-transform ${open ? "rotate-180 text-indigo-600" : ""}`}
+					aria-label="toggle analysis"
+					aria-expanded={open}
+				>
+					<ChevronDown size={14} />
+				</button>
+				{row.source_url && (
+					<a
+						href={row.source_url}
+						target="_blank"
+						rel="noopener noreferrer"
+						className="shrink-0 text-gray-400 hover:text-gray-700"
+						aria-label="external link"
+					>
+						<ExternalLink size={14} />
+					</a>
 				)}
 			</div>
-			<div className="shrink-0 text-right text-xs text-gray-700 font-mono whitespace-nowrap">
-				{formatPrice(row)}
-			</div>
-			{row.source_url && (
-				<a
-					href={row.source_url}
-					target="_blank"
-					rel="noopener noreferrer"
-					className="shrink-0 text-gray-400 hover:text-gray-700"
-					aria-label="external link"
-				>
-					<ExternalLink size={14} />
-				</a>
+			{open && (
+				<div className="px-3 pb-3">
+					<CompetitorFitPanel
+						slot={{
+							channel: row.channel,
+							productName: row.product_name,
+							category: row.category,
+							priceText: row.price_text,
+							airDate: row.air_date,
+							startTime: row.start_time,
+							sourceUrl: row.source_url,
+						}}
+					/>
+				</div>
 			)}
 		</div>
 	);

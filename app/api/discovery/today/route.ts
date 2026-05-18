@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth/require-user";
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
+import { loadCategoryDistribution } from "@/lib/discovery/category-distribution";
 
 export const dynamic = "force-dynamic";
 
@@ -58,10 +59,17 @@ export async function GET(req: NextRequest) {
 		q = q.eq("track", trackFilter);
 	}
 
-	const { data: products, error: prodErr } = await q;
-	if (prodErr) {
-		return NextResponse.json({ error: prodErr.message }, { status: 500 });
+	const [prodResult, categoryStats] = await Promise.all([
+		q,
+		loadCategoryDistribution(),
+	]);
+	if (prodResult.error) {
+		return NextResponse.json({ error: prodResult.error.message }, { status: 500 });
 	}
 
-	return NextResponse.json({ session, products: products ?? [] });
+	return NextResponse.json({
+		session,
+		products: prodResult.data ?? [],
+		categoryStats,
+	});
 }

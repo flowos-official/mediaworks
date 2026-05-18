@@ -1,6 +1,7 @@
 import { useTranslations } from "next-intl";
 import { ExternalLink, ShoppingBag, PlayCircle } from "lucide-react";
 import ChannelBadge from "./ChannelBadge";
+import { CompetitorFitPanel } from "./CompetitorFitPanel";
 
 export interface QvcProduct {
   id: string;
@@ -157,6 +158,14 @@ export default function BroadcastListItem({ broadcast }: Props) {
       ? b.product_ids.length - (b.products?.length ?? 0)
       : 0;
 
+  // Slot-level fit analysis: ShopCh slots have a single product per slot;
+  // QVC slots may contain multiple products but the program-title slot still
+  // represents the "what aired in this minute" question we want analyzed.
+  const slotProductName =
+    b.channel === "shopch"
+      ? (b.description ?? b.program_title)
+      : b.program_title;
+
   return (
     <div className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50/60 transition-colors">
       <div className="flex items-start justify-between gap-3">
@@ -188,6 +197,22 @@ export default function BroadcastListItem({ broadcast }: Props) {
           )}
         </div>
       )}
+      <div className="mt-2">
+        <CompetitorFitPanel
+          slot={{
+            channel: b.channel,
+            productName: slotProductName,
+            category: b.category ?? null,
+            priceText: b.channel === "qvc" && b.products && b.products[0]?.price_text
+              ? b.products[0].price_text
+              : null,
+            airDate: b.air_date,
+            startTime: b.start_time ?? null,
+            description: b.description,
+            sourceUrl: b.source_url,
+          }}
+        />
+      </div>
     </div>
   );
 }

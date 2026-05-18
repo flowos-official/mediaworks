@@ -334,7 +334,9 @@
     "noData": "データなし",
     "allStatuses": "すべて",
     "tvChannelSectionTitle": "📺 TV通販チャネル掲載中",
-    "otherSectionTitle": "その他の候補"
+    "otherSectionTitle": "その他の候補",
+    "categoryShareTitle": "過去{days}日間の他局放送カテゴリ分布（全{slots}枠）— 本日の発掘はこの傾向に基づきます",
+    "categoryShareTooltip": "{count}枠 / 全体の{share}%"
   },
   "broadcasts": {
     "title": "番組カレンダー",

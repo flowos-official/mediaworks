@@ -13,6 +13,10 @@ import {
 } from "@/components/discovery/DiscoveryFilters";
 import { ContextSubTabs } from "@/components/discovery/ContextSubTabs";
 import { ManualTriggerButton } from "@/components/discovery/ManualTriggerButton";
+import {
+	CategoryFrequencyStrip,
+	type CategoryShare,
+} from "@/components/discovery/CategoryFrequencyStrip";
 import { localePath } from "@/lib/i18n/locale-path";
 
 type Session = {
@@ -25,10 +29,17 @@ type Session = {
 	iterations: number;
 };
 
+type CategoryStats = {
+	lookbackDays: number;
+	totalSlots: number;
+	categories: CategoryShare[];
+};
+
 export default function DiscoveryHomePage() {
 	const t = useTranslations("discovery");
 	const [session, setSession] = useState<Session | null>(null);
 	const [products, setProducts] = useState<DiscoveredProductRow[]>([]);
+	const [categoryStats, setCategoryStats] = useState<CategoryStats | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [status, setStatus] = useState<StatusFilter>("all");
 	const [sort, setSort] = useState<SortKey>("score");
@@ -51,8 +62,19 @@ export default function DiscoveryHomePage() {
 		const data = await res.json();
 		setSession(data.session);
 		setProducts(data.products ?? []);
+		setCategoryStats(data.categoryStats ?? null);
 		setLoading(false);
 	};
+
+	const matchedCategories = useMemo(() => {
+		const set = new Set<string>();
+		for (const p of products) {
+			const reason = p.tv_fit_reason ?? "";
+			const m = reason.match(/\[他局トレンド:\s*([^\]]+)\]/);
+			if (m) set.add(m[1].trim());
+		}
+		return set;
+	}, [products]);
 
 	useEffect(() => {
 		// eslint-disable-next-line react-hooks/set-state-in-effect -- async data fetch triggered on mount; setState calls are post-await
@@ -106,6 +128,10 @@ export default function DiscoveryHomePage() {
 						totalCount={counts.total}
 						uncategorizedCount={counts.uncategorized}
 						sourcedCount={counts.sourced}
+					/>
+					<CategoryFrequencyStrip
+						stats={categoryStats}
+						matchedCategories={matchedCategories}
 					/>
 					<DiscoveryFilters status={status} onStatusChange={setStatus} sort={sort} onSortChange={setSort} />
 					{(() => {
