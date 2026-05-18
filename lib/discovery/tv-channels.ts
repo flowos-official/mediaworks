@@ -5,6 +5,14 @@
  * Brave site:-restricted search.
  *
  * Source: docs/検索参考サイト (2).xlsx rows 1-25.
+ *
+ * NOT the broadcasts-calendar UI registry. The calendar UI is driven by
+ * `lib/broadcasts/channel-style.ts`, which is a strict subset (9 channels:
+ * qvc, shopch, + 7 OA whose schedule pages we scrape). Channels here that
+ * are not in channel-style.ts (kachimo, kaidoki, kantv, ichiban,
+ * rakurakum, ropping) live only in discovery and never surface in the
+ * broadcasts calendar — they have no schedule data, only product hits via
+ * Brave site: search.
  */
 
 import type { PoolItem } from "./types";

@@ -1,5 +1,15 @@
-// Shared channel metadata + badge palette for broadcasts UI. Single source
-// of truth so DayDetailPanel and HistoricalBroadcasts stay consistent.
+// Shared channel metadata + badge palette for the broadcasts calendar UI.
+// Single source of truth so DayDetailPanel and HistoricalBroadcasts stay
+// consistent.
+//
+// Scope: 9 channels (qvc + shopch + 7 OA channels with scrapeable schedule
+// pages). Discovery uses a different, larger registry —
+// `lib/discovery/tv-channels.ts` (15 channels) — that adds Brave site:-only
+// channels with no schedule pages. Don't unify the two: this list is the
+// "what can we draw on a calendar" set, the other is the "what can we
+// search products from" set.
+//
+// History: btops was removed 2026-05-17 after the site closed.
 
 export type BroadcastChannelSlug =
 	| "qvc"
