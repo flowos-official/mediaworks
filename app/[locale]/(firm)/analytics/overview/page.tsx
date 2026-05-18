@@ -7,7 +7,7 @@ import RevenueTrendChart from '@/components/analytics/RevenueTrendChart';
 import ProductMixChart from '@/components/analytics/ProductMixChart';
 import TopProductsTable from '@/components/analytics/TopProductsTable';
 import ProductDetailModal from '@/components/analytics/ProductDetailModal';
-import { useAnalyticsFilter } from '../layout';
+import { useAnalyticsFilter } from '@/lib/analytics/firm-filter-context';
 
 export default function OverviewPage() {
   const { selectedYears, period } = useAnalyticsFilter();
