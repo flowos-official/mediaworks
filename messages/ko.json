@@ -7,10 +7,10 @@
       "admin": "관리"
     },
     "groupHeader": {
-      "firm": { "title": "자사 데이터", "subtitle": "매출 · 상품 · 갤러리" },
-      "market": { "title": "시장 리서치", "subtitle": "방송 캘린더 · 신규 발굴 · MD 전략" },
-      "produce": { "title": "제작", "subtitle": "TV쇼핑 대본 · 신규 리서치" },
-      "admin": { "title": "관리", "subtitle": "사용자 · 이력 크롤 · 스킬 레지스트리" }
+      "firm": { "title": "자사 데이터", "subtitle": "자사 판매 데이터 분석" },
+      "market": { "title": "시장 리서치", "subtitle": "경쟁사·시장 기회 파악" },
+      "produce": { "title": "제작", "subtitle": "콘텐츠 제작 지원" },
+      "admin": { "title": "관리", "subtitle": "시스템 운영 및 권한 관리" }
     },
     "firm": {
       "overview": "매출 개요",
@@ -185,6 +185,7 @@
   "gallery": {
     "title": "상품 이미지 갤러리",
     "subtitle": "대장 파일의 상품 이미지를 일람으로 표시",
+    "backToList": "목록으로",
     "searchPlaceholder": "상품명으로 검색...",
     "noImages": "이미지가 없습니다",
     "uploadButton": "대장 업로드",
@@ -237,6 +238,10 @@
   "discovery": {
     "title": "오늘의 발굴",
     "subtitle": "매일 자동 발굴되는 30개 상품 목록",
+    "loading": "불러오는 중...",
+    "selectionSelected": "{count}건 선택",
+    "selectionClear": "지우기",
+    "selectionOpenStrategy": "선택한 {count}건으로 전략 수립",
     "noSession": "아직 세션이 없습니다. cron을 수동 실행해주세요.",
     "sessionRunning": "실행 중...",
     "sessionFailed": "실행 실패",
@@ -483,6 +488,12 @@
         "member": "멤버",
         "viewer": "뷰어"
       }
+    },
+    "registry": {
+      "title": "스킬 레지스트리",
+      "totalSkills": "등록 스킬 수",
+      "activeVersions": "활성 버전 수",
+      "backToList": "← 목록으로"
     },
     "historicalCrawl": {
       "title": "타사 방송 수집 모니터",

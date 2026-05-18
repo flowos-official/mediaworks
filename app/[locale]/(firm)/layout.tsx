@@ -1,42 +1,26 @@
-'use client';
-
 import type { ReactNode } from 'react';
-import { BarChart3 } from 'lucide-react';
-import { useTranslations } from 'next-intl';
-import PageHeader from '@/components/nav/PageHeader';
-import GroupSubNav from '@/components/nav/GroupSubNav';
-import DateRangeFilter from '@/components/analytics/DateRangeFilter';
-import { FirmFilterProvider, useAnalyticsFilter } from '@/lib/analytics/firm-filter-context';
+import { getTranslations } from 'next-intl/server';
+import { getServerClient } from '@/lib/supabase/server';
+import type { Role } from '@/lib/auth/route-permissions';
+import FirmShell from './firm-shell';
 
-function FilterAction() {
-  const { selectedYears, setSelectedYears, period, setPeriod } = useAnalyticsFilter();
-  return (
-    <DateRangeFilter
-      years={[2025, 2026]}
-      selectedYears={selectedYears}
-      period={period}
-      onYearsChange={setSelectedYears}
-      onPeriodChange={setPeriod}
-    />
-  );
-}
+export default async function FirmLayout({ children }: { children: ReactNode }) {
+  const t = await getTranslations('nav.groupHeader.firm');
+  const sb = await getServerClient();
+  const { data: { user } } = await sb.auth.getUser();
+  let role: Role | null = null;
+  if (user) {
+    const { data: profile } = await sb
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+    role = (profile?.role ?? null) as Role | null;
+  }
 
-export default function FirmLayout({ children }: { children: ReactNode }) {
-  const t = useTranslations('nav.groupHeader.firm');
   return (
-    <FirmFilterProvider>
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <PageHeader
-          icon={BarChart3}
-          title={t('title')}
-          subtitle={t('subtitle')}
-          action={<FilterAction />}
-        />
-        <div className="space-y-6">
-          <GroupSubNav groupKey="firm" />
-          {children}
-        </div>
-      </main>
-    </FirmFilterProvider>
+    <FirmShell role={role} title={t('title')} subtitle={t('subtitle')}>
+      {children}
+    </FirmShell>
   );
 }

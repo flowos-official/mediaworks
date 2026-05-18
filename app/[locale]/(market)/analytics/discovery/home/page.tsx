@@ -120,7 +120,7 @@ export default function DiscoveryHomePage() {
 			</div>
 
 			{loading ? (
-				<div className="py-20 text-center text-sm text-gray-500">Loading...</div>
+				<div className="py-20 text-center text-sm text-gray-500">{t("loading")}</div>
 			) : (
 				<>
 					<DiscoveryHeader
@@ -190,7 +190,7 @@ export default function DiscoveryHomePage() {
 			{selectedIds.size >= 1 && (
 				<div className="sticky bottom-0 left-0 right-0 z-20 bg-white/95 border-t border-indigo-200 px-4 py-3 mt-4 flex items-center justify-between shadow-lg backdrop-blur">
 					<span className="text-sm font-medium text-gray-700">
-						{selectedIds.size}件選択中
+						{t("selectionSelected", { count: selectedIds.size })}
 					</span>
 					<div className="flex gap-2">
 						<button
@@ -198,7 +198,7 @@ export default function DiscoveryHomePage() {
 							onClick={() => setSelectedIds(new Set())}
 							className="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700"
 						>
-							クリア
+							{t("selectionClear")}
 						</button>
 						<button
 							type="button"
@@ -211,7 +211,7 @@ export default function DiscoveryHomePage() {
 							className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg"
 						>
 							<TrendingUp size={14} />
-							選択した{selectedIds.size}件で戦略立案
+							{t("selectionOpenStrategy", { count: selectedIds.size })}
 						</button>
 					</div>
 				</div>

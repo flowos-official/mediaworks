@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
-  ImageIcon, Search, Upload, X, Loader2, ChevronLeft, ChevronRight,
+  ImageIcon, Search, X, Loader2, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 
 type GalleryProduct = {
@@ -37,13 +37,6 @@ export default function GalleryPage() {
   const [selectedImages, setSelectedImages] = useState<ProductImage[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-
-  // Upload state
-  const [showUpload, setShowUpload] = useState(false);
-  const [uploadCode, setUploadCode] = useState('');
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadResult, setUploadResult] = useState<string | null>(null);
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -78,31 +71,6 @@ export default function GalleryPage() {
     }
   };
 
-  const handleUpload = async () => {
-    if (!uploadFile || !uploadCode.trim()) return;
-    setUploading(true);
-    setUploadResult(null);
-    try {
-      const form = new FormData();
-      form.append('file', uploadFile);
-      form.append('product_code', uploadCode.trim());
-      const res = await fetch('/api/products/upload-taicho', { method: 'POST', body: form });
-      const data = await res.json();
-      if (res.ok) {
-        setUploadResult(`${t('uploadSuccess')} — ${data.imagesUploaded} ${t('images')}`);
-        setUploadCode('');
-        setUploadFile(null);
-        fetchProducts();
-      } else {
-        setUploadResult(data.error ?? t('uploadError'));
-      }
-    } catch {
-      setUploadResult(t('uploadError'));
-    } finally {
-      setUploading(false);
-    }
-  };
-
   // Detail view for a selected product
   if (selectedCode) {
     const product = products.find((p) => p.code === selectedCode);
@@ -123,7 +91,7 @@ export default function GalleryPage() {
             onClick={() => { setSelectedCode(null); setSelectedImages([]); }}
             className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 mb-4"
           >
-            <ChevronLeft size={16} /> {t('title')}
+            <ChevronLeft size={16} /> {t('backToList')}
           </button>
 
           <div className="mb-6">
@@ -235,23 +203,6 @@ export default function GalleryPage() {
   // Main gallery grid
   return (
     <>
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <ImageIcon size={20} className="text-blue-600" />
-              <h2 className="text-2xl font-bold text-gray-900">{t('title')}</h2>
-            </div>
-            <p className="text-sm text-gray-500">{t('subtitle')}</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setShowUpload(true)}
-            className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Upload size={14} /> {t('uploadButton')}
-          </button>
-        </div>
-
         {/* Search */}
         <div className="relative mb-6">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -299,60 +250,6 @@ export default function GalleryPage() {
           </div>
         )}
 
-        {/* Upload Modal */}
-        {showUpload && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center">
-            <div className="absolute inset-0 bg-black/40" onClick={() => { setShowUpload(false); setUploadResult(null); }} />
-            <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-gray-900">{t('uploadTitle')}</h2>
-                <button type="button" onClick={() => { setShowUpload(false); setUploadResult(null); }} className="p-1.5 hover:bg-gray-100 rounded-lg">
-                  <X size={18} className="text-gray-500" />
-                </button>
-              </div>
-              <p className="text-sm text-gray-500 mb-4">{t('uploadDescription')}</p>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('productCode')}</label>
-                  <input
-                    type="text"
-                    value={uploadCode}
-                    onChange={(e) => setUploadCode(e.target.value)}
-                    placeholder={t('productCodePlaceholder')}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('selectFile')}</label>
-                  <input
-                    type="file"
-                    accept=".xlsx,.xlsm"
-                    onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
-                    className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                  />
-                </div>
-
-                {uploadResult && (
-                  <div className={`text-sm p-3 rounded-lg ${uploadResult.includes(t('uploadSuccess')) ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-                    {uploadResult}
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  onClick={handleUpload}
-                  disabled={uploading || !uploadFile || !uploadCode.trim()}
-                  className="w-full py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {uploading && <Loader2 size={14} className="animate-spin" />}
-                  {uploading ? t('uploading') : t('uploadButton')}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </>
   );
 }

@@ -3,10 +3,11 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Menu, X } from 'lucide-react';
 import { localePath } from '@/lib/i18n/locale-path';
-import { NAV_GROUPS } from '@/lib/nav/groups';
+import { NAV_GROUPS, findActiveGroup, findActiveMember } from '@/lib/nav/groups';
 import type { Role } from '@/lib/auth/route-permissions';
 
 interface Props {
@@ -17,6 +18,9 @@ interface Props {
 export default function MobileNavSheet({ role, locale }: Props) {
   const [open, setOpen] = useState(false);
   const t = useTranslations();
+  const pathname = usePathname();
+  const activeGroup = findActiveGroup(pathname);
+  const activeMemberHref = activeGroup ? (findActiveMember(activeGroup, pathname)?.href ?? null) : null;
 
   useEffect(() => {
     if (!open) return;
@@ -53,35 +57,45 @@ export default function MobileNavSheet({ role, locale }: Props) {
           </div>
           <nav className="p-4 space-y-2">
             {groups.map((g) => {
+              const isActiveGroup = activeGroup?.key === g.key;
               if (g.visibility[role] === 'productsOnly') {
                 return (
                   <Link
                     key={g.key}
                     href={localePath(locale, '/analytics/products')}
                     onClick={() => setOpen(false)}
-                    className="block py-3 px-3 text-base font-medium text-gray-900 rounded-lg hover:bg-gray-50"
+                    className={`block py-3 px-3 text-base font-medium rounded-lg hover:bg-gray-50 ${
+                      isActiveGroup ? 'text-blue-600 bg-blue-50' : 'text-gray-900'
+                    }`}
                   >
                     {t('nav.firm.products')}
                   </Link>
                 );
               }
               return (
-                <details key={g.key} className="group">
-                  <summary className="flex items-center justify-between py-3 px-3 text-base font-semibold text-gray-900 cursor-pointer rounded-lg hover:bg-gray-50">
+                <details key={g.key} className="group" open={isActiveGroup}>
+                  <summary className={`flex items-center justify-between py-3 px-3 text-base font-semibold cursor-pointer rounded-lg hover:bg-gray-50 ${
+                    isActiveGroup ? 'text-blue-600 bg-blue-50' : 'text-gray-900'
+                  }`}>
                     {t(g.labelKey)}
                     <span className="text-gray-400 group-open:rotate-180 transition-transform">▾</span>
                   </summary>
                   <div className="pl-4 space-y-1 pb-2">
-                    {g.members.map((m) => (
-                      <Link
-                        key={m.href}
-                        href={localePath(locale, m.href)}
-                        onClick={() => setOpen(false)}
-                        className="block py-2 px-3 text-sm text-gray-700 rounded-lg hover:bg-gray-50"
-                      >
-                        {t(m.labelKey)}
-                      </Link>
-                    ))}
+                    {g.members.map((m) => {
+                      const isActiveMember = activeMemberHref === m.href;
+                      return (
+                        <Link
+                          key={m.href}
+                          href={localePath(locale, m.href)}
+                          onClick={() => setOpen(false)}
+                          className={`block py-2 px-3 text-sm rounded-lg hover:bg-gray-50 ${
+                            isActiveMember ? 'text-blue-600 font-medium bg-blue-50' : 'text-gray-700'
+                          }`}
+                        >
+                          {t(m.labelKey)}
+                        </Link>
+                      );
+                    })}
                   </div>
                 </details>
               );

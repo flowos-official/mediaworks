@@ -54,12 +54,7 @@ export default function GroupDropdown({ group, role, locale }: Props) {
 
   // 'full': dropdown
   return (
-    <div
-      ref={wrapperRef}
-      className="relative"
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-    >
+    <div ref={wrapperRef} className="relative">
       <div
         className={`inline-flex items-center gap-1 text-sm font-medium ${
           isActive

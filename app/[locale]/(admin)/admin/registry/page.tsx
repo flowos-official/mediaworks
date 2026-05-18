@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getServiceClient } from "@/lib/supabase";
@@ -90,6 +91,7 @@ async function loadData(): Promise<{
 }
 
 export default async function RegistryListPage() {
+	const t = await getTranslations("admin.registry");
 	const { skills, versionsBySkill, versionCountBySkill } = await loadData();
 
 	const totalSkills = skills.length;
@@ -103,7 +105,7 @@ export default async function RegistryListPage() {
 	return (
 		<>
 			<header className="mb-6">
-				<h1 className="text-2xl font-semibold text-gray-900">Skill Registry</h1>
+				<h1 className="text-2xl font-semibold text-gray-900">{t("title")}</h1>
 				<p className="mt-1 text-sm text-gray-500">
 					All Gemini-calling skills cataloged from the codebase. Git is the source of truth — DB rows are immutable copies keyed by{" "}
 					<code className="rounded bg-gray-100 px-1 text-[11px]">git_sha</code>.
@@ -111,8 +113,8 @@ export default async function RegistryListPage() {
 			</header>
 
 			<section className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-				<KPI label="Total Skills" value={totalSkills} />
-				<KPI label="Active Versions" value={activeCount} />
+				<KPI label={t("totalSkills")} value={totalSkills} />
+				<KPI label={t("activeVersions")} value={activeCount} />
 				<KPI
 					label="Categories"
 					value={Object.keys(categoryCounts).length}

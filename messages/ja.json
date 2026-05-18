@@ -7,10 +7,10 @@
       "admin": "管理"
     },
     "groupHeader": {
-      "firm": { "title": "自社データ", "subtitle": "売上・商品・ギャラリー" },
-      "market": { "title": "市場リサーチ", "subtitle": "番組カレンダー・新規発掘・MD戦略" },
-      "produce": { "title": "制作", "subtitle": "テレビショッピング台本・新規リサーチ" },
-      "admin": { "title": "管理", "subtitle": "ユーザー・履歴クロール・スキルレジストリ" }
+      "firm": { "title": "自社データ", "subtitle": "自社販売データの分析" },
+      "market": { "title": "市場リサーチ", "subtitle": "競合と市場機会の把握" },
+      "produce": { "title": "制作", "subtitle": "コンテンツ制作支援" },
+      "admin": { "title": "管理", "subtitle": "システム運用と権限管理" }
     },
     "firm": {
       "overview": "売上概要",
@@ -185,6 +185,7 @@
   "gallery": {
     "title": "商品画像ギャラリー",
     "subtitle": "台帳ファイルの商品画像を一覧表示",
+    "backToList": "一覧に戻る",
     "searchPlaceholder": "商品名で検索...",
     "noImages": "画像がありません",
     "uploadButton": "台帳アップロード",
@@ -237,6 +238,10 @@
   "discovery": {
     "title": "本日の発掘",
     "subtitle": "毎日自動発掘される30商品の一覧",
+    "loading": "読み込み中...",
+    "selectionSelected": "{count}件選択中",
+    "selectionClear": "クリア",
+    "selectionOpenStrategy": "選択した{count}件で戦略立案",
     "noSession": "まだセッションがありません。cronを手動実行してください。",
     "sessionRunning": "実行中...",
     "sessionFailed": "実行失敗",
@@ -483,6 +488,12 @@
         "member": "メンバー",
         "viewer": "閲覧者"
       }
+    },
+    "registry": {
+      "title": "スキルレジストリ",
+      "totalSkills": "登録スキル数",
+      "activeVersions": "アクティブ版数",
+      "backToList": "← 一覧に戻る"
     },
     "historicalCrawl": {
       "title": "他局OA収集モニター",

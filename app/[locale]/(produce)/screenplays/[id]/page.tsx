@@ -29,7 +29,7 @@ export default async function ScreenplayDetailPage({ params }: { params: Promise
 	const badge = STATUS_BADGE[screenplay.status];
 
 	return (
-		<main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+		<>
 			<Link
 				href={localePath(locale, "/screenplays")}
 				className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 mb-5"
@@ -55,6 +55,6 @@ export default async function ScreenplayDetailPage({ params }: { params: Promise
 			</header>
 
 			<ScreenplayWorkspace initialScreenplay={screenplay} initialVersions={versions} />
-		</main>
+		</>
 	);
 }

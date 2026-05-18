@@ -15,9 +15,7 @@ export default function ResearchPage() {
 
   return (
     <>
-      <div className="max-w-2xl mx-auto">
-        <FileUpload onUploadComplete={handleUploadComplete} />
-      </div>
+      <FileUpload onUploadComplete={handleUploadComplete} />
 
       <section>
         <h2 className="text-xl font-semibold text-gray-900 mb-6">{t('recentProducts')}</h2>

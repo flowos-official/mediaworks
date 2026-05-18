@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getServiceClient } from "@/lib/supabase";
@@ -83,6 +84,7 @@ async function loadSkill(slug: string): Promise<{
 export default async function SkillDetailPage({ params, searchParams }: PageProps) {
 	const { locale, skillSlug } = await params;
 	const { version: versionLabelParam } = await searchParams;
+	const t = await getTranslations("admin.registry");
 
 	const data = await loadSkill(skillSlug);
 	if (!data) notFound();
@@ -98,7 +100,7 @@ export default async function SkillDetailPage({ params, searchParams }: PageProp
 		<>
 			<div className="mb-4 text-xs text-gray-500">
 				<Link href={localePath(locale, "/admin/registry")} className="hover:text-blue-600">
-					← All skills
+					{t("backToList")}
 				</Link>
 			</div>
 
