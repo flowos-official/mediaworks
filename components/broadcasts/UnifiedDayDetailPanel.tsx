@@ -9,7 +9,6 @@ import OABroadcastListItem, { type OARow } from "./OABroadcastListItem";
 import {
 	ALL_CHANNELS,
 	CHANNEL_BADGE,
-	isOAChannel,
 	type BroadcastChannelSlug,
 } from "@/lib/broadcasts/channel-style";
 
@@ -31,6 +30,19 @@ const CATEGORIES_BY_CHANNEL: Record<"qvc" | "shopch", readonly string[]> = {
 		"家電",
 	],
 };
+
+const QVC_WHITELIST = new Set<string>(CATEGORIES_BY_CHANNEL.qvc);
+const SHOPCH_WHITELIST = new Set<string>(CATEGORIES_BY_CHANNEL.shopch);
+
+// Whitelist gate applied at display time. Data is still persisted regardless
+// of category — see CLAUDE.md "Broadcast Calendar" policy. Non-whitelisted
+// QVC/ShopCh slots are hidden even when `categoryFilter === "all"`. Other
+// (OA) channels have no whitelist and pass through unchanged.
+function isWhitelistedSlot(channel: string, category: string | null): boolean {
+	if (channel === "qvc") return !!category && QVC_WHITELIST.has(category);
+	if (channel === "shopch") return !!category && SHOPCH_WHITELIST.has(category);
+	return true;
+}
 
 interface Props {
 	date: string | null;
@@ -99,6 +111,7 @@ export default function UnifiedDayDetailPanel({ date }: Props) {
 
 	const matchesFilters = (channel: string, category: string | null): boolean => {
 		if (channelFilter !== "all" && channel !== channelFilter) return false;
+		if (!isWhitelistedSlot(channel, category)) return false;
 		if (categoryFilter === "all") return true;
 		return category === categoryFilter;
 	};
@@ -114,30 +127,23 @@ export default function UnifiedDayDetailPanel({ date }: Props) {
 		const fromTimed = timedRows.filter(
 			(b) =>
 				b.channel === slug &&
+				isWhitelistedSlot(b.channel, b.category ?? null) &&
 				(categoryFilter === "all" || b.category === categoryFilter),
 		).length;
 		const fromOA = oaRows.filter(
 			(r) =>
 				r.channel === slug &&
+				isWhitelistedSlot(r.channel, r.category) &&
 				(categoryFilter === "all" || r.category === categoryFilter),
 		).length;
 		return fromTimed + fromOA;
 	};
 
 	const showCategoryChips =
-		channelFilter === "all" ||
-		channelFilter === "qvc" ||
-		channelFilter === "shopch";
-	const visibleCategories: readonly string[] = !showCategoryChips
-		? []
-		: channelFilter === "all"
-			? Array.from(
-					new Set([
-						...CATEGORIES_BY_CHANNEL.qvc,
-						...CATEGORIES_BY_CHANNEL.shopch,
-					]),
-				)
-			: CATEGORIES_BY_CHANNEL[channelFilter as "qvc" | "shopch"];
+		channelFilter === "qvc" || channelFilter === "shopch";
+	const visibleCategories: readonly string[] = showCategoryChips
+		? CATEGORIES_BY_CHANNEL[channelFilter as "qvc" | "shopch"]
+		: [];
 
 	const sortedTimed = [...filteredTimed].sort((a, b) => {
 		if (a.start_time !== b.start_time)
@@ -168,7 +174,10 @@ export default function UnifiedDayDetailPanel({ date }: Props) {
 			<div className="flex flex-wrap gap-1.5 mb-3">
 				<button
 					type="button"
-					onClick={() => setChannelFilter("all")}
+					onClick={() => {
+						setChannelFilter("all");
+						setCategoryFilter("all");
+					}}
 					className={`px-2.5 py-0.5 rounded-full text-[11px] font-medium border transition-colors ${
 						channelFilter === "all"
 							? "bg-gray-900 text-white border-gray-900"
@@ -189,7 +198,10 @@ export default function UnifiedDayDetailPanel({ date }: Props) {
 							type="button"
 							onClick={() => {
 								setChannelFilter(slug);
-								if (isOAChannel(slug) && categoryFilter !== "all") {
+								// Categories are only relevant for qvc/shopch. Reset to
+								// "all" when leaving so a stale filter doesn't silently
+								// gate OA channels while chips are hidden.
+								if (slug !== "qvc" && slug !== "shopch") {
 									setCategoryFilter("all");
 								}
 							}}

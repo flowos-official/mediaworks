@@ -6,17 +6,6 @@
         "stepId": "step//workflow@4.2.0-beta.76//fetch"
       }
     },
-    "node_modules/workflow/dist/internal/builtins.js": {
-      "__builtin_response_array_buffer": {
-        "stepId": "__builtin_response_array_buffer"
-      },
-      "__builtin_response_json": {
-        "stepId": "__builtin_response_json"
-      },
-      "__builtin_response_text": {
-        "stepId": "__builtin_response_text"
-      }
-    },
     "lib/workflows/screenplay.workflow.ts": {
       "emitProgressStep": {
         "stepId": "step//./lib/workflows/screenplay.workflow//emitProgressStep"
@@ -72,6 +61,17 @@
       },
       "saveStrategyStep": {
         "stepId": "step//./lib/workflows/md-strategy.workflow//saveStrategyStep"
+      }
+    },
+    "node_modules/workflow/dist/internal/builtins.js": {
+      "__builtin_response_array_buffer": {
+        "stepId": "__builtin_response_array_buffer"
+      },
+      "__builtin_response_json": {
+        "stepId": "__builtin_response_json"
+      },
+      "__builtin_response_text": {
+        "stepId": "__builtin_response_text"
       }
     }
   },
