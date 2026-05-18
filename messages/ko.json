@@ -6,6 +6,12 @@
       "produce": "제작",
       "admin": "관리"
     },
+    "groupHeader": {
+      "firm": { "title": "자사 데이터", "subtitle": "매출 · 상품 · 갤러리" },
+      "market": { "title": "시장 리서치", "subtitle": "방송 캘린더 · 신규 발굴 · MD 전략" },
+      "produce": { "title": "제작", "subtitle": "TV쇼핑 대본 · 신규 리서치" },
+      "admin": { "title": "관리", "subtitle": "사용자 · 이력 크롤 · 스킬 레지스트리" }
+    },
     "firm": {
       "overview": "매출 개요",
       "products": "상품 분석",
