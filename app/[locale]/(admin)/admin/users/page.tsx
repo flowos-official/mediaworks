@@ -1,5 +1,4 @@
 import { redirect } from 'next/navigation';
-import { getTranslations } from 'next-intl/server';
 import { getServerClient } from '@/lib/supabase/server';
 import UsersTable from './UsersTable';
 import { localePath } from '@/lib/i18n/locale-path';
@@ -19,11 +18,7 @@ export default async function AdminUsersPage(props: { params: Promise<{ locale: 
     .select('id, email, role, created_at')
     .order('created_at', { ascending: false });
 
-  const t = await getTranslations('admin.users');
   return (
-    <div className="max-w-5xl mx-auto p-6 space-y-4">
-      <h1 className="text-2xl font-bold">{t('title')}</h1>
-      <UsersTable initial={users ?? []} currentUserId={user.id} />
-    </div>
+    <UsersTable initial={users ?? []} currentUserId={user.id} />
   );
 }

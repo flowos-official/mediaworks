@@ -26,15 +26,13 @@ export default async function Page({ params }: PageProps) {
 	]);
 
 	return (
-		<main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-			<HistoricalCrawlDashboard
-				initialRuns={
-					(runs ?? []) as Parameters<
-						typeof HistoricalCrawlDashboard
-					>[0]["initialRuns"]
-				}
-				baseline={baseline}
-			/>
-		</main>
+		<HistoricalCrawlDashboard
+			initialRuns={
+				(runs ?? []) as Parameters<
+					typeof HistoricalCrawlDashboard
+				>[0]["initialRuns"]
+			}
+			baseline={baseline}
+		/>
 	);
 }

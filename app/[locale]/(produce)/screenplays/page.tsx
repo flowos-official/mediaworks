@@ -1,8 +1,7 @@
 import Link from "next/link";
-import { Plus, Clapperboard } from "lucide-react";
+import { Plus } from "lucide-react";
 import { ScreenplayList } from "@/components/screenplay/ScreenplayList";
 import { localePath } from "@/lib/i18n/locale-path";
-import ProduceSubNav from "@/components/nav/ProduceSubNav";
 
 export const dynamic = "force-dynamic";
 
@@ -20,18 +19,11 @@ export default async function ScreenplaysPage({ params }: { params: Promise<{ lo
 	const { locale } = await params;
 	const rows = await fetchList();
 	return (
-		<main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-			<div className="mb-6">
-				<ProduceSubNav />
-			</div>
-			<header className="flex items-start justify-between gap-4 mb-8">
+		<>
+			<header className="flex items-start justify-between gap-4">
 				<div>
-					<div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 text-sm font-medium px-3 py-1.5 rounded-full mb-3">
-						<Clapperboard size={14} />
-						テレビショッピング 台本ジェネレーター
-					</div>
-					<h1 className="text-3xl font-bold text-gray-900">台本一覧</h1>
-					<p className="text-sm text-gray-500 mt-2 max-w-xl">
+					<h2 className="text-xl font-semibold text-gray-900">台本一覧</h2>
+					<p className="text-sm text-gray-500 mt-1 max-w-xl">
 						商品を選んで、生放送さながらのテレビショッピング台本を作成します。フィードバックを送ると何度でも改稿できます。
 					</p>
 				</div>
@@ -44,6 +36,6 @@ export default async function ScreenplaysPage({ params }: { params: Promise<{ lo
 				</Link>
 			</header>
 			<ScreenplayList rows={rows} locale={locale} />
-		</main>
+		</>
 	);
 }

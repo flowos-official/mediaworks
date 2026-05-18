@@ -1,14 +1,11 @@
 import { getTranslations } from "next-intl/server";
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { requireUser } from "@/lib/auth/require-user";
 import BroadcastCalendar from "@/components/broadcasts/BroadcastCalendar";
 import BroadcastSearchOverlay from "@/components/broadcasts/BroadcastSearchOverlay";
 import type { Broadcast } from "@/components/broadcasts/BroadcastListItem";
 import { loadProductsForBroadcasts } from "@/lib/qvc-products/attach";
 import { localePath } from "@/lib/i18n/locale-path";
-import MarketSubNav from "@/components/nav/MarketSubNav";
 
 const OA_CHANNEL_SLUGS = [
   "japanet",
@@ -124,26 +121,10 @@ export default async function Page({ params, searchParams }: PageProps) {
   const hasAny = initialBroadcasts.length > 0;
 
   return (
-    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-6">
-        <MarketSubNav />
+    <>
+      <div className="flex justify-end mb-6">
+        <BroadcastSearchOverlay channelCounts={channelCounts} />
       </div>
-      <header className="mb-6">
-        <Link
-          href={localePath(locale)}
-          className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-3"
-        >
-          <ArrowLeft size={16} />
-          {t("back")}
-        </Link>
-        <div className="flex items-start justify-between gap-3 flex-wrap">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{t("title")}</h1>
-            <p className="text-sm text-gray-500 mt-1">{t("subtitle")}</p>
-          </div>
-          <BroadcastSearchOverlay channelCounts={channelCounts} />
-        </div>
-      </header>
 
       {!hasAny ? (
         <div className="text-sm text-gray-500 p-12 text-center border border-dashed border-gray-200 rounded-lg">
@@ -157,7 +138,6 @@ export default async function Page({ params, searchParams }: PageProps) {
           initialBroadcasts={initialBroadcasts}
         />
       )}
-
-    </main>
+    </>
   );
 }

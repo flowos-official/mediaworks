@@ -45,9 +45,9 @@ export default async function ProductReportPage({
   const { product, research } = data;
 
   return (
-    <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
+    <>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
           <div className="flex items-center gap-4">
             <Link
               href={localePath(locale)}
@@ -177,6 +177,6 @@ export default async function ProductReportPage({
             )}
           </div>
         )}
-      </main>
+    </>
   );
 }
