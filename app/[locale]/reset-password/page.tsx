@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,12 +16,15 @@ function hashSignalsConfirm(hash: string): boolean {
 
 export default function ResetPasswordPage() {
   const t = useTranslations('auth.resetPassword');
+  const tUsers = useTranslations('admin.users.forceChange');
   const locale = useLocale();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const forced = searchParams.get('force') === '1';
 
-  // Snapshot the hash on first client render BEFORE Supabase's auto-detect
-  // clears it. Avoids hydration mismatch by starting at 'request' on SSR.
-  const [mode, setMode] = useState<Mode>('request');
+  // Forced flow lands here already logged-in (middleware redirected because
+  // must_change_password=true), so start in confirm mode.
+  const [mode, setMode] = useState<Mode>(forced ? 'confirm' : 'request');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [done, setDone] = useState<string | null>(null);
@@ -36,14 +39,10 @@ export default function ResetPasswordPage() {
   );
 
   useEffect(() => {
-    // Immediate hash check — runs synchronously after mount, may still have
-    // the hash before Supabase's async URL detect clears it.
     if (typeof window !== 'undefined' && hashSignalsConfirm(window.location.hash)) {
       setMode('confirm');
     }
 
-    // Fallback: react to Supabase's own session detection events. PKCE flow
-    // or late hash clears both land here.
     const { data: { subscription } } = sb.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
         setMode('confirm');
@@ -66,8 +65,23 @@ export default function ResetPasswordPage() {
     setErr(null);
     const { error } = await sb.auth.updateUser({ password });
     if (error) { setErr(error.message); return; }
+
+    // Clear must_change_password if it was set. Best effort — RLS allows the
+    // user to update their own profile's must_change_password flag.
+    const { data: { user } } = await sb.auth.getUser();
+    if (user) {
+      await sb.from('profiles')
+        .update({ must_change_password: false })
+        .eq('id', user.id);
+    }
+
     setDone(t('confirmDone'));
-    setTimeout(() => router.replace(localePath(locale, '/login')), 1500);
+    if (forced) {
+      // Already logged in — go straight to home.
+      setTimeout(() => router.replace(localePath(locale, '/')), 1200);
+    } else {
+      setTimeout(() => router.replace(localePath(locale, '/login')), 1500);
+    }
   }
 
   return (
@@ -76,6 +90,11 @@ export default function ResetPasswordPage() {
         <h1 className="text-xl font-bold">
           {mode === 'request' ? t('requestTitle') : t('confirmTitle')}
         </h1>
+        {forced && mode === 'confirm' && (
+          <p className="text-sm text-amber-900 bg-amber-50 border border-amber-300 rounded p-3">
+            {tUsers('banner')}
+          </p>
+        )}
         {mode === 'request' ? (
           <form onSubmit={requestReset} className="space-y-3">
             <input

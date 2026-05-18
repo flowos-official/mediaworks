@@ -481,12 +481,56 @@
         "created": "생성일",
         "actions": "작업"
       },
+      "columnsExt": {
+        "name": "이름",
+        "company": "회사",
+        "mustChange": "초기 PW 변경"
+      },
       "delete": "삭제",
+      "edit": "편집",
+      "save": "저장",
+      "cancel": "취소",
       "confirmDelete": "정말 삭제하시겠습니까?",
+      "mustChangeYes": "미변경",
+      "mustChangeNo": "완료",
       "roles": {
         "admin": "관리자",
         "member": "멤버",
         "viewer": "뷰어"
+      },
+      "create": {
+        "openButton": "+ 신규 사용자 추가",
+        "heading": "신규 사용자 추가",
+        "emailLabel": "이메일",
+        "nameLabel": "이름",
+        "companyLabel": "회사",
+        "roleLabel": "역할",
+        "passwordLabel": "비밀번호",
+        "passwordPlaceholder": "비워두면 자동 생성",
+        "passwordGenerate": "재생성",
+        "submit": "생성",
+        "submitting": "생성 중...",
+        "cancel": "취소",
+        "errorDuplicate": "이미 등록된 이메일입니다",
+        "errorGeneric": "생성에 실패했습니다",
+        "forceChangeHint": "첫 로그인 시 본인 비밀번호로 변경하도록 안내됩니다"
+      },
+      "credentials": {
+        "title": "사용자 생성 완료",
+        "hint": "비밀번호는 다시 표시되지 않습니다. 지금 복사해 본인에게 전달하세요.",
+        "loginAt": "로그인 URL",
+        "copy": "복사",
+        "copied": "복사됨",
+        "copyAll": "전체 복사",
+        "close": "닫기",
+        "fieldEmail": "이메일",
+        "fieldPassword": "임시 비밀번호",
+        "fieldRole": "역할",
+        "fieldName": "이름",
+        "fieldCompany": "회사"
+      },
+      "forceChange": {
+        "banner": "관리자가 발급한 임시 비밀번호로 로그인했습니다. 새 비밀번호를 설정해주세요."
       }
     },
     "registry": {

@@ -481,12 +481,56 @@
         "created": "作成日",
         "actions": "操作"
       },
+      "columnsExt": {
+        "name": "名前",
+        "company": "会社",
+        "mustChange": "初回PW変更"
+      },
       "delete": "削除",
+      "edit": "編集",
+      "save": "保存",
+      "cancel": "キャンセル",
       "confirmDelete": "本当に削除しますか?",
+      "mustChangeYes": "未変更",
+      "mustChangeNo": "完了",
       "roles": {
         "admin": "管理者",
         "member": "メンバー",
         "viewer": "閲覧者"
+      },
+      "create": {
+        "openButton": "+ 新規ユーザー追加",
+        "heading": "新規ユーザー追加",
+        "emailLabel": "メール",
+        "nameLabel": "名前",
+        "companyLabel": "会社",
+        "roleLabel": "ロール",
+        "passwordLabel": "パスワード",
+        "passwordPlaceholder": "未入力なら自動生成",
+        "passwordGenerate": "再生成",
+        "submit": "作成",
+        "submitting": "作成中...",
+        "cancel": "キャンセル",
+        "errorDuplicate": "既に登録されているメールです",
+        "errorGeneric": "作成に失敗しました",
+        "forceChangeHint": "初回ログイン時にパスワード変更を求められます"
+      },
+      "credentials": {
+        "title": "ユーザー作成完了",
+        "hint": "このパスワードは二度と表示されません。今すぐコピーして本人にお伝えください。",
+        "loginAt": "ログインURL",
+        "copy": "コピー",
+        "copied": "コピーしました",
+        "copyAll": "全項目コピー",
+        "close": "閉じる",
+        "fieldEmail": "メール",
+        "fieldPassword": "仮パスワード",
+        "fieldRole": "ロール",
+        "fieldName": "名前",
+        "fieldCompany": "会社"
+      },
+      "forceChange": {
+        "banner": "管理者が発行した仮パスワードを使用中です。新しいパスワードを設定してください。"
       }
     },
     "registry": {

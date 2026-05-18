@@ -15,7 +15,7 @@ export default async function AdminUsersPage(props: { params: Promise<{ locale: 
 
   const { data: users } = await sb
     .from('profiles')
-    .select('id, email, role, created_at')
+    .select('id, email, display_name, company_name, role, must_change_password, created_at')
     .order('created_at', { ascending: false });
 
   return (

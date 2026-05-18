@@ -27,7 +27,7 @@ export default async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  const { response, user, role } = await updateSession(req);
+  const { response, user, role, mustChangePassword } = await updateSession(req);
   const isPublic = PUBLIC_SUFFIXES.some((re) => re.test(pathname));
 
   if (isPublic) {
@@ -43,6 +43,12 @@ export default async function middleware(req: NextRequest) {
 
   if (!user) {
     return NextResponse.redirect(new URL(localePath(pathLocale, '/login'), req.url));
+  }
+
+  // Forced password change blocks all non-public routes until the user resets
+  // their admin-issued temporary password.
+  if (mustChangePassword) {
+    return NextResponse.redirect(new URL(localePath(pathLocale, '/reset-password?force=1'), req.url));
   }
 
   if (role === 'viewer' && !isViewerAllowedPath(pathname)) {

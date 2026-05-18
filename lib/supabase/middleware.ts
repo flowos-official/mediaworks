@@ -8,6 +8,7 @@ export interface SessionInfo {
   response: NextResponse;
   user: { id: string; email: string | undefined } | null;
   role: Role | null;
+  mustChangePassword: boolean;
 }
 
 /**
@@ -38,14 +39,15 @@ export async function updateSession(req: NextRequest): Promise<SessionInfo> {
   );
 
   const { data: { user } } = await sb.auth.getUser();
-  if (!user) return { response, user: null, role: null };
+  if (!user) return { response, user: null, role: null, mustChangePassword: false };
 
   const { data: profile } = await sb
     .from('profiles')
-    .select('role')
+    .select('role, must_change_password')
     .eq('id', user.id)
     .maybeSingle();
 
   const role = (profile?.role ?? null) as Role | null;
-  return { response, user: { id: user.id, email: user.email }, role };
+  const mustChangePassword = Boolean(profile?.must_change_password);
+  return { response, user: { id: user.id, email: user.email }, role, mustChangePassword };
 }
