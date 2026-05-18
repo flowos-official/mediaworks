@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Plus, Clapperboard } from "lucide-react";
 import { ScreenplayList } from "@/components/screenplay/ScreenplayList";
 import { localePath } from "@/lib/i18n/locale-path";
+import ProduceSubNav from "@/components/nav/ProduceSubNav";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,9 @@ export default async function ScreenplaysPage({ params }: { params: Promise<{ lo
 	const rows = await fetchList();
 	return (
 		<main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+			<div className="mb-6">
+				<ProduceSubNav />
+			</div>
 			<header className="flex items-start justify-between gap-4 mb-8">
 				<div>
 					<div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 text-sm font-medium px-3 py-1.5 rounded-full mb-3">

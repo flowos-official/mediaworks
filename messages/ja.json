@@ -1,13 +1,30 @@
 {
   "nav": {
-    "home": "ホーム",
-    "products": "商品",
-    "reports": "レポート",
-    "analytics": "売上分析",
-    "gallery": "商品画像",
-    "broadcasts": "番組カレンダー",
-    "screenplays": "台本",
-    "userManagement": "ユーザー管理"
+    "groups": {
+      "firm": "自社",
+      "market": "市場",
+      "produce": "制作",
+      "admin": "管理"
+    },
+    "firm": {
+      "overview": "売上概要",
+      "products": "商品分析",
+      "gallery": "商品ギャラリー"
+    },
+    "market": {
+      "broadcasts": "番組カレンダー",
+      "discovery": "新規発掘",
+      "strategy": "MD戦略"
+    },
+    "produce": {
+      "screenplays": "番組台本",
+      "research": "新規リサーチ"
+    },
+    "admin": {
+      "users": "ユーザー管理",
+      "historicalCrawl": "OA収集状況",
+      "registry": "スキル登録"
+    }
   },
   "home": {
     "title": "MediaWorks",
