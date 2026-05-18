@@ -39,7 +39,8 @@
     "test:category-normalize-unit": "tsx scripts/test-category-normalize-unit.ts",
     "test:category-normalize-integration": "tsx --env-file=.env.local scripts/test-category-normalize-integration.ts",
     "test:category-normalize": "npm run test:category-normalize-unit && npm run test:category-normalize-integration",
-    "backfill:category-normalize": "tsx --env-file=.env.local scripts/backfill-category-normalization.ts"
+    "backfill:category-normalize": "tsx --env-file=.env.local scripts/backfill-category-normalization.ts",
+    "invite:admin": "tsx --env-file=.env.local scripts/invite-admin.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1016.0",

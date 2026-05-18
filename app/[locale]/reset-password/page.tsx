@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,27 +10,47 @@ import { localePath } from '@/lib/i18n/locale-path';
 
 type Mode = 'request' | 'confirm';
 
+function hashSignalsConfirm(hash: string): boolean {
+  return hash.includes('type=recovery') || hash.includes('type=invite');
+}
+
 export default function ResetPasswordPage() {
   const t = useTranslations('auth.resetPassword');
   const locale = useLocale();
   const router = useRouter();
-  const params = useSearchParams();
+
+  // Snapshot the hash on first client render BEFORE Supabase's auto-detect
+  // clears it. Avoids hydration mismatch by starting at 'request' on SSR.
   const [mode, setMode] = useState<Mode>('request');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [done, setDone] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
+  const sb = useMemo(
+    () => createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    ),
+    [],
+  );
+
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.location.hash.includes('type=recovery')) {
+    // Immediate hash check — runs synchronously after mount, may still have
+    // the hash before Supabase's async URL detect clears it.
+    if (typeof window !== 'undefined' && hashSignalsConfirm(window.location.hash)) {
       setMode('confirm');
     }
-  }, [params]);
 
-  const sb = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  );
+    // Fallback: react to Supabase's own session detection events. PKCE flow
+    // or late hash clears both land here.
+    const { data: { subscription } } = sb.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
+        setMode('confirm');
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [sb]);
 
   async function requestReset(e: React.FormEvent) {
     e.preventDefault();
