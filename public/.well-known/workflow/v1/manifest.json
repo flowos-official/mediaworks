@@ -17,6 +17,23 @@
         "stepId": "__builtin_response_text"
       }
     },
+    "lib/workflows/screenplay.workflow.ts": {
+      "emitProgressStep": {
+        "stepId": "step//./lib/workflows/screenplay.workflow//emitProgressStep"
+      },
+      "generateStep": {
+        "stepId": "step//./lib/workflows/screenplay.workflow//generateStep"
+      },
+      "loadPreviousMarkdownStep": {
+        "stepId": "step//./lib/workflows/screenplay.workflow//loadPreviousMarkdownStep"
+      },
+      "markFailedStep": {
+        "stepId": "step//./lib/workflows/screenplay.workflow//markFailedStep"
+      },
+      "persistStep": {
+        "stepId": "step//./lib/workflows/screenplay.workflow//persistStep"
+      }
+    },
     "lib/workflows/live-commerce.workflow.ts": {
       "closeProgressStep": {
         "stepId": "step//./lib/workflows/live-commerce.workflow//closeProgressStep"
@@ -35,23 +52,6 @@
       },
       "saveStrategyStep": {
         "stepId": "step//./lib/workflows/live-commerce.workflow//saveStrategyStep"
-      }
-    },
-    "lib/workflows/screenplay.workflow.ts": {
-      "emitProgressStep": {
-        "stepId": "step//./lib/workflows/screenplay.workflow//emitProgressStep"
-      },
-      "generateStep": {
-        "stepId": "step//./lib/workflows/screenplay.workflow//generateStep"
-      },
-      "loadPreviousMarkdownStep": {
-        "stepId": "step//./lib/workflows/screenplay.workflow//loadPreviousMarkdownStep"
-      },
-      "markFailedStep": {
-        "stepId": "step//./lib/workflows/screenplay.workflow//markFailedStep"
-      },
-      "persistStep": {
-        "stepId": "step//./lib/workflows/screenplay.workflow//persistStep"
       }
     },
     "lib/workflows/md-strategy.workflow.ts": {
@@ -76,18 +76,18 @@
     }
   },
   "workflows": {
-    "lib/workflows/live-commerce.workflow.ts": {
-      "liveCommerceWorkflow": {
-        "workflowId": "workflow//./lib/workflows/live-commerce.workflow//liveCommerceWorkflow",
+    "lib/workflows/screenplay.workflow.ts": {
+      "screenplayWorkflow": {
+        "workflowId": "workflow//./lib/workflows/screenplay.workflow//screenplayWorkflow",
         "graph": {
           "nodes": [],
           "edges": []
         }
       }
     },
-    "lib/workflows/screenplay.workflow.ts": {
-      "screenplayWorkflow": {
-        "workflowId": "workflow//./lib/workflows/screenplay.workflow//screenplayWorkflow",
+    "lib/workflows/live-commerce.workflow.ts": {
+      "liveCommerceWorkflow": {
+        "workflowId": "workflow//./lib/workflows/live-commerce.workflow//liveCommerceWorkflow",
         "graph": {
           "nodes": [],
           "edges": []
