@@ -83,21 +83,23 @@ export default function GroupDropdown({ group, role, locale }: Props) {
         </button>
       </div>
       {open && (
-        <div
-          role="menu"
-          className="absolute left-0 top-full mt-1 min-w-[180px] bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50"
-        >
-          {group.members.map((m) => (
-            <Link
-              key={m.href}
-              role="menuitem"
-              href={localePath(locale, m.href)}
-              className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900"
-              onClick={() => setOpen(false)}
-            >
-              {t(m.labelKey)}
-            </Link>
-          ))}
+        <div className="absolute left-0 top-full pt-1 z-50">
+          <div
+            role="menu"
+            className="min-w-[180px] bg-white border border-gray-200 rounded-lg shadow-lg py-1"
+          >
+            {group.members.map((m) => (
+              <Link
+                key={m.href}
+                role="menuitem"
+                href={localePath(locale, m.href)}
+                className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                onClick={() => setOpen(false)}
+              >
+                {t(m.labelKey)}
+              </Link>
+            ))}
+          </div>
         </div>
       )}
     </div>
