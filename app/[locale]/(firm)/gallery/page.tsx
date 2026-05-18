@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import {
   ImageIcon, Search, Upload, X, Loader2, ChevronLeft, ChevronRight,
 } from 'lucide-react';
-import FirmSubNav from '@/components/nav/FirmSubNav';
 
 type GalleryProduct = {
   code: string;
@@ -118,10 +117,7 @@ export default function GalleryPage() {
     }
 
     return (
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="mb-6">
-            <FirmSubNav />
-          </div>
+      <>
           <button
             type="button"
             onClick={() => { setSelectedCode(null); setSelectedImages([]); }}
@@ -131,7 +127,7 @@ export default function GalleryPage() {
           </button>
 
           <div className="mb-6">
-            <h1 className="text-xl font-bold text-gray-900">{product?.name ?? selectedCode}</h1>
+            <h2 className="text-xl font-bold text-gray-900">{product?.name ?? selectedCode}</h2>
             <div className="flex items-center gap-2 mt-1">
               {product?.category && <Badge variant="secondary" className="text-[10px]">{product.category}</Badge>}
               <span className="text-xs text-gray-400 font-mono">{selectedCode}</span>
@@ -232,21 +228,18 @@ export default function GalleryPage() {
               )}
             </div>
           )}
-        </main>
+        </>
     );
   }
 
   // Main gallery grid
   return (
-    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-6">
-          <FirmSubNav />
-        </div>
+    <>
         <div className="flex items-center justify-between mb-6">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <ImageIcon size={20} className="text-blue-600" />
-              <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+              <h2 className="text-2xl font-bold text-gray-900">{t('title')}</h2>
             </div>
             <p className="text-sm text-gray-500">{t('subtitle')}</p>
           </div>
@@ -360,6 +353,6 @@ export default function GalleryPage() {
             </div>
           </div>
         )}
-      </main>
+      </>
   );
 }
