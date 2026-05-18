@@ -7,6 +7,9 @@ const intl = createIntlMiddleware({
   locales: ['ja', 'ko'],
   defaultLocale: 'ja',
   localePrefix: 'as-needed',
+  // URL is the source of truth — disables Accept-Language hijack that was
+  // bouncing `/login` (ja default) → `/ko/login` and breaking <LanguageSwitcher>.
+  localeDetection: false,
 });
 
 function localePath(locale: string, path: string): string {
