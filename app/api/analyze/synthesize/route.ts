@@ -4,6 +4,10 @@ import { hasInternalSecret } from "@/lib/auth/require-user";
 import { synthesizeResearch } from "@/lib/gemini";
 import { runProductResearch } from "@/lib/brave";
 import type { ProductInfo } from "@/lib/gemini";
+import {
+	loadBroadcastContext,
+	formatBroadcastContextPrompt,
+} from "@/lib/research/competitor-context";
 
 export const maxDuration = 300; // Vercel Pro max (800s)
 
@@ -55,9 +59,18 @@ export async function POST(request: NextRequest) {
 			productInfo.category,
 		);
 
+		// Step 1.5: Load broadcast context from internal DB (P2)
+		console.log(`[${productId}] Loading broadcast context for category: ${productInfo.category}`);
+		const broadcastContext = await loadBroadcastContext(productInfo.category);
+		const broadcastContextPrompt = formatBroadcastContextPrompt(broadcastContext);
+
 		// Step 2: Synthesize research with Gemini Pro
 		console.log(`[${productId}] Synthesizing research with gemini-3-flash-preview...`);
-		const research = await synthesizeResearch(productInfo, searchResults);
+		const research = await synthesizeResearch(
+			productInfo,
+			searchResults,
+			broadcastContextPrompt,
+		);
 
 		// Step 3: Save research results (delete + insert to avoid upsert constraint issues)
 		await supabase.from("research_results").delete().eq("product_id", productId);
