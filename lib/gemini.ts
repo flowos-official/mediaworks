@@ -175,6 +175,7 @@ Return only valid JSON, no markdown.`;
 export async function synthesizeResearch(
 	productInfo: ProductInfo,
 	searchResults: Record<string, string>,
+	broadcastContextPrompt?: string,
 ): Promise<ResearchOutput> {
 	// Use gemini-3-flash-preview (stable, fast)
 	const modelName = "gemini-3-flash-preview";
@@ -194,6 +195,7 @@ Web Search Results:
 ${Object.entries(searchResults)
 		.map(([key, val]) => `## ${key}\n${val}`)
 		.join("\n\n")}
+${broadcastContextPrompt ?? ""}
 
 ${buildChannelReferencePrompt()}
 
