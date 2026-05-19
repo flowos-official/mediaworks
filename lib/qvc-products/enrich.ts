@@ -82,10 +82,13 @@ async function fetchInBatches(
 				name: r.detail!.name,
 				description: r.detail!.description,
 				category: r.detail!.category,
+				brand: r.detail!.brand,
 				image_url: r.detail!.image_url,
 				image_urls: r.detail!.image_urls,
 				video_url: r.detail!.video_url,
 				price_text: r.detail!.price_text,
+				original_price_jpy: r.detail!.original_price_jpy,
+				sale_label: r.detail!.sale_label,
 				source_url: r.detail!.source_url,
 				fetched_at: new Date().toISOString(),
 			}));
