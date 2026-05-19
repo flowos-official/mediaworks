@@ -49,3 +49,9 @@ assert(shopchRows.length === 1, "ShopCh: 1 row");
 assert(shopchRows[0].discount_rate === 58, "ShopCh: discount_rate from JSON offRate");
 assert(shopchRows[0].in_stock_at_capture === true, "ShopCh: in_stock_at_capture");
 assert(shopchRows[0].source === "shopch", "ShopCh: source label");
+
+// ---- parseDurationFromStderr ----
+import { parseDurationFromStderr } from "../lib/broadcasts/video-archival";
+
+assert(parseDurationFromStderr("Duration: 01:23:45.00, start: 0") === 5025, "parseDuration: 1h23m45s = 5025s");
+assert(parseDurationFromStderr("nothing here") === null, "parseDuration: null when absent");
