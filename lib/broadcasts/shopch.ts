@@ -1,6 +1,5 @@
 import * as cheerio from "cheerio";
 import { politeFetch } from "./fetch";
-import { classifyShopChSlots } from "./shopch-category";
 import {
 	buildProgramId,
 	fetchShopChSlotMetadataBatch,
@@ -139,7 +138,7 @@ export function scrapeShopChannelFromHTML(
 			thumbnail_url: thumbnailUrl,
 			source_url: productUrl ?? sourceUrl,
 			product_ids: null,
-			category: null, // attached later by classifyShopChSlots
+			category: null, // attached later in scrapeShopChannelForDate from JSON pgmcategory
 		});
 	});
 
@@ -165,21 +164,24 @@ export async function scrapeShopChannelForDate(date: Date): Promise<ScrapeResult
 	}
 
 	const slots = scrapeShopChannelFromHTML(fetched.body, iso);
-	// Classify category via Gemini but DO NOT drop non-whitelist slots.
-	// Policy update (2026-05-17): collect everything, filter for whitelist in the UI.
-	const classified = await classifyShopChSlots(slots);
 
-	// Fetch per-slot JSON metadata for snapshot enrichment (competitive archival).
-	// Uses the programId (YYYYMMDDHHMMSS) derived from each slot's air_date + start_time.
-	const programIds = classified.map((s) => buildProgramId(s.air_date, s.start_time));
+	// Fetch per-slot JSON metadata. `pgmcategory` becomes the slot category
+	// (replaces the previous Gemini batch classifier as of 2026-05-19); the
+	// same map also powers broadcast_products snapshot enrichment downstream
+	// via shopchMetadataByProgramId.
+	const programIds = slots.map((s) => buildProgramId(s.air_date, s.start_time));
 	const shopchMetadataByProgramId = await fetchShopChSlotMetadataBatch(programIds, 3);
+	const enriched = slots.map((s) => {
+		const meta = shopchMetadataByProgramId.get(buildProgramId(s.air_date, s.start_time));
+		return { ...s, category: meta?.category ?? null };
+	});
 
 	return {
 		channel: "shopch",
 		date: iso,
-		slots: classified,
+		slots: enriched,
 		ok: true,
-		health: computeHealth(classified, true),
+		health: computeHealth(enriched, true),
 		shopchMetadataByProgramId,
 	};
 }
