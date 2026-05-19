@@ -31,9 +31,15 @@ let qvcUpdated = 0;
 let shUpdated = 0;
 let shSkippedOlder = 0;
 
+/** Shared state: print the migration warning at most once across the entire run. */
+interface WarnCtx { warned: boolean }
+
 // ── QVC ─────────────────────────────────────────────────────────────────────
 
-async function backfillQVC(whitelist: Map<string, Set<string>>): Promise<void> {
+async function backfillQVC(
+	whitelist: Map<string, Set<string>>,
+	warnCtx: WarnCtx,
+): Promise<void> {
 	const sb = getServiceClient();
 	let offset = 0;
 	let page = 0;
@@ -110,22 +116,36 @@ async function backfillQVC(whitelist: Map<string, Set<string>>): Promise<void> {
 					firstProduct?.video_url &&
 					(firstProduct.video_url as string).length > 0
 				);
-				// video_status values 'queued'/'deferred' require the check constraint
-				// to be widened first (see supabase/migrations/2026-05-19_broadcasts_video_status_full_enum.sql).
-				// Once the migration is applied, uncomment the video_status field below.
 				const videoStatus: string = hasVideo ? "queued" : "deferred";
-				void videoStatus; // suppress unused warning until migration is applied
 
 				const { error: updateErr } = await sb
 					.from("broadcasts")
 					.update({
 						brand_name: brandName,
 						brand_code: null, // QVC has no brand_code field in qvc_products
-						// video_status: videoStatus, // blocked: constraint not yet widened
 					})
 					.eq("id", row.id);
 				if (updateErr) {
 					console.warn(`[qvc] broadcast update ${row.id} failed:`, updateErr.message);
+				}
+
+				// Seed video_status — requires migration 2026-05-19_broadcasts_video_status_full_enum.sql
+				const { error: vsErr } = await sb
+					.from("broadcasts")
+					.update({ video_status: videoStatus })
+					.eq("id", row.id);
+				if (vsErr) {
+					if (vsErr.message.includes("broadcasts_video_status_check")) {
+						if (!warnCtx.warned) {
+							console.warn(
+								"[backfill] video_status update skipped — please apply migration " +
+								"2026-05-19_broadcasts_video_status_full_enum.sql",
+							);
+							warnCtx.warned = true;
+						}
+					} else {
+						console.warn(`[backfill] video_status update failed for ${row.id}:`, vsErr.message);
+					}
 				}
 
 				qvcUpdated += 1;
@@ -144,7 +164,10 @@ async function backfillQVC(whitelist: Map<string, Set<string>>): Promise<void> {
 
 // ── ShopCh ───────────────────────────────────────────────────────────────────
 
-async function backfillShopCh(whitelist: Map<string, Set<string>>): Promise<void> {
+async function backfillShopCh(
+	whitelist: Map<string, Set<string>>,
+	warnCtx: WarnCtx,
+): Promise<void> {
 	const sb = getServiceClient();
 	let offset = 0;
 	let page = 0;
@@ -206,18 +229,34 @@ async function backfillShopCh(whitelist: Map<string, Set<string>>): Promise<void
 				}
 
 				// Update broadcasts with brand info
-				// video_status='failed_unsupported' blocked until constraint widened
-				// (see supabase/migrations/2026-05-19_broadcasts_video_status_full_enum.sql)
 				const { error: updateErr } = await sb
 					.from("broadcasts")
 					.update({
 						brand_name: meta.brandName,
 						brand_code: meta.brandCode,
-						// video_status: "failed_unsupported",
 					})
 					.eq("id", row.id);
 				if (updateErr) {
 					console.warn(`[shopch] broadcast update ${row.id} failed:`, updateErr.message);
+				}
+
+				// Seed video_status — requires migration 2026-05-19_broadcasts_video_status_full_enum.sql
+				const { error: vsErr } = await sb
+					.from("broadcasts")
+					.update({ video_status: "failed_unsupported" })
+					.eq("id", row.id);
+				if (vsErr) {
+					if (vsErr.message.includes("broadcasts_video_status_check")) {
+						if (!warnCtx.warned) {
+							console.warn(
+								"[backfill] video_status update skipped — please apply migration " +
+								"2026-05-19_broadcasts_video_status_full_enum.sql",
+							);
+							warnCtx.warned = true;
+						}
+					} else {
+						console.warn(`[backfill] video_status update failed for ${row.id}:`, vsErr.message);
+					}
 				}
 
 				shUpdated += 1;
@@ -242,21 +281,25 @@ async function backfillShopCh(whitelist: Map<string, Set<string>>): Promise<void
 
 // ── Main ─────────────────────────────────────────────────────────────────────
 
-(async () => {
+async function main() {
+	const warnCtx: WarnCtx = { warned: false };
+
 	console.log("backfill-broadcast-products: loading whitelist...");
 	const whitelist = await loadWhitelist(true);
 	console.log(`  whitelist channels: ${[...whitelist.keys()].join(", ")}`);
 
 	console.log("\n=== QVC ===");
-	await backfillQVC(whitelist);
+	await backfillQVC(whitelist, warnCtx);
 
 	console.log("\n=== ShopCh ===");
-	await backfillShopCh(whitelist);
+	await backfillShopCh(whitelist, warnCtx);
 
 	console.log(
 		`\nDone. qvc updated=${qvcUpdated} shopch updated=${shUpdated} shopch skipped=${shSkippedOlder}`,
 	);
-})().catch((e) => {
+}
+
+main().catch((e) => {
 	console.error(e);
 	process.exit(1);
 });

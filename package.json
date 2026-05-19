@@ -45,7 +45,8 @@
     "test:qvc-brand": "tsx scripts/test-qvc-fetcher-brand.ts",
     "test:shopch-products": "tsx scripts/test-shopch-products-snapshot.ts",
     "test:snapshot-enrichment": "tsx scripts/test-snapshot-enrichment.ts",
-    "backfill:broadcast-products": "tsx --env-file=.env.local scripts/backfill-broadcast-products.ts"
+    "backfill:broadcast-products": "tsx --env-file=.env.local scripts/backfill-broadcast-products.ts",
+    "smoke:archive-one": "tsx --env-file=.env.local scripts/smoke-archive-one.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1016.0",
