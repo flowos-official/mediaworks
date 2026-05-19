@@ -44,7 +44,8 @@
     "set:password": "tsx --env-file=.env.local scripts/set-user-password.ts",
     "test:qvc-brand": "tsx scripts/test-qvc-fetcher-brand.ts",
     "test:shopch-products": "tsx scripts/test-shopch-products-snapshot.ts",
-    "test:snapshot-enrichment": "tsx scripts/test-snapshot-enrichment.ts"
+    "test:snapshot-enrichment": "tsx scripts/test-snapshot-enrichment.ts",
+    "backfill:broadcast-products": "tsx --env-file=.env.local scripts/backfill-broadcast-products.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1016.0",
