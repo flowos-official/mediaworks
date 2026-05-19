@@ -21,6 +21,7 @@ import {
 	buildIntentSearchQueries,
 	formatIntentPromptSection,
 } from "@/lib/strategy/discover-intent";
+import { attributeSource } from "@/lib/strategy/source-attribution";
 
 // ---------------------------------------------------------------------------
 // Gemini client
@@ -942,7 +943,7 @@ ${poolText}
 
 === 厳守ルール ===
 - 必ず上記プールに存在する商品のみから選ぶこと。プールにない商品名を作らないこと。
-- source_url は商品の個別ページURL (楽天商品ページ、Amazon商品ページ、メーカー公式ページ等)。プールに商品個別URLがある場合はそのままコピー。ランキングページや一覧ページのURLしかない場合は、商品名から推測される楽天/Amazon/公式の商品個別ページURLを記載すること。
+- source_url: 必ず上記プールの URL を**一字一句そのままコピー**すること。プロトコル変更・パラメータ削除・末尾スラッシュ追加削除・www サブドメイン追加削除など、いかなる変更も禁止。推測・補完・別ページへの差し替えも禁止 (これがあると下流の出典トラッキングが壊れる)。
 - ranking_info はランキング順位情報 (例: "楽天デイリーランキング1位"、"価格.com人気売れ筋3位" 等)。ランキング情報がない場合は省略。
 - name は商品プールの name フィールドをそのまま使用。
 - カテゴリが偏らないように${itemCount}商品を選定。
@@ -1028,25 +1029,22 @@ ${salesStrategyFooter}`;
 		}
 		if (filtered.length === 0) return undefined;
 
-		// Restore pool_source + discovered_product_id from the pool when URL matches.
-		// Use same URL normalization as the sanity-pass filter so trailing-slash /
-		// protocol variants don't mis-tag pool items as fresh_search.
-		const normalizeUrl = (u: string) => u.replace(/\/+$/, '').replace(/^https?:\/\//, '');
-		const poolIndex = new Map<string, DiscoveryPoolItem>();
-		for (const p of cappedPool) {
-			poolIndex.set(normalizeUrl(p.source_url), p);
-		}
-		const enriched = filtered.map((p) => {
-			const match = poolIndex.get(normalizeUrl(p.source_url));
-			if (match) {
-				return {
-					...p,
-					pool_source: match.pool_source,
-					discovered_product_id: match.discovered_product_id,
-				};
-			}
-			return { ...p, pool_source: "fresh_search" as const };
-		});
+		// Restore pool_source + discovered_product_id via the robust matcher.
+		// See lib/strategy/source-attribution.ts for the full rationale —
+		// Gemini is allowed by the prompt to rewrite source_url, so URL-only
+		// matching mistags most pool items as fresh_search.
+		const { enriched, stats } = attributeSource(
+			filtered,
+			cappedPool.map((p) => ({
+				name: p.name,
+				source_url: p.source_url,
+				pool_source: p.pool_source,
+				discovered_product_id: p.discovered_product_id,
+			})),
+		);
+		console.log(
+			`[discover] pool-match: ${stats.url} url, ${stats.itemCode} itemCode, ${stats.nameFallback} name-fallback, ${stats.unmatched} unmatched / ${filtered.length} total`,
+		);
 		return enriched;
 	} catch (err) {
 		console.error("[md-strategy] discovery curation failed:", err);
