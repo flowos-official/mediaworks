@@ -7,6 +7,10 @@
  * VIDEO_ARCHIVE_BASE_URL. The `broadcasts.archived_video_s3` column stores
  * the object key only — never the full URL — so the CDN base URL can change
  * without rewriting historical rows.
+ *
+ * Env var names are intentionally namespaced (`VIDEO_ARCHIVE_AWS_*`) to avoid
+ * collision with the older `lib/s3.ts` (product images) which uses bare
+ * `AWS_S3_*` against a different bucket + IAM key.
  */
 import { S3Client } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
@@ -22,10 +26,10 @@ let client: S3Client | null = null;
 export function getVideoStorageClient(): S3Client {
 	if (client) return client;
 	client = new S3Client({
-		region: requireEnv("AWS_REGION"),
+		region: requireEnv("VIDEO_ARCHIVE_AWS_REGION"),
 		credentials: {
-			accessKeyId: requireEnv("AWS_ACCESS_KEY_ID"),
-			secretAccessKey: requireEnv("AWS_SECRET_ACCESS_KEY"),
+			accessKeyId: requireEnv("VIDEO_ARCHIVE_AWS_ACCESS_KEY_ID"),
+			secretAccessKey: requireEnv("VIDEO_ARCHIVE_AWS_SECRET_ACCESS_KEY"),
 		},
 	});
 	return client;
@@ -41,7 +45,7 @@ export async function uploadStreamToS3(
 	key: string,
 	contentType = "video/mp4",
 ): Promise<VideoUploadResult> {
-	const bucket = requireEnv("AWS_S3_BUCKET");
+	const bucket = requireEnv("VIDEO_ARCHIVE_AWS_BUCKET");
 	let bytes = 0;
 	body.on("data", (chunk: Buffer) => {
 		bytes += chunk.length;
