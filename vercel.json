@@ -67,8 +67,7 @@
       "maxDuration": 300
     },
     "app/api/cron/archive-videos/route.ts": {
-      "maxDuration": 300,
-      "memory": 1024
+      "maxDuration": 300
     }
   },
   "crons": [
