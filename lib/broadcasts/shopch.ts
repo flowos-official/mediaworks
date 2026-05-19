@@ -1,6 +1,10 @@
 import * as cheerio from "cheerio";
 import { politeFetch } from "./fetch";
 import { classifyShopChSlots } from "./shopch-category";
+import {
+	buildProgramId,
+	fetchShopChSlotMetadataBatch,
+} from "./shopch-json";
 import { computeHealth, type ScrapeResult, type ScrapedSlot } from "./types";
 
 const BASE_URL = "https://www.shopch.jp/pc/tv/programlist";
@@ -165,11 +169,17 @@ export async function scrapeShopChannelForDate(date: Date): Promise<ScrapeResult
 	// Policy update (2026-05-17): collect everything, filter for whitelist in the UI.
 	const classified = await classifyShopChSlots(slots);
 
+	// Fetch per-slot JSON metadata for snapshot enrichment (competitive archival).
+	// Uses the programId (YYYYMMDDHHMMSS) derived from each slot's air_date + start_time.
+	const programIds = classified.map((s) => buildProgramId(s.air_date, s.start_time));
+	const shopchMetadataByProgramId = await fetchShopChSlotMetadataBatch(programIds, 3);
+
 	return {
 		channel: "shopch",
 		date: iso,
 		slots: classified,
 		ok: true,
 		health: computeHealth(classified, true),
+		shopchMetadataByProgramId,
 	};
 }

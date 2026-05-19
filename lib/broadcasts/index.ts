@@ -1,4 +1,4 @@
-import { upsertBroadcasts } from "./persist";
+import { upsertBroadcasts, type BroadcastIdMap } from "./persist";
 import { scrapeQVCForDate } from "./qvc";
 import { scrapeShopChannelForDate } from "./shopch";
 import type { PersistResult, ScrapeResult } from "./types";
@@ -8,6 +8,8 @@ export interface ScrapeAllSummary {
 	totalInserted: number;
 	totalUpdated: number;
 	totalErrors: number;
+	/** channel|air_date|start_time → broadcast row id, aggregated from both channels. */
+	broadcastIds: BroadcastIdMap;
 }
 
 export async function scrapeAllForDate(date: Date): Promise<ScrapeAllSummary> {
@@ -34,7 +36,7 @@ export async function scrapeAllForDate(date: Date): Promise<ScrapeAllSummary> {
 		),
 	]);
 
-	const persistPromises: Promise<PersistResult>[] = [];
+	const persistPromises: Promise<PersistResult & { broadcastIds: BroadcastIdMap }>[] = [];
 	for (const r of [shopchResult, qvcResult]) {
 		if (r.ok && r.slots.length > 0) {
 			persistPromises.push(upsertBroadcasts(r.slots));
@@ -52,11 +54,20 @@ export async function scrapeAllForDate(date: Date): Promise<ScrapeAllSummary> {
 	const totalUpdated = persisted.reduce((sum, p) => sum + p.updated, 0);
 	const totalErrors = persisted.reduce((sum, p) => sum + p.errors.length, 0);
 
+	// Merge broadcastIds from all channels into a single map.
+	const broadcastIds: BroadcastIdMap = new Map();
+	for (const p of persisted) {
+		for (const [k, v] of p.broadcastIds) {
+			broadcastIds.set(k, v);
+		}
+	}
+
 	return {
 		results: [shopchResult, qvcResult],
 		totalInserted,
 		totalUpdated,
 		totalErrors,
+		broadcastIds,
 	};
 }
 

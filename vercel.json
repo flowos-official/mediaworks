@@ -19,7 +19,7 @@
       "maxDuration": 300
     },
     "app/api/cron/daily-broadcasts/route.ts": {
-      "maxDuration": 60
+      "maxDuration": 120
     },
     "app/api/cron/daily-historical-broadcasts/route.ts": {
       "maxDuration": 300

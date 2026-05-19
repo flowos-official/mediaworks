@@ -35,6 +35,8 @@ export interface ScrapeResult {
 	ok: boolean;
 	error?: string;
 	health: ScrapeHealth;
+	/** ShopCh only: per-slot JSON metadata keyed by programId (YYYYMMDDHHMMSS). */
+	shopchMetadataByProgramId?: Map<string, import("./shopch-json").ShopChSlotMetadata>;
 }
 
 export interface PersistResult {

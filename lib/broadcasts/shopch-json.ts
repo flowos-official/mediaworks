@@ -5,6 +5,7 @@
  *
  * Used to capture product snapshots at airtime for competitive archival.
  */
+import { politeFetch } from "./fetch";
 
 export interface ShopChProductSnapshot {
 	productId: string;
@@ -138,4 +139,48 @@ export function parseShopChSlotJSON(body: string): ShopChSlotMetadata {
 		brandCode: trimOrNull(parsed.brandcode),
 		videoPath,
 	};
+}
+
+/**
+ * Build the 14-char programId key (YYYYMMDDHHMMSS) from an air_date + start_time.
+ * e.g. ("2026-05-18", "14:30:00") → "20260518143000"
+ */
+export function buildProgramId(airDate: string, startTime: string): string {
+	const datePart = airDate.replace(/-/g, ""); // "20260518"
+	const timePart = startTime.replace(/:/g, ""); // "143000"
+	return `${datePart}${timePart}`;
+}
+
+const SHOPCH_JSON_BASE = "https://www.shopch.jp/json/programprodlist2";
+
+/**
+ * Fetch ShopCh slot JSON for a batch of program IDs.
+ * Returns a Map keyed by programId (YYYYMMDDHHMMSS) → ShopChSlotMetadata.
+ * Missing / failed fetches are silently omitted from the map.
+ */
+export async function fetchShopChSlotMetadataBatch(
+	programIds: string[],
+	concurrency = 3,
+): Promise<Map<string, ShopChSlotMetadata>> {
+	const result = new Map<string, ShopChSlotMetadata>();
+	if (programIds.length === 0) return result;
+
+	// Process in batches of `concurrency` to avoid hammering the host.
+	for (let i = 0; i < programIds.length; i += concurrency) {
+		const batch = programIds.slice(i, i + concurrency);
+		await Promise.all(
+			batch.map(async (pid) => {
+				const url = `${SHOPCH_JSON_BASE}/${pid}.json`;
+				const fetched = await politeFetch(url, {
+					timeoutMs: 10_000,
+					retry: false,
+				});
+				if (!fetched.ok || !fetched.body) return;
+				const meta = parseShopChSlotJSON(fetched.body);
+				result.set(pid, meta);
+			}),
+		);
+	}
+
+	return result;
 }
