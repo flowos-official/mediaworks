@@ -1,5 +1,5 @@
 import { useTranslations } from "next-intl";
-import { ExternalLink, ShoppingBag, PlayCircle } from "lucide-react";
+import { ExternalLink, ShoppingBag, PlayCircle, Play, Loader2 } from "lucide-react";
 import ChannelBadge from "./ChannelBadge";
 import { CompetitorFitPanel } from "./CompetitorFitPanel";
 
@@ -26,10 +26,15 @@ export interface Broadcast {
   product_ids?: string[] | null;
   products?: QvcProduct[] | null;
   category?: string | null;
+  archived_video_s3?: string | null;
+  video_status?: string | null;
+  brand_name?: string | null;
+  brand_code?: string | null;
 }
 
 interface Props {
   broadcast: Broadcast;
+  onPlayVideo?: (b: Broadcast) => void;
 }
 
 function formatTime(t: string): string {
@@ -146,7 +151,7 @@ function ProductCard({ p }: { p: QvcProduct }) {
   );
 }
 
-export default function BroadcastListItem({ broadcast }: Props) {
+export default function BroadcastListItem({ broadcast, onPlayVideo }: Props) {
   const t = useTranslations("broadcasts");
   const b = broadcast;
   const hasProducts = b.channel === "qvc" && b.products && b.products.length > 0;
@@ -166,6 +171,11 @@ export default function BroadcastListItem({ broadcast }: Props) {
       ? (b.description ?? b.program_title)
       : b.program_title;
 
+  const isArchiving =
+    !b.archived_video_s3 &&
+    (b.video_status === "queued" || b.video_status === "downloading");
+  const hasArchive = !!b.archived_video_s3;
+
   return (
     <div className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50/60 transition-colors">
       <div className="flex items-start justify-between gap-3">
@@ -175,15 +185,35 @@ export default function BroadcastListItem({ broadcast }: Props) {
             <div className="text-xs text-gray-500 mt-1 line-clamp-2">{b.description}</div>
           )}
         </div>
-        <a
-          href={b.source_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 flex-shrink-0 self-start mt-1"
-        >
-          <ExternalLink size={12} />
-          {t("openSource")}
-        </a>
+        <div className="flex items-center gap-2 flex-shrink-0 self-start mt-1">
+          {hasArchive && (
+            <button
+              type="button"
+              title={t("playArchive")}
+              onClick={(e) => { e.stopPropagation(); onPlayVideo?.(b); }}
+              className="flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-800 transition-colors"
+            >
+              <Play size={14} />
+            </button>
+          )}
+          {isArchiving && (
+            <span
+              title={t("archiving")}
+              className="flex items-center gap-1 text-xs text-amber-500"
+            >
+              <Loader2 size={14} className="animate-spin" />
+            </span>
+          )}
+          <a
+            href={b.source_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
+          >
+            <ExternalLink size={12} />
+            {t("openSource")}
+          </a>
+        </div>
       </div>
       {hasProducts && (
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">

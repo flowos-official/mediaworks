@@ -79,7 +79,7 @@ export async function GET(req: NextRequest) {
 	let query = auth.sb
 		.from("broadcasts")
 		.select(
-			"id,channel,air_date,start_time,program_title,presenter,description,thumbnail_url,source_url,product_ids,category",
+			"id,channel,air_date,start_time,program_title,presenter,description,thumbnail_url,source_url,product_ids,category,archived_video_s3,video_status,brand_name,brand_code",
 			{ count: "exact" },
 		)
 		.order("air_date", { ascending: !search })
