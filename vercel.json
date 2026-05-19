@@ -65,6 +65,10 @@
     },
     "app/api/cron/refresh-tv-evidence/route.ts": {
       "maxDuration": 300
+    },
+    "app/api/cron/archive-videos/route.ts": {
+      "maxDuration": 300,
+      "memory": 1024
     }
   },
   "crons": [
@@ -103,6 +107,22 @@
     {
       "path": "/api/cron/refresh-tv-evidence",
       "schedule": "30 17 * * 0"
+    },
+    {
+      "path": "/api/cron/archive-videos",
+      "schedule": "0 19 * * *"
+    },
+    {
+      "path": "/api/cron/archive-videos",
+      "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/archive-videos",
+      "schedule": "0 19 * * *"
+    },
+    {
+      "path": "/api/cron/archive-videos",
+      "schedule": "0 1 * * *"
     }
   ]
 }
