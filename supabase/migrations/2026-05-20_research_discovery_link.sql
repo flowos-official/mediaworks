@@ -11,7 +11,7 @@ ALTER TABLE products
   ADD COLUMN IF NOT EXISTS discovered_product_id uuid NULL
   REFERENCES discovered_products(id) ON DELETE SET NULL;
 
-CREATE INDEX IF NOT EXISTS idx_p_discovered_product_id
+CREATE UNIQUE INDEX IF NOT EXISTS uq_p_discovered_product_id
   ON products (discovered_product_id)
   WHERE discovered_product_id IS NOT NULL;
 
