@@ -383,6 +383,11 @@
       "next": "다음 달"
     },
     "openSource": "원본 보기",
+    "playArchive": "아카이브 재생",
+    "archiving": "아카이브 중",
+    "archivedBroadcast": "아카이브 방송",
+    "productsInBroadcast": "출연 상품 ({n}개)",
+    "soldOut": "완판",
     "empty": {
       "all": "아직 방송 정보가 없습니다. 내일 JST 01:00 이후에 데이터가 들어옵니다.",
       "day": "이 날의 방송 정보는 아직 수집되지 않았습니다.",

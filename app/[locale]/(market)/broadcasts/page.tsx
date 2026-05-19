@@ -63,7 +63,7 @@ export default async function Page({ params, searchParams }: PageProps) {
   const { data } = await sb
     .from("broadcasts")
     .select(
-      "id,channel,air_date,start_time,program_title,presenter,description,thumbnail_url,source_url,product_ids,category",
+      "id,channel,air_date,start_time,program_title,presenter,description,thumbnail_url,source_url,product_ids,category,archived_video_s3,video_status,brand_name,brand_code",
     )
     .gte("air_date", from)
     .lte("air_date", to)

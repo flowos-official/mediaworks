@@ -6,10 +6,13 @@ export interface QvcProductDetail {
 	name: string | null;
 	description: string | null;
 	category: string | null;
+	brand: string | null;
 	image_url: string | null;
 	image_urls: string[];
 	video_url: string | null;
 	price_text: string | null;
+	original_price_jpy: number | null;
+	sale_label: string | null;
 	source_url: string;
 }
 
@@ -23,6 +26,68 @@ function clean(s: string | undefined | null): string | null {
 	if (!s) return null;
 	const v = s.trim();
 	return v.length === 0 ? null : v;
+}
+
+function extractBrandFromJSONLD($: cheerio.CheerioAPI): string | null {
+	const ldNodes = $('script[type="application/ld+json"]').toArray();
+	for (const el of ldNodes) {
+		const text = $(el).text();
+		if (!text) continue;
+		try {
+			const parsed = JSON.parse(text);
+			const items: unknown[] = Array.isArray(parsed) ? parsed : [parsed];
+			for (const item of items) {
+				if (typeof item !== "object" || item === null) continue;
+				const obj = item as Record<string, unknown>;
+				const brand = obj.brand;
+				if (typeof brand === "string") {
+					const cleaned = brand.trim();
+					if (cleaned) return cleaned;
+				} else if (typeof brand === "object" && brand !== null) {
+					const name = (brand as Record<string, unknown>).name;
+					if (typeof name === "string" && name.trim()) return name.trim();
+				}
+			}
+		} catch {
+			// next node
+		}
+	}
+	return null;
+}
+
+/**
+ * Parse the inline `var utag_data = { ... };` block on QVC product pages for
+ * the list price + sale code triplet. Tolerates the block being absent (older
+ * page revisions or sold-out products) by returning null.
+ */
+function extractUtagDiscount(html: string): {
+	originalPriceJpy: number | null;
+	saleLabel: string | null;
+} {
+	const match = html.match(/var\s+utag_data\s*=\s*(\{[\s\S]*?\});/);
+	if (!match) return { originalPriceJpy: null, saleLabel: null };
+	let data: Record<string, unknown>;
+	try {
+		data = JSON.parse(match[1]) as Record<string, unknown>;
+	} catch {
+		return { originalPriceJpy: null, saleLabel: null };
+	}
+	const rawPrice = data.product_qvc_price;
+	// product_qvc_price may be a string "11880" or an array ["3960.00"]
+	const priceStr =
+		typeof rawPrice === "string"
+			? rawPrice
+			: Array.isArray(rawPrice) && typeof rawPrice[0] === "string"
+				? rawPrice[0]
+				: null;
+	const original =
+		priceStr !== null && /^\d+(\.\d+)?$/.test(priceStr)
+			? Math.round(parseFloat(priceStr))
+			: null;
+	const rawLabel = data.special_price_code;
+	const label =
+		typeof rawLabel === "string" && rawLabel.trim() ? rawLabel.trim() : null;
+	return { originalPriceJpy: original, saleLabel: label };
 }
 
 /**
@@ -138,16 +203,21 @@ export function parseQvcProductHTML(html: string, id: string): QvcProductDetail 
 	}
 
 	const category = extractCategoryFromHTML($);
+	const brand = extractBrandFromJSONLD($);
+	const { originalPriceJpy, saleLabel } = extractUtagDiscount(html);
 
 	return {
 		id,
 		name,
 		description,
 		category,
+		brand,
 		image_url,
 		image_urls,
 		video_url,
 		price_text,
+		original_price_jpy: originalPriceJpy,
+		sale_label: saleLabel,
 		source_url: productUrl(id),
 	};
 }

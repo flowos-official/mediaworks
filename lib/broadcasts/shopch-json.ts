@@ -1,39 +1,34 @@
 /**
- * ShopCh slot metadata fetcher — reads `/json/programprodlist2/{programId}.json`
- * which the site already exposes for its own UI. Returns the slot's curated
- * category (`pgmcategory`) and the array of lead-product IDs (`prodList1`).
+ * Parser for ShopCh's per-slot JSON API:
+ *   GET /json/programprodlist2/{YYYYMMDDHHMMSS}.json
+ *   (requires Referer: https://www.shopch.jp/...)
  *
- * Replaces the previous Gemini batch classifier (`shopch-category.ts`):
- *   - 100% category fill rate on 200 responses (vs ~67% Gemini whitelist hit)
- *   - 76% Gemini precision vs site ground truth (i.e., ~25% rewrites needed)
- *   - Bonus: populates `product_ids` (avg 6 IDs/slot) — previously NULL
- *
- * Soft failure: when the JSON endpoint returns non-200 (transient ~15% in
- * one observed run, dropping after retry), the slot's category stays null
- * and the daily cron retries on the next monthly refresh cycle. Never
- * raises — falls back to the empty result.
- *
- * Pure parser (`parseShopChSlotJSON`) is fixture-testable; the fetch wrapper
- * is the impure boundary.
+ * Used to capture product snapshots at airtime for competitive archival.
  */
 import { politeFetch } from "./fetch";
 
+export interface ShopChProductSnapshot {
+	productId: string;
+	name: string | null;
+	imageUrl: string | null;
+	priceJpy: number | null;
+	originalPriceJpy: number | null;
+	discountRate: number | null;
+	saleLabel: string | null;
+	taxIncl: boolean | null;
+	inStockAtCapture: boolean;
+}
+
 export interface ShopChSlotMetadata {
-	/** Display name of the program category (e.g. "コスメ"). NULL when the
-	 * JSON 200s but `pgmcategory` is missing/empty — which we have never
-	 * observed in production but type for safety. */
 	category: string | null;
-	/** Site's internal sub-category code (e.g. "41"). Two distinct codes may
-	 * share the same display name (e.g. ホーム・インテリア 22 + 23). Stored
-	 * so future analytics can lean on the finer granularity. */
 	categoryCode: string | null;
-	/** Lead product IDs (reqPrNo) parsed from `prodList1`. Empty when the
-	 * slot has no products attached (e.g. "ミックス" variety shows). */
 	productIds: string[];
-	/** Brand display name (e.g. "美人工房"). Useful for analytics. */
+	products: ShopChProductSnapshot[];
 	brandName: string | null;
-	/** Brand code matching the site's `brandcode`. */
 	brandCode: string | null;
+	/** Site's m3u8 stem path (e.g. "m3u8/prog/20260518000000/20260518000000").
+	 *  Stored for future ShopCh video archival; null when absent. */
+	videoPath: string | null;
 }
 
 interface RawSlotJSON {
@@ -42,95 +37,150 @@ interface RawSlotJSON {
 	prodList1?: unknown;
 	brandname?: unknown;
 	brandcode?: unknown;
+	pgmMovie?: unknown;
 }
 
 const EMPTY: ShopChSlotMetadata = {
 	category: null,
 	categoryCode: null,
 	productIds: [],
+	products: [],
 	brandName: null,
 	brandCode: null,
+	videoPath: null,
 };
 
 function trimOrNull(v: unknown): string | null {
 	if (typeof v !== "string") return null;
-	const trimmed = v.trim();
-	return trimmed.length > 0 ? trimmed : null;
+	const t = v.trim();
+	return t.length > 0 ? t : null;
 }
 
-/** Pure parser — takes the raw JSON body of /json/programprodlist2/{id}.json
- * and extracts the fields we care about. Tolerates missing keys, extra keys,
- * and unexpected types. Returns the EMPTY sentinel on parse failure rather
- * than throwing, so callers don't need a try/catch. */
+/**
+ * Parse the raw JSON body returned by /json/programprodlist2/{id}.json
+ * into a structured ShopChSlotMetadata object.
+ */
 export function parseShopChSlotJSON(body: string): ShopChSlotMetadata {
 	let parsed: RawSlotJSON;
 	try {
 		parsed = JSON.parse(body) as RawSlotJSON;
 	} catch {
-		return EMPTY;
+		return { ...EMPTY };
 	}
-	if (typeof parsed !== "object" || parsed === null) return EMPTY;
 
-	const productIds: string[] = [];
+	if (typeof parsed !== "object" || parsed === null) {
+		return { ...EMPTY };
+	}
+
+	// Extract productIds from prodList1
 	const prodList = parsed.prodList1;
+	const productIds: string[] = [];
 	if (Array.isArray(prodList)) {
 		for (const item of prodList) {
 			if (typeof item !== "object" || item === null) continue;
-			const reqPrNo = (item as { reqPrNo?: unknown }).reqPrNo;
-			if (typeof reqPrNo === "string" && /^\d+$/.test(reqPrNo)) {
-				productIds.push(reqPrNo);
+			const pid = (item as Record<string, unknown>).reqPrNo;
+			if (typeof pid === "string" && /^\d+$/.test(pid)) {
+				productIds.push(pid);
 			}
 		}
 	}
+
+	// Map prodList1 items into ShopChProductSnapshot[]
+	const products: ShopChProductSnapshot[] = [];
+	if (Array.isArray(prodList)) {
+		for (const raw of prodList) {
+			if (typeof raw !== "object" || raw === null) continue;
+			const item = raw as Record<string, unknown>;
+			const pid = item.reqPrNo;
+			if (typeof pid !== "string" || !/^\d+$/.test(pid)) continue;
+
+			const parseYen = (v: unknown): number | null => {
+				if (typeof v !== "string") return null;
+				const digits = v.replace(/[^\d]/g, "");
+				return digits.length > 0 ? parseInt(digits, 10) : null;
+			};
+			const parseRate = (v: unknown): number | null => {
+				if (typeof v !== "string" || !/^\d+$/.test(v)) return null;
+				const n = parseInt(v, 10);
+				return n >= 0 && n <= 100 ? n : null;
+			};
+			const prodImg = trimOrNull(item.prodImg);
+			const imageUrl = prodImg
+				? prodImg.startsWith("http")
+					? prodImg
+					: `https://www.shopch.jp/${prodImg.replace(/^\/+/, "")}`
+				: null;
+			const nostock = trimOrNull(item.nostockName);
+			const taxStr = trimOrNull(item.texStr);
+
+			products.push({
+				productId: pid,
+				name: trimOrNull(item.prodName),
+				imageUrl,
+				priceJpy: parseYen(item.genzaiPrice),
+				originalPriceJpy: parseYen(item.comperPrice),
+				discountRate: parseRate(item.offRate),
+				saleLabel:
+					trimOrNull(item.limitedPriceLabel) ?? trimOrNull(item.saleStr),
+				taxIncl: taxStr === null ? null : taxStr === "(税込)",
+				inStockAtCapture: nostock === null,
+			});
+		}
+	}
+
+	const videoPath = trimOrNull(parsed.pgmMovie);
 
 	return {
 		category: trimOrNull(parsed.pgmcategory),
 		categoryCode: trimOrNull(parsed.pgmcategorycode),
 		productIds,
+		products,
 		brandName: trimOrNull(parsed.brandname),
 		brandCode: trimOrNull(parsed.brandcode),
+		videoPath,
 	};
 }
 
-/** Convert a (air_date, start_time) pair to the 14-digit programId
- * the JSON endpoint expects (YYYYMMDDHHMMSS). */
+/**
+ * Build the 14-char programId key (YYYYMMDDHHMMSS) from an air_date + start_time.
+ * e.g. ("2026-05-18", "14:30:00") → "20260518143000"
+ */
 export function buildProgramId(airDate: string, startTime: string): string {
-	return airDate.replace(/-/g, "") + startTime.replace(/:/g, "");
+	const datePart = airDate.replace(/-/g, ""); // "20260518"
+	const timePart = startTime.replace(/:/g, ""); // "143000"
+	return `${datePart}${timePart}`;
 }
 
-/** Fetch and parse one slot's metadata. On any failure (network, 5xx, 4xx,
- * malformed JSON) returns EMPTY — never throws. The daily cron retries on
- * subsequent runs, so a transient miss simply leaves the slot's category
- * null until the next monthly refresh. */
-export async function fetchShopChSlotMetadata(
-	programId: string,
-): Promise<ShopChSlotMetadata> {
-	const url = `https://www.shopch.jp/json/programprodlist2/${programId}.json`;
-	const res = await politeFetch(url, { timeoutMs: 10_000 });
-	if (!res.ok || !res.body) return EMPTY;
-	return parseShopChSlotJSON(res.body);
-}
+const SHOPCH_JSON_BASE = "https://www.shopch.jp/json/programprodlist2";
 
-/** Batch enrich an array of slot identifiers with concurrency control.
- * Returns a map keyed by programId. Slots that fail enrichment map to
- * EMPTY; callers should treat them as "category unknown" and not assume
- * NULL means "out of whitelist". */
+/**
+ * Fetch ShopCh slot JSON for a batch of program IDs.
+ * Returns a Map keyed by programId (YYYYMMDDHHMMSS) → ShopChSlotMetadata.
+ * Missing / failed fetches are silently omitted from the map.
+ */
 export async function fetchShopChSlotMetadataBatch(
-	programIds: readonly string[],
-	opts: { concurrency?: number; pauseMs?: number } = {},
+	programIds: string[],
+	concurrency = 3,
 ): Promise<Map<string, ShopChSlotMetadata>> {
-	const concurrency = Math.max(1, Math.min(opts.concurrency ?? 3, 8));
-	const pauseMs = opts.pauseMs ?? 250;
-	const out = new Map<string, ShopChSlotMetadata>();
+	const result = new Map<string, ShopChSlotMetadata>();
+	if (programIds.length === 0) return result;
+
+	// Process in batches of `concurrency` to avoid hammering the host.
 	for (let i = 0; i < programIds.length; i += concurrency) {
-		const chunk = programIds.slice(i, i + concurrency);
-		const results = await Promise.all(
-			chunk.map(async (pid) => [pid, await fetchShopChSlotMetadata(pid)] as const),
+		const batch = programIds.slice(i, i + concurrency);
+		await Promise.all(
+			batch.map(async (pid) => {
+				const url = `${SHOPCH_JSON_BASE}/${pid}.json`;
+				const fetched = await politeFetch(url, {
+					timeoutMs: 10_000,
+					retry: false,
+				});
+				if (!fetched.ok || !fetched.body) return;
+				const meta = parseShopChSlotJSON(fetched.body);
+				result.set(pid, meta);
+			}),
 		);
-		for (const [pid, meta] of results) out.set(pid, meta);
-		if (i + concurrency < programIds.length) {
-			await new Promise((r) => setTimeout(r, pauseMs));
-		}
 	}
-	return out;
+
+	return result;
 }
