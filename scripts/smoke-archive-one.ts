@@ -4,8 +4,8 @@
  *
  * Prerequisites:
  *   1. Migration 2026-05-19_broadcasts_video_status_full_enum.sql applied.
- *   2. R2 env vars set: R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY,
- *      R2_BUCKET, R2_PUBLIC_BASE_URL.
+ *   2. AWS env vars set: AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY,
+ *      AWS_S3_BUCKET, VIDEO_ARCHIVE_BASE_URL.
  *   3. At least one row with video_status='queued' and video_download_attempts=0.
  *      Run backfill:broadcast-products first if none exist.
  *

@@ -26,8 +26,6 @@ interface Props {
   onClose: () => void;
 }
 
-const R2_BASE = process.env.NEXT_PUBLIC_R2_PUBLIC_BASE_URL ?? "";
-
 function formatJpy(n: number): string {
   return `¥${n.toLocaleString("ja-JP")}`;
 }
@@ -43,7 +41,7 @@ export default function BroadcastVideoModal({
   const [loading, setLoading] = useState(false);
 
   const isOpen = !!(broadcastId && videoKey);
-  const videoUrl = `${R2_BASE}/${videoKey ?? ""}`;
+  const videoUrl = `${process.env.NEXT_PUBLIC_VIDEO_ARCHIVE_BASE_URL ?? ""}/${videoKey ?? ""}`;
 
   // ESC to close
   useEffect(() => {

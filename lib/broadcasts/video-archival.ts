@@ -1,7 +1,7 @@
 /**
  * Single-slot video archival job. Given a queued broadcast row, resolves its
  * m3u8 source URL (QVC only at this stage), pipes the stream through ffmpeg
- * in copy mode (no transcode) into an R2 multipart upload, and updates the
+ * in copy mode (no transcode) into an S3 multipart upload, and updates the
  * broadcasts row with archive metadata or a retryable failure state.
  *
  * Failure model: any throw rolls the slot back to `video_status='queued'`
@@ -12,7 +12,7 @@ import { spawn } from "node:child_process";
 import { Readable } from "node:stream";
 import ffmpegInstaller from "@ffmpeg-installer/ffmpeg";
 import { getServiceClient } from "@/lib/supabase";
-import { broadcastVideoKey, uploadStreamToR2 } from "./r2-storage";
+import { broadcastVideoKey, uploadStreamToS3 } from "./video-storage";
 
 const MAX_ATTEMPTS = 5;
 
@@ -106,7 +106,7 @@ export async function archiveOne(slot: QueuedSlot): Promise<ArchiveResult> {
 
 	try {
 		const [{ bytes }, { code }] = await Promise.all([
-			uploadStreamToR2(stream, key),
+			uploadStreamToS3(stream, key),
 			wait,
 		]);
 		if (code !== 0) {
