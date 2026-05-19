@@ -1,7 +1,12 @@
 import { requireUser } from "@/lib/auth/require-user";
 import { NextRequest } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
-import { discoverNewProducts, type ProductSelectionOutput, type DiscoveryBatch } from "@/lib/md-strategy";
+import {
+	discoverNewProducts,
+	runGoalAnalysis,
+	type ProductSelectionOutput,
+	type DiscoveryBatch,
+} from "@/lib/md-strategy";
 import { buildTVShoppingProfile } from "@/lib/tv-shopping-profile";
 
 export const maxDuration = 120;
@@ -81,6 +86,35 @@ export async function POST(
 		.map((p) => p.discovered_product_id)
 		.filter((id): id is string => !!id);
 
+	// Build effective user goal (focus overrides) and re-parse intent so the
+	// discovery pool/search/curation all honor seasonal + thematic signals.
+	const effectiveUserGoal = focus
+		? `${strategy.user_goal ?? ""}\n追加フォーカス: ${focus}`.trim()
+		: strategy.user_goal || undefined;
+	let intent:
+		| {
+				seasonal_keywords: string[];
+				theme_keywords: string[];
+				category_hints: string[];
+				excluded_themes: string[];
+			}
+		| undefined;
+	if (effectiveUserGoal) {
+		try {
+			const parsed = await runGoalAnalysis(effectiveUserGoal);
+			intent = {
+				seasonal_keywords: parsed.seasonal_keywords ?? [],
+				theme_keywords: parsed.theme_keywords ?? [],
+				category_hints: parsed.category_hints ?? [],
+				excluded_themes: parsed.excluded_themes ?? [],
+			};
+		} catch (err) {
+			console.warn(
+				`[md-rediscover] goal analysis failed, falling back to no-intent discovery: ${err instanceof Error ? err.message : String(err)}`,
+			);
+		}
+	}
+
 	// 3) Run discovery
 	const discovered = await discoverNewProducts({
 		context: "home_shopping",
@@ -88,15 +122,14 @@ export async function POST(
 		explicitCategory: focus || strategy.category || undefined,
 		targetMarket: strategy.target_market || undefined,
 		priceRange: strategy.price_range || undefined,
-		userGoal: focus
-			? `${strategy.user_goal ?? ""}\n追加フォーカス: ${focus}`.trim()
-			: strategy.user_goal || undefined,
+		userGoal: effectiveUserGoal,
 		tvProductNames: products.map((p) => p.product_name),
 		tvMarginRate,
 		excludeUrls,
 		excludeNames,
 		seedProductIds: seedIdsFromStrategy,
 		tvProfile,
+		intent,
 		lightweight: true,
 	});
 

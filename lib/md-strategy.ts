@@ -14,6 +14,13 @@ import type { SeedContext } from "@/lib/strategy/seed-context";
 import { formatSeedPromptSection, formatMultiSeedPromptSection } from "@/lib/strategy/seed-context";
 import { CATEGORY_MAPPING } from "@/lib/strategy/category-mapping";
 import { queryDiscoveredPool } from "@/lib/strategy/pool-query";
+import {
+	type DiscoverIntent,
+	ensureDiscoverIntent,
+	deriveIntentKeywords,
+	buildIntentSearchQueries,
+	formatIntentPromptSection,
+} from "@/lib/strategy/discover-intent";
 
 // ---------------------------------------------------------------------------
 // Gemini client
@@ -251,6 +258,12 @@ export interface ParsedGoal {
 	target_audience?: string;
 	budget_constraint?: string;
 	timeline?: string;
+	// DiscoverIntent fields — drive discovery filtering and search.
+	// Defaults to [] for backward compat with older saved strategies.
+	seasonal_keywords: string[];
+	theme_keywords: string[];
+	category_hints: string[];
+	excluded_themes: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -482,6 +495,15 @@ export interface DiscoverInput {
 	// NEW (this plan: pool-first integration)
 	seedProductIds?: string[];          // 다중 시드 ID — pool 에서 제외
 	seedCategories?: string[];          // 시드 상품 카테고리 union (보조 필터)
+	/**
+	 * Structured user intent extracted by Skill 0 (goal_analysis).
+	 * Drives pool filtering (R4.5), extra Rakuten/Brave search queries,
+	 * and the Gemini curation prompt's USER INTENT section.
+	 *
+	 * When undefined, behavior matches the pre-intent baseline (TV category
+	 * driven discovery). Always passed from the workflow when userGoal exists.
+	 */
+	intent?: DiscoverIntent;
 }
 
 export type DiscoveredProduct = NonNullable<StrategyContext["recommendedProducts"]>[number];
@@ -544,6 +566,12 @@ export async function discoverNewProducts(
 	const POOL_CAP = lw ? 60 : 40;
 
 	// --- Pool-first attempt (plan 2026-05-13) ---
+	const intentKeywords = deriveIntentKeywords(input.intent);
+	if (intentKeywords.length > 0) {
+		console.log(
+			`[discover] applying user intent: keywords=${JSON.stringify(intentKeywords)}`,
+		);
+	}
 	let poolItems: DiscoveryPoolItem[] = [];
 	try {
 		const priceRange = input.priceRange ? parsePriceRange(input.priceRange) : null;
@@ -554,6 +582,7 @@ export async function discoverNewProducts(
 			limit: TARGET,
 			excludeProductIds: input.seedProductIds,
 			supplementCategoriesFromSeeds: input.seedCategories,
+			intentKeywords,
 		});
 		poolItems = rows.map((r) => ({
 			name: r.name,
@@ -592,13 +621,15 @@ export async function discoverNewProducts(
 	if (decision.fillNeeded > 0) {
 		console.log(`[discover] filling ${decision.fillNeeded} from Rakuten/Brave`);
 
-		// Build search keywords from TV signals
+		// Build search keywords from TV signals + user intent.
+		// Intent-derived queries (e.g. "冬 暖房家電") take priority over generic
+		// TV category names because they're more specific and align with goal.
+		const intentQueries = buildIntentSearchQueries(input.intent, 4);
+		const tvKeywords = [input.explicitCategory, ...input.topCategoryNames]
+			.filter((s): s is string => !!s && s.trim().length > 0);
 		const keywords = Array.from(
-			new Set(
-				[input.explicitCategory, ...input.topCategoryNames]
-					.filter((s): s is string => !!s && s.trim().length > 0),
-			),
-		).slice(0, 4);
+			new Set([...intentQueries, ...tvKeywords]),
+		).slice(0, intentQueries.length > 0 ? 6 : 4);
 
 		if (keywords.length === 0) {
 			// No keywords for fresh search; if pool already has items, continue with pool only.
@@ -811,6 +842,10 @@ export async function discoverNewProducts(
 		.filter(Boolean)
 		.join("\n");
 
+	// Structured user intent — strict honoring instruction for the LLM.
+	// When present, this overrides the loose `ユーザー目標` line above.
+	const intentBlock = formatIntentPromptSection(input.intent, input.userGoal);
+
 	const isLC = input.context === "live_commerce";
 	const channelGuidance = isLC
 		? `recommended_channels には次から3つ選ぶ: TikTok Live, Instagram Live, YouTube Live, 楽天ROOM LIVE, Yahoo!ショッピング LIVE`
@@ -894,7 +929,7 @@ export async function discoverNewProducts(
 	const salesStrategyFooter = lw ? "" : "\nAll text in Japanese. すべての sales_strategy フィールドを必ず埋めること。";
 
 	const prompt = `あなたは日本の${roleLabel}です。下記の (1) TV自社販売シグナル と (2) 日本市場トレンド情報 の両方を根拠に、楽天/Webから検索された実在商品プールから「日本の消費者に今売れる/関心が高い」${taskDescription}
-${analysisBlock}${profileBlock}
+${intentBlock}${analysisBlock}${profileBlock}
 === (1) TV自社販売シグナル ===
 ${signalText}
 
@@ -1620,29 +1655,69 @@ function buildChannelReferenceTable(): string {
 // Skill 0: Goal Analysis
 // ---------------------------------------------------------------------------
 
-async function runGoalAnalysis(userGoal: string): Promise<ParsedGoal> {
-	const prompt = `You are a business strategy analyst. Parse the following user goal into structured components.
+export async function runGoalAnalysis(userGoal: string): Promise<ParsedGoal> {
+	const prompt = `You are a business strategy analyst for a Japanese TV-shopping / EC merchandising team. Parse the following user goal into structured components AND extract discovery signals (season, theme, category hints) that drive product search downstream.
 
 User Goal: ${userGoal}
 
-Return a JSON object (no markdown) with this structure:
+Return a JSON object (no markdown) with this exact structure:
 {
-  "primary_objective": "主要な目的を1文で",
+  "primary_objective": "主要な目的を1文で（日本語）",
   "target_channels": ["対象チャネル名のリスト"],
-  "target_revenue": "目標売上（言及されている場合）",
-  "target_audience": "ターゲット層（言及されている場合）",
-  "budget_constraint": "予算制約（言及されている場合）",
-  "timeline": "タイムライン（言及されている場合）"
+  "target_revenue": "目標売上（言及されている場合、なければ null）",
+  "target_audience": "ターゲット層（言及されている場合、なければ null）",
+  "budget_constraint": "予算制約（言及されている場合、なければ null）",
+  "timeline": "タイムライン（言及されている場合、なければ null）",
+  "seasonal_keywords": ["季節/タイミングを表す短い日本語キーワード"],
+  "theme_keywords": ["商品テーマを表す短い日本語キーワード"],
+  "category_hints": ["想定される具体的な商品カテゴリ（日本語、楽天/Amazon検索で使える粒度）"],
+  "excluded_themes": ["目標と矛盾するため除外すべきテーマ"]
 }
+
+EXTRACTION RULES:
+- seasonal_keywords: 「冬/夏/春/秋/年末/年始/クリスマス/ハロウィン/バレンタイン/お歳暮/お中元/梅雨/花粉/新生活/防災」など。明示・含意どちらでも拾う (例: 「寒い時期に売れる」→ ["冬"])。なければ []。
+- theme_keywords: 「暖かい/防寒/時短/ギフト/健康/美容/防災/節約」など、商品の訴求軸を表す短語。なければ []。
+- category_hints: 楽天やAmazonで検索した時にヒットする粒度のカテゴリ語 (例: 「暖房家電」「鍋・キッチン家電」「防寒衣料」「加湿器」「ホットカーペット」)。3〜6個推奨。なければ []。
+- excluded_themes: ユーザー目標と明らかに矛盾するもの (例: 「冬に売れる商品」→ ["扇風機", "クーラー", "夏物"])。なければ []。
+- 全フィールドは配列の場合 null ではなく [] を返す。
+
+EXAMPLES:
+- 「冬に売れる商品を探して」 →
+  seasonal_keywords: ["冬", "年末"]
+  theme_keywords: ["暖かい", "防寒", "ギフト"]
+  category_hints: ["暖房家電", "加湿器", "ホットカーペット", "鍋・キッチン家電", "防寒衣料", "毛布・寝具"]
+  excluded_themes: ["扇風機", "クーラー", "夏物"]
+
+- 「母の日のギフト商品」 →
+  seasonal_keywords: ["母の日", "春"]
+  theme_keywords: ["ギフト", "感謝", "プレゼント"]
+  category_hints: ["フラワーギフト", "美容家電", "スイーツ", "アクセサリー", "リラクゼーション家電"]
+  excluded_themes: ["父の日商品", "業務用"]
+
+- 「健康維持できる高齢者向け商品」 →
+  seasonal_keywords: []
+  theme_keywords: ["健康", "シニア", "簡便", "見守り"]
+  category_hints: ["EMS", "血圧計", "歩行補助", "集音器", "シニア向け家電"]
+  excluded_themes: ["若年層向けトレンド商品"]
 
 IMPORTANT:
 - すべてのテキストフィールドは日本語で記述してください。
 - primary_objective は必ず文字列で返してください（空でも空文字列 ""）。
 - target_channels は必ず配列で返してください。具体的なチャネルが目標から読み取れない場合は [] を返してください。null は使わないでください。
-- target_revenue / target_audience / budget_constraint / timeline は言及されていなければ null を返してください。`;
+- target_revenue / target_audience / budget_constraint / timeline は言及されていなければ null を返してください。
+- seasonal_keywords / theme_keywords / category_hints / excluded_themes は必ず配列 (空でも []) を返してください。`;
 
 	const raw = await callGemini(prompt);
 	const parsed = parseJSON<Partial<ParsedGoal>>(raw);
+	const intent = ensureDiscoverIntent(
+		{
+			seasonal_keywords: Array.isArray(parsed.seasonal_keywords) ? parsed.seasonal_keywords : [],
+			theme_keywords: Array.isArray(parsed.theme_keywords) ? parsed.theme_keywords : [],
+			category_hints: Array.isArray(parsed.category_hints) ? parsed.category_hints : [],
+			excluded_themes: Array.isArray(parsed.excluded_themes) ? parsed.excluded_themes : [],
+		},
+		userGoal,
+	);
 	return {
 		primary_objective: typeof parsed.primary_objective === "string" ? parsed.primary_objective : "",
 		target_channels: Array.isArray(parsed.target_channels)
@@ -1652,6 +1727,10 @@ IMPORTANT:
 		target_audience: typeof parsed.target_audience === "string" ? parsed.target_audience : undefined,
 		budget_constraint: typeof parsed.budget_constraint === "string" ? parsed.budget_constraint : undefined,
 		timeline: typeof parsed.timeline === "string" ? parsed.timeline : undefined,
+		seasonal_keywords: intent.seasonal_keywords,
+		theme_keywords: intent.theme_keywords,
+		category_hints: intent.category_hints,
+		excluded_themes: intent.excluded_themes,
 	};
 }
 

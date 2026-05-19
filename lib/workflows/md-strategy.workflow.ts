@@ -61,9 +61,12 @@ async function runDiscoveryStep(
 	input: MDWorkflowInput,
 	context: StrategyContext,
 	outputs: Record<string, unknown>,
+	parsedGoal: ParsedGoal | null,
 ): Promise<DiscoveredProduct[] | undefined> {
 	"use step";
-	console.log(`[md-workflow] running final discovery with full analysis context`);
+	console.log(
+		`[md-workflow] running final discovery with full analysis context | parsedGoal=${parsedGoal ? "yes" : "no"}`,
+	);
 	const summary = buildMDAnalysisSummary(outputs);
 	try {
 		// Fetch authoritative data from Supabase (same pattern as LC workflow)
@@ -73,6 +76,19 @@ async function runDiscoveryStep(
 			supabase.from("category_summaries").select("*").in("year", [2025, 2026]),
 		]);
 		const tvProfile = buildTVShoppingProfile(prodResult.data ?? [], catResult.data ?? []);
+
+		// Project parsedGoal into the DiscoverIntent shape consumed by discovery.
+		// Done here (not inside discoverNewProducts) to keep the discovery API
+		// pipeline-agnostic — LC workflow does the same projection from its
+		// own ParsedGoal shape.
+		const intent = parsedGoal
+			? {
+					seasonal_keywords: parsedGoal.seasonal_keywords ?? [],
+					theme_keywords: parsedGoal.theme_keywords ?? [],
+					category_hints: parsedGoal.category_hints ?? [],
+					excluded_themes: parsedGoal.excluded_themes ?? [],
+				}
+			: undefined;
 
 		const products = await discoverNewProducts({
 			context: "home_shopping",
@@ -89,6 +105,7 @@ async function runDiscoveryStep(
 			seedCategories: (context.seedProducts ?? [])
 				.map((s) => s.category)
 				.filter((c): c is string => !!c),
+			intent,
 			lightweight: true,
 		});
 		console.log(`[md-workflow] discovery complete: ${products?.length ?? 0} products`);
@@ -275,7 +292,7 @@ export async function mdStrategyWorkflow(input: MDWorkflowInput) {
 		index: MD_SKILL_NAMES.length,
 		total: MD_SKILL_NAMES.length + 1,
 	});
-	const discovered = await runDiscoveryStep(input, context, outputs);
+	const discovered = await runDiscoveryStep(input, context, outputs, parsedGoal);
 	const psExisting = outputs.product_selection as ProductSelectionOutput | undefined;
 	const psSucceeded = !!psExisting && Object.keys(psExisting).length > 0;
 	if (discovered && discovered.length > 0 && psSucceeded) {

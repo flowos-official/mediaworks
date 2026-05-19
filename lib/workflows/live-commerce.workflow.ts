@@ -35,9 +35,12 @@ async function runDiscoveryStep(
 	input: LCWorkflowInput,
 	context: LCContext,
 	outputs: Record<string, unknown>,
+	parsedGoal: LCContext["parsedGoal"] | null,
 ): Promise<DiscoveredProduct[] | undefined> {
 	"use step";
-	console.log(`[lc-workflow] running final discovery with full analysis context`);
+	console.log(
+		`[lc-workflow] running final discovery with full analysis context | parsedGoal=${parsedGoal ? "yes" : "no"}`,
+	);
 	const summary = buildLCAnalysisSummary(outputs);
 	try {
 		// Build TV profile from Supabase data for data-driven curation
@@ -48,6 +51,15 @@ async function runDiscoveryStep(
 		]);
 		const tvProfile = buildTVShoppingProfile(prodResult.data ?? [], catResult.data ?? []);
 
+		const intent = parsedGoal
+			? {
+					seasonal_keywords: parsedGoal.seasonal_keywords ?? [],
+					theme_keywords: parsedGoal.theme_keywords ?? [],
+					category_hints: parsedGoal.category_hints ?? [],
+					excluded_themes: parsedGoal.excluded_themes ?? [],
+				}
+			: undefined;
+
 		const products = await discoverNewProducts({
 			context: "live_commerce",
 			topCategoryNames: context.topCategoryNames ?? [],
@@ -56,6 +68,7 @@ async function runDiscoveryStep(
 			tvMarginRate: context.avgMarginRate ?? 0,
 			analysisContext: summary,
 			tvProfile,
+			intent,
 			lightweight: true,
 		});
 		console.log(`[lc-workflow] discovery complete: ${products?.length ?? 0} products`);
@@ -218,7 +231,7 @@ export async function liveCommerceWorkflow(input: LCWorkflowInput) {
 		index: LC_SKILL_NAMES.length,
 		total: LC_SKILL_NAMES.length + 1,
 	});
-	const discovered = await runDiscoveryStep(input, context, outputs);
+	const discovered = await runDiscoveryStep(input, context, outputs, parsedGoal);
 	const paExisting = outputs.platform_analysis as PlatformAnalysisOutput | undefined;
 	const paSucceeded = !!paExisting && Object.keys(paExisting).length > 0;
 	if (discovered && discovered.length > 0 && paSucceeded) {

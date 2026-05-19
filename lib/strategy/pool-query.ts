@@ -6,6 +6,9 @@
  * - R2: exclude user_action IN ('rejected','duplicate')
  * - R3: context filter
  * - R4: category fuzzy match (category OR seed_keyword), fail-open at <5
+ * - R4.5: intent keyword fuzzy match (DiscoverIntent — seasonal/theme/category),
+ *         matched against name + category + seed_keyword + tv_fit_reason.
+ *         Fail-open at <5 to preserve pool when intent is too narrow.
  * - R5: price range filter, NULL pass-through, fail-open at <5
  * - R6: lookback window (default 60d, env STRATEGY_POOL_LOOKBACK_DAYS)
  */
@@ -23,6 +26,13 @@ export interface PoolQueryInput {
 	limit?: number; // R7
 	excludeProductIds?: string[]; // 이미 시드로 사용된 ID
 	supplementCategoriesFromSeeds?: string[]; // 시드 상품의 카테고리 (보조 신호)
+	/**
+	 * R4.5 — DiscoverIntent fuzzy match terms (season/theme/category hints).
+	 * Each term is matched as a case-insensitive substring against the
+	 * concatenation of name + category + seed_keyword + tv_fit_reason.
+	 * A row passes if ANY term matches. Fail-open at <5 results.
+	 */
+	intentKeywords?: string[];
 }
 
 export interface PoolRow {
@@ -54,6 +64,7 @@ interface FilterOptions {
 	uiCategory?: string;
 	priceRange?: { min: number; max: number };
 	supplementCategories?: string[];
+	intentKeywords?: string[];
 }
 
 function applyFilters(rows: PoolRow[], opts: FilterOptions): PoolRow[] {
@@ -94,11 +105,26 @@ function applyFilters(rows: PoolRow[], opts: FilterOptions): PoolRow[] {
 		}
 	}
 
+	// R4.5 — intent keyword fuzzy match with fail-open
+	let afterIntent = afterCategory;
+	const intentTerms = (opts.intentKeywords ?? [])
+		.map((t) => t.trim().toLowerCase())
+		.filter((t) => t.length > 0);
+	if (intentTerms.length > 0 && afterCategory.length >= FAIL_OPEN_THRESHOLD) {
+		const matched = afterCategory.filter((r) => {
+			const hay = `${r.name ?? ""} ${r.category ?? ""} ${r.seed_keyword ?? ""} ${r.tv_fit_reason ?? ""}`.toLowerCase();
+			return intentTerms.some((t) => hay.includes(t));
+		});
+		// Fail-open: if intent shrinks the pool below threshold, keep the
+		// pre-intent set (user intent is preferred but never starves the pool).
+		afterIntent = matched.length >= FAIL_OPEN_THRESHOLD ? matched : afterCategory;
+	}
+
 	// R5 — price filter with NULL pass-through + fail-open (same pool-size gate)
-	let afterPrice = afterCategory;
-	if (opts.priceRange && afterCategory.length >= FAIL_OPEN_THRESHOLD) {
+	let afterPrice = afterIntent;
+	if (opts.priceRange && afterIntent.length >= FAIL_OPEN_THRESHOLD) {
 		const { min, max } = opts.priceRange;
-		afterPrice = afterCategory.filter(
+		afterPrice = afterIntent.filter(
 			(r) =>
 				r.price_jpy === null || (r.price_jpy >= min && r.price_jpy <= max),
 		);
@@ -160,6 +186,7 @@ export async function queryDiscoveredPool(
 		uiCategory: input.uiCategory,
 		priceRange: input.priceRange,
 		supplementCategories: input.supplementCategoriesFromSeeds,
+		intentKeywords: input.intentKeywords,
 	});
 
 	return filtered.slice(0, limit);
