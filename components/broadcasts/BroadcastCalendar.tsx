@@ -108,27 +108,30 @@ export default function BroadcastCalendar({
     [year, month, syncUrl],
   );
 
-  // Month nav must update the URL so the server component re-fetches
-  // broadcasts for the new month's range. Without this, navigating to a
-  // previous/next month shows mostly-empty cells because `initialBroadcasts`
-  // was loaded for the previously-selected date's monthBoundsAround.
+  // Month nav stays purely client-side — useEffect above auto-fetches the
+  // new month's data via `/api/broadcasts?from=&to=` when it's missing from
+  // cache. Earlier attempt to also syncUrl on month-change caused the server
+  // component to re-render with stale state and broke the next-month return
+  // (the new initialBroadcasts didn't update useState cache).
   const goPrev = useCallback(() => {
-    const ny = month === 1 ? year - 1 : year;
-    const nm = month === 1 ? 12 : month - 1;
-    setYear(ny);
-    setMonth(nm);
+    if (month === 1) {
+      setYear(year - 1);
+      setMonth(12);
+    } else {
+      setMonth(month - 1);
+    }
     setSelectedDate(null);
-    syncUrl(`${ny}-${String(nm).padStart(2, "0")}-01`);
-  }, [year, month, syncUrl]);
+  }, [year, month]);
 
   const goNext = useCallback(() => {
-    const ny = month === 12 ? year + 1 : year;
-    const nm = month === 12 ? 1 : month + 1;
-    setYear(ny);
-    setMonth(nm);
+    if (month === 12) {
+      setYear(year + 1);
+      setMonth(1);
+    } else {
+      setMonth(month + 1);
+    }
     setSelectedDate(null);
-    syncUrl(`${ny}-${String(nm).padStart(2, "0")}-01`);
-  }, [year, month, syncUrl]);
+  }, [year, month]);
 
   const monthLabel = `${year}年 ${month}月`;
 
