@@ -67,7 +67,10 @@ export async function GET(req: NextRequest) {
 			return NextResponse.json({ error: `invalid ${name}` }, { status: 400 });
 		}
 	}
-	const limit = Math.min(limitRaw === null ? 200 : parseInt(limitRaw, 10), 500);
+	// Cap bumped 2026-05-19: calendar's gridBounds (45-day range, ~30 broadcasts/day)
+	// needs ≥1,400 rows. Old 500 cap silently truncated client month-nav data,
+	// leaving most cells empty when user navigated to a different month.
+	const limit = Math.min(limitRaw === null ? 200 : parseInt(limitRaw, 10), 2000);
 	const offset = offsetRaw === null ? 0 : parseInt(offsetRaw, 10);
 
 	if (channel && !VALID_CHANNELS.has(channel)) {

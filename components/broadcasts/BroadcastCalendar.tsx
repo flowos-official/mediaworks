@@ -66,7 +66,10 @@ export default function BroadcastCalendar({
       setLoading(true);
       setError(null);
       try {
-        const r = await fetch(`/api/broadcasts?from=${from}&to=${to}`, {
+        // limit=2000 covers gridBounds' 45-day window (~1,400 broadcasts).
+        // Without it the API default (200) returns only ~8 days of data and
+        // most month-grid cells render empty.
+        const r = await fetch(`/api/broadcasts?from=${from}&to=${to}&limit=2000`, {
           signal: controller.signal,
         });
         if (!r.ok) throw new Error(r.statusText);
