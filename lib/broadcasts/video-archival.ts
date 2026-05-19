@@ -61,6 +61,9 @@ function spawnFfmpegStream(m3u8Url: string): {
 		"-loglevel", "warning",
 		"-i", m3u8Url,
 		"-c", "copy",
+		// HLS ships AAC as ADTS frames; MP4 container requires MPEG-4 AAC (ASC).
+		// Without this filter ffmpeg exits 1 with "Malformed AAC bitstream".
+		"-bsf:a", "aac_adtstoasc",
 		"-movflags", "frag_keyframe+empty_moov",
 		"-f", "mp4",
 		"pipe:1",
