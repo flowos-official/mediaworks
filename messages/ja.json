@@ -385,6 +385,9 @@
     "openSource": "原本を見る",
     "playArchive": "アーカイブを再生",
     "archiving": "アーカイブ中",
+    "archivedBroadcast": "アーカイブ放送",
+    "productsInBroadcast": "出演商品 ({n}件)",
+    "soldOut": "完売",
     "empty": {
       "all": "まだ番組情報がありません。明日の JST 01:00 以降にデータが入ります。",
       "day": "この日の番組情報はまだ収集されていません。",

@@ -6,6 +6,7 @@ import BroadcastListItem, {
 	type Broadcast,
 } from "./BroadcastListItem";
 import OABroadcastListItem, { type OARow } from "./OABroadcastListItem";
+import BroadcastVideoModal from "./BroadcastVideoModal";
 import {
 	ALL_CHANNELS,
 	CHANNEL_BADGE,
@@ -62,6 +63,7 @@ export default function UnifiedDayDetailPanel({ date }: Props) {
 	const [loading, setLoading] = useState(false);
 	const [timedError, setTimedError] = useState(false);
 	const [oaError, setOaError] = useState(false);
+	const [modalBroadcast, setModalBroadcast] = useState<Broadcast | null>(null);
 
 	const fetchDay = useCallback(async (iso: string, signal: AbortSignal) => {
 		setLoading(true);
@@ -160,6 +162,12 @@ export default function UnifiedDayDetailPanel({ date }: Props) {
 
 	return (
 		<div>
+			<BroadcastVideoModal
+				broadcastId={modalBroadcast?.id ?? null}
+				videoKey={modalBroadcast?.archived_video_s3 ?? null}
+				brandName={modalBroadcast?.brand_name ?? null}
+				onClose={() => setModalBroadcast(null)}
+			/>
 			<div className="flex items-baseline justify-between mb-3 flex-wrap gap-2">
 				<div>
 					<h2 className="text-xl font-semibold text-gray-900">
@@ -263,7 +271,7 @@ export default function UnifiedDayDetailPanel({ date }: Props) {
 							</div>
 							<div className="flex flex-col gap-2">
 								{sortedTimed.map((b) => (
-									<BroadcastListItem key={b.id} broadcast={b} />
+									<BroadcastListItem key={b.id} broadcast={b} onPlayVideo={setModalBroadcast} />
 								))}
 							</div>
 						</section>
