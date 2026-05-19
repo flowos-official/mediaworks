@@ -108,25 +108,27 @@ export default function BroadcastCalendar({
     [year, month, syncUrl],
   );
 
+  // Month nav must update the URL so the server component re-fetches
+  // broadcasts for the new month's range. Without this, navigating to a
+  // previous/next month shows mostly-empty cells because `initialBroadcasts`
+  // was loaded for the previously-selected date's monthBoundsAround.
   const goPrev = useCallback(() => {
-    if (month === 1) {
-      setYear(year - 1);
-      setMonth(12);
-    } else {
-      setMonth(month - 1);
-    }
+    const ny = month === 1 ? year - 1 : year;
+    const nm = month === 1 ? 12 : month - 1;
+    setYear(ny);
+    setMonth(nm);
     setSelectedDate(null);
-  }, [year, month]);
+    syncUrl(`${ny}-${String(nm).padStart(2, "0")}-01`);
+  }, [year, month, syncUrl]);
 
   const goNext = useCallback(() => {
-    if (month === 12) {
-      setYear(year + 1);
-      setMonth(1);
-    } else {
-      setMonth(month + 1);
-    }
+    const ny = month === 12 ? year + 1 : year;
+    const nm = month === 12 ? 1 : month + 1;
+    setYear(ny);
+    setMonth(nm);
     setSelectedDate(null);
-  }, [year, month]);
+    syncUrl(`${ny}-${String(nm).padStart(2, "0")}-01`);
+  }, [year, month, syncUrl]);
 
   const monthLabel = `${year}年 ${month}月`;
 
