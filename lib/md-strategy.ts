@@ -14,6 +14,7 @@ import type { SeedContext } from "@/lib/strategy/seed-context";
 import { formatSeedPromptSection, formatMultiSeedPromptSection } from "@/lib/strategy/seed-context";
 import { CATEGORY_MAPPING } from "@/lib/strategy/category-mapping";
 import { queryDiscoveredPool } from "@/lib/strategy/pool-query";
+import { queryResearchPool } from "@/lib/strategy/research-seed";
 import {
 	type DiscoverIntent,
 	ensureDiscoverIntent,
@@ -619,6 +620,43 @@ export async function discoverNewProducts(
 	let japanMarketContext = "(発掘プールベース — 個別市場検索はスキップ)";
 	let cappedPool: DiscoveryPoolItem[] = [...poolItems];
 
+	// P4: fetch research-sourced candidates (cap at 20% of TARGET)
+	const researchCap = Math.floor(TARGET * 0.2);
+	if (researchCap > 0) {
+		try {
+			const researchItems = await queryResearchPool({
+				context: input.context,
+				uiCategory: input.explicitCategory,
+				priceRange: input.priceRange ? parsePriceRange(input.priceRange) ?? undefined : undefined,
+				limit: researchCap,
+			});
+			const researchMapped: DiscoveryPoolItem[] = researchItems.map((r) => ({
+				name: r.name,
+				price: r.price,
+				source: "web" as const,
+				source_url: r.source_url,
+				snippet: r.snippet,
+				keyword: r.keyword,
+				pool_source: "research" as const,
+				discovered_product_id: r.discovered_product_id,
+				tv_fit_score: r.tv_fit_score,
+				tv_fit_reason: r.tv_fit_reason,
+				tv_channel_source: r.tv_channel_source,
+				c_package: r.c_package,
+			}));
+			if (researchMapped.length > 0) {
+				console.log(
+					`[discover] research pool: +${researchMapped.length} items (cap=${researchCap})`,
+				);
+				cappedPool.push(...researchMapped);
+			}
+		} catch (err) {
+			console.warn(
+				`[discover] research pool query failed (continuing): ${err instanceof Error ? err.message : String(err)}`,
+			);
+		}
+	}
+
 	if (decision.fillNeeded > 0) {
 		console.log(`[discover] filling ${decision.fillNeeded} from Rakuten/Brave`);
 
@@ -824,7 +862,9 @@ export async function discoverNewProducts(
 			const sourceTag =
 				p.pool_source === "discovery_pool"
 					? `🟣[発掘プール TVフィット:${p.tv_fit_score ?? "?"}${p.tv_channel_source ? ` 放送実績:${p.tv_channel_source}` : ""}]`
-					: `🟢[新検索 ${p.source}]`;
+					: p.pool_source === "research"
+						? `🟡[リサーチ 日本適合:${p.tv_fit_score ?? "?"}]`
+						: `🟢[新検索 ${p.source}]`;
 			const evidenceLine = p.tv_evidence
 				? `\n  実測放送: ${p.tv_evidence.airing_count}回 (直近30日 ${p.tv_evidence.recent_30d_count}回, 中央値 ¥${p.tv_evidence.price_jpy?.median ?? "—"})`
 				: "";
