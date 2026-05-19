@@ -87,25 +87,23 @@ async function enrichQvcSlotSnapshots(
 			}
 		}
 
-		// Update brand_name on broadcasts row.
+		// Update brand_name + video_status in a single broadcasts UPDATE.
 		const brand = pickBrandFromQvcProducts(productIds, slotProducts);
-		if (brand) {
-			const { error: brandErr } = await sb
-				.from("broadcasts")
-				.update({ brand_name: brand })
-				.eq("id", broadcastId);
-			if (brandErr) {
-				console.warn(`[snapshot] broadcasts brand_name update failed for ${broadcastId}:`, brandErr.message);
-			} else {
-				brandUpdates++;
-			}
-		}
-
-		// Derive video_status (logged only — column not yet in schema).
-		// queued: any product has video_url; deferred: none do.
 		const hasVideo = slotProducts.some((p) => p.video_url);
-		if (hasVideo) videoQueued++;
-		else videoDeferred++;
+		const videoStatus = hasVideo ? "queued" : "deferred";
+		const broadcastUpdate: Record<string, string | null> = { video_status: videoStatus };
+		if (brand) broadcastUpdate.brand_name = brand;
+		const { error: broadcastErr } = await sb
+			.from("broadcasts")
+			.update(broadcastUpdate)
+			.eq("id", broadcastId);
+		if (broadcastErr) {
+			console.warn(`[snapshot] broadcasts update failed for ${broadcastId}:`, broadcastErr.message);
+		} else {
+			if (brand) brandUpdates++;
+			if (hasVideo) videoQueued++;
+			else videoDeferred++;
+		}
 	}
 
 	return { snapshotRows, brandUpdates, videoQueued, videoDeferred };
@@ -150,24 +148,20 @@ async function enrichShopChSlotSnapshots(
 			}
 		}
 
-		// Update brand_name + brand_code on broadcasts row.
-		if (meta.brandName || meta.brandCode) {
-			const update: Record<string, string | null> = {};
-			if (meta.brandName) update.brand_name = meta.brandName;
-			if (meta.brandCode) update.brand_code = meta.brandCode;
-			const { error: brandErr } = await sb
-				.from("broadcasts")
-				.update(update)
-				.eq("id", broadcastId);
-			if (brandErr) {
-				console.warn(`[snapshot] shopch broadcasts brand update failed for ${broadcastId}:`, brandErr.message);
-			} else {
-				brandUpdates++;
-			}
+		// Update brand_name + brand_code + video_status in a single broadcasts UPDATE.
+		const shopchUpdate: Record<string, string | null> = { video_status: "failed_unsupported" };
+		if (meta.brandName) shopchUpdate.brand_name = meta.brandName;
+		if (meta.brandCode) shopchUpdate.brand_code = meta.brandCode;
+		const { error: broadcastErr } = await sb
+			.from("broadcasts")
+			.update(shopchUpdate)
+			.eq("id", broadcastId);
+		if (broadcastErr) {
+			console.warn(`[snapshot] shopch broadcasts update failed for ${broadcastId}:`, broadcastErr.message);
+		} else {
+			if (meta.brandName || meta.brandCode) brandUpdates++;
+			videoFailedUnsupported++;
 		}
-
-		// ShopCh video archival deferred — mark as failed_unsupported (logged only).
-		videoFailedUnsupported++;
 	}
 
 	return { snapshotRows, brandUpdates, videoFailedUnsupported };
@@ -244,14 +238,12 @@ export async function GET(req: NextRequest) {
 			qvc: {
 				snapshotRows: qvcSnapshot.snapshotRows,
 				brandUpdates: qvcSnapshot.brandUpdates,
-				// video_status column not yet in schema; values are logged for observability.
 				videoQueued: qvcSnapshot.videoQueued,
 				videoDeferred: qvcSnapshot.videoDeferred,
 			},
 			shopch: {
 				snapshotRows: shopchSnapshot.snapshotRows,
 				brandUpdates: shopchSnapshot.brandUpdates,
-				// ShopCh video archival deferred to future PoC.
 				videoFailedUnsupported: shopchSnapshot.videoFailedUnsupported,
 			},
 		},
