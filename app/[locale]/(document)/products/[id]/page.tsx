@@ -17,6 +17,7 @@ import KoreaMarketSection from '@/components/report/KoreaMarketSection';
 import LiveCommerceSection from '@/components/report/LiveCommerceSection';
 import ResearchSourcesSection from "@/components/report/ResearchSourcesSection";
 import PdfDownload from '@/components/report/PdfDownload';
+import GenerateScreenplayButton from "@/components/report/GenerateScreenplayButton";
 import { ArrowLeft, Package, Calendar } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { localePath } from '@/lib/i18n/locale-path';
@@ -70,9 +71,10 @@ export default async function ProductReportPage({
             </div>
           </div>
 
-          {research && (
-            <PdfDownload product={product} research={research} />
-          )}
+          <div className="flex items-center gap-3 flex-wrap">
+            {research && <GenerateScreenplayButton productId={product.id} locale={locale} />}
+            {research && <PdfDownload product={product} research={research} />}
+          </div>
         </div>
 
         {!research ? (
