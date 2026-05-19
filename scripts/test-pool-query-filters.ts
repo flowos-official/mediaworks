@@ -121,4 +121,109 @@ function mkRow(overrides: Partial<Row>): Row {
 	assert.deepEqual(out.map((r) => r.id), ["l1"], "R3: context filter");
 }
 
-console.log("PASS: pool-query filters (R2/R3/R4/R5)");
+// --- R4.5: intent keyword fuzzy match across name/category/seed_keyword/tv_fit_reason ---
+// (need ≥5 matches so fail-open does NOT kick in; here we have 5 hits + 3 miss)
+{
+	const rows = [
+		mkRow({ id: "name-hit", name: "冬用ホットカーペット 3畳", category: "家電", seed_keyword: "カーペット", tv_fit_reason: "シニア層に人気" }),
+		mkRow({ id: "cat-hit", name: "毛布シングル", category: "防寒寝具", seed_keyword: "毛布", tv_fit_reason: "実演デモ向き" }),
+		mkRow({ id: "kw-hit", name: "電気ケトル", category: "キッチン", seed_keyword: "暖かい飲み物", tv_fit_reason: "通年" }),
+		mkRow({ id: "reason-hit", name: "ストレッチマット", category: "健康", seed_keyword: "運動", tv_fit_reason: "冬場の運動不足解消" }),
+		mkRow({ id: "name-hit-2", name: "電気毛布", category: "寝具", seed_keyword: "毛布", tv_fit_reason: "冬の必需品" }),
+		mkRow({ id: "miss-1", name: "扇風機", category: "家電", seed_keyword: "夏物", tv_fit_reason: "夏季限定" }),
+		mkRow({ id: "miss-2", name: "クーラーボックス", category: "アウトドア", seed_keyword: "夏レジャー", tv_fit_reason: "海" }),
+		mkRow({ id: "miss-3", name: "鼻専用美顔器", category: "美容", seed_keyword: "美容ケア", tv_fit_reason: "通年" }),
+	];
+	const out = __test.applyFilters(rows, {
+		context: "home_shopping",
+		intentKeywords: ["冬", "防寒", "暖かい"],
+	});
+	const ids = out.map((r) => r.id).sort();
+	assert.deepEqual(
+		ids,
+		["cat-hit", "kw-hit", "name-hit", "name-hit-2", "reason-hit"],
+		"R4.5: intent fuzzy match across name+category+seed_keyword+tv_fit_reason",
+	);
+}
+
+// --- R4.5 case-insensitive (need ≥5 matches to avoid fail-open) ---
+{
+	const rows = [
+		mkRow({ id: "a", name: "Winter Coat", category: "アパレル", seed_keyword: "コート", tv_fit_reason: "—" }),
+		mkRow({ id: "b", name: "暖房ヒーター 強力", category: "家電", seed_keyword: "暖房", tv_fit_reason: "—" }),
+		mkRow({ id: "c", name: "WINTER GIFT BOX", category: "ギフト", seed_keyword: "プレゼント", tv_fit_reason: "—" }),
+		mkRow({ id: "d-hit", name: "Winter Boots", category: "シューズ", seed_keyword: "ブーツ", tv_fit_reason: "—" }),
+		mkRow({ id: "e-hit", name: "床暖房マット", category: "家電", seed_keyword: "床暖房", tv_fit_reason: "—" }),
+		mkRow({ id: "f", name: "通年商品3", category: "雑貨", seed_keyword: "日用品", tv_fit_reason: "—" }),
+		mkRow({ id: "g", name: "通年商品4", category: "雑貨", seed_keyword: "日用品", tv_fit_reason: "—" }),
+	];
+	const out = __test.applyFilters(rows, {
+		context: "home_shopping",
+		intentKeywords: ["winter", "暖房"],
+	});
+	const ids = out.map((r) => r.id).sort();
+	assert.deepEqual(
+		ids,
+		["a", "b", "c", "d-hit", "e-hit"],
+		"R4.5: case-insensitive substring match",
+	);
+}
+
+// --- R4.5 fail-open: 결과가 5개 미만이면 intent 필터 무시 ---
+{
+	const rows = [
+		mkRow({ id: "hit", name: "ホットカーペット 冬", category: "家電", seed_keyword: "カーペット", tv_fit_reason: "—" }),
+		mkRow({ id: "miss-1", name: "通年商品1", category: "雑貨", seed_keyword: "日用品", tv_fit_reason: "—" }),
+		mkRow({ id: "miss-2", name: "通年商品2", category: "雑貨", seed_keyword: "日用品", tv_fit_reason: "—" }),
+		mkRow({ id: "miss-3", name: "通年商品3", category: "雑貨", seed_keyword: "日用品", tv_fit_reason: "—" }),
+		mkRow({ id: "miss-4", name: "通年商品4", category: "雑貨", seed_keyword: "日用品", tv_fit_reason: "—" }),
+		mkRow({ id: "miss-5", name: "通年商品5", category: "雑貨", seed_keyword: "日用品", tv_fit_reason: "—" }),
+		mkRow({ id: "miss-6", name: "通年商品6", category: "雑貨", seed_keyword: "日用品", tv_fit_reason: "—" }),
+	];
+	const out = __test.applyFilters(rows, {
+		context: "home_shopping",
+		intentKeywords: ["冬"],
+	});
+	// Strict match = 1 row (< FAIL_OPEN_THRESHOLD=5), so all 7 rows returned.
+	assert.equal(out.length, 7, "R4.5 fail-open: <5 intent matches → return all");
+}
+
+// --- R4.5 empty intentKeywords = no-op ---
+{
+	const rows = [
+		mkRow({ id: "a" }),
+		mkRow({ id: "b" }),
+		mkRow({ id: "c" }),
+		mkRow({ id: "d" }),
+		mkRow({ id: "e" }),
+		mkRow({ id: "f" }),
+	];
+	const out = __test.applyFilters(rows, {
+		context: "home_shopping",
+		intentKeywords: [],
+	});
+	assert.equal(out.length, 6, "R4.5: empty intentKeywords leaves rows untouched");
+}
+
+// --- R4.5 + R4 composition: intent narrows category result correctly ---
+{
+	const rows = [
+		mkRow({ id: "win-1", name: "冬用ホットカーペット", category: "家電・家具", seed_keyword: "暖房", tv_fit_reason: "—" }),
+		mkRow({ id: "win-2", name: "冬の鍋セット", category: "家電・家具", seed_keyword: "キッチン", tv_fit_reason: "—" }),
+		mkRow({ id: "no-season", name: "炊飯器", category: "家電・家具", seed_keyword: "炊飯", tv_fit_reason: "—" }),
+		mkRow({ id: "no-season-2", name: "電子レンジ", category: "家電・家具", seed_keyword: "調理", tv_fit_reason: "—" }),
+		mkRow({ id: "no-season-3", name: "掃除機", category: "家電・家具", seed_keyword: "掃除", tv_fit_reason: "—" }),
+		mkRow({ id: "no-season-4", name: "オーブン", category: "家電・家具", seed_keyword: "調理", tv_fit_reason: "—" }),
+		mkRow({ id: "no-season-5", name: "冷蔵庫", category: "家電・家具", seed_keyword: "冷蔵", tv_fit_reason: "—" }),
+		mkRow({ id: "off-cat", name: "美顔器", category: "美容", seed_keyword: "美容", tv_fit_reason: "—" }),
+	];
+	const out = __test.applyFilters(rows, {
+		context: "home_shopping",
+		uiCategory: "家電・家具",
+		intentKeywords: ["冬"],
+	});
+	// R4 keeps the 7 家電 rows; R4.5 narrows to 2 "冬" hits — but 2 < 5 → fail-open → R4 result.
+	assert.equal(out.length, 7, "R4.5 fail-open under R4: keeps R4 result when intent shrinks below threshold");
+}
+
+console.log("PASS: pool-query filters (R2/R3/R4/R4.5/R5)");

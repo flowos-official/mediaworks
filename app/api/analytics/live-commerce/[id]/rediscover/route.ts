@@ -1,7 +1,11 @@
 import { requireUser } from "@/lib/auth/require-user";
 import { NextRequest } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
-import { discoverNewProducts, type DiscoveryBatch } from "@/lib/md-strategy";
+import {
+	discoverNewProducts,
+	runGoalAnalysis,
+	type DiscoveryBatch,
+} from "@/lib/md-strategy";
 import type { PlatformAnalysisOutput } from "@/lib/live-commerce-strategy";
 import { buildTVShoppingProfile } from "@/lib/tv-shopping-profile";
 
@@ -75,17 +79,45 @@ export async function POST(
 		.filter((u): u is string => !!u);
 	const excludeNames = priorHistory.flatMap((b) => b.products.map((p) => p.name));
 
+	// Re-parse user goal so the discovery pool/search/curation honor
+	// seasonal + thematic intent (same pattern as the MD rediscover route).
+	const effectiveUserGoal = focus
+		? `${strategy.user_goal ?? ""}\n追加フォーカス: ${focus}`.trim()
+		: strategy.user_goal || undefined;
+	let intent:
+		| {
+				seasonal_keywords: string[];
+				theme_keywords: string[];
+				category_hints: string[];
+				excluded_themes: string[];
+			}
+		| undefined;
+	if (effectiveUserGoal) {
+		try {
+			const parsed = await runGoalAnalysis(effectiveUserGoal);
+			intent = {
+				seasonal_keywords: parsed.seasonal_keywords ?? [],
+				theme_keywords: parsed.theme_keywords ?? [],
+				category_hints: parsed.category_hints ?? [],
+				excluded_themes: parsed.excluded_themes ?? [],
+			};
+		} catch (err) {
+			console.warn(
+				`[lc-rediscover] goal analysis failed, falling back to no-intent discovery: ${err instanceof Error ? err.message : String(err)}`,
+			);
+		}
+	}
+
 	const discovered = await discoverNewProducts({
 		context: "live_commerce",
 		topCategoryNames,
-		userGoal: focus
-			? `${strategy.user_goal ?? ""}\n追加フォーカス: ${focus}`.trim()
-			: strategy.user_goal || undefined,
+		userGoal: effectiveUserGoal,
 		tvProductNames: products.map((p) => p.product_name),
 		tvMarginRate,
 		excludeUrls,
 		excludeNames,
 		tvProfile,
+		intent,
 		lightweight: true,
 	});
 

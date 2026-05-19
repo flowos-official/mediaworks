@@ -3,6 +3,7 @@ import { getServiceClient } from "@/lib/supabase";
 import { discoverNewProducts, type DiscoveredProduct, type DiscoveryBatch } from "@/lib/md-strategy";
 import type { SeedContext } from "@/lib/strategy/seed-context";
 import { formatSeedPromptSection } from "@/lib/strategy/seed-context";
+import { ensureDiscoverIntent } from "@/lib/strategy/discover-intent";
 
 // ---------------------------------------------------------------------------
 // Gemini client
@@ -223,6 +224,12 @@ export interface ParsedGoal {
 	budget_range?: string;
 	timeline?: string;
 	target_audience?: string;
+	// DiscoverIntent fields — mirror MD `ParsedGoal` so both pipelines feed
+	// the shared discoverNewProducts intent pathway uniformly.
+	seasonal_keywords: string[];
+	theme_keywords: string[];
+	category_hints: string[];
+	excluded_themes: string[];
 }
 
 export interface MarketResearchOutput {
@@ -465,7 +472,7 @@ async function fetchTopProducts(): Promise<LCProduct[]> {
 // ---------------------------------------------------------------------------
 
 export function buildLCGoalAnalysisPrompt(userGoal: string): string {
-	return `あなたはライブコマース戦略コンサルタントです。以下のユーザー目標を構造化してください。
+	return `あなたはライブコマース戦略コンサルタントです。以下のユーザー目標を構造化し、商品発掘の方向性 (季節/テーマ/カテゴリ) も抽出してください。
 
 ユーザー入力: "${userGoal}"
 
@@ -475,13 +482,24 @@ export function buildLCGoalAnalysisPrompt(userGoal: string): string {
   "target_platforms": ["<プラットフォーム名>"],
   "budget_range": "<予算範囲（言及がなければnull）>",
   "timeline": "<タイムライン（言及がなければnull）>",
-  "target_audience": "<ターゲット層（言及がなければnull）>"
+  "target_audience": "<ターゲット層（言及がなければnull）>",
+  "seasonal_keywords": ["季節/タイミングを表す短い日本語キーワード"],
+  "theme_keywords": ["商品テーマを表す短い日本語キーワード"],
+  "category_hints": ["想定される具体的な商品カテゴリ (日本語)"],
+  "excluded_themes": ["目標と矛盾するため除外すべきテーマ"]
 }
+
+EXTRACTION RULES:
+- seasonal_keywords: 「冬/夏/春/秋/年末/年始/クリスマス/ハロウィン/バレンタイン/お歳暮/お中元/梅雨/花粉/新生活/防災」など。明示・含意どちらでも拾う。なければ []。
+- theme_keywords: 「暖かい/防寒/時短/ギフト/健康/美容/節約」など、商品の訴求軸を表す短語。なければ []。
+- category_hints: 楽天やAmazonで検索した時にヒットする粒度のカテゴリ語 (例: 「暖房家電」「鍋・キッチン家電」「美容家電」「ホットカーペット」)。3〜6個推奨。なければ []。
+- excluded_themes: ユーザー目標と明らかに矛盾するもの (例: 「冬」目標→["扇風機", "夏物"])。なければ []。
 
 注意:
 - primary_objective は必ず文字列で返してください。
 - target_platforms は必ず配列で返してください（null は使わない）。明示されていない場合は ["TikTok Live", "Instagram Live", "YouTube Live"] をデフォルトとして返してください。
 - budget_range / timeline / target_audience は言及がなければ null を返してください。
+- seasonal_keywords / theme_keywords / category_hints / excluded_themes は必ず配列 (空でも []) を返してください。
 - 全てのテキストは日本語で出力`;
 }
 
@@ -492,12 +510,25 @@ async function runGoalAnalysis(userGoal: string): Promise<ParsedGoal> {
 	const platforms = Array.isArray(parsed.target_platforms)
 		? parsed.target_platforms.filter((p): p is string => typeof p === "string")
 		: [];
+	const intent = ensureDiscoverIntent(
+		{
+			seasonal_keywords: Array.isArray(parsed.seasonal_keywords) ? parsed.seasonal_keywords : [],
+			theme_keywords: Array.isArray(parsed.theme_keywords) ? parsed.theme_keywords : [],
+			category_hints: Array.isArray(parsed.category_hints) ? parsed.category_hints : [],
+			excluded_themes: Array.isArray(parsed.excluded_themes) ? parsed.excluded_themes : [],
+		},
+		userGoal,
+	);
 	return {
 		primary_objective: typeof parsed.primary_objective === "string" ? parsed.primary_objective : "",
 		target_platforms: platforms.length > 0 ? platforms : ["TikTok Live", "Instagram Live", "YouTube Live"],
 		budget_range: typeof parsed.budget_range === "string" ? parsed.budget_range : undefined,
 		timeline: typeof parsed.timeline === "string" ? parsed.timeline : undefined,
 		target_audience: typeof parsed.target_audience === "string" ? parsed.target_audience : undefined,
+		seasonal_keywords: intent.seasonal_keywords,
+		theme_keywords: intent.theme_keywords,
+		category_hints: intent.category_hints,
+		excluded_themes: intent.excluded_themes,
 	};
 }
 
@@ -753,10 +784,15 @@ export async function runLCSkill(
 ): Promise<unknown> {
 	if (skillName === "goal_analysis") {
 		if (!context.userGoal) {
-			return {
+			const fallback: ParsedGoal = {
 				primary_objective: "日本市場でのライブコマース事業参入の全体戦略策定",
 				target_platforms: context.targetPlatforms ?? ["TikTok Live", "Instagram Live", "YouTube Live"],
-			} as ParsedGoal;
+				seasonal_keywords: [],
+				theme_keywords: [],
+				category_hints: [],
+				excluded_themes: [],
+			};
+			return fallback;
 		}
 		return await runGoalAnalysis(context.userGoal);
 	}
@@ -818,6 +854,10 @@ export async function runLCOrchestrator(
 					const defaultGoal: ParsedGoal = {
 						primary_objective: "日本市場でのライブコマース事業参入の全体戦略策定",
 						target_platforms: context.targetPlatforms ?? ["TikTok Live", "Instagram Live", "YouTube Live"],
+						seasonal_keywords: [],
+						theme_keywords: [],
+						category_hints: [],
+						excluded_themes: [],
 					};
 					context.parsedGoal = defaultGoal;
 					outputs.goal_analysis = defaultGoal;
