@@ -29,7 +29,7 @@ import { extractRakutenCode } from "@/lib/discovery/pool";
 export interface AttributablePoolItem {
 	name: string;
 	source_url: string;
-	pool_source: "discovery_pool" | "fresh_search";
+	pool_source: "discovery_pool" | "fresh_search" | "research";
 	discovered_product_id?: string;
 }
 
@@ -48,7 +48,7 @@ export interface AttributionStats {
 export interface AttributionResult<T extends AttributableGeminiItem> {
 	enriched: Array<
 		T & {
-			pool_source: "discovery_pool" | "fresh_search";
+			pool_source: "discovery_pool" | "fresh_search" | "research";
 			discovered_product_id?: string;
 		}
 	>;

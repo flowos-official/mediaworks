@@ -437,7 +437,7 @@ export interface StrategyContext {
 			first_30_days: string[];
 			risks: string[];
 		};
-		pool_source?: "discovery_pool" | "fresh_search" | "seed";
+		pool_source?: "discovery_pool" | "fresh_search" | "seed" | "research";
 		discovered_product_id?: string;
 		tv_channel_source?: string | null;
 	}>;
@@ -521,7 +521,7 @@ type DiscoveryPoolItem = {
 	reviewCount?: number;
 	reviewAverage?: number;
 	// NEW (this plan)
-	pool_source: "discovery_pool" | "fresh_search";
+	pool_source: "discovery_pool" | "fresh_search" | "research";
 	discovered_product_id?: string;     // pool 출처일 때만 채움
 	tv_fit_score?: number;
 	tv_fit_reason?: string;
