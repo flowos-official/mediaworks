@@ -1,7 +1,11 @@
 import { requireUser } from "@/lib/auth/require-user";
 import { NextRequest } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
-import { discoverNewProducts, type DiscoveryBatch } from "@/lib/md-strategy";
+import {
+	discoverNewProducts,
+	runGoalAnalysis,
+	type DiscoveryBatch,
+} from "@/lib/md-strategy";
 import { buildTVShoppingProfile } from "@/lib/tv-shopping-profile";
 
 export const maxDuration = 120;
@@ -87,20 +91,49 @@ export async function POST(request: NextRequest) {
 		? Math.round((totalProfit / totalRevenue) * 10000) / 100
 		: 0;
 
+	// Re-parse the effective user goal so the discovery pool/search/curation
+	// all honor seasonal + thematic intent (same pattern as the MD/LC
+	// rediscover routes — see lib/strategy/discover-intent.ts).
+	const effectiveUserGoal = focus
+		? `${userGoal ?? ""}\n追加フォーカス: ${focus}`.trim()
+		: userGoal || undefined;
+	let intent:
+		| {
+				seasonal_keywords: string[];
+				theme_keywords: string[];
+				category_hints: string[];
+				excluded_themes: string[];
+			}
+		| undefined;
+	if (effectiveUserGoal) {
+		try {
+			const parsed = await runGoalAnalysis(effectiveUserGoal);
+			intent = {
+				seasonal_keywords: parsed.seasonal_keywords ?? [],
+				theme_keywords: parsed.theme_keywords ?? [],
+				category_hints: parsed.category_hints ?? [],
+				excluded_themes: parsed.excluded_themes ?? [],
+			};
+		} catch (err) {
+			console.warn(
+				`[discovery-route] goal analysis failed, falling back to no-intent discovery: ${err instanceof Error ? err.message : String(err)}`,
+			);
+		}
+	}
+
 	const discovered = await discoverNewProducts({
 		context,
 		topCategoryNames,
 		explicitCategory: focus || category || undefined,
 		targetMarket: targetMarket || undefined,
 		priceRange: priceRange || undefined,
-		userGoal: focus
-			? `${userGoal ?? ""}\n追加フォーカス: ${focus}`.trim()
-			: userGoal || undefined,
+		userGoal: effectiveUserGoal,
 		tvProductNames: products.map((p) => p.product_name),
 		tvMarginRate,
 		excludeUrls,
 		excludeNames,
 		tvProfile,
+		intent,
 		lightweight: true,
 	});
 
