@@ -114,14 +114,6 @@
     {
       "path": "/api/cron/archive-videos",
       "schedule": "0 1 * * *"
-    },
-    {
-      "path": "/api/cron/archive-videos",
-      "schedule": "0 19 * * *"
-    },
-    {
-      "path": "/api/cron/archive-videos",
-      "schedule": "0 1 * * *"
     }
   ]
 }
