@@ -17,8 +17,10 @@
  *   tsx --env-file=.env.local scripts/backfill-broadcasts-category.ts --dry-run
  */
 import { getServiceClient } from "../lib/supabase";
-import { classifyShopChSlots } from "../lib/broadcasts/shopch-category";
-import type { ScrapedSlot } from "../lib/broadcasts/types";
+import {
+	buildProgramId,
+	fetchShopChSlotMetadataBatch,
+} from "../lib/broadcasts/shopch-json";
 
 const args = new Set(process.argv.slice(2));
 const dryRun = args.has("--dry-run");
@@ -28,7 +30,7 @@ const channelArg = [...args]
 const onlyChannel: "qvc" | "shopch" | null =
 	channelArg === "qvc" || channelArg === "shopch" ? channelArg : null;
 
-const SHOPCH_BATCH_SIZE = 24;
+const SHOPCH_BATCH_SIZE = 60;
 
 async function backfillQVC(): Promise<{
 	candidates: number;
@@ -101,45 +103,61 @@ async function backfillShopCh(): Promise<{
 	skipped: number;
 }> {
 	const sb = getServiceClient();
+	// Migration 2026-05-19: source of truth switched from Gemini to the site's
+	// own JSON endpoint. Backfill therefore rewrites EVERY ShopCh row (not
+	// just NULL-category ones) because previously-classified rows may carry
+	// the Gemini-assigned value that disagrees with the site (observed 24%
+	// disagreement). Also populates product_ids from prodList1.
 	const { data: rows, error } = await sb
 		.from("broadcasts")
-		.select(
-			"id, channel, air_date, start_time, program_title, presenter, description, thumbnail_url, source_url, product_ids",
-		)
-		.eq("channel", "shopch")
-		.is("category", null);
+		.select("id, air_date, start_time, category, product_ids")
+		.eq("channel", "shopch");
 	if (error || !rows) {
 		console.error("[shopch] fetch rows failed:", error?.message);
 		return { candidates: 0, updated: 0, skipped: 0 };
 	}
-	const candidates = rows.length;
+	const typedRows = rows as Array<{
+		id: string;
+		air_date: string;
+		start_time: string;
+		category: string | null;
+		product_ids: string[] | null;
+	}>;
+	const candidates = typedRows.length;
 	if (candidates === 0) return { candidates: 0, updated: 0, skipped: 0 };
 
 	let updated = 0;
 	let skipped = 0;
-	// Process in chunks of 24 (matches typical daily slot count for Gemini batch sanity).
-	for (let i = 0; i < rows.length; i += SHOPCH_BATCH_SIZE) {
-		const chunk = (rows as Array<{ id: string } & ScrapedSlot>).slice(
-			i,
-			i + SHOPCH_BATCH_SIZE,
+	for (let i = 0; i < typedRows.length; i += SHOPCH_BATCH_SIZE) {
+		const chunk = typedRows.slice(i, i + SHOPCH_BATCH_SIZE);
+		const pidByRow = new Map(
+			chunk.map((r) => [r.id, buildProgramId(r.air_date, r.start_time)]),
 		);
-		const classified = await classifyShopChSlots(
-			chunk.map((r) => ({ ...r, category: null })),
+		const metaByPid = await fetchShopChSlotMetadataBatch(
+			[...pidByRow.values()],
 		);
-		for (let j = 0; j < chunk.length; j++) {
-			const row = chunk[j];
-			const result = classified[j];
-			if (!result.category) {
+		for (const row of chunk) {
+			const pid = pidByRow.get(row.id)!;
+			const meta = metaByPid.get(pid);
+			if (!meta || meta.category === null) {
+				// JSON unreachable for this slot (transient ~15% rate). Leave the
+				// row as-is — next monthly refresh retries.
 				skipped += 1;
 				continue;
 			}
+			const newProductIds =
+				meta.productIds.length > 0 ? meta.productIds : row.product_ids;
+			const noChange =
+				meta.category === row.category &&
+				JSON.stringify(newProductIds) === JSON.stringify(row.product_ids);
+			if (noChange) continue;
 			if (dryRun) {
 				updated += 1;
 				continue;
 			}
 			const { error: upErr } = await sb
 				.from("broadcasts")
-				.update({ category: result.category })
+				.update({ category: meta.category, product_ids: newProductIds })
 				.eq("id", row.id);
 			if (upErr) {
 				console.warn(`[shopch] update ${row.id} failed:`, upErr.message);
@@ -149,7 +167,7 @@ async function backfillShopCh(): Promise<{
 			updated += 1;
 		}
 		console.log(
-			`[shopch] chunk ${Math.min(i + SHOPCH_BATCH_SIZE, rows.length)}/${rows.length} done — updated=${updated} skipped=${skipped}`,
+			`[shopch] chunk ${Math.min(i + SHOPCH_BATCH_SIZE, typedRows.length)}/${typedRows.length} done — updated=${updated} skipped=${skipped}`,
 		);
 	}
 	return { candidates, updated, skipped };

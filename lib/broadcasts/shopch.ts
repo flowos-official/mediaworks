@@ -1,6 +1,9 @@
 import * as cheerio from "cheerio";
 import { politeFetch } from "./fetch";
-import { classifyShopChSlots } from "./shopch-category";
+import {
+	buildProgramId,
+	fetchShopChSlotMetadataBatch,
+} from "./shopch-json";
 import { computeHealth, type ScrapeResult, type ScrapedSlot } from "./types";
 
 const BASE_URL = "https://www.shopch.jp/pc/tv/programlist";
@@ -161,15 +164,28 @@ export async function scrapeShopChannelForDate(date: Date): Promise<ScrapeResult
 	}
 
 	const slots = scrapeShopChannelFromHTML(fetched.body, iso);
-	// Classify category via Gemini but DO NOT drop non-whitelist slots.
-	// Policy update (2026-05-17): collect everything, filter for whitelist in the UI.
-	const classified = await classifyShopChSlots(slots);
+	// Enrich each slot with its category + lead product IDs by reading the
+	// site's own JSON endpoint (replaces the previous Gemini classifier as of
+	// 2026-05-19). 200-response coverage observed at ~85% in backfill; the
+	// remaining 15% are transient and recovered by the next monthly refresh.
+	// Policy unchanged: collect everything, filter for whitelist in the UI.
+	const programIds = slots.map((s) => buildProgramId(s.air_date, s.start_time));
+	const metaByPid = await fetchShopChSlotMetadataBatch(programIds);
+	const enriched = slots.map((s) => {
+		const meta = metaByPid.get(buildProgramId(s.air_date, s.start_time));
+		if (!meta) return s;
+		return {
+			...s,
+			category: meta.category,
+			product_ids: meta.productIds.length > 0 ? meta.productIds : s.product_ids,
+		};
+	});
 
 	return {
 		channel: "shopch",
 		date: iso,
-		slots: classified,
+		slots: enriched,
 		ok: true,
-		health: computeHealth(classified, true),
+		health: computeHealth(enriched, true),
 	};
 }

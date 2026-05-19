@@ -30,7 +30,26 @@ function clean(s: string | undefined | null): string | null {
  * Sources, in order: (1) JSON-LD Product schema, (2) breadcrumb DOM.
  * Result is normalized to the top-level segment of the path (e.g.
  * "ビューティー/化粧水" → "ビューティー"). null when no signal found.
+ *
+ * Breadcrumb shape on qvc.jp/product.{id}.html:
+ *   [home-icon link "QVCホームページ … icon …"] > [top-cat] > [sub] > 商品詳細ページ
+ * The home link's anchor text is the localized accessibility label which
+ * concatenates "QVCホームページ" with the icon alt "An icon that looks like
+ * a house.". Both shapes are filtered.
  */
+const BREADCRUMB_SKIP_PATTERNS = [
+	/QVC\.jp/i,
+	/QVCホームページ/,
+	/^Home$/i,
+	/^ホーム$/, // exact match only — substring would eat valid "ホーム" category
+	/An icon that looks like a house/i,
+	/商品詳細ページ/,
+];
+
+function isHomeOrPageCrumb(text: string): boolean {
+	return BREADCRUMB_SKIP_PATTERNS.some((re) => re.test(text));
+}
+
 function extractCategoryFromHTML($: cheerio.CheerioAPI): string | null {
 	// 1) JSON-LD Product schema with a `category` field.
 	const ldNodes = $('script[type="application/ld+json"]').toArray();
@@ -57,17 +76,28 @@ function extractCategoryFromHTML($: cheerio.CheerioAPI): string | null {
 		}
 	}
 
-	// 2) Breadcrumb fallback — first non-home crumb is usually the top category.
-	const crumb = $(
-		".breadcrumb a, nav[aria-label='breadcrumb'] a, ol.breadcrumb a",
-	)
-		.map((_, el) => clean($(el).text()))
-		.toArray()
-		.filter((s): s is string => s !== null);
-	const interesting = crumb.filter(
-		(c) => c !== "QVC.jp" && c !== "Home" && c !== "ホーム",
+	// 2) Breadcrumb fallback. Walk only DIRECT links (not nested span/li
+	// duplicates) and skip the home/page crumbs to get the first real
+	// category. Using `> a` would miss QVC's actual nesting, so we accept
+	// duplicates and dedupe via Set.
+	const seen = new Set<string>();
+	const ordered: string[] = [];
+	$(".breadcrumb a, nav[aria-label='breadcrumb'] a, ol.breadcrumb a").each(
+		(_, el) => {
+			const raw = clean($(el).text());
+			if (!raw) return;
+			// Collapse internal whitespace (newlines / tabs from icon labels)
+			// so substring filters still apply.
+			const collapsed = raw.replace(/\s+/g, " ").trim();
+			if (!collapsed || seen.has(collapsed)) return;
+			seen.add(collapsed);
+			ordered.push(collapsed);
+		},
 	);
-	return interesting[0] ?? null;
+	for (const c of ordered) {
+		if (!isHomeOrPageCrumb(c)) return c;
+	}
+	return null;
 }
 
 /**
