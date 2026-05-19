@@ -31,6 +31,8 @@ export function IntegrationActions({
 	const { locale } = useParams<{ locale: string }>();
 	const router = useRouter();
 	const [gateOpen, setGateOpen] = useState(false);
+	const [promoting, setPromoting] = useState(false);
+	const [promoteError, setPromoteError] = useState<string | null>(null);
 
 	const targetPath =
 		context === "live_commerce"
@@ -52,12 +54,34 @@ export function IntegrationActions({
 		context === "live_commerce" ? <Radio size={12} /> : <TrendingUp size={12} />;
 
 	const needGate = !hasCPackage && enrichmentStatus !== "completed";
+	const canPromote = enrichmentStatus === "completed";
 
 	function handleClick() {
 		if (needGate) {
 			setGateOpen(true);
 		} else {
 			router.push(href);
+		}
+	}
+
+	async function handlePromote() {
+		if (!canPromote || promoting) return;
+		setPromoting(true);
+		setPromoteError(null);
+		try {
+			const res = await fetch(`/api/discovery/${productId}/promote-to-research`, {
+				method: "POST",
+			});
+			const json = await res.json();
+			if (!res.ok) {
+				setPromoteError(json.error ?? "promotion failed");
+				return;
+			}
+			router.push(localePath(locale, `/products/${json.productId}`));
+		} catch (err) {
+			setPromoteError(err instanceof Error ? err.message : "unexpected error");
+		} finally {
+			setPromoting(false);
 		}
 	}
 
@@ -71,6 +95,17 @@ export function IntegrationActions({
 				{icon}
 				{label}
 			</button>
+			<button
+				type="button"
+				onClick={handlePromote}
+				disabled={!canPromote || promoting}
+				className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 mt-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+			>
+				{promoting ? "リサーチ作成中…" : "リサーチ実施"}
+			</button>
+			{promoteError ? (
+				<p className="mt-1 text-xs text-red-600">{promoteError}</p>
+			) : null}
 			<SeedEnrichGateModal
 				open={gateOpen}
 				onClose={() => setGateOpen(false)}
