@@ -26,6 +26,10 @@ yarn-error.log*
 .env*.local
 .env
 
+# Loose credential dumps that have appeared in repo root — never commit
+api.txt
+*.secrets.txt
+
 # vercel
 .vercel
 
