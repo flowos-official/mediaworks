@@ -63,6 +63,11 @@ function ProductCard({ p, idx, onAnalyze, analyzing }: {
 							シード
 						</span>
 					)}
+					{p.pool_source === 'research' && (
+						<span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-yellow-100 text-yellow-800">
+							リサーチ
+						</span>
+					)}
 					{channelSlugs.map((slug) => {
 						const ch = getChannelBySlug(slug);
 						return (

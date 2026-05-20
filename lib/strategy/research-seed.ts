@@ -20,10 +20,13 @@ export interface ResearchPoolItem {
 }
 
 export interface ResearchPoolInput {
-	context: "home_shopping" | "live_commerce";
 	uiCategory?: string;
-	priceRange?: { min: number; max: number };
 	limit: number;
+	// Note: `context` and `priceRange` are deliberately omitted. The Research
+	// pipeline does not partition products by context (home_shopping vs
+	// live_commerce), and price filtering is handled at the curation prompt
+	// layer where Gemini sees the full pool. If either filter is needed later,
+	// add it then — don't accept-and-ignore.
 }
 
 const FAIL_OPEN_THRESHOLD = 5;
@@ -40,6 +43,7 @@ interface ProductWithResearch {
 	name: string;
 	category: string | null;
 	description: string | null;
+	price_range: string | null;
 	discovered_product_id: string | null;
 	created_at: string;
 	research_results: Array<{
@@ -47,6 +51,21 @@ interface ProductWithResearch {
 		marketability_description: string | null;
 		demographics: unknown;
 	}> | null;
+}
+
+/**
+ * Extracts a representative JPY number from a `products.price_range` string
+ * like "¥3,980" or "¥1,000-¥5,000". For ranges, returns the midpoint.
+ * Returns undefined when no number can be parsed.
+ */
+function parsePriceRangeStr(s: string | null | undefined): number | undefined {
+	if (!s) return undefined;
+	const nums = Array.from(s.matchAll(/(\d[\d,]*)/g)).map((m) =>
+		Number(m[1].replace(/,/g, "")),
+	);
+	if (nums.length === 0) return undefined;
+	if (nums.length === 1) return nums[0];
+	return Math.round((nums[0] + nums[1]) / 2);
 }
 
 /**
@@ -70,7 +89,7 @@ export async function queryResearchPool(
 	const { data, error } = await sb
 		.from("products")
 		.select(
-			`id, name, category, description, discovered_product_id, created_at,
+			`id, name, category, description, price_range, discovered_product_id, created_at,
 			 research_results!inner(japan_export_fit_score, marketability_description, demographics)`,
 		)
 		.eq("status", "completed")
@@ -125,6 +144,7 @@ export async function queryResearchPool(
 	// Map to ResearchPoolItem.
 	const items: ResearchPoolItem[] = afterCategory.slice(0, input.limit).map((x) => ({
 		name: x.row.name,
+		price: parsePriceRangeStr(x.row.price_range),
 		source: "research" as const,
 		source_url: `/products/${x.row.id}`,
 		snippet: (x.research?.marketability_description ?? x.row.description ?? "").slice(0, 280),

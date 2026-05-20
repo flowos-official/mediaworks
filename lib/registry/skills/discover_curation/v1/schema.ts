@@ -44,7 +44,7 @@ const discoveredProduct = z.object({
 	japan_market_fit: japanMarketFit,
 	sales_strategy: salesStrategy.optional(),
 	// Restored post-curation from the pool index; not produced by the LLM directly.
-	pool_source: z.enum(["discovery_pool", "fresh_search", "seed"]).optional(),
+	pool_source: z.enum(["discovery_pool", "fresh_search", "seed", "research"]).optional(),
 	discovered_product_id: z.string().optional(),
 	tv_channel_source: z.string().nullable().optional(),
 });
