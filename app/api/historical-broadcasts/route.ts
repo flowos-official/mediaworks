@@ -11,6 +11,7 @@ const OA_CHANNELS = new Set([
 	"dinos",
 	"senobura",
 	"uranoura",
+	"txd",
 ]);
 
 export interface HistoricalBroadcastRow {
