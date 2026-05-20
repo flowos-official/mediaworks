@@ -118,17 +118,52 @@ export async function GET(req: NextRequest) {
 		}
 	}
 
-	const insightRows = (weeklyInsights ?? []) as Array<{
-		week_start: string;
-		context: "home_shopping" | "live_commerce";
-	}>;
-	const trendMap = new Map<string, { home: number; live: number }>();
-	for (const w of insightRows.slice(0, 24)) {
-		const entry = trendMap.get(w.week_start) ?? { home: 0, live: 0 };
-		trendMap.set(w.week_start, entry);
+	let trendRunsQuery = sb
+		.from("discovery_runs")
+		.select("run_at, context, exploration_ratio")
+		.gte("run_at", weeksAgo.toISOString())
+		.not("exploration_ratio", "is", null);
+	if (contextFilter === "home_shopping" || contextFilter === "live_commerce") {
+		trendRunsQuery = trendRunsQuery.eq("context", contextFilter);
 	}
-	const explorationTrend = [...trendMap.entries()]
-		.map(([week, v]) => ({ week, ...v }))
+	const { data: trendRuns } = await trendRunsQuery;
+	const trendRunRows = (trendRuns ?? []) as Array<{
+		run_at: string;
+		context: "home_shopping" | "live_commerce";
+		exploration_ratio: number | string | null;
+	}>;
+	const trendAggMap = new Map<
+		string,
+		{ homeSum: number; homeN: number; liveSum: number; liveN: number }
+	>();
+	for (const r of trendRunRows) {
+		if (r.exploration_ratio == null) continue;
+		const ratio = Number(r.exploration_ratio);
+		if (!Number.isFinite(ratio)) continue;
+		const d = new Date(r.run_at);
+		const dow = d.getUTCDay();
+		const daysFromMonday = dow === 0 ? 6 : dow - 1;
+		const weekDate = new Date(d);
+		weekDate.setUTCDate(d.getUTCDate() - daysFromMonday);
+		weekDate.setUTCHours(0, 0, 0, 0);
+		const weekKey = weekDate.toISOString().slice(0, 10);
+		const entry =
+			trendAggMap.get(weekKey) ?? { homeSum: 0, homeN: 0, liveSum: 0, liveN: 0 };
+		if (r.context === "home_shopping") {
+			entry.homeSum += ratio;
+			entry.homeN += 1;
+		} else if (r.context === "live_commerce") {
+			entry.liveSum += ratio;
+			entry.liveN += 1;
+		}
+		trendAggMap.set(weekKey, entry);
+	}
+	const explorationTrend = [...trendAggMap.entries()]
+		.map(([week, v]) => ({
+			week,
+			home: v.homeN > 0 ? v.homeSum / v.homeN : 0,
+			live: v.liveN > 0 ? v.liveSum / v.liveN : 0,
+		}))
 		.sort((a, b) => a.week.localeCompare(b.week));
 
 	return NextResponse.json({

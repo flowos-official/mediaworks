@@ -36,20 +36,26 @@ interface InsightsData {
 	}>;
 }
 
+type ContextFilter = "all" | "home_shopping" | "live_commerce";
+
 export function StatsDashboard() {
 	const t = useTranslations("discovery");
 	const [data, setData] = useState<InsightsData | null>(null);
 	const [loading, setLoading] = useState(true);
+	const [context, setContext] = useState<ContextFilter>("all");
 
 	useEffect(() => {
-		fetch("/api/discovery/insights?weeks=12")
+		setLoading(true);
+		const params = new URLSearchParams({ weeks: "12" });
+		if (context !== "all") params.set("context", context);
+		fetch(`/api/discovery/insights?${params}`)
 			.then((r) => r.json())
 			.then((d) => {
 				setData(d);
 				setLoading(false);
 			})
 			.catch(() => setLoading(false));
-	}, []);
+	}, [context]);
 
 	if (loading) return <div className="py-20 text-center text-sm text-gray-500">Loading...</div>;
 	if (!data) return <div className="py-20 text-center text-sm text-gray-400">{t("noData")}</div>;
@@ -65,6 +71,23 @@ export function StatsDashboard() {
 
 	return (
 		<div className="space-y-6">
+			<div className="flex flex-wrap items-center gap-2">
+				<span className="text-xs text-gray-500">Context:</span>
+				{(["all", "home_shopping", "live_commerce"] as ContextFilter[]).map((c) => (
+					<button
+						key={c}
+						type="button"
+						onClick={() => setContext(c)}
+						className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+							context === c
+								? "bg-blue-500 text-white border-blue-500"
+								: "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+						}`}
+					>
+						{c === "all" ? t("allStatuses") : c === "home_shopping" ? "ホーム" : "ライブ"}
+					</button>
+				))}
+			</div>
 			<div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
 				<KPICard
 					label={t("kpiSourcedThisWeek")}

@@ -7,13 +7,17 @@ export const dynamic = "force-dynamic";
 /**
  * History API — returns sessions grouped by date for calendar rendering,
  * with optional context filter and date range.
+ *
+ * Reads from the `discovery_run_feedback_stats` view, which pre-aggregates
+ * per-session product_count and feedback_count on the database side. This
+ * keeps API cost flat regardless of how many discovered_products rows exist.
+ *
  * Query params:
  *   - context: home_shopping | live_commerce (optional)
  *   - from: ISO date (default: now - 60 days)
  *   - to: ISO date (default: now)
  */
 export async function GET(req: NextRequest) {
-	// auth: requireUser
 	const auth = await requireUser(["member", "admin"]);
 	if ("error" in auth) return auth.error;
 
@@ -27,8 +31,10 @@ export async function GET(req: NextRequest) {
 		new Date(Date.now() - 60 * 24 * 3600 * 1000).toISOString();
 
 	let q = sb
-		.from("discovery_runs")
-		.select("id, run_at, completed_at, status, target_count, produced_count, iterations, context")
+		.from("discovery_run_feedback_stats")
+		.select(
+			"id, run_at, completed_at, status, target_count, produced_count, iterations, context, product_count, feedback_count",
+		)
 		.gte("run_at", fromDate)
 		.lte("run_at", toDate)
 		.order("run_at", { ascending: false });
@@ -42,8 +48,21 @@ export async function GET(req: NextRequest) {
 		return NextResponse.json({ error: error.message }, { status: 500 });
 	}
 
+	const sessions = (data ?? []).map((row) => ({
+		id: row.id,
+		run_at: row.run_at,
+		completed_at: row.completed_at,
+		status: row.status,
+		target_count: row.target_count,
+		produced_count: row.produced_count,
+		iterations: row.iterations,
+		context: row.context,
+		feedback_total: row.product_count ?? 0,
+		feedback_count: row.feedback_count ?? 0,
+	}));
+
 	return NextResponse.json({
-		sessions: data ?? [],
+		sessions,
 		range: { from: fromDate, to: toDate },
 	});
 }

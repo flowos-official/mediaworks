@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { ContextSubTabs } from "@/components/discovery/ContextSubTabs";
 import { SessionCalendar, type SessionRow } from "@/components/discovery/SessionCalendar";
-import { SessionList } from "@/components/discovery/SessionList";
 
 type FilterContext = "all" | "home_shopping" | "live_commerce";
 
@@ -80,10 +79,7 @@ export default function DiscoveryHistoryPage() {
 			{loading ? (
 				<div className="py-20 text-center text-sm text-gray-500">Loading...</div>
 			) : (
-				<div className="space-y-4">
-					<SessionCalendar sessions={sessions} month={month} />
-					<SessionList sessions={sessions} />
-				</div>
+				<SessionCalendar sessions={sessions} month={month} />
 			)}
 		</div>
 	);

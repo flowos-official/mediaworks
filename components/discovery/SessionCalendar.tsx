@@ -2,8 +2,17 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Popover } from "@base-ui/react/popover";
-import { Home, Tv } from "lucide-react";
+import {
+	Home,
+	Tv,
+	CheckCircle2,
+	CircleDashed,
+	CircleDot,
+	Check,
+	AlertTriangle,
+	XCircle,
+	Loader2,
+} from "lucide-react";
 import { localePath } from "@/lib/i18n/locale-path";
 
 export type SessionRow = {
@@ -12,20 +21,9 @@ export type SessionRow = {
 	status: "running" | "completed" | "partial" | "failed";
 	produced_count: number;
 	context: "home_shopping" | "live_commerce";
+	feedback_total?: number;
+	feedback_count?: number;
 };
-
-function statusColor(status: SessionRow["status"]): string {
-	switch (status) {
-		case "completed":
-			return "bg-green-500";
-		case "partial":
-			return "bg-yellow-500";
-		case "failed":
-			return "bg-red-500";
-		default:
-			return "bg-blue-500";
-	}
-}
 
 function monthKey(d: Date): string {
 	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -51,17 +49,102 @@ function statusLabel(status: SessionRow["status"]): string {
 	}
 }
 
-function statusBadgeClasses(status: SessionRow["status"]): string {
+function StatusIcon({ status, size = 11 }: { status: SessionRow["status"]; size?: number }) {
 	switch (status) {
 		case "completed":
-			return "bg-green-100 text-green-700";
+			return <Check size={size} className="text-green-600" aria-label={statusLabel(status)} />;
 		case "partial":
-			return "bg-yellow-100 text-yellow-700";
+			return (
+				<AlertTriangle
+					size={size}
+					className="text-yellow-600"
+					aria-label={statusLabel(status)}
+				/>
+			);
 		case "failed":
-			return "bg-red-100 text-red-700";
+			return <XCircle size={size} className="text-red-600" aria-label={statusLabel(status)} />;
 		default:
-			return "bg-blue-100 text-blue-700";
+			return (
+				<Loader2
+					size={size}
+					className="text-blue-600 animate-spin"
+					aria-label={statusLabel(status)}
+				/>
+			);
 	}
+}
+
+type FeedbackState = "complete" | "partial" | "none" | "empty";
+
+function feedbackState(s: SessionRow): FeedbackState {
+	const total = s.feedback_total ?? 0;
+	const done = s.feedback_count ?? 0;
+	if (total === 0) return "empty";
+	if (done === 0) return "none";
+	if (done >= total) return "complete";
+	return "partial";
+}
+
+function FeedbackIcon({ state, size = 11 }: { state: FeedbackState; size?: number }) {
+	switch (state) {
+		case "complete":
+			return <CheckCircle2 size={size} className="text-emerald-500" />;
+		case "partial":
+			return <CircleDot size={size} className="text-amber-500" />;
+		case "none":
+			return <CircleDashed size={size} className="text-gray-400" />;
+		default:
+			return <CircleDashed size={size} className="text-gray-200" />;
+	}
+}
+
+function feedbackTitle(s: SessionRow): string {
+	const total = s.feedback_total ?? 0;
+	const done = s.feedback_count ?? 0;
+	if (total === 0) return "商品なし";
+	return `フィードバック ${done}/${total}`;
+}
+
+function SessionRowInline({
+	s,
+	href,
+}: {
+	s: SessionRow;
+	href: string;
+}) {
+	const isHome = s.context === "home_shopping";
+	const fb = feedbackState(s);
+	const fbTotal = s.feedback_total ?? 0;
+	const fbDone = s.feedback_count ?? 0;
+
+	return (
+		<Link
+			href={href}
+			className="flex items-center gap-1.5 px-1 py-1 rounded hover:bg-gray-50 text-[10px] leading-tight transition-colors"
+			title={`${hhmm(s.run_at)} • ${isHome ? "ホーム" : "ライブ"} • ${statusLabel(s.status)} • ${s.produced_count}件 • ${feedbackTitle(s)}`}
+		>
+			<span className="font-mono text-gray-500 shrink-0">{hhmm(s.run_at)}</span>
+			<span
+				className={`inline-flex items-center gap-0.5 px-1 py-px rounded-full font-semibold shrink-0 ${
+					isHome
+						? "bg-blue-50 text-blue-700 border border-blue-200"
+						: "bg-purple-50 text-purple-700 border border-purple-200"
+				}`}
+			>
+				{isHome ? <Home size={9} /> : <Tv size={9} />}
+				<span>{isHome ? "ホーム" : "ライブ"}</span>
+			</span>
+			<span className="shrink-0" title={statusLabel(s.status)}>
+				<StatusIcon status={s.status} size={11} />
+			</span>
+			<span className="ml-auto flex items-center gap-0.5 text-gray-600 shrink-0">
+				<FeedbackIcon state={fb} size={10} />
+				<span className="font-mono">
+					{fbDone}/{fbTotal || s.produced_count}
+				</span>
+			</span>
+		</Link>
+	);
 }
 
 export function SessionCalendar({ sessions, month }: { sessions: SessionRow[]; month?: Date }) {
@@ -73,6 +156,8 @@ export function SessionCalendar({ sessions, month }: { sessions: SessionRow[]; m
 	const lastDay = new Date(year, mon + 1, 0);
 	const totalDays = lastDay.getDate();
 	const startWeekday = firstDay.getDay();
+	const today = new Date();
+	const isCurrentMonth = today.getFullYear() === year && today.getMonth() === mon;
 
 	const byDay = useMemo(() => {
 		const map = new Map<number, SessionRow[]>();
@@ -84,6 +169,9 @@ export function SessionCalendar({ sessions, month }: { sessions: SessionRow[]; m
 			arr.push(s);
 			map.set(day, arr);
 		}
+		for (const arr of map.values()) {
+			arr.sort((a, b) => new Date(a.run_at).getTime() - new Date(b.run_at).getTime());
+		}
 		return map;
 	}, [sessions, base]);
 
@@ -92,6 +180,8 @@ export function SessionCalendar({ sessions, month }: { sessions: SessionRow[]; m
 	for (let d = 1; d <= totalDays; d++) {
 		cells.push({ day: d, sessions: byDay.get(d) ?? [] });
 	}
+
+	const MAX_ROWS = 6;
 
 	return (
 		<div className="bg-white border border-gray-200 rounded-lg p-4">
@@ -105,86 +195,94 @@ export function SessionCalendar({ sessions, month }: { sessions: SessionRow[]; m
 			</div>
 			<div className="grid grid-cols-7 gap-1">
 				{cells.map((cell, i) => {
-					if (cell.day === null) return <div key={i} />;
-					if (cell.sessions.length === 0) {
+					if (cell.day === null) {
 						return (
-							<div key={i} className="aspect-square flex flex-col items-center justify-start pt-1 text-[10px] text-gray-300">
-								{cell.day}
-							</div>
+							<div
+								key={i}
+								className="min-h-[180px] rounded border border-transparent"
+							/>
 						);
 					}
+					const isToday = isCurrentMonth && cell.day === today.getDate();
+					const visible = cell.sessions.slice(0, MAX_ROWS);
+					const hidden = cell.sessions.length - visible.length;
 					return (
-						<Popover.Root key={i}>
-							<Popover.Trigger
-								className="aspect-square flex flex-col items-center justify-start pt-1 rounded hover:bg-gray-50 transition-colors w-full"
-								aria-label={`${mon + 1}月${cell.day}日（${cell.sessions.length}件）`}
-							>
-								<span className="text-[10px] text-gray-700">{cell.day}</span>
-								<div className="flex gap-0.5 mt-0.5 items-center">
-									{cell.sessions.slice(0, 4).map((s) => (
-										<span
-											key={s.id}
-											className={`w-1.5 h-1.5 rounded-full ${statusColor(s.status)} ${s.context === "live_commerce" ? "ring-1 ring-purple-400" : ""}`}
-										/>
-									))}
-									{cell.sessions.length > 4 && (
-										<span className="text-[9px] text-gray-500 ml-0.5">
-											+{cell.sessions.length - 4}
-										</span>
-									)}
-								</div>
-							</Popover.Trigger>
-							<Popover.Portal>
-								<Popover.Positioner sideOffset={6} align="start">
-									<Popover.Popup className="bg-white border border-gray-200 rounded-lg shadow-lg w-56 overflow-hidden">
-										<div className="px-3 py-2 text-[11px] font-semibold text-gray-700 border-b border-gray-100 bg-gray-50">
-											{year}年{mon + 1}月{cell.day}日 ({cell.sessions.length})
-										</div>
-										<ul role="list" className="divide-y divide-gray-100 max-h-72 overflow-auto">
-											{cell.sessions.map((s) => {
-												const isHome = s.context === "home_shopping";
-												return (
-													<li key={s.id}>
-														<Link
-															href={localePath(locale, `/analytics/discovery/session/${s.id}`)}
-															className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-gray-50"
-														>
-															<span className="font-mono text-[11px] text-gray-500 w-10 shrink-0">
-																{hhmm(s.run_at)}
-															</span>
-															<span
-																className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${
-																	isHome
-																		? "bg-blue-50 text-blue-700 border border-blue-200"
-																		: "bg-purple-50 text-purple-700 border border-purple-200"
-																}`}
-															>
-																{isHome ? <Home size={9} /> : <Tv size={9} />}
-																{isHome ? "ホーム" : "ライブ"}
-															</span>
-															<span className={`text-[10px] px-1.5 py-0.5 rounded-full ${statusBadgeClasses(s.status)}`}>
-																{statusLabel(s.status)}
-															</span>
-															<span className="ml-auto text-[11px] text-gray-600 shrink-0">
-																{s.produced_count}件
-															</span>
-														</Link>
-													</li>
-												);
-											})}
-										</ul>
-									</Popover.Popup>
-								</Popover.Positioner>
-							</Popover.Portal>
-						</Popover.Root>
+						<div
+							key={i}
+							className={`min-h-[180px] rounded border px-1.5 pt-1 pb-1 flex flex-col ${
+								isToday
+									? "border-amber-300 bg-amber-50/40"
+									: cell.sessions.length > 0
+										? "border-gray-200 bg-white"
+										: "border-gray-100 bg-gray-50/30"
+							}`}
+						>
+							<div className="flex items-center justify-between mb-1">
+								<span
+									className={`text-[11px] ${
+										isToday
+											? "font-bold text-amber-700"
+											: cell.sessions.length > 0
+												? "font-semibold text-gray-700"
+												: "text-gray-400"
+									}`}
+								>
+									{cell.day}
+								</span>
+								{cell.sessions.length > 0 && (
+									<span className="text-[9px] text-gray-400 font-mono">
+										{cell.sessions.length}
+									</span>
+								)}
+							</div>
+							<div className="flex flex-col gap-0.5">
+								{visible.map((s) => (
+									<SessionRowInline
+										key={s.id}
+										s={s}
+										href={localePath(locale, `/analytics/discovery/session/${s.id}`)}
+									/>
+								))}
+								{hidden > 0 && (
+									<div className="text-[9px] text-gray-500 px-1 pt-0.5">
+										+{hidden} more
+									</div>
+								)}
+							</div>
+						</div>
 					);
 				})}
 			</div>
-			<div className="flex flex-wrap gap-3 mt-3 text-[10px] text-gray-500">
-				<span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500" />完了</span>
-				<span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-500" />部分</span>
-				<span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500" />失敗</span>
-				<span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-gray-300 ring-1 ring-purple-400" />ライブ</span>
+			<div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-[10px] text-gray-500">
+				<span className="flex items-center gap-1">
+					<Home size={10} className="text-blue-600" />
+					ホーム
+				</span>
+				<span className="flex items-center gap-1">
+					<Tv size={10} className="text-purple-600" />
+					ライブ
+				</span>
+				<span className="flex items-center gap-1 pl-2 border-l border-gray-200">
+					<StatusIcon status="completed" size={11} />完了
+				</span>
+				<span className="flex items-center gap-1">
+					<StatusIcon status="partial" size={11} />部分
+				</span>
+				<span className="flex items-center gap-1">
+					<StatusIcon status="failed" size={11} />失敗
+				</span>
+				<span className="flex items-center gap-1">
+					<StatusIcon status="running" size={11} />実行中
+				</span>
+				<span className="flex items-center gap-1 pl-2 border-l border-gray-200">
+					<FeedbackIcon state="complete" size={11} />FB完了
+				</span>
+				<span className="flex items-center gap-1">
+					<FeedbackIcon state="partial" size={11} />FB部分
+				</span>
+				<span className="flex items-center gap-1">
+					<FeedbackIcon state="none" size={11} />FB未
+				</span>
 			</div>
 		</div>
 	);
