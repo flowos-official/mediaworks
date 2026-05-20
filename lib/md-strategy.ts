@@ -23,6 +23,7 @@ import {
 	formatIntentPromptSection,
 } from "@/lib/strategy/discover-intent";
 import { attributeSource } from "@/lib/strategy/source-attribution";
+import { TV_CHANNELS } from "@/lib/discovery/tv-channels";
 
 // ---------------------------------------------------------------------------
 // Gemini client
@@ -408,7 +409,7 @@ export interface StrategyContext {
 		estimated_demand: string;
 		supply_source: string;
 		estimated_price_jpy: string;
-		source: "rakuten" | "web";
+		source: "rakuten" | "web" | "brave" | "tv_channel" | "other";
 		source_url: string;
 		ranking_info?: string;
 		signal_basis: string;
@@ -515,7 +516,7 @@ export type SalesStrategy = NonNullable<DiscoveredProduct["sales_strategy"]>;
 type DiscoveryPoolItem = {
 	name: string;
 	price?: number;
-	source: "rakuten" | "web";
+	source: "rakuten" | "web" | "brave" | "tv_channel" | "other";
 	source_url: string;
 	snippet: string;
 	keyword: string;
@@ -589,7 +590,10 @@ export async function discoverNewProducts(
 		poolItems = rows.map((r) => ({
 			name: r.name,
 			price: r.price_jpy ?? undefined,
-			source: "rakuten",
+			// Preserve real candidate source from discovered_products. Was hardcoded
+			// to "rakuten" which made every pool item look like Rakuten in the UI
+			// even when it came from a TV channel or generic Brave hit.
+			source: r.source,
 			source_url: r.product_url,
 			snippet:
 				`TVフィット:${r.tv_fit_score}/100 (${r.tv_fit_reason ?? "理由なし"}) — ` +
@@ -710,7 +714,9 @@ export async function discoverNewProducts(
 			}
 
 			// Brave searches run in parallel (no rate limit concern)
-			const [braveProductResults, braveTrendResults] = await Promise.all([
+			const nonScrapedChannels = TV_CHANNELS.filter((c) => !c.scraped);
+			const channelSiteKeyword = keywords[0] ?? "";
+			const [braveProductResults, braveTrendResults, channelSiteResults] = await Promise.all([
 				// Brave product discovery — Japanese popularity / new product keywords
 				Promise.all(
 					keywords.map(async (kw) => {
@@ -737,6 +743,27 @@ export async function discoverNewProducts(
 						`日本 通販 売れ筋 ${keywords[0] ?? ""} 消費者 関心`,
 					).catch(() => []),
 				]),
+				// site:-restricted searches across the 13 non-scraped TV-shopping
+				// channels (docs/検索参考サイト.xlsx). Daily discovery cron covers these
+				// with TV_CHANNEL_BRAVE_BUDGET, but if the pool is still light at
+				// strategy time the fresh fill below has historically only added
+				// Rakuten/Brave-general items — making the final list look 100% 楽天.
+				channelSiteKeyword
+					? Promise.all(
+							nonScrapedChannels.map(async (channel) => {
+								const query = `${channelSiteKeyword} site:${channel.siteQuery}`;
+								try {
+									const hits = await braveSearchStructured(query);
+									return hits.map((h) => ({ ...h, channelSlug: channel.slug }));
+								} catch (err) {
+									console.warn(
+										`[discover] brave site:${channel.siteQuery} failed: ${err instanceof Error ? err.message : err}`,
+									);
+									return [];
+								}
+							}),
+						)
+					: Promise.resolve([] as Array<Array<SearchSource & { channelSlug: string }>>),
 			]);
 
 			// Build dedup pool, filter out items resembling existing TV products
@@ -759,15 +786,22 @@ export async function discoverNewProducts(
 				return excludeNameHeads.some((head) => lower.includes(head));
 			};
 
-			const pool: DiscoveryPoolItem[] = [];
+			// Build per-source sub-pools FIRST. Round-robin merge afterwards so
+			// the POOL_CAP slice preserves diversity. (Bug discovered 2026-05-20:
+			// when rakuten=56 + web=30 + tv_channel=24 and CAP=60, naively
+			// pushing in source order gave the cap 56 rakuten + 4 web + 0 TV.)
+			const rakutenSub: DiscoveryPoolItem[] = [];
+			const webSub: DiscoveryPoolItem[] = [];
+			const tvSub: DiscoveryPoolItem[] = [];
+
 			rakutenResults.forEach((r, i) => {
-				// Take top 6 per keyword (sorted by review count = social proof)
+				// Take top RAKUTEN_PER_KW per keyword (sorted by review count = social proof)
 				for (const item of r.items.slice(0, RAKUTEN_PER_KW)) {
 					if (!item.itemUrl || seenUrls.has(item.itemUrl)) continue;
 					if (isTvLike(item.itemName)) continue;
 					if (isAlreadyDiscovered(item.itemName)) continue;
 					seenUrls.add(item.itemUrl);
-					pool.push({
+					rakutenSub.push({
 						name: item.itemName.slice(0, 80),
 						price: item.itemPrice,
 						source: "rakuten",
@@ -786,7 +820,7 @@ export async function discoverNewProducts(
 					if (isTvLike(s.title)) continue;
 					if (isAlreadyDiscovered(s.title)) continue;
 					seenUrls.add(s.url);
-					pool.push({
+					webSub.push({
 						name: s.title.slice(0, 80),
 						source: "web",
 						source_url: s.url,
@@ -796,6 +830,41 @@ export async function discoverNewProducts(
 					});
 				}
 			});
+
+			// 13 non-scraped TV-shopping channels (kachimo, japanet, ntv, tbs, dinos,
+			// ropping, senobura, rakurakum, ichiban, kaidoki, kantv, junsanpo,
+			// uranoura). Each item retains its channel slug so the UI badge can
+			// show the actual channel name instead of a generic 楽天/Web chip.
+			channelSiteResults.forEach((arr) => {
+				for (const s of arr.slice(0, 3)) {
+					if (!s.url || seenUrls.has(s.url)) continue;
+					if (isTvLike(s.title)) continue;
+					if (isAlreadyDiscovered(s.title)) continue;
+					seenUrls.add(s.url);
+					tvSub.push({
+						name: s.title.slice(0, 80),
+						source: "tv_channel",
+						source_url: s.url,
+						snippet: s.description.slice(0, 140),
+						keyword: channelSiteKeyword,
+						pool_source: "fresh_search" as const,
+						tv_channel_source: s.channelSlug,
+					});
+				}
+			});
+
+			// Round-robin merge: tv → web → rakuten so underrepresented sources
+			// land in the first slots and survive the POOL_CAP slice below.
+			const pool: DiscoveryPoolItem[] = [];
+			const maxLen = Math.max(rakutenSub.length, webSub.length, tvSub.length);
+			for (let i = 0; i < maxLen; i++) {
+				if (i < tvSub.length) pool.push(tvSub[i]);
+				if (i < webSub.length) pool.push(webSub[i]);
+				if (i < rakutenSub.length) pool.push(rakutenSub[i]);
+			}
+			console.log(
+				`[discover] sub-pools built: rakuten=${rakutenSub.length} web=${webSub.length} tv_channel=${tvSub.length} (will round-robin merge then cap at ${POOL_CAP})`,
+			);
 
 			// Build Japan market context (trend signals — used as background, not products)
 			const marketContextLines: string[] = [];
@@ -808,7 +877,7 @@ export async function discoverNewProducts(
 				: "(市場トレンド情報を取得できませんでした)";
 
 			let freshCapped = pool.slice(0, POOL_CAP);
-			console.log(`[discover] fresh pool built: total=${pool.length} capped=${freshCapped.length} (rakuten=${pool.filter(p => p.source === 'rakuten').length} web=${pool.filter(p => p.source === 'web').length})`);
+			console.log(`[discover] fresh pool built: total=${pool.length} capped=${freshCapped.length} (rakuten=${pool.filter(p => p.source === 'rakuten').length} web=${pool.filter(p => p.source === 'web').length} tv_channel=${pool.filter(p => p.source === 'tv_channel').length})`);
 
 			if (freshCapped.length === 0 && cappedPool.length === 0) {
 				console.warn(`[discover] pool empty — retrying with broadened keywords`);
@@ -859,14 +928,23 @@ export async function discoverNewProducts(
 				: "";
 			const sourceTag =
 				p.pool_source === "discovery_pool"
-					? `🟣[発掘プール TVフィット:${p.tv_fit_score ?? "?"}${p.tv_channel_source ? ` 放送実績:${p.tv_channel_source}` : ""}]`
+					? `[発掘プール TVフィット:${p.tv_fit_score ?? "?"}${p.tv_channel_source ? ` 放送実績:${p.tv_channel_source}` : ""}]`
 					: p.pool_source === "research"
-						? `🟡[リサーチ 日本適合:${p.tv_fit_score ?? "?"}]`
-						: `🟢[新検索 ${p.source}]`;
+						? `[リサーチ 日本適合:${p.tv_fit_score ?? "?"}]`
+						: `[新検索 ${p.source}${p.tv_channel_source ? ` 放送局:${p.tv_channel_source}` : ""}]`;
 			const evidenceLine = p.tv_evidence
-				? `\n  実測放送: ${p.tv_evidence.airing_count}回 (直近30日 ${p.tv_evidence.recent_30d_count}回, 中央値 ¥${p.tv_evidence.price_jpy?.median ?? "—"})`
+				? `\n   実測放送: ${p.tv_evidence.airing_count}回 (直近30日 ${p.tv_evidence.recent_30d_count}回, 中央値 ¥${p.tv_evidence.price_jpy?.median ?? "—"})`
 				: "";
-			return `${i}. ${sourceTag} ${p.name}${p.price ? ` (¥${p.price.toLocaleString()})` : ""}${reviewBadge} — keyword: ${p.keyword}\n   URL: ${p.source_url}\n   ${p.snippet}${evidenceLine}`;
+			// IMPORTANT: keep `名称:` on its own line so Gemini cannot conflate
+			// the source tag with the product name. Earlier versions emitted
+			// "0. 🟣[発掘プール…] 名前…" on one line and Gemini occasionally
+			// copied the whole prefix into the `name` field.
+			const priceLine = p.price ? ` ¥${p.price.toLocaleString()}` : "";
+			return `${i}. ${sourceTag}
+   名称: ${p.name}${priceLine}${reviewBadge}
+   キーワード: ${p.keyword}
+   URL: ${p.source_url}
+   抜粋: ${p.snippet}${evidenceLine}`;
 		})
 		.join("\n");
 
@@ -983,8 +1061,9 @@ ${poolText}
 - 必ず上記プールに存在する商品のみから選ぶこと。プールにない商品名を作らないこと。
 - source_url: 必ず上記プールの URL を**一字一句そのままコピー**すること。プロトコル変更・パラメータ削除・末尾スラッシュ追加削除・www サブドメイン追加削除など、いかなる変更も禁止。推測・補完・別ページへの差し替えも禁止 (これがあると下流の出典トラッキングが壊れる)。
 - ranking_info はランキング順位情報 (例: "楽天デイリーランキング1位"、"価格.com人気売れ筋3位" 等)。ランキング情報がない場合は省略。
-- name は商品プールの name フィールドをそのまま使用。
+- name は商品プールの **「名称:」行の値だけ** をそのまま使用する。"[発掘プール...]" や "[新検索 ...]" などの角括弧付き出典タグは絶対に name に含めないこと。価格 "¥..." や "★..." も name に含めない。
 - カテゴリが偏らないように${itemCount}商品を選定。
+- **出典の多様性**: 楽天プール (🟢[新検索 rakuten]) ばかりに偏らないこと。発掘プール (🟣) や TV 放送局サイト由来の候補 (🟢[新検索 tv_channel 放送局:...]) が存在する場合は、それらを最低でも全体の 40% 以上含めること。日本のテレビ通販事業者として、放送局公式サイトの新商品ヒントは極めて重要なシグナル。
 - 各商品ごとに japan_market_fit を必ず記入する。${salesStrategyRules}
 ${suitabilityBlock}
 
@@ -1010,10 +1089,10 @@ Return a JSON array of exactly ${itemCount} items (no markdown):
   "reason":"なぜTVシグナル + 日本市場トレンドに合致するか",
   "japan_fit_score":0-100,
   "estimated_demand":"高|中|低",
-  "supply_source":"楽天 or Webドメイン",
+  "supply_source":"楽天 or Webドメイン or TV放送局",
   "estimated_price_jpy":"¥X-Y",
-  "source":"rakuten|web",
-  "source_url":"<商品個別ページURL (楽天/Amazon/公式等)>",
+  "source":"rakuten|web|tv_channel  (プールのタグと一致させる: 🟢[新検索 rakuten]→rakuten, 🟢[新検索 tv_channel ...]→tv_channel, それ以外の Web/Brave 結果→web)",
+  "source_url":"<商品個別ページURL (楽天/Amazon/公式/放送局サイト等)>",
   "ranking_info":"楽天ランキングX位 / 価格.comX位 等 (なければ省略)",
   "signal_basis":"TV自社シグナルとの紐付け",
   "japan_market_fit": {
@@ -1067,7 +1146,8 @@ ${salesStrategyFooter}`;
 		}
 		if (filtered.length === 0) return undefined;
 
-		// Restore pool_source + discovered_product_id via the robust matcher.
+		// Restore pool_source + discovered_product_id + the candidate's real
+		// source/tv_channel_source via the robust matcher.
 		// See lib/strategy/source-attribution.ts for the full rationale —
 		// Gemini is allowed by the prompt to rewrite source_url, so URL-only
 		// matching mistags most pool items as fresh_search.
@@ -1078,6 +1158,8 @@ ${salesStrategyFooter}`;
 				source_url: p.source_url,
 				pool_source: p.pool_source,
 				discovered_product_id: p.discovered_product_id,
+				source: p.source,
+				tv_channel_source: p.tv_channel_source,
 			})),
 		);
 		console.log(

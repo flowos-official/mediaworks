@@ -43,10 +43,14 @@ function ProductCard({ p, idx, onAnalyze, analyzing }: {
 				<div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
 					<span
 						className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-							p.source === 'rakuten' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
+							p.source === 'rakuten'
+								? 'bg-red-100 text-red-700'
+								: p.source === 'tv_channel'
+									? 'bg-purple-100 text-purple-700'
+									: 'bg-blue-100 text-blue-700'
 						}`}
 					>
-						{p.source === 'rakuten' ? '楽天' : 'Web'}
+						{p.source === 'rakuten' ? '楽天' : p.source === 'tv_channel' ? 'TV局' : 'Web'}
 					</span>
 					{p.pool_source === 'discovery_pool' && (
 						<span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-purple-100 text-purple-700">
