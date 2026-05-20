@@ -42,6 +42,7 @@ export interface PoolRow {
 	price_jpy: number | null;
 	category: string | null;
 	seed_keyword: string;
+	source: "rakuten" | "brave" | "tv_channel" | "other";
 	tv_fit_score: number;
 	tv_fit_reason: string | null;
 	tv_channel_source: string | null;
@@ -156,7 +157,7 @@ export async function queryDiscoveredPool(
 	let q = sb
 		.from("discovered_products")
 		.select(
-			"id, name, product_url, price_jpy, category, seed_keyword, tv_fit_score, tv_fit_reason, tv_channel_source, tv_tier, context, user_action, c_package, enrichment_status, review_count, review_avg, seller_name, broadcast_tag, thumbnail_url, created_at, tv_evidence",
+			"id, name, product_url, price_jpy, category, seed_keyword, source, tv_fit_score, tv_fit_reason, tv_channel_source, tv_tier, context, user_action, c_package, enrichment_status, review_count, review_avg, seller_name, broadcast_tag, thumbnail_url, created_at, tv_evidence",
 		)
 		.eq("context", input.context)
 		.gte("created_at", sinceIso)

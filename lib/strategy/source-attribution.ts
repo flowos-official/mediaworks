@@ -31,11 +31,17 @@ export interface AttributablePoolItem {
 	source_url: string;
 	pool_source: "discovery_pool" | "fresh_search" | "research";
 	discovered_product_id?: string;
+	// Real candidate source from the underlying pool row (used to overwrite
+	// any "rakuten|web" guess Gemini makes when it copies an item).
+	source?: "rakuten" | "web" | "brave" | "tv_channel" | "other";
+	tv_channel_source?: string | null;
 }
 
 export interface AttributableGeminiItem {
 	name: string;
 	source_url: string;
+	source?: string;
+	tv_channel_source?: string | null;
 }
 
 export interface AttributionStats {
@@ -125,17 +131,34 @@ export function attributeSource<T extends AttributableGeminiItem>(
 
 	const stats: AttributionStats = { url: 0, itemCode: 0, nameFallback: 0, unmatched: 0 };
 
+	function applyHit(item: T, hit: AttributablePoolItem, includeId: boolean) {
+		// Overlay pool-derived source/tv_channel_source on top of the original
+		// item so generic T fields (incl. required ones) survive the spread.
+		// When the matched pool row carries no source we fall back to whatever
+		// Gemini emitted so the field never becomes undefined.
+		const merged = {
+			...item,
+			pool_source: hit.pool_source,
+			discovered_product_id: includeId ? hit.discovered_product_id : undefined,
+		} as T & {
+			pool_source: "discovery_pool" | "fresh_search" | "research";
+			discovered_product_id?: string;
+		};
+		if (hit.source !== undefined) {
+			(merged as { source?: string }).source = hit.source;
+		}
+		(merged as { tv_channel_source?: string | null }).tv_channel_source =
+			hit.tv_channel_source ?? null;
+		return merged;
+	}
+
 	const enriched = items.map((item) => {
 		// 1. Exact URL match (normalized)
 		const u = normalizeUrl(item.source_url);
 		const urlHit = u ? byUrl.get(u) : undefined;
 		if (urlHit) {
 			stats.url++;
-			return {
-				...item,
-				pool_source: urlHit.pool_source,
-				discovered_product_id: urlHit.discovered_product_id,
-			};
+			return applyHit(item, urlHit, true);
 		}
 
 		// 2. Rakuten itemCode rescue
@@ -143,11 +166,7 @@ export function attributeSource<T extends AttributableGeminiItem>(
 		const codeHit = code ? byItemCode.get(code) : undefined;
 		if (codeHit) {
 			stats.itemCode++;
-			return {
-				...item,
-				pool_source: codeHit.pool_source,
-				discovered_product_id: codeHit.discovered_product_id,
-			};
+			return applyHit(item, codeHit, true);
 		}
 
 		// 3. Name-only fallback (restore pool_source, withhold ID)
@@ -155,16 +174,12 @@ export function attributeSource<T extends AttributableGeminiItem>(
 		const nameHit = n ? byName.get(n) : undefined;
 		if (nameHit) {
 			stats.nameFallback++;
-			return {
-				...item,
-				pool_source: nameHit.pool_source,
-				// Intentionally undefined — name alone is too weak to safely
-				// link the original discovered_products row.
-				discovered_product_id: undefined,
-			};
+			// Intentionally undefined ID — name alone is too weak to safely
+			// link the original discovered_products row.
+			return applyHit(item, nameHit, false);
 		}
 
-		// 4. No match → fresh_search
+		// 4. No match → fresh_search; keep whatever source/channel Gemini guessed
 		stats.unmatched++;
 		return {
 			...item,

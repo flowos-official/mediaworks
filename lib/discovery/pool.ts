@@ -192,7 +192,7 @@ async function fetchTvChannelFromBroadcasts(
 	return result;
 }
 
-const TV_CHANNEL_BRAVE_BUDGET = Number(process.env.TV_CHANNEL_BRAVE_BUDGET ?? 50);
+const TV_CHANNEL_BRAVE_BUDGET = Number(process.env.TV_CHANNEL_BRAVE_BUDGET ?? 200);
 const TV_CHANNEL_BRAVE_CONCURRENCY = 4;
 const TV_CHANNEL_BRAVE_PER_CALL = 5;
 

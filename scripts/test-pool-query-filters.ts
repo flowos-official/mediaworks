@@ -12,6 +12,7 @@ function mkRow(overrides: Partial<Row>): Row {
 		price_jpy: 10000,
 		category: "美容・運動",
 		seed_keyword: "美容",
+		source: "rakuten",
 		tv_fit_score: 70,
 		tv_fit_reason: "test",
 		tv_channel_source: null,
