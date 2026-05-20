@@ -13,7 +13,7 @@ const sb = createClient(
 	const monthTo = today.slice(0, 7) + "-" + String(last).padStart(2, "0");
 	console.log("month range: " + monthFrom + " ~ " + monthTo + "\n");
 
-	const channels = ["japanet", "junsanpo", "ntv", "tbs", "dinos", "senobura", "uranoura"];
+	const channels = ["japanet", "junsanpo", "ntv", "tbs", "dinos", "senobura", "uranoura", "txd"];
 	let monthTotal = 0;
 	for (const c of channels) {
 		const { count: monthCount } = await sb

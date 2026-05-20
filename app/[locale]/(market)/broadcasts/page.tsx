@@ -15,6 +15,7 @@ const OA_CHANNEL_SLUGS = [
   "dinos",
   "senobura",
   "uranoura",
+  "txd",
 ] as const;
 
 interface PageProps {

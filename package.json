@@ -14,6 +14,8 @@
     "test:broadcasts-shopch": "tsx --env-file=.env.local scripts/test-broadcasts-shopch-parser.ts",
     "test:broadcasts-qvc": "tsx --env-file=.env.local scripts/test-broadcasts-qvc-parser.ts",
     "test:broadcasts-parsers": "npm run test:broadcasts-shopch && npm run test:broadcasts-qvc",
+    "test:historical-txd-parser": "tsx scripts/test-historical-txd-parser.ts",
+    "test:historical-txd-live": "tsx scripts/test-historical-txd-live.ts",
     "test:broadcasts-live": "tsx --env-file=.env.local scripts/test-broadcasts-scrape-live.ts",
     "test:tv-channel-derive": "tsx --env-file=.env.local scripts/test-tv-channel-derive.ts",
     "test:pool-tv-channel": "tsx --env-file=.env.local scripts/test-pool-tv-channel.ts",

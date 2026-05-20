@@ -24,7 +24,11 @@ function decodeBytes(buf: ArrayBuffer, contentType: string | null): string {
 
 export async function politeFetch(
 	url: string,
-	opts: { timeoutMs?: number; retry?: boolean } = {},
+	opts: {
+		timeoutMs?: number;
+		retry?: boolean;
+		headers?: Record<string, string>;
+	} = {},
 ): Promise<FetchResult> {
 	const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 	const retry = opts.retry ?? true;
@@ -38,6 +42,7 @@ export async function politeFetch(
 					"User-Agent": USER_AGENT,
 					Accept: "text/html,application/xhtml+xml",
 					"Accept-Language": "ja,en;q=0.8",
+					...(opts.headers ?? {}),
 				},
 				signal: ctrl.signal,
 				redirect: "follow",
