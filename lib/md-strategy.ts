@@ -625,9 +625,7 @@ export async function discoverNewProducts(
 	if (researchCap > 0) {
 		try {
 			const researchItems = await queryResearchPool({
-				context: input.context,
 				uiCategory: input.explicitCategory,
-				priceRange: input.priceRange ? parsePriceRange(input.priceRange) ?? undefined : undefined,
 				limit: researchCap,
 			});
 			const researchMapped: DiscoveryPoolItem[] = researchItems.map((r) => ({

@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { start } from "workflow/api";
+import { requireUser } from "@/lib/auth/require-user";
 import { getServiceClient } from "@/lib/supabase";
 import { screenplayWorkflow } from "@/lib/workflows/screenplay.workflow";
 import type { ProductBrief } from "@/lib/screenplay/types";
@@ -9,6 +10,8 @@ export const maxDuration = 60;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function GET() {
+	const auth = await requireUser(["member", "admin"]);
+	if ("error" in auth) return auth.error;
 	const supabase = getServiceClient();
 	const { data, error } = await supabase
 		.from("screenplays")
@@ -150,6 +153,8 @@ async function resolveBrief(body: unknown): Promise<ValidationFailure | Validati
 }
 
 export async function POST(request: NextRequest) {
+	const auth = await requireUser(["member", "admin"]);
+	if ("error" in auth) return auth.error;
 	const body = await request.json().catch(() => null);
 	const v = await resolveBrief(body);
 	if (!v.ok) return Response.json({ error: v.error }, { status: v.status });
