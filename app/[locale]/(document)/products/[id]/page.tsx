@@ -21,14 +21,42 @@ import GenerateScreenplayButton from "@/components/report/GenerateScreenplayButt
 import { ArrowLeft, Package, Calendar } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { localePath } from '@/lib/i18n/locale-path';
+import { getServerClient } from '@/lib/supabase/server';
 
+// Server-side fetch via Supabase directly. The previous implementation made
+// an HTTP round-trip to /api/products/[id] using NEXT_PUBLIC_SITE_URL, which
+// (a) silently sent the request to the production URL in local dev when
+// NEXT_PUBLIC_SITE_URL was set to prod, and (b) failed to forward the user's
+// auth cookies, causing 401 → 404 on this page in local dev. Direct query
+// inherits the user's session via getServerClient and is enforced by RLS
+// (products is Group B — member/admin only).
 async function getProduct(id: string) {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-  const res = await fetch(`${baseUrl}/api/products/${id}`, {
-    cache: 'no-store',
-  });
-  if (!res.ok) return null;
-  return res.json();
+  const sb = await getServerClient();
+
+  const { data: product, error: productError } = await sb
+    .from('products')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+  if (productError || !product) return null;
+
+  const { data: research } = await sb
+    .from('research_results')
+    .select('*')
+    .eq('product_id', id)
+    .maybeSingle();
+
+  // Merge extended fields from raw_json.research (distribution_channels,
+  // live_commerce, etc.) — they have no dedicated DB columns. Mirrors the
+  // merge logic in app/api/products/[id]/route.ts.
+  let mergedResearch = research;
+  if (research?.raw_json?.research) {
+    const { raw_json, ...dbFields } = research;
+    const rawResearch = raw_json.research as Record<string, unknown>;
+    mergedResearch = { ...rawResearch, ...dbFields, raw_json };
+  }
+
+  return { product, research: mergedResearch };
 }
 
 export default async function ProductReportPage({
