@@ -4,14 +4,38 @@ import { notFound } from "next/navigation";
 import { ScreenplayWorkspace } from "@/components/screenplay/ScreenplayWorkspace";
 import type { ScreenplayRow, ScreenplayVersionRow } from "@/lib/screenplay/types";
 import { localePath } from "@/lib/i18n/locale-path";
+import { getServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Direct Supabase query — same rationale as screenplays/page.tsx:
+// the previous fetch to /api/screenplays/[id] hit the prod URL in dev and
+// could not forward auth cookies from a server component.
 async function fetchDetail(id: string) {
-	const base = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-	const res = await fetch(`${base}/api/screenplays/${id}`, { cache: "no-store" });
-	if (!res.ok) return null;
-	return (await res.json()) as { screenplay: ScreenplayRow; versions: ScreenplayVersionRow[] };
+	if (!UUID_RE.test(id)) return null;
+	const sb = await getServerClient();
+
+	const { data: screenplay, error: spErr } = await sb
+		.from("screenplays")
+		.select("*")
+		.eq("id", id)
+		.maybeSingle();
+	if (spErr || !screenplay) return null;
+
+	const { data: versions } = await sb
+		.from("screenplay_versions")
+		.select(
+			"id, version_number, markdown, feedback, base_version_id, model, thinking_level, created_at",
+		)
+		.eq("screenplay_id", id)
+		.order("version_number", { ascending: true });
+
+	return {
+		screenplay: screenplay as ScreenplayRow,
+		versions: (versions ?? []) as ScreenplayVersionRow[],
+	};
 }
 
 const STATUS_BADGE: Record<ScreenplayRow["status"], { cls: string; label: string }> = {

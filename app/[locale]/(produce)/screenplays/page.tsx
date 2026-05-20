@@ -2,17 +2,27 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { ScreenplayList } from "@/components/screenplay/ScreenplayList";
 import { localePath } from "@/lib/i18n/locale-path";
+import { getServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
+// Direct Supabase query — avoids the round-trip through /api/screenplays
+// which (a) hits NEXT_PUBLIC_SITE_URL (set to prod in env) instead of
+// localhost in dev, and (b) cannot forward the user's auth cookies from
+// a server component fetch. RLS on `screenplays` (Group B) enforces
+// the same member/admin gate as requireUser() in the API route.
 async function fetchList() {
-	const base = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-	const res = await fetch(`${base}/api/screenplays`, { cache: "no-store" });
-	if (!res.ok) return [];
-	const j = (await res.json()) as {
-		screenplays: { id: string; title: string; status: "pending" | "generating" | "ready" | "failed"; updated_at: string }[];
-	};
-	return j.screenplays;
+	const sb = await getServerClient();
+	const { data, error } = await sb
+		.from("screenplays")
+		.select("id, title, status, updated_at")
+		.order("updated_at", { ascending: false })
+		.limit(50);
+	if (error) {
+		console.warn("[screenplays/page] list fetch failed:", error.message);
+		return [];
+	}
+	return (data ?? []) as { id: string; title: string; status: "pending" | "generating" | "ready" | "failed"; updated_at: string }[];
 }
 
 export default async function ScreenplaysPage({ params }: { params: Promise<{ locale: string }> }) {
