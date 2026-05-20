@@ -77,6 +77,30 @@ async function resolveBrief(body: unknown): Promise<ValidationFailure | Validati
 			return { ok: false, status: 404, error: "選択された商品が見つかりません" };
 		}
 		const brief = briefFromProduct(product as ProductRow);
+
+		// P3 enrichment: pull research_results if present.
+		const { data: research } = await supabase
+			.from("research_results")
+			.select("broadcast_scripts, demographics")
+			.eq("product_id", product.id)
+			.maybeSingle();
+
+		if (research) {
+			const sec60 = (research.broadcast_scripts as { sec60?: string } | null)?.sec60;
+			if (sec60 && typeof sec60 === "string" && sec60.trim()) {
+				brief.notes = brief.notes
+					? `${brief.notes}\n\n--- AIリサーチ 60秒台本案 ---\n${sec60}`
+					: sec60;
+			}
+			const demo = research.demographics as { target_audience?: string } | null;
+			if (demo?.target_audience && typeof demo.target_audience === "string") {
+				brief.customization = brief.customization ?? {};
+				if (!brief.customization.targetAudience) {
+					brief.customization.targetAudience = demo.target_audience;
+				}
+			}
+		}
+
 		// Optional customization knobs override
 		if (b.customization && typeof b.customization === "object") {
 			brief.customization = b.customization as ProductBrief["customization"];
