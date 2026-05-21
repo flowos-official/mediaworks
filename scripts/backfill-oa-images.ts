@@ -34,7 +34,11 @@ interface Args {
 	limit: number | null;
 	throttleMs: number;
 	concurrency: number;
+	from: string | null;
+	to: string | null;
 }
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 function parseArgs(): Args {
 	const a = process.argv.slice(2);
@@ -51,7 +55,15 @@ function parseArgs(): Args {
 	const limit = get("limit") ? parseInt(get("limit")!, 10) : null;
 	const throttleMs = get("throttle") ? parseInt(get("throttle")!, 10) : 350;
 	const concurrency = get("concurrency") ? parseInt(get("concurrency")!, 10) : 4;
-	return { channel: channel as OAChannelSlug, limit, throttleMs, concurrency };
+	const from = get("from") ?? null;
+	const to = get("to") ?? null;
+	for (const [n, v] of [["from", from], ["to", to]] as const) {
+		if (v !== null && !ISO_DATE.test(v)) {
+			console.error(`--${n}=${v} must be YYYY-MM-DD`);
+			process.exit(2);
+		}
+	}
+	return { channel: channel as OAChannelSlug, limit, throttleMs, concurrency, from, to };
 }
 
 function sleep(ms: number) {
@@ -71,7 +83,8 @@ function sleep(ms: number) {
 		process.env.SUPABASE_SERVICE_ROLE_KEY!,
 	);
 
-	console.log(`Backfill — channel=${args.channel} concurrency=${args.concurrency} throttle=${args.throttleMs}ms${args.limit ? ` limit=${args.limit}` : ""}`);
+	const dateRange = args.from || args.to ? ` date=${args.from ?? "*"}..${args.to ?? "*"}` : "";
+	console.log(`Backfill — channel=${args.channel} concurrency=${args.concurrency} throttle=${args.throttleMs}ms${args.limit ? ` limit=${args.limit}` : ""}${dateRange}`);
 
 	let query = sb
 		.from("historical_broadcasts")
@@ -80,6 +93,8 @@ function sleep(ms: number) {
 		.is("image_url", null)
 		.not("source_url", "is", null)
 		.order("air_date", { ascending: false });
+	if (args.from) query = query.gte("air_date", args.from);
+	if (args.to) query = query.lte("air_date", args.to);
 	if (args.limit) query = query.limit(args.limit);
 
 	const { data, error } = await query;
