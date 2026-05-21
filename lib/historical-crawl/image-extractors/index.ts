@@ -1,6 +1,7 @@
 import type { OAChannelSlug } from "../types";
 import type { ImageExtractor } from "./types";
 import { ogImageExtractor } from "./og-image";
+import { ntvApiExtractor } from "./ntv-api";
 
 /**
  * Channel → image extractor mapping. Null = unsupported (japanet) or
@@ -13,7 +14,7 @@ import { ogImageExtractor } from "./og-image";
 export const IMAGE_EXTRACTORS: Record<OAChannelSlug, ImageExtractor | null> = {
 	japanet: null,
 	junsanpo: ogImageExtractor,
-	ntv: null, // populated in Task 5
+	ntv: ntvApiExtractor,
 	tbs: ogImageExtractor,
 	dinos: ogImageExtractor,
 	senobura: ogImageExtractor,
