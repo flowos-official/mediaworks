@@ -9,10 +9,13 @@ import type { ImageExtractor } from "./types";
 export function parseOgImageFromHtml(html: string, sourceUrl: string): string | null {
 	try {
 		const $ = cheerio.load(html);
-		const og = $('meta[property="og:image"]').attr("content")?.trim();
+		const og = $('meta[property="og:image"]').first().attr("content")?.trim();
 		if (!og) return null;
 		// Resolve relative URLs (defensive — most sites give absolute, but not all)
-		return new URL(og, sourceUrl).toString();
+		const resolved = new URL(og, sourceUrl);
+		// Guard against javascript: / data: / mailto: etc. in og:image
+		if (resolved.protocol !== "https:" && resolved.protocol !== "http:") return null;
+		return resolved.toString();
 	} catch {
 		return null;
 	}

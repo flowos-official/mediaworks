@@ -17,6 +17,8 @@ function load(channel: string, sourceUrl: string, expectedHost: string): Case {
 	return { name: channel, html, sourceUrl, expectedHost };
 }
 
+// Source URLs mirror real `historical_broadcasts.source_url` values per channel.
+// Note junsanpo product detail pages live on ropping.jp (テレ朝じゅん散歩's e-commerce host).
 const CASES: Case[] = [
 	load("junsanpo", "https://ropping.jp/product/111643", "ropping.jp"),
 	load("tbs", "https://shopping.tbs.co.jp/tbs/product/P2122145", "shopping.tbs.co.jp"),
@@ -47,6 +49,20 @@ function main() {
 	// Negative case: HTML without og:image
 	const empty = parseOgImageFromHtml("<html><head></head><body>no meta</body></html>", "https://example.com/p/1");
 	assert(empty === null, `no og:image returns null (got ${empty})`);
+
+	// Negative case: og:image present but content is empty
+	const emptyContent = parseOgImageFromHtml(
+		'<html><head><meta property="og:image" content=""></head></html>',
+		"https://example.com/p/1",
+	);
+	assert(emptyContent === null, `empty og:image content returns null (got ${emptyContent})`);
+
+	// Negative case: javascript: URL must be rejected
+	const jsUrl = parseOgImageFromHtml(
+		'<html><head><meta property="og:image" content="javascript:void(0)"></head></html>',
+		"https://example.com/p/1",
+	);
+	assert(jsUrl === null, `javascript: URL is rejected (got ${jsUrl})`);
 
 	if (process.exitCode) {
 		console.error("\nog-image extractor test FAILED");
