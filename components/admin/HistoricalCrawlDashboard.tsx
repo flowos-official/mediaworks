@@ -31,16 +31,16 @@ function ratio(actual: number, median: number): number {
 }
 
 function anomalyClass(r: number): string {
-	if (r < 0.5) return "bg-red-100 text-red-700";
-	if (r < 0.8) return "bg-amber-100 text-amber-700";
-	return "bg-green-100 text-green-700";
+	if (r < 0.5) return "bg-red-600/15 text-red-700 dark:text-red-300";
+	if (r < 0.8) return "bg-amber-600/15 text-amber-700 dark:text-amber-300";
+	return "bg-green-600/15 text-green-700 dark:text-green-300";
 }
 
 function statusBadgeClass(status: RunRow["status"]): string {
-	if (status === "completed") return "bg-green-100 text-green-700";
-	if (status === "partial") return "bg-amber-100 text-amber-700";
-	if (status === "failed") return "bg-red-100 text-red-700";
-	return "bg-gray-100 text-gray-700";
+	if (status === "completed") return "bg-green-600/15 text-green-700 dark:text-green-300";
+	if (status === "partial") return "bg-amber-600/15 text-amber-700 dark:text-amber-300";
+	if (status === "failed") return "bg-red-600/15 text-red-700 dark:text-red-300";
+	return "bg-muted text-foreground";
 }
 
 export default function HistoricalCrawlDashboard({ initialRuns, baseline }: Props) {
@@ -50,16 +50,16 @@ export default function HistoricalCrawlDashboard({ initialRuns, baseline }: Prop
 	return (
 		<div className="space-y-6">
 			<header>
-				<h1 className="text-2xl font-bold text-gray-900">{t("title")}</h1>
-				<p className="text-sm text-gray-500">{t("subtitle")}</p>
+				<h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
+				<p className="text-sm text-muted-foreground">{t("subtitle")}</p>
 			</header>
 
 			<section>
-				<h2 className="text-lg font-semibold text-gray-800 mb-2">
+				<h2 className="text-lg font-semibold text-foreground mb-2">
 					{t("baselineHeading")}
 				</h2>
 				{baseline.length === 0 ? (
-					<p className="text-sm text-gray-400">{t("baselineEmpty")}</p>
+					<p className="text-sm text-muted-foreground">{t("baselineEmpty")}</p>
 				) : (
 					<div className="grid grid-cols-2 md:grid-cols-4 gap-3">
 						{baseline
@@ -68,13 +68,13 @@ export default function HistoricalCrawlDashboard({ initialRuns, baseline }: Prop
 							.map((b) => (
 								<div
 									key={b.channel}
-									className="bg-white border border-gray-200 rounded-lg p-3"
+									className="bg-card border border-border rounded-lg p-3"
 								>
-									<div className="text-xs text-gray-500">{b.channel}</div>
-									<div className="text-xl font-bold text-gray-900">
+									<div className="text-xs text-muted-foreground">{b.channel}</div>
+									<div className="text-xl font-bold text-foreground">
 										{b.median7d}
 									</div>
-									<div className="text-[10px] text-gray-400">
+									<div className="text-[10px] text-muted-foreground">
 										{t("samples", { n: b.samples })}
 									</div>
 								</div>
@@ -84,15 +84,15 @@ export default function HistoricalCrawlDashboard({ initialRuns, baseline }: Prop
 			</section>
 
 			<section>
-				<h2 className="text-lg font-semibold text-gray-800 mb-2">
+				<h2 className="text-lg font-semibold text-foreground mb-2">
 					{t("recentRuns")}
 				</h2>
 				{initialRuns.length === 0 ? (
-					<p className="text-sm text-gray-400">{t("runsEmpty")}</p>
+					<p className="text-sm text-muted-foreground">{t("runsEmpty")}</p>
 				) : (
 					<div className="overflow-x-auto">
-						<table className="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
-							<thead className="bg-gray-50 text-xs uppercase text-gray-500">
+						<table className="w-full text-sm border border-border rounded-lg overflow-hidden">
+							<thead className="bg-muted text-xs uppercase text-muted-foreground">
 								<tr>
 									<th className="text-left px-3 py-2">{t("col.runAt")}</th>
 									<th className="text-left px-3 py-2">{t("col.status")}</th>
@@ -106,9 +106,9 @@ export default function HistoricalCrawlDashboard({ initialRuns, baseline }: Prop
 								{initialRuns.map((r) => (
 									<tr
 										key={r.id}
-										className="border-t border-gray-100 hover:bg-gray-50/50"
+										className="border-t border-border hover:bg-muted/50"
 									>
-										<td className="px-3 py-2 text-xs text-gray-700 font-mono whitespace-nowrap">
+										<td className="px-3 py-2 text-xs text-foreground font-mono whitespace-nowrap">
 											{new Date(r.run_at)
 												.toISOString()
 												.slice(0, 16)
@@ -142,7 +142,7 @@ export default function HistoricalCrawlDashboard({ initialRuns, baseline }: Prop
 															key={c.channel}
 															className={`text-[10px] px-1.5 py-0.5 rounded ${
 																!c.ok
-																	? "bg-red-100 text-red-700"
+																	? "bg-red-600/15 text-red-700 dark:text-red-300"
 																	: anomalyClass(ratioVal)
 															}`}
 															title={
