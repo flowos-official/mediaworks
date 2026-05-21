@@ -29,6 +29,7 @@ export interface HistoricalRow {
 	price_is_tax_incl: boolean | null;
 	source_url: string | null;
 	source_sheet: string; // for traceability — "live-crawl:<slug>" when scraped (not from xlsx)
+	image_url: string | null;
 }
 
 export interface CrawlResult {
