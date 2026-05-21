@@ -103,8 +103,8 @@ export default function ResearchSourcesSection({ searchResults }: ResearchSource
 			<CardContent className="p-6">
 				<div className="flex items-center gap-2 mb-5">
 					<Search className="h-5 w-5 text-blue-500" />
-					<h3 className="text-lg font-semibold text-gray-900">{t("researchSources.title")}</h3>
-					<Badge className="bg-blue-100 text-blue-800 text-[10px] border-0">
+					<h3 className="text-lg font-semibold text-foreground">{t("researchSources.title")}</h3>
+					<Badge className="bg-blue-600/10 text-blue-800 dark:text-blue-300 text-[10px] border-0">
 						{totalCount} sources
 					</Badge>
 				</div>
@@ -119,37 +119,37 @@ export default function ResearchSourcesSection({ searchResults }: ResearchSource
 						const count = Array.isArray(data) ? data.length : 1;
 
 						return (
-							<div key={key} className="border border-gray-100 rounded-xl overflow-hidden">
+							<div key={key} className="border border-border rounded-xl overflow-hidden">
 								<button
 									type="button"
 									onClick={() => toggleCategory(key)}
-									className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-gray-50/50 transition-colors"
+									className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-muted/50 transition-colors"
 								>
 									<div className="flex items-center gap-2">
-										<span className="text-sm font-medium text-gray-700">
+										<span className="text-sm font-medium text-foreground">
 											{t(`researchSources.categories.${key}` as Parameters<typeof t>[0])}
 										</span>
-										<Badge variant="outline" className="text-[10px] text-gray-500">
+										<Badge variant="outline" className="text-[10px] text-muted-foreground">
 											{count}
 										</Badge>
 									</div>
 									{isExpanded ? (
-										<ChevronUp size={14} className="text-gray-400" />
+										<ChevronUp size={14} className="text-muted-foreground" />
 									) : (
-										<ChevronDown size={14} className="text-gray-400" />
+										<ChevronDown size={14} className="text-muted-foreground" />
 									)}
 								</button>
 
 								{isExpanded && (
-									<div className="px-4 pb-4 bg-gray-50/50">
+									<div className="px-4 pb-4 bg-muted/50">
 										{isRakuten ? (
-											<div className="text-xs text-gray-600 whitespace-pre-wrap font-mono leading-relaxed bg-white rounded-lg p-3 border border-gray-100">
+											<div className="text-xs text-muted-foreground whitespace-pre-wrap font-mono leading-relaxed bg-card rounded-lg p-3 border border-border">
 												{data as string}
 											</div>
 										) : (
 											<div className="space-y-2">
 												{(data as ParsedSource[]).map((source, i) => (
-													<div key={i} className="bg-white rounded-lg p-3 border border-gray-100">
+													<div key={i} className="bg-card rounded-lg p-3 border border-border">
 														<a
 															href={source.url}
 															target="_blank"
@@ -160,7 +160,7 @@ export default function ResearchSourcesSection({ searchResults }: ResearchSource
 															<ExternalLink size={10} />
 														</a>
 														{source.snippet && (
-															<p className="text-[11px] text-gray-500 mt-1 leading-relaxed">
+															<p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
 																{source.snippet}
 															</p>
 														)}

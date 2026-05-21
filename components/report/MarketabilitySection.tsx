@@ -52,11 +52,11 @@ export default function MarketabilitySection({
           <div className="flex items-center gap-4">
             <div className={`text-5xl font-bold ${scoreColor}`}>{score}</div>
             <div className="flex-1">
-              <div className="flex justify-between text-xs text-gray-500 mb-1">
+              <div className="flex justify-between text-xs text-muted-foreground mb-1">
                 <span>{t('score')}</span>
                 <span>{score}/100</span>
               </div>
-              <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-3 bg-muted rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all ${barColor}`}
                   style={{ width: `${score}%` }}
@@ -64,16 +64,16 @@ export default function MarketabilitySection({
               </div>
             </div>
           </div>
-          <p className="text-gray-600 leading-relaxed">{description}</p>
+          <p className="text-muted-foreground leading-relaxed">{description}</p>
 
           {/* Market Size */}
           {market_size && (
-            <div className="bg-blue-50 p-4 rounded-xl">
-              <p className="text-xs font-semibold text-blue-700 mb-1 flex items-center gap-1">
+            <div className="bg-blue-600/10 p-4 rounded-xl">
+              <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 mb-1 flex items-center gap-1">
                 <BarChart2 size={14} />
                 {isJa ? '市場規模' : 'Market Size'}
               </p>
-              <p className="text-sm text-blue-900">{market_size}</p>
+              <p className="text-sm text-blue-900 dark:text-blue-200">{market_size}</p>
             </div>
           )}
         </CardContent>
@@ -91,9 +91,9 @@ export default function MarketabilitySection({
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {competitors.map((c, i) => (
-                <div key={i} className="bg-purple-50 rounded-lg p-3">
-                  <p className="font-semibold text-purple-900 text-sm">{c.name}</p>
-                  <p className="text-xs text-purple-600 mt-1">
+                <div key={i} className="bg-purple-600/10 rounded-lg p-3">
+                  <p className="font-semibold text-purple-900 dark:text-purple-200 text-sm">{c.name}</p>
+                  <p className="text-xs text-purple-600 dark:text-purple-300 mt-1">
                     {isJa ? '価格帯: ' : 'Price: '}{c.price_range}
                   </p>
                 </div>
@@ -115,8 +115,8 @@ export default function MarketabilitySection({
           <CardContent>
             <ul className="space-y-2">
               {usp_points.map((pt, i) => (
-                <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
-                  <span className="mt-0.5 flex-shrink-0 w-5 h-5 bg-green-100 text-green-700 rounded-full text-xs flex items-center justify-center font-bold">
+                <li key={i} className="flex items-start gap-2 text-sm text-foreground">
+                  <span className="mt-0.5 flex-shrink-0 w-5 h-5 bg-green-600/10 text-green-700 dark:text-green-300 rounded-full text-xs flex items-center justify-center font-bold">
                     {i + 1}
                   </span>
                   {pt}
@@ -137,7 +137,7 @@ export default function MarketabilitySection({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-gray-700 leading-relaxed bg-red-50 p-4 rounded-xl">
+            <p className="text-sm text-foreground leading-relaxed bg-red-600/10 p-4 rounded-xl">
               {risk_analysis}
             </p>
           </CardContent>
@@ -156,7 +156,7 @@ export default function MarketabilitySection({
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-gray-700 leading-relaxed">{recommended_sales_timing}</p>
+                <p className="text-sm text-foreground leading-relaxed">{recommended_sales_timing}</p>
               </CardContent>
             </Card>
           )}
@@ -169,7 +169,7 @@ export default function MarketabilitySection({
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-gray-700 leading-relaxed">{expected_roi}</p>
+                <p className="text-sm text-foreground leading-relaxed">{expected_roi}</p>
               </CardContent>
             </Card>
           )}

@@ -34,7 +34,7 @@ function ScoreBar({ score }: { score: number }) {
 
 	return (
 		<div className="flex items-center gap-2">
-			<div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+			<div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
 				<div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${score}%` }} />
 			</div>
 			<span className="text-xs font-bold tabular-nums w-8 text-right">{score}</span>
@@ -59,33 +59,33 @@ export default function LiveCommerceSection({ data }: { data: LiveCommerceData }
 				<CardContent className="p-6">
 					<div className="flex items-center gap-2 mb-5">
 						<Video className="h-5 w-5 text-pink-500" />
-						<h3 className="text-lg font-semibold text-gray-900">{t("liveCommerce.title")}</h3>
+						<h3 className="text-lg font-semibold text-foreground">{t("liveCommerce.title")}</h3>
 					</div>
 
 					{/* Platforms */}
-					<h4 className="text-sm font-semibold text-gray-700 mb-3">{t("liveCommerce.platforms")}</h4>
+					<h4 className="text-sm font-semibold text-foreground mb-3">{t("liveCommerce.platforms")}</h4>
 					<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
 						{data.platforms.map((p, i) => (
-							<div key={p.platform_name || i} className="border border-gray-100 rounded-xl p-4 bg-gray-50/50">
+							<div key={p.platform_name || i} className="border border-border rounded-xl p-4 bg-muted/50">
 								<div className="flex items-start justify-between mb-2">
 									<h5 className="font-semibold text-sm">{p.platform_name}</h5>
-									<Badge className="text-[10px] bg-pink-100 text-pink-800">{p.platform_type}</Badge>
+									<Badge className="text-[10px] bg-pink-600/10 text-pink-800 dark:text-pink-300">{p.platform_type}</Badge>
 								</div>
-								<p className="text-xs text-gray-500 mb-2">{p.target_audience}</p>
+								<p className="text-xs text-muted-foreground mb-2">{p.target_audience}</p>
 								<ScoreBar score={p.fit_score} />
-								<p className="text-xs text-gray-600 leading-relaxed mt-2">{p.reason}</p>
+								<p className="text-xs text-muted-foreground leading-relaxed mt-2">{p.reason}</p>
 							</div>
 						))}
 					</div>
 
 					{/* Product Angle */}
 					{data.recommended_products_angle && (
-						<div className="bg-pink-50 rounded-xl p-4 mb-6">
+						<div className="bg-pink-600/10 rounded-xl p-4 mb-6">
 							<div className="flex items-center gap-2 mb-2">
 								<Target size={14} className="text-pink-600" />
-								<h4 className="text-sm font-semibold text-pink-800">{t("liveCommerce.productAngle")}</h4>
+								<h4 className="text-sm font-semibold text-pink-800 dark:text-pink-300">{t("liveCommerce.productAngle")}</h4>
 							</div>
-							<p className="text-sm text-pink-900 leading-relaxed">{data.recommended_products_angle}</p>
+							<p className="text-sm text-pink-900 dark:text-pink-200 leading-relaxed">{data.recommended_products_angle}</p>
 						</div>
 					)}
 
@@ -94,12 +94,12 @@ export default function LiveCommerceSection({ data }: { data: LiveCommerceData }
 						<div className="mb-6">
 							<div className="flex items-center gap-2 mb-3">
 								<MessageCircle size={14} className="text-blue-600" />
-								<h4 className="text-sm font-semibold text-gray-700">{t("liveCommerce.talkingPoints")}</h4>
+								<h4 className="text-sm font-semibold text-foreground">{t("liveCommerce.talkingPoints")}</h4>
 							</div>
 							<div className="space-y-2">
 								{data.talking_points.map((point, i) => (
-									<div key={i} className="flex items-start gap-2 text-sm text-gray-700">
-										<span className="flex-shrink-0 w-5 h-5 bg-blue-100 text-blue-700 rounded-full text-xs flex items-center justify-center font-bold mt-0.5">
+									<div key={i} className="flex items-start gap-2 text-sm text-foreground">
+										<span className="flex-shrink-0 w-5 h-5 bg-blue-600/10 text-blue-700 dark:text-blue-300 rounded-full text-xs flex items-center justify-center font-bold mt-0.5">
 											{i + 1}
 										</span>
 										{point}
@@ -114,11 +114,11 @@ export default function LiveCommerceSection({ data }: { data: LiveCommerceData }
 						<div>
 							<div className="flex items-center gap-2 mb-3">
 								<Lightbulb size={14} className="text-yellow-600" />
-								<h4 className="text-sm font-semibold text-gray-700">{t("liveCommerce.engagementTips")}</h4>
+								<h4 className="text-sm font-semibold text-foreground">{t("liveCommerce.engagementTips")}</h4>
 							</div>
 							<div className="space-y-2">
 								{data.engagement_tips.map((tip, i) => (
-									<div key={i} className="flex items-start gap-2 text-sm text-gray-600 bg-yellow-50 rounded-lg p-3">
+									<div key={i} className="flex items-start gap-2 text-sm text-muted-foreground bg-yellow-600/10 rounded-lg p-3">
 										<Lightbulb size={14} className="text-yellow-500 mt-0.5 flex-shrink-0" />
 										{tip}
 									</div>
@@ -132,7 +132,7 @@ export default function LiveCommerceSection({ data }: { data: LiveCommerceData }
 			{/* Live Scripts */}
 			<Card>
 				<CardContent className="p-6">
-					<h4 className="text-sm font-semibold text-gray-700 mb-4">{t("liveCommerce.scripts")}</h4>
+					<h4 className="text-sm font-semibold text-foreground mb-4">{t("liveCommerce.scripts")}</h4>
 
 					{/* Tab bar */}
 					<div className="flex gap-2 mb-4">
@@ -144,7 +144,7 @@ export default function LiveCommerceSection({ data }: { data: LiveCommerceData }
 								className={`px-4 py-2 text-xs font-medium rounded-lg transition-all ${
 									activeScript === tab.key
 										? `${tab.color} text-white shadow-sm`
-										: "bg-gray-100 text-gray-600 hover:bg-gray-200"
+										: "bg-muted text-muted-foreground hover:bg-accent"
 								}`}
 							>
 								{t(`liveCommerce.${tab.label}` as "liveCommerce.instagramLive" | "liveCommerce.tiktokLive" | "liveCommerce.youtubeLive")}
@@ -153,8 +153,8 @@ export default function LiveCommerceSection({ data }: { data: LiveCommerceData }
 					</div>
 
 					{/* Script content */}
-					<div className="bg-gray-50 rounded-xl p-5 border border-gray-100">
-						<pre className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap font-sans">
+					<div className="bg-muted rounded-xl p-5 border border-border">
+						<pre className="text-sm text-foreground leading-relaxed whitespace-pre-wrap font-sans">
 							{data.scripts[activeScript]}
 						</pre>
 					</div>

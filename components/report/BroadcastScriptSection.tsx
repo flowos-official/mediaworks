@@ -39,7 +39,7 @@ export default function BroadcastScriptSection({
 	return (
 		<Card>
 			<CardContent className="p-6">
-				<h3 className="text-lg font-semibold text-gray-900 mb-4">
+				<h3 className="text-lg font-semibold text-foreground mb-4">
 					放送スクリプト
 				</h3>
 
@@ -53,7 +53,7 @@ export default function BroadcastScriptSection({
 								className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
 									activeTab === key
 										? "bg-blue-600 text-white"
-										: "bg-gray-100 text-gray-600 hover:bg-gray-200"
+										: "bg-muted text-muted-foreground hover:bg-accent"
 								}`}
 							>
 								{label}
@@ -64,7 +64,7 @@ export default function BroadcastScriptSection({
 					<button
 						type="button"
 						onClick={handleCopy}
-						className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+						className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-muted-foreground bg-muted hover:bg-accent rounded-lg transition-colors"
 					>
 						{copied ? (
 							<>
@@ -83,13 +83,13 @@ export default function BroadcastScriptSection({
 				{TABS.map(({ key, label }) => (
 					<div
 						key={key}
-						className={`bg-gray-50 rounded-lg p-4 ${activeTab !== key ? "hidden" : ""} ${key !== TABS[0].key ? "mt-3" : ""}`}
+						className={`bg-muted rounded-lg p-4 ${activeTab !== key ? "hidden" : ""} ${key !== TABS[0].key ? "mt-3" : ""}`}
 						data-pdf-tab={key}
 					>
 						<p className="hidden pdf-tab-label text-xs font-semibold text-blue-600 mb-2">
 							【{label}スクリプト】
 						</p>
-						<p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
+						<p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
 							{scripts[key] || "スクリプトがまだ生成されていません。"}
 						</p>
 					</div>

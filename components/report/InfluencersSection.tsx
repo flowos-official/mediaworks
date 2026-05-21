@@ -14,11 +14,11 @@ interface Props {
 }
 
 const platformColors: Record<string, string> = {
-  YouTube: 'bg-red-100 text-red-700',
-  Instagram: 'bg-pink-100 text-pink-700',
-  TikTok: 'bg-gray-100 text-gray-700',
-  Twitter: 'bg-sky-100 text-sky-700',
-  X: 'bg-gray-100 text-gray-700',
+  YouTube: 'bg-red-600/10 text-red-700 dark:text-red-300',
+  Instagram: 'bg-pink-600/10 text-pink-700 dark:text-pink-300',
+  TikTok: 'bg-muted text-muted-foreground',
+  Twitter: 'bg-sky-600/10 text-sky-700 dark:text-sky-300',
+  X: 'bg-muted text-muted-foreground',
 };
 
 export default function InfluencersSection({ influencers }: Props) {
@@ -35,17 +35,17 @@ export default function InfluencersSection({ influencers }: Props) {
       <CardContent>
         <div className="space-y-4">
           {influencers.map((inf, i) => (
-            <div key={i} className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl">
+            <div key={i} className="flex items-start gap-4 p-4 bg-muted rounded-xl">
               <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center flex-shrink-0 text-white font-bold text-sm">
                 {inf.name.charAt(0).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-semibold text-gray-900">{inf.name}</span>
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${platformColors[inf.platform] || 'bg-gray-100 text-gray-700'}`}>
+                  <span className="font-semibold text-foreground">{inf.name}</span>
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${platformColors[inf.platform] || 'bg-muted text-muted-foreground'}`}>
                     {inf.platform}
                   </span>
-                  <span className="text-xs text-gray-500">{inf.followers} followers</span>
+                  <span className="text-xs text-muted-foreground">{inf.followers} followers</span>
                   {inf.profile_url && (
                     <a
                       href={inf.profile_url}
@@ -57,7 +57,7 @@ export default function InfluencersSection({ influencers }: Props) {
                     </a>
                   )}
                 </div>
-                <p className="text-sm text-gray-600 mt-1">{inf.match_reason}</p>
+                <p className="text-sm text-muted-foreground mt-1">{inf.match_reason}</p>
               </div>
             </div>
           ))}

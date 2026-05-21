@@ -28,23 +28,23 @@ function FitGauge({ score, label }: { score: number; label: string }) {
 		<div className="flex items-center gap-5">
 			<div
 				className={`w-20 h-20 rounded-full flex flex-col items-center justify-center ${
-					score >= 80 ? "bg-green-50" :
-					score >= 60 ? "bg-blue-50" :
-					score >= 40 ? "bg-yellow-50" : "bg-red-50"
+					score >= 80 ? "bg-green-600/10" :
+					score >= 60 ? "bg-blue-600/10" :
+					score >= 40 ? "bg-yellow-600/10" : "bg-red-600/10"
 				}`}
 			>
 				<span className={`text-2xl font-bold ${
-					score >= 80 ? "text-green-700" :
-					score >= 60 ? "text-blue-700" :
-					score >= 40 ? "text-yellow-700" : "text-red-700"
+					score >= 80 ? "text-green-700 dark:text-green-300" :
+					score >= 60 ? "text-blue-700 dark:text-blue-300" :
+					score >= 40 ? "text-yellow-700 dark:text-yellow-300" : "text-red-700 dark:text-red-300"
 				}`}>
 					{score}
 				</span>
-				<span className="text-[10px] text-gray-500">/100</span>
+				<span className="text-[10px] text-muted-foreground">/100</span>
 			</div>
 			<div>
 				<p className="text-lg font-semibold">{label}</p>
-				<div className="mt-2 h-2 w-48 bg-gray-100 rounded-full overflow-hidden">
+				<div className="mt-2 h-2 w-48 bg-muted rounded-full overflow-hidden">
 					<div className={`h-full rounded-full ${color}`} style={{ width: `${score}%` }} />
 				</div>
 			</div>
@@ -70,7 +70,7 @@ export default function KoreaMarketSection({ koreaMarket }: KoreaMarketSectionPr
 			<CardContent className="p-6">
 				<div className="flex items-center gap-2 mb-5">
 					<Flag className="h-5 w-5 text-red-500" />
-					<h3 className="text-lg font-semibold text-gray-900">{t("koreaMarket.title")}</h3>
+					<h3 className="text-lg font-semibold text-foreground">{t("koreaMarket.title")}</h3>
 				</div>
 
 				{/* Score gauge */}
@@ -81,14 +81,14 @@ export default function KoreaMarketSection({ koreaMarket }: KoreaMarketSectionPr
 				{/* Target products */}
 				{koreaMarket.target_products?.length > 0 && (
 					<div className="mb-5">
-						<p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+						<p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
 							{t("koreaMarket.targetProducts")}
 						</p>
 						<div className="flex flex-wrap gap-2">
 							{koreaMarket.target_products.map((p, i) => (
 								<span
 									key={i}
-									className="text-xs bg-red-50 text-red-700 px-3 py-1 rounded-full font-medium"
+									className="text-xs bg-red-600/10 text-red-700 dark:text-red-300 px-3 py-1 rounded-full font-medium"
 								>
 									{p}
 								</span>
@@ -100,20 +100,20 @@ export default function KoreaMarketSection({ koreaMarket }: KoreaMarketSectionPr
 				{/* Recommended channels */}
 				{koreaMarket.recommended_channels?.length > 0 && (
 					<div className="mb-5">
-						<p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+						<p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
 							{t("koreaMarket.recommendedChannels")}
 						</p>
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 							{koreaMarket.recommended_channels.map((ch, i) => (
-								<div key={ch.channel_name || i} className="bg-gray-50 rounded-xl p-4">
+								<div key={ch.channel_name || i} className="bg-muted rounded-xl p-4">
 									<div className="flex items-start justify-between mb-2">
 										<span className="font-semibold text-sm">{ch.channel_name}</span>
-										<span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+										<span className="text-[10px] bg-blue-600/10 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full font-medium">
 											{ch.target_age}
 										</span>
 									</div>
-									<p className="text-xs text-gray-600 mb-2">{ch.strategy}</p>
-									<p className="text-[11px] text-gray-400">
+									<p className="text-xs text-muted-foreground mb-2">{ch.strategy}</p>
+									<p className="text-[11px] text-muted-foreground">
 										{t("koreaMarket.entryCost")} {ch.estimated_entry_cost}
 									</p>
 								</div>
@@ -124,9 +124,9 @@ export default function KoreaMarketSection({ koreaMarket }: KoreaMarketSectionPr
 
 				{/* Consumer insight */}
 				{koreaMarket.korean_consumer_insight && (
-					<div className="bg-blue-50 rounded-xl p-4">
-						<p className="text-xs font-semibold text-blue-700 mb-1">{t("koreaMarket.consumerInsight")}</p>
-						<p className="text-sm text-blue-800 leading-relaxed">
+					<div className="bg-blue-600/10 rounded-xl p-4">
+						<p className="text-xs font-semibold text-blue-700 dark:text-blue-300 mb-1">{t("koreaMarket.consumerInsight")}</p>
+						<p className="text-sm text-blue-800 dark:text-blue-200 leading-relaxed">
 							{koreaMarket.korean_consumer_insight}
 						</p>
 					</div>
