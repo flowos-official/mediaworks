@@ -17,22 +17,62 @@ export function splitCategoryToKeywords(category: string): string[] {
 }
 
 /**
+ * Tokens that mean "this came from channel X's store" rather than identifying
+ * a product. Stripped before tokenization so a name like "リスタートアイ |
+ * ＴＢＳショッピング" doesn't generate a "TBSショッピング" token that matches
+ * every TBS broadcast title.
+ */
+const TOKENIZE_NOISE_TOKENS = [
+	"TBSショッピング",
+	"ＴＢＳショッピング",
+	"日テレポシュレ",
+	"日本テレビの通販ショッピングサイト",
+	"カンテレSHOPPING",
+	"テレビ通販サイトのカンテレSHOPPING",
+	"ジャパネット公式",
+	"ジャパネット",
+	"japanet",
+	"テレ朝じゅん散歩",
+	"テレ東マート",
+	"ロッピング",
+	"フジDinos",
+	"ABCせのぶら本舗",
+	"ABCウラのウラまで",
+	"らくらく茂",
+	"いちばん本舗",
+	"カチモ",
+	"kachimo",
+	"買いドキ",
+	"通販【ジャパネット公式】",
+	"通販",
+	"公式",
+	"オンラインストア",
+	"特典付き",
+	"送料無料",
+	"特別価格",
+];
+
+/**
  * Tokenize a product name into substrings suitable for ILIKE matching:
+ * - Strip channel-store noise phrases first (TBSショッピング, 日テレポシュレ etc.)
+ *   so they don't generate "branding-only" tokens that match every row from
+ *   the same channel.
  * - Split on whitespace and a small set of punctuation
  * - Drop tokens shorter than 3 characters (catches noise like "x", "ml")
  *   — Japanese tokens of length 2 are kept as a special case via the
  *   length-3 filter only when string is ASCII; full-width chars count
  *   as 1 codepoint each, so 3-char Japanese tokens still survive.
- *   For simplicity, all tokens use the same ≥3 codepoint rule. Short
- *   Japanese names like "セラム" (3 chars) qualify; "30ml" (4) qualifies;
- *   "a" or "b" (1 char) does not.
+ *   For simplicity, all tokens use the same ≥3 codepoint rule.
  * - Keep at most 3 tokens to bound query cost.
  */
 export function tokenizeName(name: string): string[] {
 	if (!name) return [];
-	return name
-		.normalize("NFKC")
-		.split(/[\s・\/／,、|\-]+/)
+	let cleaned = name.normalize("NFKC");
+	for (const noise of TOKENIZE_NOISE_TOKENS) {
+		cleaned = cleaned.replace(new RegExp(noise, "gi"), " ");
+	}
+	return cleaned
+		.split(/[\s・\/／,、|\-【】\[\]＜＞]+/)
 		.map((s) => s.trim())
 		.filter((s) => s.length >= 3)
 		.slice(0, 3);
@@ -201,6 +241,17 @@ export interface CandidateInput {
 	name: string;
 	category: string | null;
 	price_jpy: number | null;
+	/**
+	 * Optional channel slugs (from tvChannel / tvChannelMatches). When
+	 * provided we can look up the candidate's broadcast history in
+	 * historical_broadcasts even WITHOUT a category — channel + product-name
+	 * tokens are sufficient corroboration. This is the path that lets TV-
+	 * channel candidates from Brave site:search (no category attached) gain
+	 * a real popularity signal from the calendar cron's historical_broadcasts
+	 * table (which already ingests ntv, tbs, dinos, japanet, senobura,
+	 * junsanpo, uranoura, txd daily — 8 of the 14 non-broadcast channels).
+	 */
+	tv_channels?: string[];
 }
 
 const PRICE_BAND_RATIO = 0.25;
@@ -224,30 +275,93 @@ export async function fetchMatchingBroadcastRows(
 	whitelistCategories?: string[],
 ): Promise<BroadcastRow[]> {
 	const resolved = whitelistCategories ?? (await normalizeCategory(sb, candidate.category));
-	if (resolved.length === 0) return [];
-
 	const priceBand = priceBandFor(candidate.price_jpy);
 	const nameTokens = tokenizeName(candidate.name);
 	const cutoff = cutoffIso(HISTORICAL_LOOKBACK_DAYS);
 
-	// 1. broadcasts (shopch + qvc). Category exact-match via whitelist IN(...).
-	const bRes = await sb
-		.from("broadcasts")
-		.select("channel, air_date, start_time, program_title, category, product_ids")
-		.gte("air_date", cutoff)
-		.in("category", resolved);
+	// Two paths to find evidence:
+	//  (a) Category-keyed (original): whitelistCategories.length > 0
+	//      Used when the candidate has a resolved category (e.g. enriched
+	//      Rakuten items, items from discovered_products with a tagged
+	//      category).
+	//  (b) Channel-keyed (new): tv_channels.length > 0 AND name tokens ≥ 1
+	//      Used when category is absent but we know the source channel
+	//      (Brave site:search TV-channel candidates). The channel + name
+	//      tokens give us safe corroboration: "this product name appears in
+	//      that specific channel's broadcast history within lookback".
+	const useCategoryPath = resolved.length > 0;
+	const useChannelPath =
+		!useCategoryPath &&
+		(candidate.tv_channels?.length ?? 0) > 0 &&
+		nameTokens.length > 0;
+	if (!useCategoryPath && !useChannelPath) return [];
 
-	if (bRes.error) {
-		console.warn(`[tv-evidence] broadcasts query failed: ${bRes.error.message}`);
-		return [];
+	// 1. broadcasts (shopch + qvc).
+	let bRes: { data: unknown[] | null; error: { message: string } | null } = {
+		data: [],
+		error: null,
+	};
+	// Skip the broadcasts query entirely on the channel-keyed path if no
+	// shopch/qvc channels are involved. The `broadcasts.channel` column is
+	// a Postgres ENUM that rejects sentinel values like "__none__".
+	const broadcastChannelsToQuery = useCategoryPath
+		? null // use category filter, query all channels
+		: (candidate.tv_channels ?? []).filter(
+			(c) => c === "shopch" || c === "qvc",
+		);
+	if (useCategoryPath || (broadcastChannelsToQuery && broadcastChannelsToQuery.length > 0)) {
+		let bQuery = sb
+			.from("broadcasts")
+			.select("channel, air_date, start_time, program_title, category, product_ids")
+			.gte("air_date", cutoff);
+		if (useCategoryPath) {
+			bQuery = bQuery.in("category", resolved);
+		} else if (broadcastChannelsToQuery) {
+			bQuery = bQuery.in("channel", broadcastChannelsToQuery);
+		}
+		bRes = await bQuery;
+		if (bRes.error) {
+			console.warn(`[tv-evidence] broadcasts query failed: ${bRes.error.message}`);
+			return [];
+		}
 	}
 
-	// 2. historical_broadcasts (8 OA channels, date-only, price).
-	const hRes = await sb
-		.from("historical_broadcasts")
-		.select("channel, air_date, product_name, price_jpy, category")
-		.gte("air_date", cutoff)
-		.in("category", resolved);
+	// 2. historical_broadcasts (8 OA channels — japanet/ntv/tbs/dinos/
+	//    senobura/junsanpo/uranoura/txd).
+	let hRes: { data: unknown[] | null; error: { message: string } | null } = {
+		data: [],
+		error: null,
+	};
+	const historicalChannelsToQuery = useCategoryPath
+		? null
+		: (candidate.tv_channels ?? []).filter(
+			(c) => c !== "shopch" && c !== "qvc",
+		);
+	if (useCategoryPath || (historicalChannelsToQuery && historicalChannelsToQuery.length > 0)) {
+		let hQuery = sb
+			.from("historical_broadcasts")
+			.select("channel, air_date, product_name, price_jpy, category")
+			.gte("air_date", cutoff);
+		if (useCategoryPath) {
+			hQuery = hQuery.in("category", resolved);
+		} else if (historicalChannelsToQuery) {
+			hQuery = hQuery.in("channel", historicalChannelsToQuery);
+			// Push name-token match to the DB. 2 years × a channel can be
+			// 10k+ rows — without this filter the implicit ~1000 row limit
+			// drops valid matches before JS-side corroboration ever runs.
+			// Escape PostgREST special chars in tokens (commas, parens).
+			const safeTokens = nameTokens
+				.map((t) => t.replace(/[,()]/g, " ").trim())
+				.filter((t) => t.length >= 3);
+			if (safeTokens.length > 0) {
+				const orClause = safeTokens
+					.map((t) => `product_name.ilike.%${t}%`)
+					.join(",");
+				hQuery = hQuery.or(orClause);
+			}
+		}
+		hRes = await hQuery;
+	}
 
 	if (hRes.error) {
 		console.warn(`[tv-evidence] historical query failed: ${hRes.error.message}`);
@@ -283,6 +397,35 @@ export async function fetchMatchingBroadcastRows(
 		return nameTokens.some((t) => hay.includes(t.toLowerCase()));
 	}
 
+	/**
+	 * Stricter variant for the channel-keyed path. Without a category narrow,
+	 * we need distinctive token overlap to avoid surfacing brand-only or
+	 * generic-noun matches.
+	 *
+	 * Rules:
+	 *   - When the candidate has ≥2 strong tokens (≥4 chars OR contains
+	 *     Latin/digit), require ≥2 of them to be present in the title.
+	 *     This means "nishikawa AiR3D ピロー" matches "nishikawa [AiR3D]ピロー／枕"
+	 *     (both "nishikawa" and "AiR3D" land) but NOT "nishikawa ごろ寝マット"
+	 *     (only "nishikawa" lands — brand alone is not enough).
+	 *   - When the candidate has exactly 1 strong token, require that one.
+	 *   - When there are no strong tokens at all, fall back to any-token
+	 *     match (best we can do).
+	 */
+	function nameMatchesStrict(title: string): boolean {
+		if (nameTokens.length === 0) return false;
+		const hay = title.normalize("NFKC").toLowerCase();
+		const strongTokens = nameTokens.filter(
+			(t) => t.length >= 4 || /[a-z0-9]/i.test(t),
+		);
+		if (strongTokens.length === 0) {
+			return nameTokens.some((t) => hay.includes(t.toLowerCase()));
+		}
+		const hits = strongTokens.filter((t) => hay.includes(t.toLowerCase())).length;
+		const required = strongTokens.length >= 2 ? 2 : 1;
+		return hits >= required;
+	}
+
 	function priceMatches(p: number | null): boolean {
 		if (priceBand === null) return false;
 		if (p === null) return false;
@@ -299,19 +442,20 @@ export async function fetchMatchingBroadcastRows(
 		category: string | null;
 		product_ids: string[] | null;
 	}>) {
-		if (!row.category) continue; // IN(...) already filtered; defensive only
+		// Category-keyed path requires row.category (IN was applied);
+		// channel-keyed path doesn't require it.
+		if (useCategoryPath && !row.category) continue;
 		const inferredPrice =
 			row.channel === "qvc" && row.product_ids?.[0]
 				? qPriceMap.get(row.product_ids[0]) ?? null
 				: null;
-		// Require price OR name corroboration in addition to category, unless
-		// the candidate provided neither (price=null AND no name tokens) — in
-		// which case category alone is the floor.
-		const noCorroborationAvailable = priceBand === null && nameTokens.length === 0;
-		const corroborated =
-			noCorroborationAvailable ||
-			priceMatches(inferredPrice) ||
-			nameMatches(row.program_title);
+		const corroborated = useChannelPath
+			? // Channel-keyed: strict name match required (channel + strong-token = safe)
+				nameMatchesStrict(row.program_title)
+			: // Category-keyed: original logic
+				(priceBand === null && nameTokens.length === 0) ||
+					priceMatches(inferredPrice) ||
+					nameMatches(row.program_title);
 		if (!corroborated) continue;
 		out.push({
 			source: "broadcasts",
@@ -330,12 +474,12 @@ export async function fetchMatchingBroadcastRows(
 		price_jpy: number | null;
 		category: string | null;
 	}>) {
-		if (!row.category) continue; // IN(...) already filtered; defensive only
-		const noCorroborationAvailable = priceBand === null && nameTokens.length === 0;
-		const corroborated =
-			noCorroborationAvailable ||
-			priceMatches(row.price_jpy) ||
-			nameMatches(row.product_name);
+		if (useCategoryPath && !row.category) continue;
+		const corroborated = useChannelPath
+			? nameMatchesStrict(row.product_name)
+			: (priceBand === null && nameTokens.length === 0) ||
+				priceMatches(row.price_jpy) ||
+				nameMatches(row.product_name);
 		if (!corroborated) continue;
 		out.push({
 			source: "historical",
@@ -355,13 +499,19 @@ export async function computeTvEvidence(
 	candidate: CandidateInput,
 ): Promise<TvEvidence | null> {
 	const whitelistCategories = await normalizeCategory(sb, candidate.category);
-	if (whitelistCategories.length === 0) return null;
+	const hasChannelPath =
+		whitelistCategories.length === 0 &&
+		(candidate.tv_channels?.length ?? 0) > 0 &&
+		tokenizeName(candidate.name).length > 0;
+
+	// Bail when neither path is open.
+	if (whitelistCategories.length === 0 && !hasChannelPath) return null;
 
 	const rows = await fetchMatchingBroadcastRows(sb, candidate, whitelistCategories);
 	if (rows.length === 0) return null;
 
 	return aggregateBroadcastRows(rows, {
-		category_keywords: whitelistCategories, // now holds whitelist labels
+		category_keywords: whitelistCategories, // empty[] on the channel-keyed path
 		price_band: priceBandFor(candidate.price_jpy),
 		name_tokens: tokenizeName(candidate.name),
 	});

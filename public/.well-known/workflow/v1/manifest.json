@@ -1,17 +1,6 @@
 {
   "version": "1.0.0",
   "steps": {
-    "node_modules/workflow/dist/internal/builtins.js": {
-      "__builtin_response_array_buffer": {
-        "stepId": "__builtin_response_array_buffer"
-      },
-      "__builtin_response_json": {
-        "stepId": "__builtin_response_json"
-      },
-      "__builtin_response_text": {
-        "stepId": "__builtin_response_text"
-      }
-    },
     "node_modules/workflow/dist/stdlib.js": {
       "fetch": {
         "stepId": "step//workflow@4.2.0-beta.76//fetch"
@@ -37,6 +26,34 @@
         "stepId": "step//./lib/workflows/live-commerce.workflow//saveStrategyStep"
       }
     },
+    "lib/workflows/screenplay.workflow.ts": {
+      "emitProgressStep": {
+        "stepId": "step//./lib/workflows/screenplay.workflow//emitProgressStep"
+      },
+      "generateStep": {
+        "stepId": "step//./lib/workflows/screenplay.workflow//generateStep"
+      },
+      "loadPreviousMarkdownStep": {
+        "stepId": "step//./lib/workflows/screenplay.workflow//loadPreviousMarkdownStep"
+      },
+      "markFailedStep": {
+        "stepId": "step//./lib/workflows/screenplay.workflow//markFailedStep"
+      },
+      "persistStep": {
+        "stepId": "step//./lib/workflows/screenplay.workflow//persistStep"
+      }
+    },
+    "node_modules/workflow/dist/internal/builtins.js": {
+      "__builtin_response_array_buffer": {
+        "stepId": "__builtin_response_array_buffer"
+      },
+      "__builtin_response_json": {
+        "stepId": "__builtin_response_json"
+      },
+      "__builtin_response_text": {
+        "stepId": "__builtin_response_text"
+      }
+    },
     "lib/workflows/md-strategy.workflow.ts": {
       "closeProgressStep": {
         "stepId": "step//./lib/workflows/md-strategy.workflow//closeProgressStep"
@@ -56,23 +73,6 @@
       "saveStrategyStep": {
         "stepId": "step//./lib/workflows/md-strategy.workflow//saveStrategyStep"
       }
-    },
-    "lib/workflows/screenplay.workflow.ts": {
-      "emitProgressStep": {
-        "stepId": "step//./lib/workflows/screenplay.workflow//emitProgressStep"
-      },
-      "generateStep": {
-        "stepId": "step//./lib/workflows/screenplay.workflow//generateStep"
-      },
-      "loadPreviousMarkdownStep": {
-        "stepId": "step//./lib/workflows/screenplay.workflow//loadPreviousMarkdownStep"
-      },
-      "markFailedStep": {
-        "stepId": "step//./lib/workflows/screenplay.workflow//markFailedStep"
-      },
-      "persistStep": {
-        "stepId": "step//./lib/workflows/screenplay.workflow//persistStep"
-      }
     }
   },
   "workflows": {
@@ -85,18 +85,18 @@
         }
       }
     },
-    "lib/workflows/md-strategy.workflow.ts": {
-      "mdStrategyWorkflow": {
-        "workflowId": "workflow//./lib/workflows/md-strategy.workflow//mdStrategyWorkflow",
+    "lib/workflows/screenplay.workflow.ts": {
+      "screenplayWorkflow": {
+        "workflowId": "workflow//./lib/workflows/screenplay.workflow//screenplayWorkflow",
         "graph": {
           "nodes": [],
           "edges": []
         }
       }
     },
-    "lib/workflows/screenplay.workflow.ts": {
-      "screenplayWorkflow": {
-        "workflowId": "workflow//./lib/workflows/screenplay.workflow//screenplayWorkflow",
+    "lib/workflows/md-strategy.workflow.ts": {
+      "mdStrategyWorkflow": {
+        "workflowId": "workflow//./lib/workflows/md-strategy.workflow//mdStrategyWorkflow",
         "graph": {
           "nodes": [],
           "edges": []

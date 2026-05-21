@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
 	// Index idx_discovered_products_tv_evidence_at handles this query.
 	const { data: rows, error } = await sb
 		.from("discovered_products")
-		.select("id, name, category, price_jpy")
+		.select("id, name, category, price_jpy, tv_channel_source")
 		.or(`tv_evidence_at.is.null,tv_evidence_at.lt.${cutoff}`)
 		.limit(MAX_ROWS_PER_RUN);
 
@@ -45,10 +45,14 @@ export async function GET(req: NextRequest) {
 		const evidences = await Promise.all(
 			chunk.map(async (r) => {
 				try {
+					const tvChannels = r.tv_channel_source
+						? r.tv_channel_source.split(",").map((s: string) => s.trim()).filter(Boolean)
+						: undefined;
 					const ev = await computeTvEvidence(sb, {
 						name: r.name,
 						category: r.category,
 						price_jpy: r.price_jpy,
+						tv_channels: tvChannels,
 					});
 					return { id: r.id, ev };
 				} catch (err) {
