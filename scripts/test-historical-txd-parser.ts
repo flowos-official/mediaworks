@@ -51,6 +51,14 @@ function main() {
 		sample.price_is_tax_incl === true || sample.price_is_tax_incl === null,
 		"price_is_tax_incl is true or null",
 	);
+	assert(
+		typeof sample.image_url === "string" && sample.image_url.startsWith("https://"),
+		`image_url is absolute HTTPS (got ${sample.image_url})`,
+	);
+	assert(
+		sample.image_url!.includes("tv-tokyoshop.jp"),
+		`image_url contains tv-tokyoshop.jp host (got ${sample.image_url})`,
+	);
 
 	// Defensive: short-name products should have been skipped
 	const shortNames = rows.filter((r) => r.product_name.length < 3);

@@ -55,6 +55,7 @@ export function txdProductToRow(p: TxdProduct, jstDate: string): HistoricalRow {
 		price_is_tax_incl: min !== null ? true : null,
 		source_url: detailUrl,
 		source_sheet: "live-crawl:txd",
+		image_url: p.PictureCollection?.URL?.[0] ?? null,
 	};
 }
 
