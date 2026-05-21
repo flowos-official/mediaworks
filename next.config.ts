@@ -10,6 +10,22 @@ const nextConfig: NextConfig = {
       bodySizeLimit: '50mb'
     }
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '*.s3.*.amazonaws.com'
+      },
+      {
+        protocol: 'https',
+        hostname: '*.s3.amazonaws.com'
+      },
+      {
+        protocol: 'https',
+        hostname: '*.cloudfront.net'
+      }
+    ]
+  },
   // `@ffmpeg-installer/ffmpeg` does dynamic `require()` for the platform-specific
   // binary (linux-x64/darwin-x64/win32-x64). Next.js Webpack can't statically
   // resolve those — bundling fails with "Module not found". Mark it external

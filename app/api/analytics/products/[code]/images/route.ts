@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServiceClient } from "@/lib/supabase";
 import { requireUser } from "@/lib/auth/require-user";
 
 export async function GET(
@@ -10,7 +9,7 @@ export async function GET(
 	if ("error" in auth) return auth.error;
 
 	const { code } = await params;
-	const supabase = getServiceClient();
+	const supabase = auth.sb;
 
 	const { data, error } = await supabase
 		.from("product_images")

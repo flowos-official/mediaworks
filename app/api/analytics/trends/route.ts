@@ -1,6 +1,5 @@
 import { requireUser } from "@/lib/auth/require-user";
 import { NextRequest, NextResponse } from "next/server";
-import { getServiceClient } from "@/lib/supabase";
 
 export async function GET(request: NextRequest) {
 	// auth: requireUser
@@ -16,7 +15,7 @@ export async function GET(request: NextRequest) {
 		return NextResponse.json({ error: "Invalid year parameter" }, { status: 400 });
 	}
 
-	const supabase = getServiceClient();
+	const supabase = auth.sb;
 
 	const dateFilters = years.map((y) => ({
 		start: `${y}-01-01`,

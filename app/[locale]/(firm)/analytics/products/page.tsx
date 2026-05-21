@@ -9,6 +9,7 @@ import { useAnalyticsFilter } from '@/lib/analytics/firm-filter-context';
 
 export default function ProductsPage() {
   const tg = useTranslations('gallery');
+  const tc = useTranslations('common');
   const { selectedYears } = useAnalyticsFilter();
   const yearParam = selectedYears.join(',');
 
@@ -61,6 +62,8 @@ export default function ProductsPage() {
         setTaichoResult(`${tg('uploadSuccess')} — ${data.imagesUploaded}${tg('images')}`);
         setTaichoCode('');
         setTaichoFile(null);
+        // M7: refresh the products list so newly uploaded images appear immediately
+        fetchData(new AbortController().signal);
       } else {
         setTaichoResult(data.error ?? tg('uploadError'));
       }
@@ -82,7 +85,7 @@ export default function ProductsPage() {
       {loading && (
         <div className="flex items-center justify-center py-20">
           <Loader2 size={24} className="animate-spin text-blue-600" />
-          <span className="ml-2 text-sm text-gray-500">データ読み込み中...</span>
+          <span className="ml-2 text-sm text-gray-500">{tc('loading')}</span>
         </div>
       )}
 
