@@ -39,6 +39,7 @@ function parseJapanet(html: string, jstDate: string): HistoricalRow[] {
 			price_is_tax_incl: null,
 			source_url: null,
 			source_sheet: "live-crawl:japanet",
+			image_url: null,
 		});
 	});
 

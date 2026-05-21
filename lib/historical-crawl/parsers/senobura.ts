@@ -3,6 +3,8 @@ import type { ChannelParser, HistoricalRow, OAChannelSlug } from "../types";
 import { dayOfWeekJp } from "../types";
 import { politeFetch } from "../fetch";
 import { parsePrice } from "../price";
+import { ogImageExtractor } from "../image-extractors/og-image";
+import { mapWithConcurrency } from "../image-extractors/types";
 
 // shop.asahi.co.jp shares one template for SENOBURA and URANADJA.
 //
@@ -85,6 +87,7 @@ export function parseAsahiCategory(
 			price_is_tax_incl: incl,
 			source_url: href ? new URL(href, url).toString() : url,
 			source_sheet: sourceSheet,
+			image_url: null,
 		});
 	});
 
@@ -99,6 +102,11 @@ export const senoburaParser: ChannelParser = {
 	fetchToday: async (jstDate) => {
 		const r = await politeFetch(PAGE_URL);
 		if (!r.ok || !r.body) return [];
-		return parseAsahiCategory(r.body, jstDate, "senobura", PAGE_URL, "live-crawl:senobura");
+		const rows = parseAsahiCategory(r.body, jstDate, "senobura", PAGE_URL, "live-crawl:senobura");
+		await mapWithConcurrency(rows, 5, async (row) => {
+			if (!row.source_url) return;
+			row.image_url = await ogImageExtractor.extract(row.source_url).catch(() => null);
+		});
+		return rows;
 	},
 };

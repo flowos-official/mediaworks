@@ -3,6 +3,8 @@ import type { ChannelParser, HistoricalRow } from "../types";
 import { dayOfWeekJp } from "../types";
 import { politeFetch } from "../fetch";
 import { parsePrice } from "../price";
+import { ogImageExtractor } from "../image-extractors/og-image";
+import { mapWithConcurrency } from "../image-extractors/types";
 
 const PAGE_URL = "https://shopping.tbs.co.jp/tbs/shop/tv_top/kininaru";
 
@@ -30,6 +32,7 @@ function parse(html: string, jstDate: string): HistoricalRow[] {
 			price_is_tax_incl: incl,
 			source_url: href ? new URL(href, PAGE_URL).toString() : PAGE_URL,
 			source_sheet: "live-crawl:tbs",
+			image_url: null,
 		});
 	});
 
@@ -42,6 +45,11 @@ export const tbsParser: ChannelParser = {
 	fetchToday: async (jstDate) => {
 		const r = await politeFetch(PAGE_URL);
 		if (!r.ok || !r.body) return [];
-		return parse(r.body, jstDate);
+		const rows = parse(r.body, jstDate);
+		await mapWithConcurrency(rows, 5, async (row) => {
+			if (!row.source_url) return;
+			row.image_url = await ogImageExtractor.extract(row.source_url).catch(() => null);
+		});
+		return rows;
 	},
 };
