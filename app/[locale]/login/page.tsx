@@ -42,7 +42,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-muted">
       <Card className="w-full max-w-md p-8 space-y-4">
         <h1 className="text-xl font-bold">{t('title')}</h1>
         <form onSubmit={onSubmit} className="space-y-3">
