@@ -14,6 +14,7 @@ import {
 } from "@/lib/rakuten";
 import { getServiceClient } from "@/lib/supabase";
 import { TV_CHANNELS, broadcastsChannelToSlug } from "./tv-channels";
+import { findRakutenCrossMatch } from "./rakuten-crossmatch";
 import type { CategoryPlan, PoolItem, Track } from "./types";
 
 const RAKUTEN_THROTTLE_MS = 1100;
@@ -430,6 +431,15 @@ export async function buildPool(plan: CategoryPlan): Promise<PoolItem[]> {
 	const untagged = allUrlItems.filter(
 		(i) => !i.tvChannel && !(i.tvChannelMatches && i.tvChannelMatches.length > 0),
 	);
+
+	// Cross-match enrichment for TV channel candidates that aren't from the
+	// broadcasts table (= the 13 non-scraped channels). These items publish
+	// no review/popularity signal at the source. When the same product also
+	// listed on Rakuten with reviews, surface that as a proxy popularity.
+	// Cap to avoid hammering Rakuten's 1 req/sec rate limit — first N
+	// TV-tagged items in round-robin order.
+	await enrichTvWithRakutenCrossMatch(tvTagged);
+
 	const interleaved: PoolItem[] = [];
 	const maxLen = Math.max(tvTagged.length, untagged.length);
 	for (let i = 0; i < maxLen; i++) {
@@ -440,6 +450,41 @@ export async function buildPool(plan: CategoryPlan): Promise<PoolItem[]> {
 		`[pool] reorder: tv-tagged=${tvTagged.length} untagged=${untagged.length} passC=${passC.length} (round-robin interleave so both survive slice)`,
 	);
 	return [...interleaved, ...passC];
+}
+
+const CROSSMATCH_CAP = Number(process.env.DISCOVERY_CROSSMATCH_CAP ?? 50);
+const CROSSMATCH_THROTTLE_MS = 1100;
+
+/**
+ * Look up each TV-channel-sourced PoolItem on Rakuten and attach the matching
+ * listing's review data when found. Run sequentially with a 1s throttle to
+ * respect the Rakuten Item Search rate limit. Cap to CROSSMATCH_CAP items per
+ * pool to keep cron runtime bounded.
+ */
+async function enrichTvWithRakutenCrossMatch(items: PoolItem[]): Promise<void> {
+	const targets = items.slice(0, CROSSMATCH_CAP);
+	let matched = 0;
+	for (let i = 0; i < targets.length; i++) {
+		const item = targets[i];
+		try {
+			const match = await findRakutenCrossMatch(item.name);
+			if (match) {
+				item.rakutenCrossMatch = match;
+				matched++;
+			}
+		} catch (err) {
+			console.warn(
+				`[pool] crossmatch "${item.name.slice(0, 40)}" failed:`,
+				err instanceof Error ? err.message : String(err),
+			);
+		}
+		if (i < targets.length - 1) {
+			await new Promise((r) => setTimeout(r, CROSSMATCH_THROTTLE_MS));
+		}
+	}
+	console.log(
+		`[pool] crossmatch: matched ${matched}/${targets.length} TV items to Rakuten listings (cap=${CROSSMATCH_CAP})`,
+	);
 }
 
 export const __test = {

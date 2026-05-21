@@ -35,14 +35,36 @@ async function main() {
 
 	const { data: products, error: pErr } = await sb
 		.from("discovered_products")
-		.select("id, name, product_url, source, tv_channel_source, tv_tier, tv_fit_score, broadcast_tag")
+		.select(
+			"id, name, product_url, source, tv_channel_source, tv_tier, tv_fit_score, broadcast_tag, rakuten_cross_match, tv_evidence",
+		)
 		.eq("session_id", sessionId);
 	if (pErr) {
 		console.error("Product fetch failed:", pErr.message);
 		process.exit(1);
 	}
 
-	const rows = products ?? [];
+	type Row = {
+		id: string;
+		name: string;
+		product_url: string;
+		source: string | null;
+		tv_channel_source: string | null;
+		tv_tier: number | null;
+		tv_fit_score: number | null;
+		broadcast_tag: string | null;
+		rakuten_cross_match: {
+			itemUrl: string;
+			itemName: string;
+			reviewCount: number;
+			reviewAvg: number;
+			priceJpy: number;
+			similarityScore: number;
+		} | null;
+		tv_evidence: { airing_count?: number; recent_30d_count?: number } | null;
+	};
+
+	const rows = (products ?? []) as Row[];
 	console.log(`\n=== Products: ${rows.length} total ===`);
 
 	const bySource = rows.reduce<Record<string, number>>((acc, r) => {
@@ -60,6 +82,29 @@ async function main() {
 
 	const tier1 = rows.filter((r) => r.tv_tier === 0);
 	console.log(`\nTier-1 (TV) count: ${tier1.length}`);
+
+	const tvItems = rows.filter((r) => r.source === "tv_channel");
+	const withCrossMatch = tvItems.filter((r) => r.rakuten_cross_match);
+	const withEvidence = tvItems.filter(
+		(r) => r.tv_evidence && (r.tv_evidence.airing_count ?? 0) > 0,
+	);
+	console.log(`\n=== TV-channel popularity basis (${tvItems.length} items) ===`);
+	console.log(`  with rakuten_cross_match: ${withCrossMatch.length}`);
+	console.log(`  with tv_evidence (放送実績): ${withEvidence.length}`);
+	console.log(
+		`  data-limited (neither):   ${tvItems.length - withCrossMatch.length - withEvidence.length}`,
+	);
+
+	if (withCrossMatch.length > 0) {
+		console.log("\n=== Cross-match samples ===");
+		for (const r of withCrossMatch.slice(0, 5)) {
+			const m = r.rakuten_cross_match!;
+			console.log(`- ${r.name.slice(0, 60)}`);
+			console.log(
+				`    → rakuten: ★${m.reviewAvg.toFixed(1)} (${m.reviewCount}件) ¥${m.priceJpy} [overlap=${m.similarityScore}]`,
+			);
+		}
+	}
 
 	console.log("\n=== First 5 products ===");
 	for (const r of rows.slice(0, 5)) {

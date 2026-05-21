@@ -104,6 +104,28 @@ function ProductCard({ p, idx, onAnalyze, analyzing }: {
 				<span className="bg-gray-50 border border-gray-200 rounded px-1.5 py-0.5">
 					供給 <strong className="text-gray-800">{p.supply_source}</strong>
 				</span>
+				{/* Honest popularity signals — surface the actual data basis for any */}
+				{/* popularity inference, especially on TV-channel candidates whose */}
+				{/* source sites publish no review or sales rank. */}
+				{p.rakuten_cross_match && (
+					<a
+						href={p.rakuten_cross_match.itemUrl}
+						target="_blank"
+						rel="noopener noreferrer"
+						className="bg-red-50 border border-red-200 rounded px-1.5 py-0.5 text-red-700 font-semibold hover:bg-red-100"
+						title={`楽天で同等品出品中: ${p.rakuten_cross_match.itemName} (¥${p.rakuten_cross_match.priceJpy.toLocaleString()})`}
+					>
+						🔗 楽天同等品 ★{p.rakuten_cross_match.reviewAvg.toFixed(1)}({p.rakuten_cross_match.reviewCount})
+					</a>
+				)}
+				{p.source === "tv_channel" && !p.rakuten_cross_match && (
+					<span
+						className="bg-gray-50 border border-gray-200 rounded px-1.5 py-0.5 italic text-gray-500"
+						title="TV局公式サイトはレビュー・販売数を非公開。楽天での同等品も見つからず、popularity データが限定的。"
+					>
+						データ限定
+					</span>
+				)}
 			</div>
 
 			<p className="text-xs text-gray-700 leading-relaxed mb-2">{p.reason}</p>

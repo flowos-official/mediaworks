@@ -31,6 +31,15 @@ export type DiscoveredProductRow = {
 	stock_status: string | null;
 	source: "rakuten" | "brave" | "tv_channel" | "other" | null;
 	tv_channel_source?: string | null;
+	rakuten_cross_match?: {
+		itemUrl: string;
+		itemName: string;
+		reviewCount: number;
+		reviewAvg: number;
+		priceJpy: number;
+		similarityScore: number;
+	} | null;
+	tv_evidence?: { airing_count: number; recent_30d_count: number } | null;
 	enrichment_status?: EnrichmentStatus | null;
 	c_package?: CPackage | null;
 	enrichment_error?: string | null;
@@ -46,14 +55,15 @@ function scoreColor(score: number): string {
 	return "text-red-700 bg-red-100 border-red-300";
 }
 
-// max points per signal — mirrors lib/discovery/curate.ts §採点基準
-// review_signal + purchase_signal は「過去データ寄与」の合算上限 40% (25+15)。
+// max points per signal — mirrors lib/discovery/curate.ts §採点基準 (rebalanced 2026-05-21)
+// review_signal trimmed (25→15) and freed weight redistributed to forward-looking signals
+// (price_fit/purchase_signal 15→20) so TV-channel candidates without review data can compete fairly.
 const SCORE_MAX: Record<keyof Omit<CurationScore, "total">, { max: number; label: string; color: string }> = {
-	review_signal:     { max: 25, label: "レビュー",   color: "bg-amber-400" },
+	review_signal:     { max: 15, label: "レビュー",   color: "bg-amber-400" },
 	tv_category_match: { max: 30, label: "カテゴリ",   color: "bg-purple-400" },
 	trend_signal:      { max: 15, label: "トレンド",   color: "bg-pink-400" },
-	price_fit:         { max: 15, label: "価格",       color: "bg-blue-400" },
-	purchase_signal:   { max: 15, label: "購買",       color: "bg-emerald-400" },
+	price_fit:         { max: 20, label: "価格",       color: "bg-blue-400" },
+	purchase_signal:   { max: 20, label: "購買",       color: "bg-emerald-400" },
 };
 
 function ScoreBreakdownBars({ breakdown }: { breakdown: CurationScore }) {
@@ -274,6 +284,39 @@ export function ProductCard({
 								</span>
 							);
 						})}
+						{/* Honest popularity signals — surface the actual basis for any */}
+						{/* popularity inference on TV-channel candidates that don't publish */}
+						{/* their own review/sales data. */}
+						{product.tv_evidence && product.tv_evidence.airing_count > 0 && (
+							<span
+								className="inline-flex items-center gap-0.5 text-[10px] px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 font-semibold"
+								title={`実測放送 ${product.tv_evidence.airing_count}回 (直近30日 ${product.tv_evidence.recent_30d_count}回)`}
+							>
+								<Tv size={10} />
+								放送実績 {product.tv_evidence.airing_count}回
+							</span>
+						)}
+						{product.rakuten_cross_match && (
+							<a
+								href={product.rakuten_cross_match.itemUrl}
+								target="_blank"
+								rel="noopener noreferrer"
+								className="inline-flex items-center gap-0.5 text-[10px] px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 font-semibold hover:bg-red-100"
+								title={`楽天で同等品が出品されており、その販売実績を popularity proxy として参照しています: ${product.rakuten_cross_match.itemName}`}
+								onClick={(e) => e.stopPropagation()}
+							>
+								<Star size={9} className="fill-red-500 text-red-500" />
+								楽天同等品 ★{product.rakuten_cross_match.reviewAvg.toFixed(1)}({product.rakuten_cross_match.reviewCount})
+							</a>
+						)}
+						{product.source === "tv_channel" && !product.tv_evidence && !product.rakuten_cross_match && (
+							<span
+								className="inline-flex items-center text-[10px] px-2 py-0.5 rounded-full bg-gray-50 text-gray-600 border border-gray-200 italic"
+								title="このTV局公式サイトはレビュー/販売数を非公開。放送実績・楽天同等品ともに見つからず、popularity データが限定的。"
+							>
+								データ限定
+							</span>
+						)}
 					</div>
 					{product.seller_name && (
 						<div className="text-[10px] text-gray-500 truncate" title={product.seller_name}>

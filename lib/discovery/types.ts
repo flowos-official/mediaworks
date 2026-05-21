@@ -52,6 +52,20 @@ export interface PoolItem {
 	tvChannel?: string;
 	/** All channel slugs that surfaced the same product (post-dedup merge). */
 	tvChannelMatches?: string[];
+	/**
+	 * Rakuten cross-match for tv_channel items. The 13 non-broadcast TV
+	 * channels publish no review/popularity data, so we surface the
+	 * equivalent listing on Rakuten (when one exists) as a popularity proxy.
+	 * Set only after `enrichTvChannelWithRakutenCrossMatch` runs.
+	 */
+	rakutenCrossMatch?: {
+		itemUrl: string;
+		itemName: string;
+		reviewCount: number;
+		reviewAvg: number;
+		priceJpy: number;
+		similarityScore: number;
+	};
 }
 
 export interface CurationScore {
