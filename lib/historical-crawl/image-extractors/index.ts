@@ -1,5 +1,6 @@
 import type { OAChannelSlug } from "../types";
 import type { ImageExtractor } from "./types";
+import { ogImageExtractor } from "./og-image";
 
 /**
  * Channel → image extractor mapping. Null = unsupported (japanet) or
@@ -11,12 +12,12 @@ import type { ImageExtractor } from "./types";
  */
 export const IMAGE_EXTRACTORS: Record<OAChannelSlug, ImageExtractor | null> = {
 	japanet: null,
-	junsanpo: null,
-	ntv: null,
-	tbs: null,
-	dinos: null,
-	senobura: null,
-	uranoura: null,
+	junsanpo: ogImageExtractor,
+	ntv: null, // populated in Task 5
+	tbs: ogImageExtractor,
+	dinos: ogImageExtractor,
+	senobura: ogImageExtractor,
+	uranoura: ogImageExtractor,
 	txd: null, // txd populates image_url inside the parser, not via an extractor
 };
 
