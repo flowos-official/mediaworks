@@ -66,7 +66,7 @@ export default function UserMenu({
         </DropdownMenuLabel>
         <ThemeSubmenu />
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={logout}>{t('logout')}</DropdownMenuItem>
+        <DropdownMenuItem onClick={logout}>{t('logout')}</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
