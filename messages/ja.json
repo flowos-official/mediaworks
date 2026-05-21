@@ -511,6 +511,14 @@
       "viewer": "閲覧者"
     }
   },
+  "theme": {
+    "label": "テーマ",
+    "light": "ライト",
+    "dark": "ダーク",
+    "system": "システム",
+    "systemSuffixDark": "ダーク",
+    "systemSuffixLight": "ライト"
+  },
   "admin": {
     "users": {
       "title": "ユーザー管理",

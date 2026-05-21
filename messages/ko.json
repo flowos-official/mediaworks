@@ -511,6 +511,14 @@
       "viewer": "뷰어"
     }
   },
+  "theme": {
+    "label": "테마",
+    "light": "라이트",
+    "dark": "다크",
+    "system": "시스템",
+    "systemSuffixDark": "다크",
+    "systemSuffixLight": "라이트"
+  },
   "admin": {
     "users": {
       "title": "사용자 관리",
