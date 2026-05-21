@@ -17,6 +17,7 @@ export interface OARow {
 	price_is_tax_incl: boolean | null;
 	source_url: string | null;
 	category: string | null;
+	image_url: string | null;
 }
 
 function formatPrice(row: OARow): string {
@@ -41,6 +42,20 @@ export default function OABroadcastListItem({ row }: { row: OARow }) {
 				<span className="shrink-0 font-mono text-[11px] text-gray-700 w-10 text-right tabular-nums pt-0.5">
 					{row.start_time ? formatTime(row.start_time) : "—"}
 				</span>
+				{row.image_url ? (
+					<img
+						src={row.image_url}
+						alt=""
+						className="shrink-0 w-12 h-12 object-cover rounded border border-gray-100"
+						loading="lazy"
+						onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+					/>
+				) : (
+					<div
+						className="shrink-0 w-12 h-12 rounded bg-gray-50 border border-gray-100"
+						aria-hidden="true"
+					/>
+				)}
 				<span
 					className={`shrink-0 inline-block px-1.5 py-0.5 rounded text-[10px] font-medium border ${badge}`}
 				>

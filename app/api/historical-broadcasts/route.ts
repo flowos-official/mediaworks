@@ -26,6 +26,7 @@ export interface HistoricalBroadcastRow {
 	price_is_tax_incl: boolean | null;
 	source_url: string | null;
 	category: string | null;
+	image_url: string | null;
 }
 
 export async function GET(req: NextRequest) {
@@ -64,7 +65,7 @@ export async function GET(req: NextRequest) {
 	let q = auth.sb
 		.from("historical_broadcasts")
 		.select(
-			"id,channel,air_date,day_of_week,start_time,product_name,price_text,price_jpy,price_is_tax_incl,source_url,category",
+			"id,channel,air_date,day_of_week,start_time,product_name,price_text,price_jpy,price_is_tax_incl,source_url,category,image_url",
 			{ count: "exact" },
 		)
 		.order("air_date", { ascending: false })
