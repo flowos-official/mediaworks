@@ -96,6 +96,17 @@ function poolItemToCandidate(
 
 /**
  * Curate a pool into N candidates via Gemini.
+ *
+ * Single unified call with a source-neutral scoring rubric: items without
+ * published review data (typical of TV-channel official-store pages) are
+ * not penalized — they're scored on intrinsic product merit (category fit,
+ * price fit, demo potential, trend signal). This replaced an earlier
+ * approach that forced a 70/30 TV-vs-rakuten ratio per call — mechanical
+ * quotas didn't reflect actual product quality. The pool ordering (TV-
+ * tagged items round-robin-interleaved into the upstream pool builder)
+ * still guarantees TV candidates reach the sample window; from there it's
+ * a free-merit selection.
+ *
  * Returns candidates sorted by tvFitScore DESC.
  */
 export async function curatePool(
@@ -139,29 +150,33 @@ export async function curatePool(
 以下の商品プールから上位${requestCount}個を選び、各商品を評価してください。
 ${contextBlock}
 
+【プール出典について — 重要】
+プールには楽天/Amazon 由来の商品と、TV放送局公式オンラインショップ (japanet/shop.ntv.co.jp/dinos/ropping/kachimo 等) 由来の商品が混在している。
+TV放送局公式サイト由来の商品はレビュー数/評価を公開していないことが多い (★?, 0件と表示される)。これは「データ欠落」であって「品質低」ではない。放送局のバイヤーが既にオンエア候補として選定した時点で強い社会的証明であり、レビュー欠落を理由に減点しないこと。
+
 【多様性ルール — 厳守】
 同じ seed_keyword (pool に "seed=..." で記載) から選ぶのは最大 ${PER_SEED_CAP}個まで。
 例: "包丁 セット" seed の高評価商品が5件あっても、選ぶのは3件まで。残り枠は他の seed から埋める。
 目的: 単一カテゴリに偏らず、TV通販の商品バリエーションを確保する。
 
-【採点基準 (合計0-100)】
-- review_signal (0-25): レビュー評価と数の総合強度。評価(★)を最優先、件数は補強。
-  * ★4.5以上 × 100件以上 → 22-25 (強い社会的証明)
-  * ★4.5以上 × 50-99件 → 18-22
-  * ★4.0-4.4 × 100件以上 → 16-20
-  * ★4.0-4.4 × 50-99件 → 12-16
-  * ★3.5-3.9 × 件数問わず → 6-10 (件数が多くても中評価は中止まり)
-  * ★3.0-3.4 × 件数問わず → 2-6 (低評価は件数多くても減点)
-  * ★3.0未満 → 0-2 (件数多くてもキャップ、どれだけ売れていても品質懸念)
-  * ★? または 5件未満 → 0-3 (データ不足)
-- tv_category_match (0-30): Context実績カテゴリとの一致 (一致=30, 隣接=15, 不一致=0)
+【採点基準 (合計0-100) — ソース中立】
+- review_signal (0-15): 公開レビューがある場合のみ評価。レビュー無しは0ではなく7のニュートラル値 (情報無し=減点ではない)。
+  * ★4.5以上 × 100件以上 → 14-15
+  * ★4.5以上 × 50-99件 → 11-13
+  * ★4.0-4.4 × 50件以上 → 9-11
+  * ★3.5-3.9 → 5-8
+  * ★3.0-3.4 → 3-5
+  * ★3.0未満 (具体的に低評価) → 0-2
+  * ★? / 0件 / レビュー非公開 → **7 (ニュートラル — TV放送局公式サイトでは通常)**
+- tv_category_match (0-30): Context実績カテゴリとの一致 (一致=30, 隣接=15, 不一致=0) — 最重要シグナル
 - trend_signal (0-15): 日本市場のトレンド信号の強さ。季節性シグナル適用可。
-- price_fit (0-15): Context別価格帯ゾーンに近いほど高い
-- purchase_signal (0-15): Context別の購買トリガー (実演映え or SNS拡散性)
+- price_fit (0-20): Context別価格帯ゾーンに近いほど高い (TVデモ衝動買い帯=20, 隣接=10, 外れ=0)
+- purchase_signal (0-20): Context別の購買トリガー (実演映え or SNS拡散性) — 商品名/カテゴリから推定
 
-【ヒストリカル上限 — 必守】
-review_signal + purchase_signal の合計は 40 を超えないこと (= 過去データ寄与は全体スコアの 40% 上限)。両者は構造的に最大 25+15=40 だが、この境界を明示する。残り 60+ 点は forward-looking シグナル (tv_category_match / trend_signal / price_fit) から確保する。
-${seasonalHint}
+【スコアリング哲学 — 厳守】
+- forward-looking シグナル (tv_category_match + price_fit + purchase_signal = 70点) を主軸に、過去データ (review_signal + trend_signal = 30点) は補助。
+- レビュー欠落で機械的に減点しない。商品の TV/EC 適性そのもので競わせる。
+- 結果のソース分布 (楽天:TV) は質次第で自然に決まる。${seasonalHint}
 
 【除外すべき特性 (採点せず応答から除外)】
 - 単価¥500未満の消耗品
@@ -190,11 +205,11 @@ ${poolList}
       "is_tv_applicable": true,
       "is_live_applicable": true,
       "score_breakdown": {
-        "review_signal": <0-25>,
+        "review_signal": <0-15>,
         "tv_category_match": <0-30>,
         "trend_signal": <0-15>,
-        "price_fit": <0-15>,
-        "purchase_signal": <0-15>,
+        "price_fit": <0-20>,
+        "purchase_signal": <0-20>,
         "total": <合計>
       }
     }
