@@ -25,6 +25,7 @@ import {
 } from "@/lib/strategy/discover-intent";
 import { attributeSource } from "@/lib/strategy/source-attribution";
 import { TV_CHANNELS } from "@/lib/discovery/tv-channels";
+import { findRakutenCrossMatch } from "@/lib/discovery/rakuten-crossmatch";
 
 // ---------------------------------------------------------------------------
 // Gemini client
@@ -443,6 +444,14 @@ export interface StrategyContext {
 		pool_source?: "discovery_pool" | "fresh_search" | "seed" | "research";
 		discovered_product_id?: string;
 		tv_channel_source?: string | null;
+		rakuten_cross_match?: {
+			itemUrl: string;
+			itemName: string;
+			reviewCount: number;
+			reviewAvg: number;
+			priceJpy: number;
+			similarityScore: number;
+		} | null;
 	}>;
 	recommendCategory?: string;
 	recommendTargetMarket?: string;
@@ -531,6 +540,14 @@ type DiscoveryPoolItem = {
 	tv_channel_source?: string | null;
 	c_package?: Record<string, unknown> | null;
 	tv_evidence?: import("@/lib/discovery/types").TvEvidence | null;
+	rakuten_cross_match?: {
+		itemUrl: string;
+		itemName: string;
+		reviewCount: number;
+		reviewAvg: number;
+		priceJpy: number;
+		similarityScore: number;
+	};
 };
 
 // ---------------------------------------------------------------------------
@@ -854,6 +871,36 @@ export async function discoverNewProducts(
 				}
 			});
 
+			// Cross-match enrichment: for each tv_channel candidate, try to find
+			// the same product on Rakuten (review data = popularity proxy). The
+			// 13 non-broadcast TV channels publish no review/sales data, so this
+			// is the only honest popularity signal we can attach. Throttled by
+			// Rakuten's 1 req/sec limit; cap to keep the strategy-generation
+			// latency bounded.
+			const CROSSMATCH_CAP = Number(process.env.DISCOVERY_CROSSMATCH_CAP ?? 30);
+			const crossMatchTargets = tvSub.slice(0, CROSSMATCH_CAP);
+			let crossMatched = 0;
+			for (let i = 0; i < crossMatchTargets.length; i++) {
+				try {
+					const m = await findRakutenCrossMatch(crossMatchTargets[i].name);
+					if (m) {
+						crossMatchTargets[i].rakuten_cross_match = m;
+						crossMatched++;
+					}
+				} catch (err) {
+					console.warn(
+						`[discover] crossmatch "${crossMatchTargets[i].name.slice(0, 40)}" failed:`,
+						err instanceof Error ? err.message : String(err),
+					);
+				}
+				if (i < crossMatchTargets.length - 1) {
+					await new Promise((r) => setTimeout(r, 1100));
+				}
+			}
+			console.log(
+				`[discover] crossmatch: matched ${crossMatched}/${crossMatchTargets.length} TV items to Rakuten listings (cap=${CROSSMATCH_CAP})`,
+			);
+
 			// Round-robin merge: tv → web → rakuten so underrepresented sources
 			// land in the first slots and survive the POOL_CAP slice below.
 			const pool: DiscoveryPoolItem[] = [];
@@ -936,6 +983,14 @@ export async function discoverNewProducts(
 			const evidenceLine = p.tv_evidence
 				? `\n   実測放送: ${p.tv_evidence.airing_count}回 (直近30日 ${p.tv_evidence.recent_30d_count}回, 中央値 ¥${p.tv_evidence.price_jpy?.median ?? "—"})`
 				: "";
+			// Honest popularity proxy for non-broadcast TV-channel items: if a
+			// matching Rakuten listing was found via cross-match, surface its
+			// review data so Gemini doesn't have to guess.
+			const crossMatchLine = p.rakuten_cross_match
+				? `\n   楽天同等品: ★${p.rakuten_cross_match.reviewAvg.toFixed(1)}(${p.rakuten_cross_match.reviewCount}件) ¥${p.rakuten_cross_match.priceJpy}`
+				: (p.source === "tv_channel" && !p.tv_evidence)
+					? `\n   (TV局公式 — レビュー非公開・データ限定)`
+					: "";
 			// IMPORTANT: keep `名称:` on its own line so Gemini cannot conflate
 			// the source tag with the product name. Earlier versions emitted
 			// "0. 🟣[発掘プール…] 名前…" on one line and Gemini occasionally
@@ -945,7 +1000,7 @@ export async function discoverNewProducts(
    名称: ${p.name}${priceLine}${reviewBadge}
    キーワード: ${p.keyword}
    URL: ${p.source_url}
-   抜粋: ${p.snippet}${evidenceLine}`;
+   抜粋: ${p.snippet}${evidenceLine}${crossMatchLine}`;
 		})
 		.join("\n");
 
@@ -1170,6 +1225,7 @@ ${salesStrategyFooter}`;
 				discovered_product_id: p.discovered_product_id,
 				source: p.source,
 				tv_channel_source: p.tv_channel_source,
+				rakuten_cross_match: p.rakuten_cross_match ?? null,
 			})),
 		);
 		console.log(

@@ -13,6 +13,7 @@ import type {
 	CategoryPlan,
 	Context,
 	CurationScore,
+	PoolItem,
 	SessionStatus,
 } from "./types";
 
@@ -102,6 +103,7 @@ export interface DiscoveredProductRow {
 	context: Candidate["context"];
 	tv_evidence: import("./types").TvEvidence | null;
 	tv_evidence_at: string | null;
+	rakuten_cross_match: PoolItem["rakutenCrossMatch"] | null;
 }
 
 export function buildDiscoveredProductRows(
@@ -135,6 +137,7 @@ export function buildDiscoveredProductRows(
 		context: candidate.context,
 		tv_evidence: tvEvidence,
 		tv_evidence_at: tvEvidence ? new Date().toISOString() : null,
+		rakuten_cross_match: candidate.rakutenCrossMatch ?? null,
 	}));
 }
 

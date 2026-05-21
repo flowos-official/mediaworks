@@ -35,6 +35,14 @@ export interface AttributablePoolItem {
 	// any "rakuten|web" guess Gemini makes when it copies an item).
 	source?: "rakuten" | "web" | "brave" | "tv_channel" | "other";
 	tv_channel_source?: string | null;
+	rakuten_cross_match?: {
+		itemUrl: string;
+		itemName: string;
+		reviewCount: number;
+		reviewAvg: number;
+		priceJpy: number;
+		similarityScore: number;
+	} | null;
 }
 
 export interface AttributableGeminiItem {
@@ -149,6 +157,10 @@ export function attributeSource<T extends AttributableGeminiItem>(
 		}
 		(merged as { tv_channel_source?: string | null }).tv_channel_source =
 			hit.tv_channel_source ?? null;
+		if (hit.rakuten_cross_match !== undefined) {
+			(merged as { rakuten_cross_match?: unknown }).rakuten_cross_match =
+				hit.rakuten_cross_match;
+		}
 		return merged;
 	}
 

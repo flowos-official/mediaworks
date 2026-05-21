@@ -66,7 +66,18 @@ function formatPoolLine(p: PoolItem, i: number): string {
 	const review = `★${p.reviewAvg ?? "?"}(${p.reviewCount ?? 0})`;
 	const seller = p.sellerName ?? "?";
 	const name = p.name.slice(0, 80);
-	return `${i}: ${name} | ${price} | ${review} | ${seller} | seed=${p.seedKeyword} | track=${p.track}`;
+
+	// Honesty layer for TV channel candidates: append the actual basis for any
+	// popularity inference so Gemini doesn't have to guess.
+	let popularityNote = "";
+	if (p.rakutenCrossMatch) {
+		const m = p.rakutenCrossMatch;
+		popularityNote = ` | 楽天同等品マッチ:★${m.reviewAvg?.toFixed(1) ?? "?"}(${m.reviewCount ?? 0}件) ¥${m.priceJpy}`;
+	} else if (p.tvChannel || (p.tvChannelMatches && p.tvChannelMatches.length > 0)) {
+		popularityNote = ` | TV局公式(データ限定:レビュー非公開)`;
+	}
+
+	return `${i}: ${name} | ${price} | ${review} | ${seller} | seed=${p.seedKeyword} | track=${p.track}${popularityNote}`;
 }
 
 interface CurationFields {
@@ -152,7 +163,14 @@ ${contextBlock}
 
 【プール出典について — 重要】
 プールには楽天/Amazon 由来の商品と、TV放送局公式オンラインショップ (japanet/shop.ntv.co.jp/dinos/ropping/kachimo 等) 由来の商品が混在している。
-TV放送局公式サイト由来の商品はレビュー数/評価を公開していないことが多い (★?, 0件と表示される)。これは「データ欠落」であって「品質低」ではない。放送局のバイヤーが既にオンエア候補として選定した時点で強い社会的証明であり、レビュー欠落を理由に減点しないこと。
+TV放送局公式サイト由来の商品はレビュー数/評価を公開していない (★?, 0件)。これは「データ欠落」であって「品質低」ではない。各候補の末尾に出典に応じたメタ情報を付与している:
+- "楽天同等品マッチ:★X.X(N件) ¥Y" — 同じ商品が楽天にも出品されており、その楽天レビューが popularity proxy として使える。TV局価格と楽天価格のレンジも確認可能。
+- "TV局公式(データ限定:レビュー非公開)" — クロスマッチも見つからなかった商品。放送局が選定済みという事実のみが品質シグナル。score を控えめに (review_signal=5付近のニュートラル)。
+
+【スコアリング指針 — 出典別】
+- 楽天本体プール: 自前レビューを使用
+- TV局 + 楽天マッチあり: 楽天マッチのレビューを使用 (TV局選定済みボーナスも実質含まれる)
+- TV局 + マッチなし: review_signal は 5 ニュートラル (データ限定を honest に反映、決して 9 や 12 を与えないこと)。TVカテゴリ一致 / 実演適合性 / トレンドなどの forward-looking シグナルで競わせる。
 
 【多様性ルール — 厳守】
 同じ seed_keyword (pool に "seed=..." で記載) から選ぶのは最大 ${PER_SEED_CAP}個まで。
