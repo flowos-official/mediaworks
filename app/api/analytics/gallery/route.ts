@@ -1,6 +1,5 @@
 import { requireUser } from "@/lib/auth/require-user";
 import { NextRequest, NextResponse } from "next/server";
-import { getServiceClient } from "@/lib/supabase";
 
 export async function GET(request: NextRequest) {
 	// auth: requireUser
@@ -10,7 +9,7 @@ export async function GET(request: NextRequest) {
 	const { searchParams } = new URL(request.url);
 	const search = searchParams.get("search") ?? "";
 
-	const supabase = getServiceClient();
+	const supabase = auth.sb;
 
 	// Get all products that have images, with their first image as thumbnail
 	const { data: imageProducts, error: imgError } = await supabase

@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, Loader2, Package, Truck, ShieldCheck, BarChart3, HelpCircle, Tag, FileText, ImageIcon, Users, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -122,12 +123,14 @@ export default function ProductDetailModal({
   productCode: string;
   onClose: () => void;
 }) {
+  const t = useTranslations('productDetailModal');
   const [data, setData] = useState<ProductDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ModalTab>('overview');
   const [images, setImages] = useState<ImageData[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const lightboxRef = useRef<HTMLDivElement | null>(null);
 
   // Lock body scroll while modal is open
   useEffect(() => {
@@ -135,6 +138,13 @@ export default function ProductDetailModal({
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = prev; };
   }, []);
+
+  // Focus the lightbox dialog when it opens (a11y).
+  useEffect(() => {
+    if (lightboxIndex !== null) {
+      lightboxRef.current?.focus();
+    }
+  }, [lightboxIndex]);
 
   useEffect(() => {
     setLoading(true);
@@ -161,13 +171,13 @@ export default function ProductDetailModal({
   const isViewer = data?.viewer === true;
 
   const tabs: { key: ModalTab; label: string; icon: typeof Package }[] = [
-    { key: 'overview', label: '概要', icon: BarChart3 },
-    { key: 'sku', label: 'SKU・FAQ', icon: Tag },
-    { key: 'logistics', label: '物流・規定', icon: Truck },
+    { key: 'overview', label: t('tabs.overview'), icon: BarChart3 },
+    { key: 'sku', label: t('tabs.sku'), icon: Tag },
+    { key: 'logistics', label: t('tabs.logistics'), icon: Truck },
     // 社外秘 tab is hidden for viewer role
-    ...(isViewer ? [] : [{ key: 'confidential' as ModalTab, label: '社外秘', icon: ShieldCheck }]),
-    { key: 'contacts', label: '取引先', icon: Users },
-    { key: 'images', label: '商品画像', icon: ImageIcon },
+    ...(isViewer ? [] : [{ key: 'confidential' as ModalTab, label: t('tabs.confidential'), icon: ShieldCheck }]),
+    { key: 'contacts', label: t('tabs.contacts'), icon: Users },
+    { key: 'images', label: t('tabs.images'), icon: ImageIcon },
   ];
 
   return (
@@ -252,7 +262,7 @@ export default function ProductDetailModal({
                           onClick={() => setActiveTab('images')}
                           className="shrink-0 w-24 h-24 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center text-xs text-gray-500 hover:bg-gray-100"
                         >
-                          +{images.length - 10}枚
+                          {t('moreImages', { count: images.length - 10 })}
                         </button>
                       )}
                     </div>
@@ -261,12 +271,12 @@ export default function ProductDetailModal({
                   {/* KPI — 総粗利 hidden for viewer */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {([
-                      { label: '総売上', value: formatYen(data.summary.totalRevenue) },
+                      { label: t('kpi.totalRevenue'), value: formatYen(data.summary.totalRevenue) },
                       data.summary.totalProfit != null
-                        ? { label: '総粗利', value: formatYen(data.summary.totalProfit) }
+                        ? { label: t('kpi.totalProfit'), value: formatYen(data.summary.totalProfit) }
                         : null,
-                      { label: '週平均', value: `${data.summary.avgWeeklyQuantity}個` },
-                      { label: '販売週数', value: `${data.summary.weekCount}週` },
+                      { label: t('kpi.weeklyAvg'), value: t('kpi.weeklyAvgValue', { count: data.summary.avgWeeklyQuantity }) },
+                      { label: t('kpi.weekCount'), value: t('kpi.weekCountValue', { count: data.summary.weekCount }) },
                     ].filter((x): x is { label: string; value: string } => x !== null)).map((kpi) => (
                       <div key={kpi.label} className="bg-gray-50 rounded-xl p-3 text-center">
                         <div className="text-[10px] text-gray-500 uppercase">{kpi.label}</div>
@@ -279,7 +289,7 @@ export default function ProductDetailModal({
                   <Card className="border-gray-200">
                     <CardHeader className="pb-1">
                       <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-                        <BarChart3 size={14} /> 週別売上推移
+                        <BarChart3 size={14} /> {t('sections.weeklyRevenue')}
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -304,7 +314,7 @@ export default function ProductDetailModal({
                               width={50}
                             />
                             <Tooltip
-                              formatter={(value: unknown) => [`¥${Number(value).toLocaleString()}`, '売上']}
+                              formatter={(value: unknown) => [`¥${Number(value).toLocaleString()}`, t('chartTooltipRevenue')]}
                               contentStyle={{ fontSize: 11, borderRadius: 8 }}
                             />
                             <Area type="monotone" dataKey="revenue" stroke="#3b82f6" fill="url(#modalRevGrad)" strokeWidth={2} />
@@ -319,7 +329,7 @@ export default function ProductDetailModal({
                     <Card className="border-gray-200">
                       <CardHeader className="pb-1">
                         <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-                          <Package size={14} /> 商品情報
+                          <Package size={14} /> {t('sections.productInfo')}
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-3">
@@ -328,7 +338,7 @@ export default function ProductDetailModal({
                         )}
                         {d.set_contents && d.set_contents.length > 0 && (
                           <div className="p-3 bg-gray-50 rounded-lg">
-                            <span className="text-[10px] font-semibold text-gray-500 uppercase">セット内容</span>
+                            <span className="text-[10px] font-semibold text-gray-500 uppercase">{t('setContents')}</span>
                             <ul className="mt-1 space-y-0.5">
                               {d.set_contents.map((item, i) => (
                                 <li key={i} className="text-xs text-gray-600">• {item}</li>
@@ -338,20 +348,20 @@ export default function ProductDetailModal({
                         )}
                         {/* Product specs grid */}
                         <div className="grid grid-cols-2 gap-x-6 gap-y-1">
-                          <InfoRow label="商品Gr番号" value={d.product_gr_number} />
-                          <InfoRow label="製造国" value={d.manufacturing_country} />
-                          <InfoRow label="商品サイズ" value={d.product_size} />
-                          <InfoRow label="内容量" value={d.content_volume} />
-                          <InfoRow label="材質・成分" value={d.materials} />
-                          <InfoRow label="商品形態" value={d.product_form} />
-                          <InfoRow label="販売元" value={d.sales_company} />
-                          <InfoRow label="説明書" value={d.has_manual} />
-                          <InfoRow label="保証書" value={d.has_warranty} />
-                          <InfoRow label="消費期限" value={d.expiry_info} />
+                          <InfoRow label={t('specs.productGrNumber')} value={d.product_gr_number} />
+                          <InfoRow label={t('specs.manufacturingCountry')} value={d.manufacturing_country} />
+                          <InfoRow label={t('specs.productSize')} value={d.product_size} />
+                          <InfoRow label={t('specs.contentVolume')} value={d.content_volume} />
+                          <InfoRow label={t('specs.materials')} value={d.materials} />
+                          <InfoRow label={t('specs.productForm')} value={d.product_form} />
+                          <InfoRow label={t('specs.salesCompany')} value={d.sales_company} />
+                          <InfoRow label={t('specs.hasManual')} value={d.has_manual} />
+                          <InfoRow label={t('specs.hasWarranty')} value={d.has_warranty} />
+                          <InfoRow label={t('specs.expiryInfo')} value={d.expiry_info} />
                         </div>
                         {d.web_description && (
                           <div className="p-3 bg-blue-50 rounded-lg">
-                            <span className="text-[10px] font-semibold text-blue-600 uppercase">WEB説明</span>
+                            <span className="text-[10px] font-semibold text-blue-600 uppercase">{t('webDescription')}</span>
                             <p className="text-xs text-gray-700 mt-1 leading-relaxed whitespace-pre-line">{d.web_description}</p>
                           </div>
                         )}
@@ -361,11 +371,8 @@ export default function ProductDetailModal({
 
                   {!d && (
                     <div className="py-4 px-5 text-sm bg-amber-50 border border-amber-200 rounded-xl">
-                      <p className="font-medium text-amber-700">台帳ファイル未連携</p>
-                      <p className="text-amber-600 text-xs mt-1">
-                        E:\mediaworks フォルダ内に該当する台帳ファイルが見つかりませんでした。
-                        台帳ファイルをアップロードするか、ファイル名の表記揺れを確認してください。
-                      </p>
+                      <p className="font-medium text-amber-700">{t('ledgerMissing.title')}</p>
+                      <p className="text-amber-600 text-xs mt-1">{t('ledgerMissing.description')}</p>
                     </div>
                   )}
                 </>
@@ -377,20 +384,20 @@ export default function ProductDetailModal({
                   {d.skus && d.skus.length > 0 ? (
                     <Card className="border-gray-200">
                       <CardHeader className="pb-1">
-                        <CardTitle className="text-sm font-semibold">SKU展開 ({d.skus.length}種)</CardTitle>
+                        <CardTitle className="text-sm font-semibold">{t('sku.title')} ({t('sku.count', { count: d.skus.length })})</CardTitle>
                       </CardHeader>
                       <CardContent className="p-0">
                         <div className="overflow-x-auto">
                           <table className="w-full text-xs">
                             <thead>
                               <tr className="border-b border-gray-100 text-gray-500">
-                                <th className="text-left px-4 py-2">#</th>
-                                <th className="text-left px-4 py-2">商品名</th>
-                                <th className="text-left px-4 py-2">色</th>
-                                <th className="text-left px-4 py-2">サイズ</th>
-                                <th className="text-right px-4 py-2">税込価格</th>
-                                <th className="text-right px-4 py-2">税抜価格</th>
-                                <th className="text-right px-4 py-2">送料</th>
+                                <th className="text-left px-4 py-2">{t('sku.cols.index')}</th>
+                                <th className="text-left px-4 py-2">{t('sku.cols.name')}</th>
+                                <th className="text-left px-4 py-2">{t('sku.cols.color')}</th>
+                                <th className="text-left px-4 py-2">{t('sku.cols.size')}</th>
+                                <th className="text-right px-4 py-2">{t('sku.cols.priceIncl')}</th>
+                                <th className="text-right px-4 py-2">{t('sku.cols.priceExcl')}</th>
+                                <th className="text-right px-4 py-2">{t('sku.cols.shipping')}</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -411,7 +418,7 @@ export default function ProductDetailModal({
                       </CardContent>
                     </Card>
                   ) : (
-                    <div className="text-center py-6 text-sm text-gray-400">SKUデータなし</div>
+                    <div className="text-center py-6 text-sm text-gray-400">{t('sku.empty')}</div>
                   )}
 
                   {/* FAQ */}
@@ -419,14 +426,14 @@ export default function ProductDetailModal({
                     <Card className="border-gray-200">
                       <CardHeader className="pb-1">
                         <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-                          <HelpCircle size={14} /> よくあるお問い合わせ ({d.faq.length}件)
+                          <HelpCircle size={14} /> {t('faq.title')} ({t('faq.count', { count: d.faq.length })})
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-3">
                         {d.faq.map((item, i) => (
                           <div key={i} className="border-l-2 border-blue-200 pl-3">
-                            <div className="text-xs font-semibold text-gray-800">Q: {item.question}</div>
-                            <div className="text-xs text-gray-600 mt-0.5">A: {item.answer}</div>
+                            <div className="text-xs font-semibold text-gray-800">{t('faq.questionPrefix')} {item.question}</div>
+                            <div className="text-xs text-gray-600 mt-0.5">{t('faq.answerPrefix')} {item.answer}</div>
                           </div>
                         ))}
                       </CardContent>
@@ -438,29 +445,29 @@ export default function ProductDetailModal({
                     <Card className="border-gray-200">
                       <CardHeader className="pb-1">
                         <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-                          <FileText size={14} /> 使用情報
+                          <FileText size={14} /> {t('usage.title')}
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-2">
                         {d.intended_use && (
                           <div>
-                            <span className="text-[10px] font-semibold text-gray-500 uppercase">用途</span>
+                            <span className="text-[10px] font-semibold text-gray-500 uppercase">{t('usage.intendedUse')}</span>
                             <p className="text-xs text-gray-700 mt-0.5 whitespace-pre-line">{d.intended_use}</p>
                           </div>
                         )}
                         {d.not_for_use && (
                           <div>
-                            <span className="text-[10px] font-semibold text-red-500 uppercase">使用不可対象</span>
+                            <span className="text-[10px] font-semibold text-red-500 uppercase">{t('usage.notForUse')}</span>
                             <p className="text-xs text-gray-700 mt-0.5 whitespace-pre-line">{d.not_for_use}</p>
                           </div>
                         )}
                         <div className="grid grid-cols-2 gap-x-6 gap-y-1">
-                          <InfoRow label="使用量目安" value={d.usage_amount} />
-                          <InfoRow label="使用期限" value={d.shelf_life} />
+                          <InfoRow label={t('usage.usageAmount')} value={d.usage_amount} />
+                          <InfoRow label={t('usage.shelfLife')} value={d.shelf_life} />
                         </div>
                         {d.emergency_treatment && (
                           <div className="p-2.5 bg-red-50 border border-red-100 rounded-lg">
-                            <span className="text-[10px] font-semibold text-red-600 uppercase">応急処置</span>
+                            <span className="text-[10px] font-semibold text-red-600 uppercase">{t('usage.emergency')}</span>
                             <p className="text-xs text-gray-700 mt-0.5 whitespace-pre-line">{d.emergency_treatment}</p>
                           </div>
                         )}
@@ -469,7 +476,7 @@ export default function ProductDetailModal({
                   )}
 
                   {!d.skus && !d.faq && !d.intended_use && (
-                    <div className="text-center py-6 text-sm text-gray-400">SKU・FAQデータなし</div>
+                    <div className="text-center py-6 text-sm text-gray-400">{t('skuFaqEmpty')}</div>
                   )}
                 </>
               )}
@@ -480,20 +487,20 @@ export default function ProductDetailModal({
                   <Card className="border-gray-200">
                     <CardHeader className="pb-1">
                       <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-                        <Truck size={14} /> 配送・梱包情報
+                        <Truck size={14} /> {t('logistics.title')}
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <InfoRow label="配送会社" value={d.shipping_company} />
-                      <InfoRow label="梱包サイズ" value={d.package_size ? `${d.package_size} cm` : null} />
-                      <InfoRow label="重量" value={d.package_weight != null ? `${d.package_weight} kg` : null} />
-                      <InfoRow label="梱包形態" value={d.package_type} />
-                      <InfoRow label="ラッピング" value={d.wrapping} />
-                      <InfoRow label="メーカー品番" value={d.maker_part_number} />
-                      {d.shipping_notes && <InfoRow label="配送備考" value={d.shipping_notes} />}
+                      <InfoRow label={t('logistics.shippingCompany')} value={d.shipping_company} />
+                      <InfoRow label={t('logistics.packageSize')} value={d.package_size ? `${d.package_size} cm` : null} />
+                      <InfoRow label={t('logistics.weight')} value={d.package_weight != null ? `${d.package_weight} kg` : null} />
+                      <InfoRow label={t('logistics.packageType')} value={d.package_type} />
+                      <InfoRow label={t('logistics.wrapping')} value={d.wrapping} />
+                      <InfoRow label={t('logistics.makerPartNumber')} value={d.maker_part_number} />
+                      {d.shipping_notes && <InfoRow label={t('logistics.shippingNotes')} value={d.shipping_notes} />}
                       {d.jan_codes && d.jan_codes.length > 0 && (
                         <div className="flex items-start gap-2 py-1">
-                          <span className="text-gray-500 text-xs min-w-[90px] shrink-0">JANコード</span>
+                          <span className="text-gray-500 text-xs min-w-[90px] shrink-0">{t('logistics.janCodes')}</span>
                           <div className="flex flex-wrap gap-1">
                             {d.jan_codes.map((code) => (
                               <span key={code} className="font-mono text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-700">{code}</span>
@@ -507,14 +514,14 @@ export default function ProductDetailModal({
                   <Card className="border-gray-200">
                     <CardHeader className="pb-1">
                       <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-                        <FileText size={14} /> 返品・交換・ケア
+                        <FileText size={14} /> {t('policy.title')}
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <InfoRow label="返品" value={d.return_policy} />
-                      <InfoRow label="交換" value={d.exchange_policy} />
-                      <InfoRow label="お手入れ" value={d.care_instructions} />
-                      <InfoRow label="返品基準" value={d.return_criteria} />
+                      <InfoRow label={t('policy.returnPolicy')} value={d.return_policy} />
+                      <InfoRow label={t('policy.exchangePolicy')} value={d.exchange_policy} />
+                      <InfoRow label={t('policy.careInstructions')} value={d.care_instructions} />
+                      <InfoRow label={t('policy.returnCriteria')} value={d.return_criteria} />
                     </CardContent>
                   </Card>
 
@@ -522,34 +529,34 @@ export default function ProductDetailModal({
                   {(d.web_sales_info || d.payment_methods || d.shipping_fees) && (
                     <Card className="border-gray-200">
                       <CardHeader className="pb-1">
-                        <CardTitle className="text-sm font-semibold">WEB販売・決済情報</CardTitle>
+                        <CardTitle className="text-sm font-semibold">{t('web.title')}</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-2">
                         {d.web_sales_info && (
                           <div className="grid grid-cols-2 gap-x-6 gap-y-1">
-                            <InfoRow label="WEB販売" value={d.web_sales_info.enabled ? '〇' : '-'} />
-                            <InfoRow label="WEB商品名" value={d.web_sales_info.web_product_name} />
-                            <InfoRow label="ECカテゴリ" value={d.web_sales_info.category} />
-                            <InfoRow label="クーポン" value={d.web_sales_info.coupon} />
-                            <InfoRow label="ポイント対象" value={d.web_sales_info.point_target} />
+                            <InfoRow label={t('web.enabled')} value={d.web_sales_info.enabled ? '〇' : '-'} />
+                            <InfoRow label={t('web.productName')} value={d.web_sales_info.web_product_name} />
+                            <InfoRow label={t('web.category')} value={d.web_sales_info.category} />
+                            <InfoRow label={t('web.coupon')} value={d.web_sales_info.coupon} />
+                            <InfoRow label={t('web.pointTarget')} value={d.web_sales_info.point_target} />
                           </div>
                         )}
                         {d.payment_methods && (
                           <div className="flex items-center gap-2 py-1">
-                            <span className="text-gray-500 text-xs min-w-[90px] shrink-0">支払方法</span>
+                            <span className="text-gray-500 text-xs min-w-[90px] shrink-0">{t('web.paymentMethod')}</span>
                             <div className="flex gap-1">
-                              {d.payment_methods.cash_on_delivery && <Badge variant="secondary" className="text-[9px]">代引き</Badge>}
-                              {d.payment_methods.credit && <Badge variant="secondary" className="text-[9px]">クレジット</Badge>}
-                              {d.payment_methods.deferred && <Badge variant="secondary" className="text-[9px]">後払い</Badge>}
+                              {d.payment_methods.cash_on_delivery && <Badge variant="secondary" className="text-[9px]">{t('web.cod')}</Badge>}
+                              {d.payment_methods.credit && <Badge variant="secondary" className="text-[9px]">{t('web.credit')}</Badge>}
+                              {d.payment_methods.deferred && <Badge variant="secondary" className="text-[9px]">{t('web.deferred')}</Badge>}
                             </div>
                           </div>
                         )}
                         {d.shipping_fees && (
                           <div className="grid grid-cols-2 gap-x-6 gap-y-1">
-                            <InfoRow label="TV送料" value={d.shipping_fees.tv_shipping ? `¥${d.shipping_fees.tv_shipping}` : null} />
-                            <InfoRow label="EC送料" value={d.shipping_fees.ec_shipping ? `¥${d.shipping_fees.ec_shipping}` : null} />
-                            <InfoRow label="EC代引手数料" value={d.shipping_fees.ec_cod_fee ? `¥${d.shipping_fees.ec_cod_fee}` : null} />
-                            <InfoRow label="EC後払手数料" value={d.shipping_fees.ec_deferred_fee ? `¥${d.shipping_fees.ec_deferred_fee}` : null} />
+                            <InfoRow label={t('web.tvShipping')} value={d.shipping_fees.tv_shipping ? `¥${d.shipping_fees.tv_shipping}` : null} />
+                            <InfoRow label={t('web.ecShipping')} value={d.shipping_fees.ec_shipping ? `¥${d.shipping_fees.ec_shipping}` : null} />
+                            <InfoRow label={t('web.ecCodFee')} value={d.shipping_fees.ec_cod_fee ? `¥${d.shipping_fees.ec_cod_fee}` : null} />
+                            <InfoRow label={t('web.ecDeferredFee')} value={d.shipping_fees.ec_deferred_fee ? `¥${d.shipping_fees.ec_deferred_fee}` : null} />
                           </div>
                         )}
                       </CardContent>
@@ -559,7 +566,7 @@ export default function ProductDetailModal({
                   {d.usage_notes && d.usage_notes.length > 0 && (
                     <Card className="border-yellow-200 bg-yellow-50/30">
                       <CardHeader className="pb-1">
-                        <CardTitle className="text-sm font-semibold text-yellow-700">使用上の注意</CardTitle>
+                        <CardTitle className="text-sm font-semibold text-yellow-700">{t('usageNotesTitle')}</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <ul className="space-y-1">
@@ -582,19 +589,19 @@ export default function ProductDetailModal({
                   <Card className="border-orange-200 bg-orange-50/30">
                     <CardHeader className="pb-1">
                       <CardTitle className="text-sm font-semibold text-orange-700 flex items-center gap-1.5">
-                        <ShieldCheck size={14} /> 仕入・原価情報
+                        <ShieldCheck size={14} /> {t('confidential.priceTitle')}
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="grid grid-cols-2 gap-4 mb-3">
                         <div className="bg-white rounded-lg p-3 text-center border border-orange-100">
-                          <div className="text-[10px] text-gray-500">仕入価格(税抜)</div>
+                          <div className="text-[10px] text-gray-500">{t('confidential.costPrice')}</div>
                           <div className="text-xl font-bold text-gray-900">
                             {d.cost_price != null ? `¥${d.cost_price.toLocaleString()}` : '-'}
                           </div>
                         </div>
                         <div className="bg-white rounded-lg p-3 text-center border border-orange-100">
-                          <div className="text-[10px] text-gray-500">仕入率</div>
+                          <div className="text-[10px] text-gray-500">{t('confidential.wholesaleRate')}</div>
                           <div className="text-xl font-bold text-gray-900">
                             {d.wholesale_rate != null ? `${d.wholesale_rate.toFixed(1)}%` : '-'}
                           </div>
@@ -603,12 +610,12 @@ export default function ProductDetailModal({
                       <div className="grid grid-cols-2 gap-x-6 gap-y-1">
                         {d.sales_period && (
                           <>
-                            <InfoRow label="販売開始" value={d.sales_period.start} />
-                            <InfoRow label="販売終了" value={d.sales_period.end} />
+                            <InfoRow label={t('confidential.salesStart')} value={d.sales_period.start} />
+                            <InfoRow label={t('confidential.salesEnd')} value={d.sales_period.end} />
                           </>
                         )}
-                        <InfoRow label="発注単位" value={d.order_unit} />
-                        <InfoRow label="リードタイム" value={d.lead_time} />
+                        <InfoRow label={t('confidential.orderUnit')} value={d.order_unit} />
+                        <InfoRow label={t('confidential.leadTime')} value={d.lead_time} />
                       </div>
                     </CardContent>
                   </Card>
@@ -616,21 +623,21 @@ export default function ProductDetailModal({
                   {/* Manufacturer */}
                   <Card className="border-gray-200">
                     <CardHeader className="pb-1">
-                      <CardTitle className="text-sm font-semibold">製造・供給元</CardTitle>
+                      <CardTitle className="text-sm font-semibold">{t('manufacturer.title')}</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <InfoRow label="メーカー" value={d.manufacturer} />
-                      <InfoRow label="製造国" value={d.manufacturer_country} />
-                      <InfoRow label="サプライヤー" value={d.supplier} />
-                      <InfoRow label="TXD担当" value={d.txd_manager} />
+                      <InfoRow label={t('manufacturer.name')} value={d.manufacturer} />
+                      <InfoRow label={t('manufacturer.country')} value={d.manufacturer_country} />
+                      <InfoRow label={t('manufacturer.supplier')} value={d.supplier} />
+                      <InfoRow label={t('manufacturer.txdManager')} value={d.txd_manager} />
                       {d.sales_channels && (
                         <div className="flex items-center gap-2 py-1">
-                          <span className="text-gray-500 text-xs min-w-[90px] shrink-0">販売媒体</span>
+                          <span className="text-gray-500 text-xs min-w-[90px] shrink-0">{t('manufacturer.salesChannels')}</span>
                           <div className="flex gap-1">
-                            {d.sales_channels.tv && <Badge variant="secondary" className="text-[9px]">TV</Badge>}
-                            {d.sales_channels.ec && <Badge variant="secondary" className="text-[9px]">EC</Badge>}
-                            {d.sales_channels.paper && <Badge variant="secondary" className="text-[9px]">紙</Badge>}
-                            {d.sales_channels.other && <Badge variant="secondary" className="text-[9px]">その他</Badge>}
+                            {d.sales_channels.tv && <Badge variant="secondary" className="text-[9px]">{t('manufacturer.tv')}</Badge>}
+                            {d.sales_channels.ec && <Badge variant="secondary" className="text-[9px]">{t('manufacturer.ec')}</Badge>}
+                            {d.sales_channels.paper && <Badge variant="secondary" className="text-[9px]">{t('manufacturer.paper')}</Badge>}
+                            {d.sales_channels.other && <Badge variant="secondary" className="text-[9px]">{t('manufacturer.other')}</Badge>}
                           </div>
                         </div>
                       )}
@@ -641,14 +648,14 @@ export default function ProductDetailModal({
                   {d.supplier_contact && (
                     <Card className="border-gray-200">
                       <CardHeader className="pb-1">
-                        <CardTitle className="text-sm font-semibold">取引先連絡先</CardTitle>
+                        <CardTitle className="text-sm font-semibold">{t('supplierContact.title')}</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <InfoRow label="会社名" value={d.supplier_contact.company} />
-                        <InfoRow label="担当者" value={d.supplier_contact.person} />
-                        <InfoRow label="TEL" value={d.supplier_contact.tel} />
-                        <InfoRow label="FAX" value={d.supplier_contact.fax} />
-                        <InfoRow label="メール" value={d.supplier_contact.email} />
+                        <InfoRow label={t('supplierContact.company')} value={d.supplier_contact.company} />
+                        <InfoRow label={t('supplierContact.person')} value={d.supplier_contact.person} />
+                        <InfoRow label={t('supplierContact.tel')} value={d.supplier_contact.tel} />
+                        <InfoRow label={t('supplierContact.fax')} value={d.supplier_contact.fax} />
+                        <InfoRow label={t('supplierContact.email')} value={d.supplier_contact.email} />
                       </CardContent>
                     </Card>
                   )}
@@ -662,15 +669,15 @@ export default function ProductDetailModal({
                   {d.supplier_contact && (
                     <Card className="border-gray-200">
                       <CardHeader className="pb-1">
-                        <CardTitle className="text-sm font-semibold">営業部門</CardTitle>
+                        <CardTitle className="text-sm font-semibold">{t('contacts.salesDept')}</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <InfoRow label="会社名" value={d.supplier_contact.company} />
-                        <InfoRow label="担当者" value={d.supplier_contact.person} />
-                        <InfoRow label="TEL" value={d.supplier_contact.tel} />
-                        <InfoRow label="FAX" value={d.supplier_contact.fax} />
-                        <InfoRow label="メール" value={d.supplier_contact.email} />
-                        <InfoRow label="住所" value={d.supplier_address} />
+                        <InfoRow label={t('supplierContact.company')} value={d.supplier_contact.company} />
+                        <InfoRow label={t('supplierContact.person')} value={d.supplier_contact.person} />
+                        <InfoRow label={t('supplierContact.tel')} value={d.supplier_contact.tel} />
+                        <InfoRow label={t('supplierContact.fax')} value={d.supplier_contact.fax} />
+                        <InfoRow label={t('supplierContact.email')} value={d.supplier_contact.email} />
+                        <InfoRow label={t('contacts.address')} value={d.supplier_address} />
                       </CardContent>
                     </Card>
                   )}
@@ -679,14 +686,14 @@ export default function ProductDetailModal({
                   {d.order_contact && (
                     <Card className="border-gray-200">
                       <CardHeader className="pb-1">
-                        <CardTitle className="text-sm font-semibold">発注書送付先</CardTitle>
+                        <CardTitle className="text-sm font-semibold">{t('contacts.orderForm')}</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <InfoRow label="部門" value={d.order_contact.department} />
-                        <InfoRow label="担当者" value={d.order_contact.person} />
-                        <InfoRow label="TEL" value={d.order_contact.tel} />
-                        <InfoRow label="FAX" value={d.order_contact.fax} />
-                        <InfoRow label="メール" value={d.order_contact.email} />
+                        <InfoRow label={t('contacts.department')} value={d.order_contact.department} />
+                        <InfoRow label={t('supplierContact.person')} value={d.order_contact.person} />
+                        <InfoRow label={t('supplierContact.tel')} value={d.order_contact.tel} />
+                        <InfoRow label={t('supplierContact.fax')} value={d.order_contact.fax} />
+                        <InfoRow label={t('supplierContact.email')} value={d.order_contact.email} />
                       </CardContent>
                     </Card>
                   )}
@@ -695,14 +702,14 @@ export default function ProductDetailModal({
                   {d.inquiry_contact && (
                     <Card className="border-gray-200">
                       <CardHeader className="pb-1">
-                        <CardTitle className="text-sm font-semibold">問合せ先</CardTitle>
+                        <CardTitle className="text-sm font-semibold">{t('contacts.inquiry')}</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <InfoRow label="部門" value={d.inquiry_contact.department} />
-                        <InfoRow label="担当者" value={d.inquiry_contact.person} />
-                        <InfoRow label="TEL" value={d.inquiry_contact.tel} />
-                        <InfoRow label="FAX" value={d.inquiry_contact.fax} />
-                        <InfoRow label="メール" value={d.inquiry_contact.email} />
+                        <InfoRow label={t('contacts.department')} value={d.inquiry_contact.department} />
+                        <InfoRow label={t('supplierContact.person')} value={d.inquiry_contact.person} />
+                        <InfoRow label={t('supplierContact.tel')} value={d.inquiry_contact.tel} />
+                        <InfoRow label={t('supplierContact.fax')} value={d.inquiry_contact.fax} />
+                        <InfoRow label={t('supplierContact.email')} value={d.inquiry_contact.email} />
                       </CardContent>
                     </Card>
                   )}
@@ -711,13 +718,13 @@ export default function ProductDetailModal({
                   {d.return_destination && (
                     <Card className="border-orange-200 bg-orange-50/30">
                       <CardHeader className="pb-1">
-                        <CardTitle className="text-sm font-semibold text-orange-700">返品商品送付先</CardTitle>
+                        <CardTitle className="text-sm font-semibold text-orange-700">{t('contacts.returnDest')}</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <InfoRow label="会社名" value={d.return_destination.company} />
-                        <InfoRow label="担当者" value={d.return_destination.person} />
-                        <InfoRow label="TEL" value={d.return_destination.tel} />
-                        <InfoRow label="住所" value={d.return_destination.address} />
+                        <InfoRow label={t('supplierContact.company')} value={d.return_destination.company} />
+                        <InfoRow label={t('supplierContact.person')} value={d.return_destination.person} />
+                        <InfoRow label={t('supplierContact.tel')} value={d.return_destination.tel} />
+                        <InfoRow label={t('contacts.address')} value={d.return_destination.address} />
                       </CardContent>
                     </Card>
                   )}
@@ -726,19 +733,19 @@ export default function ProductDetailModal({
                   {d.shipper_info && (
                     <Card className="border-gray-200">
                       <CardHeader className="pb-1">
-                        <CardTitle className="text-sm font-semibold">出荷元</CardTitle>
+                        <CardTitle className="text-sm font-semibold">{t('contacts.shipper')}</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <InfoRow label="会社名" value={d.shipper_info.company} />
-                        <InfoRow label="担当者" value={d.shipper_info.person} />
-                        <InfoRow label="TEL" value={d.shipper_info.tel} />
-                        <InfoRow label="メール" value={d.shipper_info.email} />
+                        <InfoRow label={t('supplierContact.company')} value={d.shipper_info.company} />
+                        <InfoRow label={t('supplierContact.person')} value={d.shipper_info.person} />
+                        <InfoRow label={t('supplierContact.tel')} value={d.shipper_info.tel} />
+                        <InfoRow label={t('supplierContact.email')} value={d.shipper_info.email} />
                       </CardContent>
                     </Card>
                   )}
 
                   {!d.supplier_contact && !d.order_contact && !d.return_destination && !d.shipper_info && (
-                    <div className="text-center py-6 text-sm text-gray-400">取引先データなし</div>
+                    <div className="text-center py-6 text-sm text-gray-400">{t('contacts.empty')}</div>
                   )}
                 </div>
               )}
@@ -748,11 +755,11 @@ export default function ProductDetailModal({
                 <>
                   {images.length === 0 && (
                     <div className="py-4 px-5 text-sm bg-amber-50 border border-amber-200 rounded-xl">
-                      <p className="font-medium text-amber-700">商品画像なし</p>
+                      <p className="font-medium text-amber-700">{t('images.emptyTitle')}</p>
                       <p className="text-amber-600 text-xs mt-1">
                         {!d
-                          ? '台帳ファイルが未連携のため画像がありません。'
-                          : '台帳ファイルに画像が含まれていないか、画像抽出に失敗しました。'}
+                          ? t('images.emptyNoLedger')
+                          : t('images.emptyExtractionFailed')}
                       </p>
                     </div>
                   )}
@@ -760,7 +767,7 @@ export default function ProductDetailModal({
                     const grouped = new Map<string, { img: ImageData; flatIndex: number }[]>();
                     for (let fi = 0; fi < images.length; fi++) {
                       const img = images[fi];
-                      const key = img.sheet_name ?? '未分類';
+                      const key = img.sheet_name ?? t('images.uncategorized');
                       if (!grouped.has(key)) grouped.set(key, []);
                       grouped.get(key)!.push({ img, flatIndex: fi });
                     }
@@ -769,7 +776,7 @@ export default function ProductDetailModal({
                         <CardHeader className="pb-1">
                           <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
                             <ImageIcon size={14} /> {sheetName}
-                            <span className="text-xs font-normal text-gray-400">({items.length}枚)</span>
+                            <span className="text-xs font-normal text-gray-400">({t('images.count', { count: items.length })})</span>
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -800,18 +807,23 @@ export default function ProductDetailModal({
               {/* Lightbox with prev/next */}
               {lightboxIndex !== null && images[lightboxIndex] && (
                 <div
-                  className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70"
+                  ref={lightboxRef}
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label={t('lightboxLabel')}
+                  className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 outline-none"
                   onClick={() => setLightboxIndex(null)}
                   onKeyDown={(e) => {
                     if (e.key === 'ArrowLeft' && lightboxIndex > 0) setLightboxIndex(lightboxIndex - 1);
                     if (e.key === 'ArrowRight' && lightboxIndex < images.length - 1) setLightboxIndex(lightboxIndex + 1);
                     if (e.key === 'Escape') setLightboxIndex(null);
                   }}
-                  tabIndex={0}
+                  tabIndex={-1}
                 >
                   {/* Close */}
                   <button
                     type="button"
+                    aria-label={t('lightboxClose')}
                     onClick={() => setLightboxIndex(null)}
                     className="absolute top-4 right-4 bg-white/90 rounded-full p-1.5 shadow-lg hover:bg-white z-10"
                   >
@@ -827,6 +839,7 @@ export default function ProductDetailModal({
                   {lightboxIndex > 0 && (
                     <button
                       type="button"
+                      aria-label={t('lightboxPrev')}
                       onClick={(e) => { e.stopPropagation(); setLightboxIndex(lightboxIndex - 1); }}
                       className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/90 rounded-full p-2 shadow-lg hover:bg-white z-10"
                     >
@@ -846,6 +859,7 @@ export default function ProductDetailModal({
                   {lightboxIndex < images.length - 1 && (
                     <button
                       type="button"
+                      aria-label={t('lightboxNext')}
                       onClick={(e) => { e.stopPropagation(); setLightboxIndex(lightboxIndex + 1); }}
                       className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/90 rounded-full p-2 shadow-lg hover:bg-white z-10"
                     >
@@ -858,17 +872,15 @@ export default function ProductDetailModal({
               {/* No detail fallback for non-overview tabs */}
               {activeTab !== 'overview' && activeTab !== 'images' && !d && (
                 <div className="py-4 px-5 text-sm bg-amber-50 border border-amber-200 rounded-xl">
-                  <p className="font-medium text-amber-700">台帳ファイル未連携</p>
-                  <p className="text-amber-600 text-xs mt-1">
-                    該当する台帳ファイルが見つからないため、このタブのデータを表示できません。
-                  </p>
+                  <p className="font-medium text-amber-700">{t('ledgerMissing.title')}</p>
+                  <p className="text-amber-600 text-xs mt-1">{t('ledgerMissing.tabDescription')}</p>
                 </div>
               )}
 
               {/* Data source footer */}
               {d?.source_file && (
                 <div className="text-[10px] text-gray-400 text-right pt-2 border-t border-gray-100">
-                  出典: {d.source_file} {d.file_date ? `(${d.file_date})` : ''}
+                  {t('source')}: {d.source_file} {d.file_date ? `(${d.file_date})` : ''}
                 </div>
               )}
             </>

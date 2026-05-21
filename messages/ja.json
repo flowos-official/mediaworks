@@ -1,4 +1,7 @@
 {
+  "common": {
+    "loading": "読み込み中..."
+  },
   "nav": {
     "groups": {
       "firm": "自社",
@@ -7,10 +10,22 @@
       "admin": "管理"
     },
     "groupHeader": {
-      "firm": { "title": "自社データ", "subtitle": "自社販売データの分析" },
-      "market": { "title": "市場リサーチ", "subtitle": "競合と市場機会の把握" },
-      "produce": { "title": "制作", "subtitle": "コンテンツ制作支援" },
-      "admin": { "title": "管理", "subtitle": "システム運用と権限管理" }
+      "firm": {
+        "title": "自社データ",
+        "subtitle": "自社販売データの分析"
+      },
+      "market": {
+        "title": "市場リサーチ",
+        "subtitle": "競合と市場機会の把握"
+      },
+      "produce": {
+        "title": "制作",
+        "subtitle": "コンテンツ制作支援"
+      },
+      "admin": {
+        "title": "管理",
+        "subtitle": "システム運用と権限管理"
+      }
     },
     "firm": {
       "overview": "売上概要",
@@ -75,9 +90,18 @@
     "platform": "プラットフォーム",
     "followers": "フォロワー",
     "matchReason": "マッチング理由",
-    "jan": "1月", "feb": "2月", "mar": "3月", "apr": "4月",
-    "may": "5月", "jun": "6月", "jul": "7月", "aug": "8月",
-    "sep": "9月", "oct": "10月", "nov": "11月", "dec": "12月",
+    "jan": "1月",
+    "feb": "2月",
+    "mar": "3月",
+    "apr": "4月",
+    "may": "5月",
+    "jun": "6月",
+    "jul": "7月",
+    "aug": "8月",
+    "sep": "9月",
+    "oct": "10月",
+    "nov": "11月",
+    "dec": "12月",
     "supplier": "サプライヤー",
     "estimatedCost": "推定コスト",
     "moq": "最小注文数",
@@ -199,7 +223,12 @@
     "uploadError": "エラーが発生しました",
     "images": "枚",
     "allSheets": "全シート",
-    "close": "閉じる"
+    "close": "閉じる",
+    "loadError": "読み込みに失敗しました",
+    "lightboxLabel": "画像プレビュー",
+    "lightboxClose": "閉じる",
+    "lightboxPrev": "前の画像",
+    "lightboxNext": "次の画像"
   },
   "recommend": {
     "tabUpload": "商品分析",
@@ -426,7 +455,12 @@
     "subtitle": "商品ごとに、生放送さながらの台本を生成・改稿できます。",
     "new": "新規作成",
     "noneYet": "まだ台本はありません。「新規作成」から始めてください。",
-    "status": { "pending": "待機", "generating": "生成中", "ready": "完成", "failed": "失敗" },
+    "status": {
+      "pending": "待機",
+      "generating": "生成中",
+      "ready": "完成",
+      "failed": "失敗"
+    },
     "form": {
       "productName": "商品名",
       "category": "カテゴリ",
@@ -560,6 +594,180 @@
         "duration": "所要",
         "channels": "チャネル別件数 (赤=失敗/-50%以下、橙=-80%以下)"
       }
+    }
+  },
+  "overviewCards": {
+    "totalRevenue": "総売上",
+    "totalProfit": "総粗利",
+    "totalQuantity": "総受注数",
+    "productCount": "商品数"
+  },
+  "productDetailModal": {
+    "tabs": {
+      "overview": "概要",
+      "sku": "SKU・FAQ",
+      "logistics": "物流・規定",
+      "confidential": "社外秘",
+      "contacts": "取引先",
+      "images": "商品画像"
+    },
+    "moreImages": "+{count}枚",
+    "kpi": {
+      "totalRevenue": "総売上",
+      "totalProfit": "総粗利",
+      "weeklyAvg": "週平均",
+      "weeklyAvgValue": "{count}個",
+      "weekCount": "販売週数",
+      "weekCountValue": "{count}週"
+    },
+    "sections": {
+      "weeklyRevenue": "週別売上推移",
+      "productInfo": "商品情報"
+    },
+    "chartTooltipRevenue": "売上",
+    "setContents": "セット内容",
+    "specs": {
+      "productGrNumber": "商品Gr番号",
+      "manufacturingCountry": "製造国",
+      "productSize": "商品サイズ",
+      "contentVolume": "内容量",
+      "materials": "材質・成分",
+      "productForm": "商品形態",
+      "salesCompany": "販売元",
+      "hasManual": "説明書",
+      "hasWarranty": "保証書",
+      "expiryInfo": "消費期限"
+    },
+    "webDescription": "WEB説明",
+    "ledgerMissing": {
+      "title": "台帳ファイル未連携",
+      "description": "ファイルが見つかりません。台帳ファイルをアップロードするか、ファイル名の表記揺れを確認してください。",
+      "tabDescription": "該当する台帳ファイルが見つからないため、このタブのデータを表示できません。"
+    },
+    "sku": {
+      "title": "SKU展開",
+      "count": "{count}種",
+      "cols": {
+        "index": "#",
+        "name": "商品名",
+        "color": "色",
+        "size": "サイズ",
+        "priceIncl": "税込価格",
+        "priceExcl": "税抜価格",
+        "shipping": "送料"
+      },
+      "empty": "SKUデータなし"
+    },
+    "faq": {
+      "title": "よくあるお問い合わせ",
+      "count": "{count}件",
+      "questionPrefix": "Q:",
+      "answerPrefix": "A:"
+    },
+    "usage": {
+      "title": "使用情報",
+      "intendedUse": "用途",
+      "notForUse": "使用不可対象",
+      "usageAmount": "使用量目安",
+      "shelfLife": "使用期限",
+      "emergency": "応急処置"
+    },
+    "skuFaqEmpty": "SKU・FAQデータなし",
+    "logistics": {
+      "title": "配送・梱包情報",
+      "shippingCompany": "配送会社",
+      "packageSize": "梱包サイズ",
+      "weight": "重量",
+      "packageType": "梱包形態",
+      "wrapping": "ラッピング",
+      "makerPartNumber": "メーカー品番",
+      "shippingNotes": "配送備考",
+      "janCodes": "JANコード"
+    },
+    "policy": {
+      "title": "返品・交換・ケア",
+      "returnPolicy": "返品",
+      "exchangePolicy": "交換",
+      "careInstructions": "お手入れ",
+      "returnCriteria": "返品基準"
+    },
+    "web": {
+      "title": "WEB販売・決済情報",
+      "enabled": "WEB販売",
+      "productName": "WEB商品名",
+      "category": "ECカテゴリ",
+      "coupon": "クーポン",
+      "pointTarget": "ポイント対象",
+      "paymentMethod": "支払方法",
+      "cod": "代引き",
+      "credit": "クレジット",
+      "deferred": "後払い",
+      "tvShipping": "TV送料",
+      "ecShipping": "EC送料",
+      "ecCodFee": "EC代引手数料",
+      "ecDeferredFee": "EC後払手数料"
+    },
+    "usageNotesTitle": "使用上の注意",
+    "confidential": {
+      "priceTitle": "仕入・原価情報",
+      "costPrice": "仕入価格(税抜)",
+      "wholesaleRate": "仕入率",
+      "salesStart": "販売開始",
+      "salesEnd": "販売終了",
+      "orderUnit": "発注単位",
+      "leadTime": "リードタイム"
+    },
+    "manufacturer": {
+      "title": "製造・供給元",
+      "name": "メーカー",
+      "country": "製造国",
+      "supplier": "サプライヤー",
+      "txdManager": "TXD担当",
+      "salesChannels": "販売媒体",
+      "tv": "TV",
+      "ec": "EC",
+      "paper": "紙",
+      "other": "その他"
+    },
+    "supplierContact": {
+      "title": "取引先連絡先",
+      "company": "会社名",
+      "person": "担当者",
+      "tel": "TEL",
+      "fax": "FAX",
+      "email": "メール"
+    },
+    "contacts": {
+      "salesDept": "営業部門",
+      "address": "住所",
+      "orderForm": "発注書送付先",
+      "department": "部門",
+      "inquiry": "問合せ先",
+      "returnDest": "返品商品送付先",
+      "shipper": "出荷元",
+      "empty": "取引先データなし"
+    },
+    "images": {
+      "emptyTitle": "商品画像なし",
+      "emptyNoLedger": "台帳ファイルが未連携のため画像がありません。",
+      "emptyExtractionFailed": "台帳ファイルに画像が含まれていないか、画像抽出に失敗しました。",
+      "uncategorized": "未分類",
+      "count": "{count}枚"
+    },
+    "source": "出典",
+    "lightboxLabel": "商品画像ビューア",
+    "lightboxClose": "閉じる",
+    "lightboxPrev": "前の画像",
+    "lightboxNext": "次の画像"
+  },
+  "productDetail": {
+    "notAvailable": "レポートはまだ利用できません",
+    "status": {
+      "pending": "処理待ち",
+      "extracted": "抽出済み",
+      "analyzing": "分析中",
+      "completed": "完了",
+      "failed": "失敗"
     }
   }
 }

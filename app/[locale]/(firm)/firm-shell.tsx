@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { usePathname } from 'next/navigation';
 import { BarChart3 } from 'lucide-react';
 import PageHeader from '@/components/nav/PageHeader';
 import GroupSubNav from '@/components/nav/GroupSubNav';
@@ -28,8 +29,13 @@ function FilterAction() {
   );
 }
 
+// Pages that don't need the date-range filter in the header.
+const NO_DATE_FILTER_PATHS = ['/gallery'];
+
 export default function FirmShell({ role, title, subtitle, children }: FirmShellProps) {
   const showFullChrome = role !== 'viewer';
+  const pathname = usePathname() ?? '';
+  const showDateFilter = !NO_DATE_FILTER_PATHS.some((p) => pathname.includes(p));
   return (
     <FirmFilterProvider>
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -37,7 +43,7 @@ export default function FirmShell({ role, title, subtitle, children }: FirmShell
           icon={BarChart3}
           title={title}
           subtitle={subtitle}
-          action={showFullChrome ? <FilterAction /> : undefined}
+          action={showFullChrome && showDateFilter ? <FilterAction /> : undefined}
         />
         <div className="space-y-6">
           {showFullChrome && <GroupSubNav groupKey="firm" />}

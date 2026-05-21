@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServiceClient } from "@/lib/supabase";
 import { requireUser } from "@/lib/auth/require-user";
 
 export async function GET(request: NextRequest) {
@@ -17,7 +16,7 @@ export async function GET(request: NextRequest) {
 		return NextResponse.json({ error: "Invalid year parameter" }, { status: 400 });
 	}
 
-	const supabase = getServiceClient();
+	const supabase = auth.sb;
 
 	let query = supabase
 		.from("product_summaries")

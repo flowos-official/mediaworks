@@ -27,6 +27,9 @@ export default async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
+  // Exposed to server components/layouts (no native pathname API in App Router).
+  req.headers.set('x-pathname', pathname);
+
   const { response, user, role, mustChangePassword } = await updateSession(req);
   const isPublic = PUBLIC_SUFFIXES.some((re) => re.test(pathname));
 

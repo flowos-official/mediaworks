@@ -17,10 +17,35 @@ import KoreaMarketSection from '@/components/report/KoreaMarketSection';
 import LiveCommerceSection from '@/components/report/LiveCommerceSection';
 import ResearchSourcesSection from "@/components/report/ResearchSourcesSection";
 import PdfDownload from '@/components/report/PdfDownload';
+import AnalyzingPoll from '@/components/products/AnalyzingPoll';
 import { ArrowLeft, Package, Calendar } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { localePath } from '@/lib/i18n/locale-path';
 import { getServerClient } from '@/lib/supabase/server';
+
+type ProductStatus = 'pending' | 'extracted' | 'analyzing' | 'completed' | 'failed';
+
+const STATUS_BADGE_CLASS: Record<ProductStatus, string> = {
+  pending: 'bg-gray-100 text-gray-700 border-0',
+  extracted: 'bg-blue-100 text-blue-700 border-0',
+  analyzing: 'bg-amber-100 text-amber-700 border-0',
+  completed: 'bg-green-100 text-green-700 border-0',
+  failed: 'bg-red-100 text-red-700 border-0',
+};
+
+function normalizeStatus(s: string | null | undefined): ProductStatus {
+  if (s === 'pending' || s === 'extracted' || s === 'analyzing' || s === 'completed' || s === 'failed') {
+    return s;
+  }
+  return 'pending';
+}
+
+// Allow only same-origin relative paths for the back link to avoid open-redirect.
+function safeBackPath(from: string | undefined, fallback: string): string {
+  if (!from) return fallback;
+  if (!from.startsWith('/') || from.startsWith('//')) return fallback;
+  return from;
+}
 
 // Server-side fetch via Supabase directly. The previous implementation made
 // an HTTP round-trip to /api/products/[id] using NEXT_PUBLIC_SITE_URL, which
@@ -60,17 +85,22 @@ async function getProduct(id: string) {
 
 export default async function ProductReportPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string; id: string }>;
+  searchParams: Promise<{ from?: string }>;
 }) {
   const { locale, id } = await params;
+  const { from } = await searchParams;
   const t = await getTranslations({ locale, namespace: 'report' });
-  const tHome = await getTranslations({ locale, namespace: 'home' });
+  const tDetail = await getTranslations({ locale, namespace: 'productDetail' });
 
   const data = await getProduct(id);
   if (!data || !data.product) notFound();
 
   const { product, research } = data;
+  const status = normalizeStatus(product.status);
+  const backPath = safeBackPath(from, '/analytics/products');
 
   return (
     <>
@@ -78,7 +108,7 @@ export default async function ProductReportPage({
       <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
           <div className="flex items-center gap-4">
             <Link
-              href={localePath(locale, '/research')}
+              href={localePath(locale, backPath)}
               className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
             >
               <ArrowLeft size={16} />
@@ -91,8 +121,8 @@ export default async function ProductReportPage({
                   <Calendar size={12} />
                   {new Date(product.created_at).toLocaleDateString()}
                 </span>
-                <Badge className="bg-green-100 text-green-700 text-xs border-0">
-                  {tHome('status.completed')}
+                <Badge className={`${STATUS_BADGE_CLASS[status]} text-xs`}>
+                  {tDetail(`status.${status}`)}
                 </Badge>
               </div>
             </div>
@@ -106,10 +136,11 @@ export default async function ProductReportPage({
         {!research ? (
           <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-8 text-center">
             <p className="text-yellow-700">
-              {product.status === 'analyzing'
+              {status === 'analyzing'
                 ? t('generating')
-                : 'Report not available yet.'}
+                : tDetail('notAvailable')}
             </p>
+            {status === 'analyzing' && <AnalyzingPoll />}
           </div>
         ) : (
           <div id="report-content" className="space-y-6">

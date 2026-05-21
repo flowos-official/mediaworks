@@ -1,4 +1,7 @@
 {
+  "common": {
+    "loading": "불러오는 중..."
+  },
   "nav": {
     "groups": {
       "firm": "자사",
@@ -7,10 +10,22 @@
       "admin": "관리"
     },
     "groupHeader": {
-      "firm": { "title": "자사 데이터", "subtitle": "자사 판매 데이터 분석" },
-      "market": { "title": "시장 리서치", "subtitle": "경쟁사·시장 기회 파악" },
-      "produce": { "title": "제작", "subtitle": "콘텐츠 제작 지원" },
-      "admin": { "title": "관리", "subtitle": "시스템 운영 및 권한 관리" }
+      "firm": {
+        "title": "자사 데이터",
+        "subtitle": "자사 판매 데이터 분석"
+      },
+      "market": {
+        "title": "시장 리서치",
+        "subtitle": "경쟁사·시장 기회 파악"
+      },
+      "produce": {
+        "title": "제작",
+        "subtitle": "콘텐츠 제작 지원"
+      },
+      "admin": {
+        "title": "관리",
+        "subtitle": "시스템 운영 및 권한 관리"
+      }
     },
     "firm": {
       "overview": "매출 개요",
@@ -75,9 +90,18 @@
     "platform": "플랫폼",
     "followers": "팔로워",
     "matchReason": "매칭 사유",
-    "jan": "1월", "feb": "2월", "mar": "3월", "apr": "4월",
-    "may": "5월", "jun": "6월", "jul": "7월", "aug": "8월",
-    "sep": "9월", "oct": "10월", "nov": "11월", "dec": "12월",
+    "jan": "1월",
+    "feb": "2월",
+    "mar": "3월",
+    "apr": "4월",
+    "may": "5월",
+    "jun": "6월",
+    "jul": "7월",
+    "aug": "8월",
+    "sep": "9월",
+    "oct": "10월",
+    "nov": "11월",
+    "dec": "12월",
     "supplier": "공급처",
     "estimatedCost": "예상 원가",
     "moq": "최소 주문 수량",
@@ -199,7 +223,12 @@
     "uploadError": "오류가 발생했습니다",
     "images": "장",
     "allSheets": "전체 시트",
-    "close": "닫기"
+    "close": "닫기",
+    "loadError": "불러오기에 실패했습니다",
+    "lightboxLabel": "이미지 미리보기",
+    "lightboxClose": "닫기",
+    "lightboxPrev": "이전 이미지",
+    "lightboxNext": "다음 이미지"
   },
   "recommend": {
     "tabUpload": "상품 분석",
@@ -426,7 +455,12 @@
     "subtitle": "상품별로 생방송과 같은 대본을 생성·개정할 수 있습니다.",
     "new": "신규 작성",
     "noneYet": "아직 대본이 없습니다. '신규 작성'에서 시작해주세요.",
-    "status": { "pending": "대기", "generating": "생성 중", "ready": "완성", "failed": "실패" },
+    "status": {
+      "pending": "대기",
+      "generating": "생성 중",
+      "ready": "완성",
+      "failed": "실패"
+    },
     "form": {
       "productName": "상품명",
       "category": "카테고리",
@@ -560,6 +594,180 @@
         "duration": "소요",
         "channels": "채널별 건수 (적색=실패/-50% 이하, 황색=-80% 이하)"
       }
+    }
+  },
+  "overviewCards": {
+    "totalRevenue": "총 매출",
+    "totalProfit": "총 매출이익",
+    "totalQuantity": "총 주문 수",
+    "productCount": "상품 수"
+  },
+  "productDetailModal": {
+    "tabs": {
+      "overview": "개요",
+      "sku": "SKU・FAQ",
+      "logistics": "물류・규정",
+      "confidential": "사외비",
+      "contacts": "거래처",
+      "images": "상품 이미지"
+    },
+    "moreImages": "+{count}장",
+    "kpi": {
+      "totalRevenue": "총 매출",
+      "totalProfit": "총 매출이익",
+      "weeklyAvg": "주 평균",
+      "weeklyAvgValue": "{count}개",
+      "weekCount": "판매 주수",
+      "weekCountValue": "{count}주"
+    },
+    "sections": {
+      "weeklyRevenue": "주별 매출 추이",
+      "productInfo": "상품 정보"
+    },
+    "chartTooltipRevenue": "매출",
+    "setContents": "세트 구성",
+    "specs": {
+      "productGrNumber": "상품 Gr 번호",
+      "manufacturingCountry": "제조국",
+      "productSize": "상품 크기",
+      "contentVolume": "용량",
+      "materials": "재질・성분",
+      "productForm": "상품 형태",
+      "salesCompany": "판매원",
+      "hasManual": "설명서",
+      "hasWarranty": "보증서",
+      "expiryInfo": "유통기한"
+    },
+    "webDescription": "WEB 설명",
+    "ledgerMissing": {
+      "title": "원장 파일 미연동",
+      "description": "파일을 찾을 수 없습니다. 원장 파일을 업로드하거나 파일명 표기를 확인해 주세요.",
+      "tabDescription": "해당 원장 파일을 찾을 수 없어 이 탭의 데이터를 표시할 수 없습니다."
+    },
+    "sku": {
+      "title": "SKU 전개",
+      "count": "{count}종",
+      "cols": {
+        "index": "#",
+        "name": "상품명",
+        "color": "색상",
+        "size": "사이즈",
+        "priceIncl": "세금 포함 가격",
+        "priceExcl": "세금 제외 가격",
+        "shipping": "배송비"
+      },
+      "empty": "SKU 데이터 없음"
+    },
+    "faq": {
+      "title": "자주 묻는 질문",
+      "count": "{count}건",
+      "questionPrefix": "Q:",
+      "answerPrefix": "A:"
+    },
+    "usage": {
+      "title": "사용 정보",
+      "intendedUse": "용도",
+      "notForUse": "사용 불가 대상",
+      "usageAmount": "사용량 기준",
+      "shelfLife": "사용 기한",
+      "emergency": "응급 처치"
+    },
+    "skuFaqEmpty": "SKU・FAQ 데이터 없음",
+    "logistics": {
+      "title": "배송・포장 정보",
+      "shippingCompany": "배송 회사",
+      "packageSize": "포장 크기",
+      "weight": "중량",
+      "packageType": "포장 형태",
+      "wrapping": "포장",
+      "makerPartNumber": "제조사 품번",
+      "shippingNotes": "배송 비고",
+      "janCodes": "JAN 코드"
+    },
+    "policy": {
+      "title": "반품・교환・관리",
+      "returnPolicy": "반품",
+      "exchangePolicy": "교환",
+      "careInstructions": "관리 방법",
+      "returnCriteria": "반품 기준"
+    },
+    "web": {
+      "title": "WEB 판매・결제 정보",
+      "enabled": "WEB 판매",
+      "productName": "WEB 상품명",
+      "category": "EC 카테고리",
+      "coupon": "쿠폰",
+      "pointTarget": "포인트 대상",
+      "paymentMethod": "결제 방법",
+      "cod": "착불",
+      "credit": "신용카드",
+      "deferred": "후불 결제",
+      "tvShipping": "TV 배송비",
+      "ecShipping": "EC 배송비",
+      "ecCodFee": "EC 착불 수수료",
+      "ecDeferredFee": "EC 후불 수수료"
+    },
+    "usageNotesTitle": "사용상 주의사항",
+    "confidential": {
+      "priceTitle": "매입・원가 정보",
+      "costPrice": "매입 가격 (세금 제외)",
+      "wholesaleRate": "매입률",
+      "salesStart": "판매 시작",
+      "salesEnd": "판매 종료",
+      "orderUnit": "발주 단위",
+      "leadTime": "리드타임"
+    },
+    "manufacturer": {
+      "title": "제조・공급원",
+      "name": "제조사",
+      "country": "제조국",
+      "supplier": "공급업체",
+      "txdManager": "TXD 담당",
+      "salesChannels": "판매 매체",
+      "tv": "TV",
+      "ec": "EC",
+      "paper": "지면",
+      "other": "기타"
+    },
+    "supplierContact": {
+      "title": "거래처 연락처",
+      "company": "회사명",
+      "person": "담당자",
+      "tel": "전화",
+      "fax": "팩스",
+      "email": "이메일"
+    },
+    "contacts": {
+      "salesDept": "영업 부서",
+      "address": "주소",
+      "orderForm": "발주서 송부처",
+      "department": "부서",
+      "inquiry": "문의처",
+      "returnDest": "반품 상품 송부처",
+      "shipper": "출하원",
+      "empty": "거래처 데이터 없음"
+    },
+    "images": {
+      "emptyTitle": "상품 이미지 없음",
+      "emptyNoLedger": "원장 파일이 미연동되어 이미지가 없습니다.",
+      "emptyExtractionFailed": "원장 파일에 이미지가 포함되어 있지 않거나 이미지 추출에 실패했습니다.",
+      "uncategorized": "미분류",
+      "count": "{count}장"
+    },
+    "source": "출처",
+    "lightboxLabel": "상품 이미지 뷰어",
+    "lightboxClose": "닫기",
+    "lightboxPrev": "이전 이미지",
+    "lightboxNext": "다음 이미지"
+  },
+  "productDetail": {
+    "notAvailable": "리포트는 아직 사용할 수 없습니다",
+    "status": {
+      "pending": "대기 중",
+      "extracted": "추출 완료",
+      "analyzing": "분석 중",
+      "completed": "완료",
+      "failed": "실패"
     }
   }
 }

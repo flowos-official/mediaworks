@@ -121,10 +121,20 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
   return (
     <div className="w-full">
       <div
+        role="button"
+        tabIndex={0}
+        aria-label={locale === 'ja' ? 'ファイルをアップロード' : 'Upload files'}
         onDrop={onDrop}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onClick={() => !uploading && fileInputRef.current?.click()}
+        onKeyDown={(e) => {
+          if (uploading) return;
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            fileInputRef.current?.click();
+          }
+        }}
         className={cn(
           'relative border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all duration-200',
           isDragging

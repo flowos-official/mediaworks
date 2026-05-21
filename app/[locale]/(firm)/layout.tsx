@@ -1,7 +1,10 @@
 import type { ReactNode } from 'react';
-import { getTranslations } from 'next-intl/server';
+import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
+import { getTranslations, getLocale } from 'next-intl/server';
 import { getServerClient } from '@/lib/supabase/server';
-import type { Role } from '@/lib/auth/route-permissions';
+import { isViewerAllowedPath, type Role } from '@/lib/auth/route-permissions';
+import { localePath } from '@/lib/i18n/locale-path';
 import FirmShell from './firm-shell';
 
 export default async function FirmLayout({ children }: { children: ReactNode }) {
@@ -16,6 +19,14 @@ export default async function FirmLayout({ children }: { children: ReactNode }) 
       .eq('id', user.id)
       .maybeSingle();
     role = (profile?.role ?? null) as Role | null;
+  }
+
+  if (role === 'viewer') {
+    const pathname = (await headers()).get('x-pathname') ?? '';
+    if (!pathname || !isViewerAllowedPath(pathname)) {
+      const locale = await getLocale();
+      redirect(localePath(locale, '/analytics/products'));
+    }
   }
 
   return (

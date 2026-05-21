@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { Loader2 } from 'lucide-react';
 import OverviewCards from '@/components/analytics/OverviewCards';
 import RevenueTrendChart from '@/components/analytics/RevenueTrendChart';
@@ -10,6 +11,7 @@ import ProductDetailModal from '@/components/analytics/ProductDetailModal';
 import { useAnalyticsFilter } from '@/lib/analytics/firm-filter-context';
 
 export default function OverviewPage() {
+  const tCommon = useTranslations('common');
   const { selectedYears, period } = useAnalyticsFilter();
   const yearParam = selectedYears.join(',');
 
@@ -60,7 +62,7 @@ export default function OverviewPage() {
       {loading && (
         <div className="flex items-center justify-center py-20">
           <Loader2 size={24} className="animate-spin text-blue-600" />
-          <span className="ml-2 text-sm text-gray-500">データ読み込み中...</span>
+          <span className="ml-2 text-sm text-gray-500">{tCommon('loading')}</span>
         </div>
       )}
 

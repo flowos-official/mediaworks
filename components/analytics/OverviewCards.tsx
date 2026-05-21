@@ -1,6 +1,7 @@
 'use client';
 
 import { TrendingUp, TrendingDown, DollarSign, Package, BarChart3 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent } from '@/components/ui/card';
 
 type KpiData = {
@@ -32,34 +33,35 @@ function YoyChange({ current, previous }: { current: number; previous: number })
 }
 
 export default function OverviewCards({ data }: { data: KpiData }) {
+  const t = useTranslations('overviewCards');
   const years = Object.keys(data.yearlyKpis).map(Number).sort();
   const prev = years.length >= 2 ? data.yearlyKpis[years[0]] : null;
   const curr = years.length >= 2 ? data.yearlyKpis[years[years.length - 1]] : null;
 
   const cards = [
     {
-      label: '総売上',
+      label: t('totalRevenue'),
       value: formatYen(data.totalRevenue),
       icon: DollarSign,
       color: 'text-blue-600 bg-blue-50',
       yoy: prev && curr ? { current: curr.revenue, previous: prev.revenue } : null,
     },
     {
-      label: '総粗利',
+      label: t('totalProfit'),
       value: formatYen(data.totalProfit),
       icon: TrendingUp,
       color: 'text-green-600 bg-green-50',
       yoy: prev && curr ? { current: curr.profit, previous: prev.profit } : null,
     },
     {
-      label: '総受注数',
+      label: t('totalQuantity'),
       value: data.totalQuantity.toLocaleString(),
       icon: Package,
       color: 'text-orange-600 bg-orange-50',
       yoy: prev && curr ? { current: curr.quantity, previous: prev.quantity } : null,
     },
     {
-      label: '商品数',
+      label: t('productCount'),
       value: data.uniqueProducts.toString(),
       icon: BarChart3,
       color: 'text-cyan-600 bg-cyan-50',
