@@ -3,8 +3,18 @@
 import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import { useTranslations } from 'next-intl';
+import { UserCircle2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { ThemeSubmenu } from '@/components/theme/ThemeSubmenu';
 import type { Role } from '@/lib/auth/route-permissions';
 import { localePath } from '@/lib/i18n/locale-path';
 
@@ -42,14 +52,22 @@ export default function UserMenu({
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <Badge variant="outline" className="text-xs">
-        {t(`roleBadge.${role}`)}
-      </Badge>
-      <span className="text-sm text-gray-700 hidden sm:inline">{email}</span>
-      <Button variant="ghost" size="sm" onClick={logout}>
-        {t('logout')}
-      </Button>
-    </div>
+    <DropdownMenu>
+      <DropdownMenuTrigger render={<Button variant="ghost" size="sm" className="gap-2" />}>
+        <UserCircle2 className="h-4 w-4" />
+        <span className="hidden sm:inline text-sm">{email}</span>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuLabel className="flex items-center justify-between">
+          <span className="text-sm font-medium truncate">{email}</span>
+          <Badge variant="outline" className="text-xs ml-2">
+            {t(`roleBadge.${role}`)}
+          </Badge>
+        </DropdownMenuLabel>
+        <ThemeSubmenu />
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={logout}>{t('logout')}</DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
