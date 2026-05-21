@@ -6,7 +6,9 @@ export type OAChannelSlug =
 	| "dinos"
 	| "senobura"
 	| "uranoura"
-	| "txd";
+	| "txd"
+	| "ropping"
+	| "kantv";
 
 /**
  * Row to upsert into public.historical_broadcasts.

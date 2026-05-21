@@ -20,6 +20,8 @@ export const IMAGE_EXTRACTORS: Record<OAChannelSlug, ImageExtractor | null> = {
 	senobura: ogImageExtractor,
 	uranoura: ogImageExtractor,
 	txd: null, // txd populates image_url inside the parser, not via an extractor
+	ropping: null, // image_url populated inside ropping parser from card thumbnail
+	kantv: null, // same — image_url populated from c-card__img inside parser
 };
 
 export type { ImageExtractor } from "./types";
