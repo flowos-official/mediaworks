@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { GEMINI_FLASH } from "@/lib/gemini-models";
 import { getServiceClient } from "@/lib/supabase";
 import { hasInternalSecret } from "@/lib/auth/require-user";
 import { synthesizeResearch } from "@/lib/gemini";
@@ -65,7 +66,7 @@ export async function POST(request: NextRequest) {
 		const broadcastContextPrompt = formatBroadcastContextPrompt(broadcastContext);
 
 		// Step 2: Synthesize research with Gemini Pro
-		console.log(`[${productId}] Synthesizing research with gemini-3-flash-preview...`);
+		console.log(`[${productId}] Synthesizing research with ${GEMINI_FLASH}...`);
 		const research = await synthesizeResearch(
 			productInfo,
 			searchResults,

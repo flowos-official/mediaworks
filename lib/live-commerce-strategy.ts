@@ -1,4 +1,5 @@
 import { GoogleGenAI, ThinkingLevel } from "@google/genai";
+import { GEMINI_MODELS_WITH_FALLBACK } from "@/lib/gemini-models";
 import { getServiceClient } from "@/lib/supabase";
 import { discoverNewProducts, type DiscoveredProduct, type DiscoveryBatch } from "@/lib/md-strategy";
 import type { SeedContext } from "@/lib/strategy/seed-context";
@@ -18,7 +19,7 @@ function getGenAI(): GoogleGenAI {
 
 // Gemini 3 family only. Flash-preview default, pro-preview fallback.
 // Ref: https://ai.google.dev/gemini-api/docs/gemini-3
-const GEMINI_MODELS = ["gemini-3-flash-preview", "gemini-3.1-pro-preview"];
+const GEMINI_MODELS = GEMINI_MODELS_WITH_FALLBACK;
 
 function isRetryableGeminiError(err: unknown): boolean {
 	if (!(err instanceof Error)) return false;

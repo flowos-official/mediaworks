@@ -1,4 +1,5 @@
 import { requireUser } from "@/lib/auth/require-user";
+import { GEMINI_FLASH } from "@/lib/gemini-models";
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getServiceClient } from "@/lib/supabase";
@@ -254,7 +255,7 @@ export async function POST(request: NextRequest) {
 			.join("\n")
 		: "";
 
-	const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
+	const model = genAI.getGenerativeModel({ model: GEMINI_FLASH });
 
 	const prompt = `You are a Japan home shopping market expert. Based on REAL search data and actual TV shopping sales performance below, recommend 5 specific products.
 

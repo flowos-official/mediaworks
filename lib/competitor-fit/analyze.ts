@@ -14,6 +14,7 @@
  */
 
 import { GoogleGenAI, ThinkingLevel } from "@google/genai";
+import { GEMINI_MODELS_WITH_FALLBACK } from "@/lib/gemini-models";
 
 let _genAI: GoogleGenAI | null = null;
 function getGenAI(): GoogleGenAI {
@@ -21,7 +22,7 @@ function getGenAI(): GoogleGenAI {
 	return _genAI;
 }
 
-const GEMINI_MODELS = ["gemini-3-flash-preview", "gemini-3.1-pro-preview"];
+const GEMINI_MODELS = GEMINI_MODELS_WITH_FALLBACK;
 
 export interface CompetitorSlotInput {
 	channel: string;          // e.g. "qvc", "shopch", "japanet"

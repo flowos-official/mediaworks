@@ -1,10 +1,11 @@
 // lib/screenplay/extract/from-url.ts
 import * as cheerio from "cheerio";
+import { GEMINI_FLASH } from "@/lib/gemini-models";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { EXTRACT_SYSTEM_INSTRUCTION, parseBriefJson } from "./brief-prompt";
 import type { ProductBrief } from "../types";
 
-const MODEL = "gemini-3-flash-preview";
+const MODEL = GEMINI_FLASH;
 const FETCH_TIMEOUT_MS = 20_000;
 const MAX_BYTES = 3_000_000;          // 3 MB cap for the HTML body
 const MAX_BODY_CHARS = 24_000;

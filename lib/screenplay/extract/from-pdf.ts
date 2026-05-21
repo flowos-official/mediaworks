@@ -1,9 +1,10 @@
 // lib/screenplay/extract/from-pdf.ts
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GEMINI_FLASH } from "@/lib/gemini-models";
 import { EXTRACT_SYSTEM_INSTRUCTION, parseBriefJson } from "./brief-prompt";
 import type { ProductBrief } from "../types";
 
-const MODEL = "gemini-3-flash-preview";
+const MODEL = GEMINI_FLASH;
 
 let _genAI: GoogleGenerativeAI | null = null;
 function getGenAI(): GoogleGenerativeAI {

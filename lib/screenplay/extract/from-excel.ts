@@ -1,10 +1,11 @@
 // lib/screenplay/extract/from-excel.ts
 import * as XLSX from "xlsx";
+import { GEMINI_FLASH } from "@/lib/gemini-models";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { EXTRACT_SYSTEM_INSTRUCTION, parseBriefJson } from "./brief-prompt";
 import type { ProductBrief } from "../types";
 
-const MODEL = "gemini-3-flash-preview";
+const MODEL = GEMINI_FLASH;
 const MAX_ROWS_PER_SHEET = 200;       // cap to keep prompt size bounded
 const MAX_CELL_CHARS = 500;
 const MAX_PROMPT_CHARS = 60_000;

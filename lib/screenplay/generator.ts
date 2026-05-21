@@ -1,5 +1,6 @@
 // lib/screenplay/generator.ts
 import { GoogleGenAI, ThinkingLevel } from "@google/genai";
+import { GEMINI_PRO_FALLBACK } from "@/lib/gemini-models";
 import { buildUserPrompt, SYSTEM_INSTRUCTION } from "./prompt";
 import type { GenerateInput, GenerationResult } from "./types";
 
@@ -12,7 +13,7 @@ function getGenAI(): GoogleGenAI {
 // Per user request: switched back to Gemini 3.1 Pro preview with HIGH thinking.
 // Pro+HIGH produces denser, more faithful Japanese output and obeys
 // "100% Japanese, no English" instructions more reliably than Flash.
-const MODEL = "gemini-3.1-pro-preview";
+const MODEL = GEMINI_PRO_FALLBACK;
 const THINKING_LEVEL_NAME = "HIGH";
 const HARD_TIMEOUT_MS = 540_000;       // 9 min — Pro+HIGH can take 3-6 min
 const FIRST_CHUNK_MS = 240_000;        // 4 min for first byte (Pro thinks longer before streaming)

@@ -1,7 +1,8 @@
 import type { SkillMeta } from "@/lib/registry/types";
+import { GEMINI_FLASH } from "@/lib/gemini-models";
 
 export const meta: SkillMeta = {
-	model: "gemini-3-flash-preview",
+	model: GEMINI_FLASH,
 	provider: "google",
 	// Matches the runtime config in lib/md-strategy.ts:callGeminiOnce —
 	// MINIMAL thinking for the flash model (LOW reserved for pro fallback).
