@@ -10,6 +10,8 @@ import { uranouraParser } from "./parsers/uranoura";
 import { dinosParser } from "./parsers/dinos";
 import { japanetParser } from "./parsers/japanet";
 import { txdParser } from "./parsers/txd";
+import { roppingParser } from "./parsers/ropping";
+import { kantvParser } from "./parsers/kantv";
 
 export const ALL_PARSERS: readonly ChannelParser[] = [
 	junsanpoParser,
@@ -20,6 +22,8 @@ export const ALL_PARSERS: readonly ChannelParser[] = [
 	dinosParser,
 	japanetParser,
 	txdParser,
+	roppingParser,
+	kantvParser,
 ];
 
 export interface CrawlAllResult {
