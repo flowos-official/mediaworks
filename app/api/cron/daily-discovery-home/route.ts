@@ -92,10 +92,16 @@ export async function GET(req: NextRequest) {
 		const sb = getServiceClient();
 		const evidenceEntries = await Promise.all(
 			orchestrated.candidates.map(async (c) => {
+				const tvChannels = c.tvChannelMatches?.length
+					? c.tvChannelMatches
+					: c.tvChannel
+						? [c.tvChannel]
+						: undefined;
 				const ev = await computeTvEvidence(sb, {
 					name: c.name,
 					category: c.category ?? null,
 					price_jpy: c.priceJpy ?? null,
+					tv_channels: tvChannels,
 				}).catch((err) => {
 					console.warn(`[tv-evidence] compute failed for ${c.productUrl}:`, err?.message ?? err);
 					return null;
