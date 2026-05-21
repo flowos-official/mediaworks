@@ -13,11 +13,11 @@ interface Props {
 
 function priorityColor(p: string): string {
 	switch (p) {
-		case 'immediate': return 'bg-green-100 text-green-800 border-green-300';
-		case '3month': return 'bg-blue-100 text-blue-800 border-blue-300';
-		case '6month': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
-		case '12month': return 'bg-gray-100 text-gray-600 border-gray-300';
-		default: return 'bg-gray-100 text-gray-600 border-gray-300';
+		case 'immediate': return 'bg-green-600/15 text-green-800 dark:text-green-200 border-green-600/40';
+		case '3month': return 'bg-blue-600/15 text-blue-800 dark:text-blue-200 border-blue-600/40';
+		case '6month': return 'bg-yellow-500/15 text-yellow-800 dark:text-yellow-200 border-yellow-500/40';
+		case '12month': return 'bg-muted text-muted-foreground border-border';
+		default: return 'bg-muted text-muted-foreground border-border';
 	}
 }
 
@@ -32,10 +32,10 @@ function priorityLabel(p: string): string {
 }
 
 function scoreColor(score: number): string {
-	if (score >= 80) return 'text-green-700 bg-green-50';
-	if (score >= 60) return 'text-blue-700 bg-blue-50';
-	if (score >= 40) return 'text-yellow-700 bg-yellow-50';
-	return 'text-red-700 bg-red-50';
+	if (score >= 80) return 'text-green-700 dark:text-green-300 bg-green-600/10';
+	if (score >= 60) return 'text-blue-700 dark:text-blue-300 bg-blue-600/10';
+	if (score >= 40) return 'text-yellow-700 dark:text-yellow-300 bg-yellow-500/10';
+	return 'text-red-700 dark:text-red-300 bg-red-600/10';
 }
 
 export default function ChannelStrategySection({ data }: Props) {
@@ -45,14 +45,14 @@ export default function ChannelStrategySection({ data }: Props) {
 		<div className="space-y-4">
 			<div className="flex items-center gap-2">
 				<Store size={18} className="text-purple-600" />
-				<h3 className="text-lg font-bold text-gray-900">チャネル戦略</h3>
+				<h3 className="text-lg font-bold text-foreground">チャネル戦略</h3>
 			</div>
 
 			{/* Launch sequence */}
 			{(data.launch_sequence ?? []).length > 0 && (
-				<Card className="border-purple-200 bg-purple-50/20">
+				<Card className="border-purple-600/30 bg-purple-600/5">
 					<CardContent className="p-4">
-						<span className="text-[10px] font-semibold text-purple-600 uppercase tracking-wide">展開ロードマップ</span>
+						<span className="text-[10px] font-semibold text-purple-600 dark:text-purple-300 uppercase tracking-wide">展開ロードマップ</span>
 						<div className="mt-2 space-y-2">
 							{(data.launch_sequence ?? []).map((phase, i) => (
 								<div key={i} className="flex items-start gap-3">
@@ -61,15 +61,15 @@ export default function ChannelStrategySection({ data }: Props) {
 									</div>
 									<div>
 										<div className="flex items-center gap-2">
-											<span className="text-sm font-semibold text-gray-900">{phase.phase}</span>
-											<span className="text-[10px] px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full">{phase.timeline}</span>
+											<span className="text-sm font-semibold text-foreground">{phase.phase}</span>
+											<span className="text-[10px] px-2 py-0.5 bg-purple-600/15 text-purple-700 dark:text-purple-200 rounded-full">{phase.timeline}</span>
 										</div>
 										<div className="flex flex-wrap gap-1 mt-1">
 											{phase.channels.map((ch) => (
 												<Badge key={ch} variant="secondary" className="text-[10px]">{ch}</Badge>
 											))}
 										</div>
-										<p className="text-xs text-gray-500 mt-1">{phase.rationale}</p>
+										<p className="text-xs text-muted-foreground mt-1">{phase.rationale}</p>
 									</div>
 								</div>
 							))}
@@ -84,10 +84,10 @@ export default function ChannelStrategySection({ data }: Props) {
 				.map((ch) => {
 					const isExpanded = expandedChannel === ch.name;
 					return (
-						<Card key={ch.name} className="border-gray-200">
+						<Card key={ch.name} className="border-border">
 							{/* Channel header — clickable */}
 							<CardHeader
-								className="pb-2 cursor-pointer hover:bg-gray-50/50 transition-colors"
+								className="pb-2 cursor-pointer hover:bg-muted/50 transition-colors"
 								onClick={() => setExpandedChannel(isExpanded ? null : ch.name)}
 							>
 								<div className="flex items-center justify-between">
@@ -101,10 +101,10 @@ export default function ChannelStrategySection({ data }: Props) {
 										<span className={`text-sm font-bold px-3 py-1 rounded-full ${scoreColor(ch.fit_score)}`}>
 											{ch.fit_score}
 										</span>
-										{isExpanded ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
+										{isExpanded ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
 									</div>
 								</div>
-								<span className="text-xs text-gray-500">{ch.market_size}</span>
+								<span className="text-xs text-muted-foreground">{ch.market_size}</span>
 							</CardHeader>
 
 							{/* Expanded details */}
@@ -113,26 +113,26 @@ export default function ChannelStrategySection({ data }: Props) {
 									{/* Entry Requirements */}
 									<DetailBlock title="参入要件">
 										<div className="grid grid-cols-2 gap-2 text-xs">
-											<div><span className="text-gray-500">アカウント種別:</span> <span className="font-medium">{ch.entry_requirements.account_type}</span></div>
-											<div><span className="text-gray-500">セットアップ期間:</span> <span className="font-medium">{ch.entry_requirements.setup_timeline}</span></div>
+											<div><span className="text-muted-foreground">アカウント種別:</span> <span className="font-medium">{ch.entry_requirements.account_type}</span></div>
+											<div><span className="text-muted-foreground">セットアップ期間:</span> <span className="font-medium">{ch.entry_requirements.setup_timeline}</span></div>
 										</div>
 										{(ch.entry_requirements?.required_documents ?? []).length > 0 && (
 											<div className="mt-2">
-												<span className="text-[10px] text-gray-500">必要書類:</span>
+												<span className="text-[10px] text-muted-foreground">必要書類:</span>
 												<ul className="mt-0.5 space-y-0.5">
 													{(ch.entry_requirements?.required_documents ?? []).map((doc, i) => (
-														<li key={i} className="text-xs text-gray-700">• {doc}</li>
+														<li key={i} className="text-xs text-foreground">• {doc}</li>
 													))}
 												</ul>
 											</div>
 										)}
 										{(ch.entry_requirements?.initial_costs ?? []).length > 0 && (
 											<div className="mt-2">
-												<span className="text-[10px] text-gray-500">初期費用:</span>
+												<span className="text-[10px] text-muted-foreground">初期費用:</span>
 												<div className="mt-0.5 space-y-0.5">
 													{(ch.entry_requirements?.initial_costs ?? []).map((c, i) => (
 														<div key={i} className="flex justify-between text-xs">
-															<span className="text-gray-700">{c.item}</span>
+															<span className="text-foreground">{c.item}</span>
 															<span className="font-mono font-medium">{c.cost}</span>
 														</div>
 													))}
@@ -144,9 +144,9 @@ export default function ChannelStrategySection({ data }: Props) {
 									{/* Fee Structure */}
 									<DetailBlock title="手数料構造">
 										<div className="grid grid-cols-2 gap-2 text-xs">
-											<div><span className="text-gray-500">販売手数料:</span> <span className="font-medium font-mono">{ch.fee_structure.commission_rate}</span></div>
-											<div><span className="text-gray-500">月額費用:</span> <span className="font-medium font-mono">{ch.fee_structure.monthly_fee}</span></div>
-											<div><span className="text-gray-500">最低広告額:</span> <span className="font-medium font-mono">{ch.fee_structure.advertising_minimum}</span></div>
+											<div><span className="text-muted-foreground">販売手数料:</span> <span className="font-medium font-mono">{ch.fee_structure.commission_rate}</span></div>
+											<div><span className="text-muted-foreground">月額費用:</span> <span className="font-medium font-mono">{ch.fee_structure.monthly_fee}</span></div>
+											<div><span className="text-muted-foreground">最低広告額:</span> <span className="font-medium font-mono">{ch.fee_structure.advertising_minimum}</span></div>
 										</div>
 										{(ch.fee_structure?.fulfillment_options ?? []).length > 0 && (
 											<div className="flex flex-wrap gap-1 mt-2">
@@ -160,12 +160,12 @@ export default function ChannelStrategySection({ data }: Props) {
 									{/* Competitive Landscape */}
 									<DetailBlock title="競合環境">
 										<div className="text-xs space-y-1">
-											<div><span className="text-gray-500">競合数:</span> {ch.competitive_landscape.competitor_count}</div>
-											<div><span className="text-gray-500">価格帯:</span> {ch.competitive_landscape.price_range}</div>
-											<div><span className="text-gray-500">主要プレーヤー:</span> {(ch.competitive_landscape?.dominant_players ?? []).join(', ')}</div>
-											<div className="mt-1 bg-amber-50 px-2 py-1.5 rounded border border-amber-100">
-												<span className="text-[10px] font-semibold text-amber-700">差別化機会:</span>
-												<p className="text-gray-700 mt-0.5">{ch.competitive_landscape.differentiation_opportunity}</p>
+											<div><span className="text-muted-foreground">競合数:</span> {ch.competitive_landscape.competitor_count}</div>
+											<div><span className="text-muted-foreground">価格帯:</span> {ch.competitive_landscape.price_range}</div>
+											<div><span className="text-muted-foreground">主要プレーヤー:</span> {(ch.competitive_landscape?.dominant_players ?? []).join(', ')}</div>
+											<div className="mt-1 bg-amber-600/10 px-2 py-1.5 rounded border border-amber-600/20">
+												<span className="text-[10px] font-semibold text-amber-700 dark:text-amber-300">差別化機会:</span>
+												<p className="text-foreground mt-0.5">{ch.competitive_landscape.differentiation_opportunity}</p>
 											</div>
 										</div>
 									</DetailBlock>
@@ -173,15 +173,15 @@ export default function ChannelStrategySection({ data }: Props) {
 									{/* Operations */}
 									<DetailBlock title="運営体制">
 										<div className="text-xs space-y-1">
-											<div><span className="text-gray-500">在庫モデル:</span> {ch.operations_requirements.inventory_model}</div>
-											<div><span className="text-gray-500">CS体制:</span> {ch.operations_requirements.cs_requirements}</div>
-											<div><span className="text-gray-500">更新頻度:</span> {ch.operations_requirements.update_frequency}</div>
+											<div><span className="text-muted-foreground">在庫モデル:</span> {ch.operations_requirements.inventory_model}</div>
+											<div><span className="text-muted-foreground">CS体制:</span> {ch.operations_requirements.cs_requirements}</div>
+											<div><span className="text-muted-foreground">更新頻度:</span> {ch.operations_requirements.update_frequency}</div>
 											{(ch.operations_requirements?.content_requirements ?? []).length > 0 && (
 												<div>
-													<span className="text-gray-500">コンテンツ要件:</span>
+													<span className="text-muted-foreground">コンテンツ要件:</span>
 													<ul className="mt-0.5 space-y-0.5">
 														{(ch.operations_requirements?.content_requirements ?? []).map((r, i) => (
-															<li key={i} className="text-gray-700">• {r}</li>
+															<li key={i} className="text-foreground">• {r}</li>
 														))}
 													</ul>
 												</div>
@@ -196,9 +196,9 @@ export default function ChannelStrategySection({ data }: Props) {
 												{(ch.kpis ?? []).map((kpi, i) => (
 													<div key={i} className="flex items-center gap-2 text-xs">
 														<Target size={10} className="text-indigo-500 shrink-0" />
-														<span className="text-gray-700 font-medium">{kpi.metric}:</span>
-														<span className="font-mono text-indigo-700">{kpi.target}</span>
-														<span className="text-gray-400">({kpi.timeline})</span>
+														<span className="text-foreground font-medium">{kpi.metric}:</span>
+														<span className="font-mono text-indigo-700 dark:text-indigo-300">{kpi.target}</span>
+														<span className="text-muted-foreground">({kpi.timeline})</span>
 													</div>
 												))}
 											</div>
@@ -216,8 +216,8 @@ export default function ChannelStrategySection({ data }: Props) {
 
 function DetailBlock({ title, children }: { title: string; children: React.ReactNode }) {
 	return (
-		<div className="border-t border-gray-100 pt-3">
-			<span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">{title}</span>
+		<div className="border-t border-border pt-3">
+			<span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">{title}</span>
 			{children}
 		</div>
 	);

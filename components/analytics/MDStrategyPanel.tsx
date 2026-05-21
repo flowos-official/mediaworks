@@ -108,12 +108,12 @@ function DataPreview() {
 	}));
 
 	return (
-		<Card className="border-blue-200 bg-blue-50/20">
+		<Card className="border-blue-600/30 bg-blue-600/5">
 			<CardHeader className="pb-2">
-				<CardTitle className="text-sm font-semibold flex items-center gap-1.5 text-blue-700">
+				<CardTitle className="text-sm font-semibold flex items-center gap-1.5 text-blue-700 dark:text-blue-300">
 					<Database size={14} /> 分析データプレビュー
 				</CardTitle>
-				<p className="text-[10px] text-gray-500">このデータを基にAIが拡大戦略を分析します</p>
+				<p className="text-[10px] text-muted-foreground">このデータを基にAIが拡大戦略を分析します</p>
 			</CardHeader>
 			<CardContent className="space-y-4">
 				<div className="grid grid-cols-4 gap-2">
@@ -123,28 +123,28 @@ function DataPreview() {
 						{ label: '商品数', value: `${overview.uniqueProducts}` },
 						{ label: '集計週数', value: `${overview.weekCount}週` },
 					].map((kpi) => (
-						<div key={kpi.label} className="bg-white rounded-lg p-2 text-center border border-blue-100">
-							<div className="text-[9px] text-gray-500">{kpi.label}</div>
-							<div className="text-sm font-bold text-gray-900">{kpi.value}</div>
+						<div key={kpi.label} className="bg-card rounded-lg p-2 text-center border border-blue-600/20">
+							<div className="text-[9px] text-muted-foreground">{kpi.label}</div>
+							<div className="text-sm font-bold text-foreground">{kpi.value}</div>
 						</div>
 					))}
 				</div>
 				<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 					<div>
-						<span className="text-[10px] font-semibold text-gray-500 uppercase">売上TOP5</span>
+						<span className="text-[10px] font-semibold text-muted-foreground uppercase">売上TOP5</span>
 						<div className="mt-1 space-y-1">
 							{topProducts.map((p, i) => (
-								<div key={p.code} className="flex items-center gap-2 text-xs bg-white rounded px-2 py-1 border border-gray-100">
-									<span className="text-gray-400 font-mono w-4">{i + 1}</span>
-									<span className="text-gray-800 truncate flex-1">{p.name}</span>
-									<span className="font-mono text-gray-600 shrink-0">{formatYen(p.totalRevenue)}</span>
-									<span className="font-mono text-gray-500 shrink-0 w-12 text-right">{p.marginRate}%</span>
+								<div key={p.code} className="flex items-center gap-2 text-xs bg-card rounded px-2 py-1 border border-border">
+									<span className="text-muted-foreground font-mono w-4">{i + 1}</span>
+									<span className="text-foreground truncate flex-1">{p.name}</span>
+									<span className="font-mono text-foreground shrink-0">{formatYen(p.totalRevenue)}</span>
+									<span className="font-mono text-muted-foreground shrink-0 w-12 text-right">{p.marginRate}%</span>
 								</div>
 							))}
 						</div>
 					</div>
 					<div>
-						<span className="text-[10px] font-semibold text-gray-500 uppercase">カテゴリ別売上 (万円)</span>
+						<span className="text-[10px] font-semibold text-muted-foreground uppercase">カテゴリ別売上 (万円)</span>
 						<div className="h-36 mt-1">
 							<ResponsiveContainer width="100%" height="100%">
 								<BarChart data={catData} layout="vertical" margin={{ top: 0, right: 5, left: 0, bottom: 0 }}>
@@ -185,7 +185,7 @@ function SkillResultsView({ results, generatedAt, backHref, strategyId, onRedisc
 			{/* Back link */}
 			<Link
 				href={backHref}
-				className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors mb-2 w-fit"
+				className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-2 w-fit"
 			>
 				<ArrowLeft size={14} />
 				一覧に戻る
@@ -213,7 +213,7 @@ function SkillResultsView({ results, generatedAt, backHref, strategyId, onRedisc
 
 			{generatedAt && (
 				<div className="flex items-center justify-between">
-					<p className="text-[10px] text-gray-400">
+					<p className="text-[10px] text-muted-foreground">
 						生成: {new Date(generatedAt).toLocaleString('ja-JP')}
 					</p>
 					<StrategyPdfDownload />
@@ -360,12 +360,12 @@ function DetailView({ initialData, backHref }: { initialData: SavedStrategyData;
 		<div className="space-y-6">
 			<div className="flex items-center gap-2">
 				<Target size={18} className="text-blue-600" />
-				<h3 className="text-lg font-semibold text-gray-900">チャネル拡大戦略</h3>
-				<span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">7-Skill AI</span>
+				<h3 className="text-lg font-semibold text-foreground">チャネル拡大戦略</h3>
+				<span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-600/15 text-blue-700 dark:text-blue-300 font-medium">7-Skill AI</span>
 			</div>
 
 			{error && (
-				<div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+				<div className="flex items-center gap-2 p-3 bg-red-600/10 border border-red-600/30 rounded-lg text-sm text-red-700 dark:text-red-300">
 					<AlertTriangle size={14} />
 					{error}
 				</div>
@@ -577,15 +577,15 @@ function ListView({ locale, router }: { locale: string; router: ReturnType<typeo
 			{/* Header */}
 			<div className="flex items-center gap-2">
 				<Target size={18} className="text-blue-600" />
-				<h3 className="text-lg font-semibold text-gray-900">チャネル拡大戦略</h3>
-				<span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">7-Skill AI</span>
+				<h3 className="text-lg font-semibold text-foreground">チャネル拡大戦略</h3>
+				<span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-600/15 text-blue-700 dark:text-blue-300 font-medium">7-Skill AI</span>
 			</div>
 
 			{/* Form (always visible in list view) */}
-			<Card className="border-gray-200">
+			<Card className="border-border">
 				<CardContent className="p-4 space-y-3">
 					<div>
-						<label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">
+						<label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">
 							拡大の目標・方向性 (任意)
 						</label>
 						<textarea
@@ -594,34 +594,34 @@ function ListView({ locale, router }: { locale: string; router: ReturnType<typeo
 							placeholder="例: 楽天・Amazonで月商1000万を目指したい / TikTokで若年層にリーチしたい / 韓国Coupangへの越境ECを検討中"
 							rows={3}
 							disabled={isRunning}
-							className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none disabled:bg-gray-50"
+							className="w-full border border-border bg-background text-foreground rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 resize-none disabled:bg-muted"
 						/>
 					</div>
 
 					<div className="grid grid-cols-1 md:grid-cols-3 gap-3">
 						<div>
-							<label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1 block">カテゴリ</label>
-							<select value={category} onChange={(e) => setCategory(e.target.value)} disabled={isRunning} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:bg-gray-50">
+							<label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">カテゴリ</label>
+							<select value={category} onChange={(e) => setCategory(e.target.value)} disabled={isRunning} className="w-full border border-border bg-background text-foreground rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 disabled:bg-muted">
 								{CATEGORIES.map((c) => <option key={c}>{c}</option>)}
 							</select>
 						</div>
 						<div>
-							<label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1 block">ターゲット市場</label>
-							<select value={targetMarket} onChange={(e) => setTargetMarket(e.target.value)} disabled={isRunning} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:bg-gray-50">
+							<label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">ターゲット市場</label>
+							<select value={targetMarket} onChange={(e) => setTargetMarket(e.target.value)} disabled={isRunning} className="w-full border border-border bg-background text-foreground rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 disabled:bg-muted">
 								{MARKETS.map((m) => <option key={m}>{m}</option>)}
 							</select>
 						</div>
 						<div>
-							<label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1 block">価格帯（任意）</label>
-							<input type="text" value={priceRange} onChange={(e) => setPriceRange(e.target.value)} disabled={isRunning} placeholder="例: ¥3,000-8,000" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:bg-gray-50" />
+							<label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">価格帯（任意）</label>
+							<input type="text" value={priceRange} onChange={(e) => setPriceRange(e.target.value)} disabled={isRunning} placeholder="例: ¥3,000-8,000" className="w-full border border-border bg-background text-foreground rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 disabled:bg-muted" />
 						</div>
 					</div>
-					<p className="text-[10px] text-gray-400">
+					<p className="text-[10px] text-muted-foreground">
 						カテゴリとターゲット市場を指定すると、AI推薦商品も戦略に組み込まれます（指定なしでも分析可能）
 					</p>
 
 					<div className="flex items-center justify-between pt-1">
-						<p className="text-[10px] text-gray-400">
+						<p className="text-[10px] text-muted-foreground">
 							7つの専門スキル（目標分析→商品選定→チャネル戦略→価格設計→マーケ計画→収益予測→リスク対策）が順次分析します
 						</p>
 						<button
@@ -639,7 +639,7 @@ function ListView({ locale, router }: { locale: string; router: ReturnType<typeo
 
 			{/* Generation error */}
 			{error && (
-				<div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+				<div className="flex items-center gap-2 p-3 bg-red-600/10 border border-red-600/30 rounded-lg text-sm text-red-700 dark:text-red-300">
 					<AlertTriangle size={14} />
 					{error}
 				</div>
@@ -648,7 +648,7 @@ function ListView({ locale, router }: { locale: string; router: ReturnType<typeo
 			{/* Generation in progress */}
 			{isRunning && (
 				<>
-					<div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
+					<div className="flex items-center gap-2 p-3 bg-amber-600/10 border border-amber-600/30 rounded-lg text-xs text-amber-700 dark:text-amber-300">
 						<AlertTriangle size={12} />
 						分析中はタブを離れたりページを閉じたりしないでください（中断されます）
 					</div>

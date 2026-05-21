@@ -75,18 +75,18 @@ export default function TopProductsTable({
   const paged = limit ? limited : limited.slice(page * perPage, (page + 1) * perPage);
 
   return (
-    <Card className="border-gray-200">
+    <Card className="border-border">
       <CardHeader className="pb-2">
         <CardTitle className="text-base font-semibold">
           {limit ? `商品ランキング Top ${limit}` : '商品ランキング'}
         </CardTitle>
-        <p className="text-xs text-gray-400">{limit ? `${products.length}商品中 上位${limit}` : `${products.length}商品`}</p>
+        <p className="text-xs text-muted-foreground">{limit ? `${products.length}商品中 上位${limit}` : `${products.length}商品`}</p>
       </CardHeader>
       <CardContent className="p-0">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100 text-xs text-gray-500 uppercase">
+              <tr className="border-b border-border text-xs text-muted-foreground uppercase">
                 <th className="text-left px-4 py-2.5 font-medium">#</th>
                 <th className="text-left px-4 py-2.5 font-medium">
                   <button
@@ -140,17 +140,17 @@ export default function TopProductsTable({
               {paged.map((p, i) => (
                 <tr
                   key={p.code}
-                  className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors cursor-pointer"
+                  className="border-b border-border hover:bg-muted/50 transition-colors cursor-pointer"
                   onClick={() => onSelectProduct?.(p.code)}
                 >
-                  <td className="px-4 py-2.5 text-gray-400 font-mono text-xs">{page * perPage + i + 1}</td>
-                  <td className="px-4 py-2.5 font-medium text-gray-900 max-w-[200px] truncate">
+                  <td className="px-4 py-2.5 text-muted-foreground font-mono text-xs">{page * perPage + i + 1}</td>
+                  <td className="px-4 py-2.5 font-medium text-foreground max-w-[200px] truncate">
                     {p.name}
                   </td>
                   {!compact && (
                     <td className="px-4 py-2.5">
                       {p.category && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
                           {p.category}
                         </span>
                       )}
@@ -159,12 +159,12 @@ export default function TopProductsTable({
                   <td className="px-4 py-2.5 text-right font-mono text-xs">{formatYen(p.totalRevenue)}</td>
                   <td className="px-4 py-2.5 text-right font-mono text-xs">{p.totalQuantity.toLocaleString()}</td>
                   {!compact && (
-                    <td className="px-4 py-2.5 text-right font-mono text-xs text-gray-500">
+                    <td className="px-4 py-2.5 text-right font-mono text-xs text-muted-foreground">
                       {p.avgWeeklyQuantity}/週
                     </td>
                   )}
                   {!compact && (
-                    <td className="px-4 py-2.5 text-center font-mono text-[10px] text-gray-400 whitespace-nowrap">
+                    <td className="px-4 py-2.5 text-center font-mono text-[10px] text-muted-foreground whitespace-nowrap">
                       {p.firstDate && p.lastDate ? (
                         `${formatShortDate(p.firstDate)}~${formatShortDate(p.lastDate)}`
                       ) : '-'}
@@ -176,8 +176,8 @@ export default function TopProductsTable({
           </table>
         </div>
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
-            <span className="text-xs text-gray-400">
+          <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+            <span className="text-xs text-muted-foreground">
               {page * perPage + 1}–{Math.min((page + 1) * perPage, sorted.length)} / {sorted.length}件
             </span>
             <div className="flex items-center gap-1">
@@ -185,7 +185,7 @@ export default function TopProductsTable({
                 type="button"
                 disabled={page === 0}
                 onClick={() => setPage(page - 1)}
-                className="px-2.5 py-1 text-xs rounded border border-gray-200 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                className="px-2.5 py-1 text-xs rounded border border-border hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 前へ
               </button>
@@ -198,7 +198,7 @@ export default function TopProductsTable({
                 }, [])
                 .map((item, idx) =>
                   item === 'ellipsis' ? (
-                    <span key={`e${idx}`} className="px-1 text-xs text-gray-300">…</span>
+                    <span key={`e${idx}`} className="px-1 text-xs text-muted-foreground">…</span>
                   ) : (
                     <button
                       key={item}
@@ -207,7 +207,7 @@ export default function TopProductsTable({
                       className={`min-w-[28px] py-1 text-xs rounded border ${
                         page === item
                           ? 'bg-blue-600 text-white border-blue-600'
-                          : 'border-gray-200 hover:bg-gray-50'
+                          : 'border-border hover:bg-muted'
                       }`}
                     >
                       {item + 1}
@@ -218,7 +218,7 @@ export default function TopProductsTable({
                 type="button"
                 disabled={page === totalPages - 1}
                 onClick={() => setPage(page + 1)}
-                className="px-2.5 py-1 text-xs rounded border border-gray-200 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                className="px-2.5 py-1 text-xs rounded border border-border hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 次へ
               </button>

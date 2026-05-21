@@ -35,10 +35,10 @@ export default function MarginAnalysisChart({ products }: { products: ProductDat
     .slice(0, 15);
 
   return (
-    <Card className="border-gray-200">
+    <Card className="border-border">
       <CardHeader className="pb-2">
         <CardTitle className="text-base font-semibold">商品別粗利分析</CardTitle>
-        <p className="text-xs text-gray-400">売上上位15商品 — バーの色は粗利率を表示</p>
+        <p className="text-xs text-muted-foreground">売上上位15商品 — バーの色は粗利率を表示</p>
       </CardHeader>
       <CardContent>
         <div className="h-80">
@@ -77,7 +77,7 @@ export default function MarginAnalysisChart({ products }: { products: ProductDat
             </BarChart>
           </ResponsiveContainer>
         </div>
-        <div className="flex items-center justify-center gap-4 mt-3 text-[10px] text-gray-500">
+        <div className="flex items-center justify-center gap-4 mt-3 text-[10px] text-muted-foreground">
           <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-green-500" /> 20%+</span>
           <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-lime-500" /> 15-20%</span>
           <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-amber-500" /> 10-15%</span>

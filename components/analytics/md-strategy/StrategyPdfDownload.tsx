@@ -56,7 +56,7 @@ export default function StrategyPdfDownload() {
 			type="button"
 			onClick={handleDownload}
 			disabled={loading}
-			className="flex items-center gap-2 px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+			className="flex items-center gap-2 px-4 py-2 bg-foreground hover:bg-foreground/90 text-background text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
 		>
 			{loading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
 			{loading ? 'PDF生成中...' : 'PDF戦略書ダウンロード'}

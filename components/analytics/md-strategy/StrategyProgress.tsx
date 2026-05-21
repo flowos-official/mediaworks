@@ -23,13 +23,13 @@ const SKILL_ORDER: SkillName[] = [
 
 export default function StrategyProgress({ skillStatuses, dataFetchStatus }: Props) {
 	return (
-		<div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-			<h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">分析進捗</h4>
+		<div className="bg-card border border-border rounded-xl p-4 shadow-sm">
+			<h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">分析進捗</h4>
 
 			{/* Data fetch step */}
-			<div className="flex items-center gap-3 mb-2 pb-2 border-b border-gray-100">
+			<div className="flex items-center gap-3 mb-2 pb-2 border-b border-border">
 				<StatusIcon status={dataFetchStatus} />
-				<span className={`text-sm ${dataFetchStatus === 'running' ? 'text-blue-700 font-medium' : 'text-gray-600'}`}>
+				<span className={`text-sm ${dataFetchStatus === 'running' ? 'text-blue-700 dark:text-blue-300 font-medium' : 'text-muted-foreground'}`}>
 					データ取得
 				</span>
 			</div>
@@ -45,17 +45,17 @@ export default function StrategyProgress({ skillStatuses, dataFetchStatus }: Pro
 							<div className="relative flex items-center justify-center w-5">
 								{i > 0 && (
 									<div className={`absolute -top-2.5 w-px h-2.5 ${
-										skillStatuses[SKILL_ORDER[i - 1]] === 'complete' ? 'bg-green-300' : 'bg-gray-200'
+										skillStatuses[SKILL_ORDER[i - 1]] === 'complete' ? 'bg-green-500/40' : 'bg-border'
 									}`} />
 								)}
 								<StatusIcon status={status} />
 							</div>
 							<div className="flex items-center gap-2 flex-1 min-w-0">
 								<span className={`text-sm truncate ${
-									status === 'running' ? 'text-blue-700 font-medium' :
-									status === 'complete' ? 'text-gray-700' :
-									status === 'error' ? 'text-red-600' :
-									'text-gray-400'
+									status === 'running' ? 'text-blue-700 dark:text-blue-300 font-medium' :
+									status === 'complete' ? 'text-foreground' :
+									status === 'error' ? 'text-red-600 dark:text-red-400' :
+									'text-muted-foreground'
 								}`}>
 									{meta.labelJa}
 								</span>
@@ -80,6 +80,6 @@ function StatusIcon({ status }: { status: string }) {
 		case 'error':
 			return <AlertTriangle size={16} className="text-red-500 shrink-0" />;
 		default:
-			return <Circle size={16} className="text-gray-300 shrink-0" />;
+			return <Circle size={16} className="text-muted-foreground/40 shrink-0" />;
 	}
 }

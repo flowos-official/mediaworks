@@ -110,8 +110,8 @@ function InfoRow({ label, value }: { label: string; value: string | number | nul
   if (value == null || value === '' || value === '-') return null;
   return (
     <div className="flex items-start gap-2 py-1">
-      <span className="text-gray-500 text-xs min-w-[90px] shrink-0">{label}</span>
-      <span className="text-gray-800 text-xs">{typeof value === 'number' ? value.toLocaleString() : value}</span>
+      <span className="text-muted-foreground text-xs min-w-[90px] shrink-0">{label}</span>
+      <span className="text-foreground text-xs">{typeof value === 'number' ? value.toLocaleString() : value}</span>
     </div>
   );
 }
@@ -184,15 +184,15 @@ export default function ProductDetailModal({
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-6 pb-6">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
 
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[calc(100vh-3rem)] overflow-y-auto mx-4">
+      <div className="relative bg-card rounded-2xl shadow-2xl w-full max-w-4xl max-h-[calc(100vh-3rem)] overflow-y-auto mx-4">
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 rounded-t-2xl z-10">
+        <div className="sticky top-0 bg-card border-b border-border px-6 py-4 rounded-t-2xl z-10">
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-gray-900">{data?.name ?? productCode}</h2>
+                <h2 className="text-lg font-bold text-foreground">{data?.name ?? productCode}</h2>
                 {d?.product_name_kana && (
-                  <span className="text-xs text-gray-400">({d.product_name_kana})</span>
+                  <span className="text-xs text-muted-foreground">({d.product_name_kana})</span>
                 )}
               </div>
               <div className="flex items-center gap-2 mt-0.5">
@@ -201,11 +201,11 @@ export default function ProductDetailModal({
                   <Badge variant="secondary" className="text-[10px]">{d.category_txd2}</Badge>
                 )}
                 {!d && data?.category && <Badge variant="secondary" className="text-[10px]">{data.category}</Badge>}
-                <span className="text-xs text-gray-400 font-mono">{productCode}</span>
+                <span className="text-xs text-muted-foreground font-mono">{productCode}</span>
               </div>
             </div>
-            <button type="button" onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-lg">
-              <X size={18} className="text-gray-500" />
+            <button type="button" onClick={onClose} className="p-1.5 hover:bg-muted rounded-lg">
+              <X size={18} className="text-muted-foreground" />
             </button>
           </div>
 
@@ -219,7 +219,7 @@ export default function ProductDetailModal({
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
                   activeTab === tab.key
                     ? 'bg-blue-600 text-white'
-                    : 'text-gray-500 hover:bg-gray-100'
+                    : 'text-muted-foreground hover:bg-muted'
                 }`}
               >
                 <tab.icon size={12} />
@@ -236,7 +236,7 @@ export default function ProductDetailModal({
             </div>
           )}
 
-          {error && <p className="text-red-500 text-sm">{error}</p>}
+          {error && <p className="text-red-500 dark:text-red-400 text-sm">{error}</p>}
 
           {data && !loading && (
             <>
@@ -251,7 +251,7 @@ export default function ProductDetailModal({
                           key={img.id}
                           type="button"
                           onClick={() => setLightboxIndex(i)}
-                          className="shrink-0 w-24 h-24 rounded-lg overflow-hidden border border-gray-200 hover:border-blue-400 hover:shadow-md transition-all bg-gray-50 cursor-pointer"
+                          className="shrink-0 w-24 h-24 rounded-lg overflow-hidden border border-border hover:border-blue-400 hover:shadow-md transition-all bg-muted cursor-pointer"
                         >
                           <img src={img.s3_url} alt="" className="w-full h-full object-contain" loading="lazy" />
                         </button>
@@ -260,7 +260,7 @@ export default function ProductDetailModal({
                         <button
                           type="button"
                           onClick={() => setActiveTab('images')}
-                          className="shrink-0 w-24 h-24 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center text-xs text-gray-500 hover:bg-gray-100"
+                          className="shrink-0 w-24 h-24 rounded-lg border border-border bg-muted flex items-center justify-center text-xs text-muted-foreground hover:bg-accent"
                         >
                           {t('moreImages', { count: images.length - 10 })}
                         </button>
@@ -278,15 +278,15 @@ export default function ProductDetailModal({
                       { label: t('kpi.weeklyAvg'), value: t('kpi.weeklyAvgValue', { count: data.summary.avgWeeklyQuantity }) },
                       { label: t('kpi.weekCount'), value: t('kpi.weekCountValue', { count: data.summary.weekCount }) },
                     ].filter((x): x is { label: string; value: string } => x !== null)).map((kpi) => (
-                      <div key={kpi.label} className="bg-gray-50 rounded-xl p-3 text-center">
-                        <div className="text-[10px] text-gray-500 uppercase">{kpi.label}</div>
-                        <div className="text-lg font-bold text-gray-900">{kpi.value}</div>
+                      <div key={kpi.label} className="bg-muted rounded-xl p-3 text-center">
+                        <div className="text-[10px] text-muted-foreground uppercase">{kpi.label}</div>
+                        <div className="text-lg font-bold text-foreground">{kpi.value}</div>
                       </div>
                     ))}
                   </div>
 
                   {/* Chart */}
-                  <Card className="border-gray-200">
+                  <Card className="border-border">
                     <CardHeader className="pb-1">
                       <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
                         <BarChart3 size={14} /> {t('sections.weeklyRevenue')}
@@ -326,7 +326,7 @@ export default function ProductDetailModal({
 
                   {/* Description + Set Contents + Product Specs */}
                   {d && (
-                    <Card className="border-gray-200">
+                    <Card className="border-border">
                       <CardHeader className="pb-1">
                         <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
                           <Package size={14} /> {t('sections.productInfo')}
@@ -334,14 +334,14 @@ export default function ProductDetailModal({
                       </CardHeader>
                       <CardContent className="space-y-3">
                         {d.description && (
-                          <p className="text-sm text-gray-700 leading-relaxed">{d.description}</p>
+                          <p className="text-sm text-foreground leading-relaxed">{d.description}</p>
                         )}
                         {d.set_contents && d.set_contents.length > 0 && (
-                          <div className="p-3 bg-gray-50 rounded-lg">
-                            <span className="text-[10px] font-semibold text-gray-500 uppercase">{t('setContents')}</span>
+                          <div className="p-3 bg-muted rounded-lg">
+                            <span className="text-[10px] font-semibold text-muted-foreground uppercase">{t('setContents')}</span>
                             <ul className="mt-1 space-y-0.5">
                               {d.set_contents.map((item, i) => (
-                                <li key={i} className="text-xs text-gray-600">• {item}</li>
+                                <li key={i} className="text-xs text-muted-foreground">• {item}</li>
                               ))}
                             </ul>
                           </div>
@@ -360,9 +360,9 @@ export default function ProductDetailModal({
                           <InfoRow label={t('specs.expiryInfo')} value={d.expiry_info} />
                         </div>
                         {d.web_description && (
-                          <div className="p-3 bg-blue-50 rounded-lg">
-                            <span className="text-[10px] font-semibold text-blue-600 uppercase">{t('webDescription')}</span>
-                            <p className="text-xs text-gray-700 mt-1 leading-relaxed whitespace-pre-line">{d.web_description}</p>
+                          <div className="p-3 bg-blue-600/10 rounded-lg">
+                            <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-300 uppercase">{t('webDescription')}</span>
+                            <p className="text-xs text-foreground mt-1 leading-relaxed whitespace-pre-line">{d.web_description}</p>
                           </div>
                         )}
                       </CardContent>
@@ -370,9 +370,9 @@ export default function ProductDetailModal({
                   )}
 
                   {!d && (
-                    <div className="py-4 px-5 text-sm bg-amber-50 border border-amber-200 rounded-xl">
-                      <p className="font-medium text-amber-700">{t('ledgerMissing.title')}</p>
-                      <p className="text-amber-600 text-xs mt-1">{t('ledgerMissing.description')}</p>
+                    <div className="py-4 px-5 text-sm bg-amber-600/10 border border-amber-600/30 rounded-xl">
+                      <p className="font-medium text-amber-700 dark:text-amber-300">{t('ledgerMissing.title')}</p>
+                      <p className="text-amber-700/80 dark:text-amber-300/80 text-xs mt-1">{t('ledgerMissing.description')}</p>
                     </div>
                   )}
                 </>
@@ -382,7 +382,7 @@ export default function ProductDetailModal({
               {activeTab === 'sku' && d && (
                 <>
                   {d.skus && d.skus.length > 0 ? (
-                    <Card className="border-gray-200">
+                    <Card className="border-border">
                       <CardHeader className="pb-1">
                         <CardTitle className="text-sm font-semibold">{t('sku.title')} ({t('sku.count', { count: d.skus.length })})</CardTitle>
                       </CardHeader>
@@ -390,7 +390,7 @@ export default function ProductDetailModal({
                         <div className="overflow-x-auto">
                           <table className="w-full text-xs">
                             <thead>
-                              <tr className="border-b border-gray-100 text-gray-500">
+                              <tr className="border-b border-border text-muted-foreground">
                                 <th className="text-left px-4 py-2">{t('sku.cols.index')}</th>
                                 <th className="text-left px-4 py-2">{t('sku.cols.name')}</th>
                                 <th className="text-left px-4 py-2">{t('sku.cols.color')}</th>
@@ -402,14 +402,14 @@ export default function ProductDetailModal({
                             </thead>
                             <tbody>
                               {d.skus.map((sku, i) => (
-                                <tr key={i} className="border-b border-gray-50">
-                                  <td className="px-4 py-1.5 text-gray-400 font-mono">{i + 1}</td>
-                                  <td className="px-4 py-1.5 text-gray-700 font-medium">{sku.name}</td>
-                                  <td className="px-4 py-1.5 text-gray-600">{sku.color || '-'}</td>
-                                  <td className="px-4 py-1.5 text-gray-600">{sku.size || '-'}</td>
+                                <tr key={i} className="border-b border-border">
+                                  <td className="px-4 py-1.5 text-muted-foreground font-mono">{i + 1}</td>
+                                  <td className="px-4 py-1.5 text-foreground font-medium">{sku.name}</td>
+                                  <td className="px-4 py-1.5 text-muted-foreground">{sku.color || '-'}</td>
+                                  <td className="px-4 py-1.5 text-muted-foreground">{sku.size || '-'}</td>
                                   <td className="px-4 py-1.5 text-right font-mono">{sku.price_incl ? `¥${sku.price_incl.toLocaleString()}` : '-'}</td>
-                                  <td className="px-4 py-1.5 text-right font-mono text-gray-500">{sku.price_excl ? `¥${sku.price_excl.toLocaleString()}` : '-'}</td>
-                                  <td className="px-4 py-1.5 text-right font-mono text-gray-500">{sku.shipping ? `¥${sku.shipping.toLocaleString()}` : '-'}</td>
+                                  <td className="px-4 py-1.5 text-right font-mono text-muted-foreground">{sku.price_excl ? `¥${sku.price_excl.toLocaleString()}` : '-'}</td>
+                                  <td className="px-4 py-1.5 text-right font-mono text-muted-foreground">{sku.shipping ? `¥${sku.shipping.toLocaleString()}` : '-'}</td>
                                 </tr>
                               ))}
                             </tbody>
@@ -418,12 +418,12 @@ export default function ProductDetailModal({
                       </CardContent>
                     </Card>
                   ) : (
-                    <div className="text-center py-6 text-sm text-gray-400">{t('sku.empty')}</div>
+                    <div className="text-center py-6 text-sm text-muted-foreground">{t('sku.empty')}</div>
                   )}
 
                   {/* FAQ */}
                   {d.faq && d.faq.length > 0 && (
-                    <Card className="border-gray-200">
+                    <Card className="border-border">
                       <CardHeader className="pb-1">
                         <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
                           <HelpCircle size={14} /> {t('faq.title')} ({t('faq.count', { count: d.faq.length })})
@@ -431,9 +431,9 @@ export default function ProductDetailModal({
                       </CardHeader>
                       <CardContent className="space-y-3">
                         {d.faq.map((item, i) => (
-                          <div key={i} className="border-l-2 border-blue-200 pl-3">
-                            <div className="text-xs font-semibold text-gray-800">{t('faq.questionPrefix')} {item.question}</div>
-                            <div className="text-xs text-gray-600 mt-0.5">{t('faq.answerPrefix')} {item.answer}</div>
+                          <div key={i} className="border-l-2 border-blue-600/30 pl-3">
+                            <div className="text-xs font-semibold text-foreground">{t('faq.questionPrefix')} {item.question}</div>
+                            <div className="text-xs text-muted-foreground mt-0.5">{t('faq.answerPrefix')} {item.answer}</div>
                           </div>
                         ))}
                       </CardContent>
@@ -442,7 +442,7 @@ export default function ProductDetailModal({
 
                   {/* Usage details */}
                   {(d.intended_use || d.not_for_use || d.usage_amount || d.shelf_life || d.emergency_treatment) && (
-                    <Card className="border-gray-200">
+                    <Card className="border-border">
                       <CardHeader className="pb-1">
                         <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
                           <FileText size={14} /> {t('usage.title')}
@@ -451,14 +451,14 @@ export default function ProductDetailModal({
                       <CardContent className="space-y-2">
                         {d.intended_use && (
                           <div>
-                            <span className="text-[10px] font-semibold text-gray-500 uppercase">{t('usage.intendedUse')}</span>
-                            <p className="text-xs text-gray-700 mt-0.5 whitespace-pre-line">{d.intended_use}</p>
+                            <span className="text-[10px] font-semibold text-muted-foreground uppercase">{t('usage.intendedUse')}</span>
+                            <p className="text-xs text-foreground mt-0.5 whitespace-pre-line">{d.intended_use}</p>
                           </div>
                         )}
                         {d.not_for_use && (
                           <div>
-                            <span className="text-[10px] font-semibold text-red-500 uppercase">{t('usage.notForUse')}</span>
-                            <p className="text-xs text-gray-700 mt-0.5 whitespace-pre-line">{d.not_for_use}</p>
+                            <span className="text-[10px] font-semibold text-red-500 dark:text-red-400 uppercase">{t('usage.notForUse')}</span>
+                            <p className="text-xs text-foreground mt-0.5 whitespace-pre-line">{d.not_for_use}</p>
                           </div>
                         )}
                         <div className="grid grid-cols-2 gap-x-6 gap-y-1">
@@ -466,9 +466,9 @@ export default function ProductDetailModal({
                           <InfoRow label={t('usage.shelfLife')} value={d.shelf_life} />
                         </div>
                         {d.emergency_treatment && (
-                          <div className="p-2.5 bg-red-50 border border-red-100 rounded-lg">
-                            <span className="text-[10px] font-semibold text-red-600 uppercase">{t('usage.emergency')}</span>
-                            <p className="text-xs text-gray-700 mt-0.5 whitespace-pre-line">{d.emergency_treatment}</p>
+                          <div className="p-2.5 bg-red-600/10 border border-red-600/20 rounded-lg">
+                            <span className="text-[10px] font-semibold text-red-600 dark:text-red-400 uppercase">{t('usage.emergency')}</span>
+                            <p className="text-xs text-foreground mt-0.5 whitespace-pre-line">{d.emergency_treatment}</p>
                           </div>
                         )}
                       </CardContent>
@@ -476,7 +476,7 @@ export default function ProductDetailModal({
                   )}
 
                   {!d.skus && !d.faq && !d.intended_use && (
-                    <div className="text-center py-6 text-sm text-gray-400">{t('skuFaqEmpty')}</div>
+                    <div className="text-center py-6 text-sm text-muted-foreground">{t('skuFaqEmpty')}</div>
                   )}
                 </>
               )}
@@ -484,7 +484,7 @@ export default function ProductDetailModal({
               {/* ========== TAB: 物流・規定 ========== */}
               {activeTab === 'logistics' && d && (
                 <div className="space-y-5">
-                  <Card className="border-gray-200">
+                  <Card className="border-border">
                     <CardHeader className="pb-1">
                       <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
                         <Truck size={14} /> {t('logistics.title')}
@@ -500,10 +500,10 @@ export default function ProductDetailModal({
                       {d.shipping_notes && <InfoRow label={t('logistics.shippingNotes')} value={d.shipping_notes} />}
                       {d.jan_codes && d.jan_codes.length > 0 && (
                         <div className="flex items-start gap-2 py-1">
-                          <span className="text-gray-500 text-xs min-w-[90px] shrink-0">{t('logistics.janCodes')}</span>
+                          <span className="text-muted-foreground text-xs min-w-[90px] shrink-0">{t('logistics.janCodes')}</span>
                           <div className="flex flex-wrap gap-1">
                             {d.jan_codes.map((code) => (
-                              <span key={code} className="font-mono text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-700">{code}</span>
+                              <span key={code} className="font-mono text-[10px] bg-muted px-1.5 py-0.5 rounded text-foreground">{code}</span>
                             ))}
                           </div>
                         </div>
@@ -511,7 +511,7 @@ export default function ProductDetailModal({
                     </CardContent>
                   </Card>
 
-                  <Card className="border-gray-200">
+                  <Card className="border-border">
                     <CardHeader className="pb-1">
                       <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
                         <FileText size={14} /> {t('policy.title')}
@@ -527,7 +527,7 @@ export default function ProductDetailModal({
 
                   {/* WEB販売・決済情報 */}
                   {(d.web_sales_info || d.payment_methods || d.shipping_fees) && (
-                    <Card className="border-gray-200">
+                    <Card className="border-border">
                       <CardHeader className="pb-1">
                         <CardTitle className="text-sm font-semibold">{t('web.title')}</CardTitle>
                       </CardHeader>
@@ -543,7 +543,7 @@ export default function ProductDetailModal({
                         )}
                         {d.payment_methods && (
                           <div className="flex items-center gap-2 py-1">
-                            <span className="text-gray-500 text-xs min-w-[90px] shrink-0">{t('web.paymentMethod')}</span>
+                            <span className="text-muted-foreground text-xs min-w-[90px] shrink-0">{t('web.paymentMethod')}</span>
                             <div className="flex gap-1">
                               {d.payment_methods.cash_on_delivery && <Badge variant="secondary" className="text-[9px]">{t('web.cod')}</Badge>}
                               {d.payment_methods.credit && <Badge variant="secondary" className="text-[9px]">{t('web.credit')}</Badge>}
@@ -564,14 +564,14 @@ export default function ProductDetailModal({
                   )}
 
                   {d.usage_notes && d.usage_notes.length > 0 && (
-                    <Card className="border-yellow-200 bg-yellow-50/30">
+                    <Card className="border-yellow-500/30 bg-yellow-500/10">
                       <CardHeader className="pb-1">
-                        <CardTitle className="text-sm font-semibold text-yellow-700">{t('usageNotesTitle')}</CardTitle>
+                        <CardTitle className="text-sm font-semibold text-yellow-700 dark:text-yellow-300">{t('usageNotesTitle')}</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <ul className="space-y-1">
                           {d.usage_notes.map((note, i) => (
-                            <li key={i} className="text-xs text-gray-700 flex gap-1.5">
+                            <li key={i} className="text-xs text-foreground flex gap-1.5">
                               <span className="text-yellow-500 shrink-0">⚠</span> {note}
                             </li>
                           ))}
@@ -586,23 +586,23 @@ export default function ProductDetailModal({
               {activeTab === 'confidential' && d && !isViewer && (
                 <div className="space-y-5">
                   {/* Pricing */}
-                  <Card className="border-orange-200 bg-orange-50/30">
+                  <Card className="border-orange-600/30 bg-orange-600/10">
                     <CardHeader className="pb-1">
-                      <CardTitle className="text-sm font-semibold text-orange-700 flex items-center gap-1.5">
+                      <CardTitle className="text-sm font-semibold text-orange-700 dark:text-orange-300 flex items-center gap-1.5">
                         <ShieldCheck size={14} /> {t('confidential.priceTitle')}
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="grid grid-cols-2 gap-4 mb-3">
-                        <div className="bg-white rounded-lg p-3 text-center border border-orange-100">
-                          <div className="text-[10px] text-gray-500">{t('confidential.costPrice')}</div>
-                          <div className="text-xl font-bold text-gray-900">
+                        <div className="bg-card rounded-lg p-3 text-center border border-orange-600/20">
+                          <div className="text-[10px] text-muted-foreground">{t('confidential.costPrice')}</div>
+                          <div className="text-xl font-bold text-foreground">
                             {d.cost_price != null ? `¥${d.cost_price.toLocaleString()}` : '-'}
                           </div>
                         </div>
-                        <div className="bg-white rounded-lg p-3 text-center border border-orange-100">
-                          <div className="text-[10px] text-gray-500">{t('confidential.wholesaleRate')}</div>
-                          <div className="text-xl font-bold text-gray-900">
+                        <div className="bg-card rounded-lg p-3 text-center border border-orange-600/20">
+                          <div className="text-[10px] text-muted-foreground">{t('confidential.wholesaleRate')}</div>
+                          <div className="text-xl font-bold text-foreground">
                             {d.wholesale_rate != null ? `${d.wholesale_rate.toFixed(1)}%` : '-'}
                           </div>
                         </div>
@@ -621,7 +621,7 @@ export default function ProductDetailModal({
                   </Card>
 
                   {/* Manufacturer */}
-                  <Card className="border-gray-200">
+                  <Card className="border-border">
                     <CardHeader className="pb-1">
                       <CardTitle className="text-sm font-semibold">{t('manufacturer.title')}</CardTitle>
                     </CardHeader>
@@ -632,7 +632,7 @@ export default function ProductDetailModal({
                       <InfoRow label={t('manufacturer.txdManager')} value={d.txd_manager} />
                       {d.sales_channels && (
                         <div className="flex items-center gap-2 py-1">
-                          <span className="text-gray-500 text-xs min-w-[90px] shrink-0">{t('manufacturer.salesChannels')}</span>
+                          <span className="text-muted-foreground text-xs min-w-[90px] shrink-0">{t('manufacturer.salesChannels')}</span>
                           <div className="flex gap-1">
                             {d.sales_channels.tv && <Badge variant="secondary" className="text-[9px]">{t('manufacturer.tv')}</Badge>}
                             {d.sales_channels.ec && <Badge variant="secondary" className="text-[9px]">{t('manufacturer.ec')}</Badge>}
@@ -646,7 +646,7 @@ export default function ProductDetailModal({
 
                   {/* Supplier Contact */}
                   {d.supplier_contact && (
-                    <Card className="border-gray-200">
+                    <Card className="border-border">
                       <CardHeader className="pb-1">
                         <CardTitle className="text-sm font-semibold">{t('supplierContact.title')}</CardTitle>
                       </CardHeader>
@@ -667,7 +667,7 @@ export default function ProductDetailModal({
                 <div className="space-y-5">
                   {/* 営業部門 (supplier_contact) */}
                   {d.supplier_contact && (
-                    <Card className="border-gray-200">
+                    <Card className="border-border">
                       <CardHeader className="pb-1">
                         <CardTitle className="text-sm font-semibold">{t('contacts.salesDept')}</CardTitle>
                       </CardHeader>
@@ -684,7 +684,7 @@ export default function ProductDetailModal({
 
                   {/* 発注書送付先 */}
                   {d.order_contact && (
-                    <Card className="border-gray-200">
+                    <Card className="border-border">
                       <CardHeader className="pb-1">
                         <CardTitle className="text-sm font-semibold">{t('contacts.orderForm')}</CardTitle>
                       </CardHeader>
@@ -700,7 +700,7 @@ export default function ProductDetailModal({
 
                   {/* 問合せ先 */}
                   {d.inquiry_contact && (
-                    <Card className="border-gray-200">
+                    <Card className="border-border">
                       <CardHeader className="pb-1">
                         <CardTitle className="text-sm font-semibold">{t('contacts.inquiry')}</CardTitle>
                       </CardHeader>
@@ -716,9 +716,9 @@ export default function ProductDetailModal({
 
                   {/* 返品商品送付先 */}
                   {d.return_destination && (
-                    <Card className="border-orange-200 bg-orange-50/30">
+                    <Card className="border-orange-600/30 bg-orange-600/10">
                       <CardHeader className="pb-1">
-                        <CardTitle className="text-sm font-semibold text-orange-700">{t('contacts.returnDest')}</CardTitle>
+                        <CardTitle className="text-sm font-semibold text-orange-700 dark:text-orange-300">{t('contacts.returnDest')}</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <InfoRow label={t('supplierContact.company')} value={d.return_destination.company} />
@@ -731,7 +731,7 @@ export default function ProductDetailModal({
 
                   {/* 出荷元 */}
                   {d.shipper_info && (
-                    <Card className="border-gray-200">
+                    <Card className="border-border">
                       <CardHeader className="pb-1">
                         <CardTitle className="text-sm font-semibold">{t('contacts.shipper')}</CardTitle>
                       </CardHeader>
@@ -745,7 +745,7 @@ export default function ProductDetailModal({
                   )}
 
                   {!d.supplier_contact && !d.order_contact && !d.return_destination && !d.shipper_info && (
-                    <div className="text-center py-6 text-sm text-gray-400">{t('contacts.empty')}</div>
+                    <div className="text-center py-6 text-sm text-muted-foreground">{t('contacts.empty')}</div>
                   )}
                 </div>
               )}
@@ -754,9 +754,9 @@ export default function ProductDetailModal({
               {activeTab === 'images' && (
                 <>
                   {images.length === 0 && (
-                    <div className="py-4 px-5 text-sm bg-amber-50 border border-amber-200 rounded-xl">
-                      <p className="font-medium text-amber-700">{t('images.emptyTitle')}</p>
-                      <p className="text-amber-600 text-xs mt-1">
+                    <div className="py-4 px-5 text-sm bg-amber-600/10 border border-amber-600/30 rounded-xl">
+                      <p className="font-medium text-amber-700 dark:text-amber-300">{t('images.emptyTitle')}</p>
+                      <p className="text-amber-700/80 dark:text-amber-300/80 text-xs mt-1">
                         {!d
                           ? t('images.emptyNoLedger')
                           : t('images.emptyExtractionFailed')}
@@ -772,11 +772,11 @@ export default function ProductDetailModal({
                       grouped.get(key)!.push({ img, flatIndex: fi });
                     }
                     return Array.from(grouped.entries()).map(([sheetName, items]) => (
-                      <Card key={sheetName} className="border-gray-200">
+                      <Card key={sheetName} className="border-border">
                         <CardHeader className="pb-1">
                           <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
                             <ImageIcon size={14} /> {sheetName}
-                            <span className="text-xs font-normal text-gray-400">({t('images.count', { count: items.length })})</span>
+                            <span className="text-xs font-normal text-muted-foreground">({t('images.count', { count: items.length })})</span>
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -786,7 +786,7 @@ export default function ProductDetailModal({
                                 key={img.id}
                                 type="button"
                                 onClick={() => setLightboxIndex(flatIndex)}
-                                className="aspect-square rounded-lg overflow-hidden border border-gray-200 hover:border-blue-400 hover:shadow-md transition-all bg-gray-50 cursor-pointer"
+                                className="aspect-square rounded-lg overflow-hidden border border-border hover:border-blue-400 hover:shadow-md transition-all bg-muted cursor-pointer"
                               >
                                 <img
                                   src={img.s3_url}
@@ -871,15 +871,15 @@ export default function ProductDetailModal({
 
               {/* No detail fallback for non-overview tabs */}
               {activeTab !== 'overview' && activeTab !== 'images' && !d && (
-                <div className="py-4 px-5 text-sm bg-amber-50 border border-amber-200 rounded-xl">
-                  <p className="font-medium text-amber-700">{t('ledgerMissing.title')}</p>
-                  <p className="text-amber-600 text-xs mt-1">{t('ledgerMissing.tabDescription')}</p>
+                <div className="py-4 px-5 text-sm bg-amber-600/10 border border-amber-600/30 rounded-xl">
+                  <p className="font-medium text-amber-700 dark:text-amber-300">{t('ledgerMissing.title')}</p>
+                  <p className="text-amber-700/80 dark:text-amber-300/80 text-xs mt-1">{t('ledgerMissing.tabDescription')}</p>
                 </div>
               )}
 
               {/* Data source footer */}
               {d?.source_file && (
-                <div className="text-[10px] text-gray-400 text-right pt-2 border-t border-gray-100">
+                <div className="text-[10px] text-muted-foreground text-right pt-2 border-t border-border">
                   {t('source')}: {d.source_file} {d.file_date ? `(${d.file_date})` : ''}
                 </div>
               )}
