@@ -13,6 +13,7 @@
  * timeout hit before completion. Caller handles DB persistence.
  */
 
+import { GEMINI_FLASH } from "@/lib/gemini-models";
 import {
 	SchemaType,
 	GoogleGenerativeAI,
@@ -32,7 +33,7 @@ import type {
 } from "./types";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const MODEL_ID = "gemini-3-flash-preview";
+const MODEL_ID = GEMINI_FLASH;
 const MAX_TOOL_CALLS = 8;
 const TIMEOUT_MS = 55_000;
 

@@ -9,11 +9,12 @@
  */
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GEMINI_FLASH } from "@/lib/gemini-models";
 import { braveSearchItems, type BraveWebResult } from "@/lib/brave";
 import type { BroadcastTag, Candidate } from "./types";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const MODEL_ID = "gemini-3-flash-preview";
+const MODEL_ID = GEMINI_FLASH;
 
 const COMPETITORS = "(QVCジャパン OR ジャパネット OR ショップチャンネル OR テレ東ポシュレ)";
 

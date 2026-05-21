@@ -44,7 +44,7 @@ File Upload → Supabase Storage → Gemini Vision (extract)
 | Service | Purpose | Env Var |
 |---------|---------|---------|
 | Supabase | PostgreSQL DB + file storage | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` |
-| Google Gemini | Vision extraction + research synthesis (gemini-3-flash-preview) | `GEMINI_API_KEY` |
+| Google Gemini | Vision extraction + research synthesis (gemini-3.5-flash, fallback gemini-3.1-pro-preview) | `GEMINI_API_KEY` |
 | Brave Search | Web research queries | `BRAVE_SEARCH_API_KEY` |
 | Rakuten API | Japan market product ranking data | `RAKUTEN_APP_ID` |
 

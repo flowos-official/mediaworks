@@ -416,7 +416,30 @@ export async function buildPool(plan: CategoryPlan): Promise<PoolItem[]> {
 	// accumulator (no shared URLs with Rakuten/Brave items).
 	const passC = await fetchTvChannelFromBroadcasts(plan);
 
-	return [...urlIndexed.values(), ...passC];
+	// Round-robin merge so TV-channel-tagged items survive the downstream
+	// curatePool slice (POOL_SAMPLE_LIMIT=150). Plain concatenation put TV
+	// items at the END of the array and the slice cut them off — confirmed
+	// 2026-05-21 when a 30-product daily session came back with
+	// tv_channel_source=0 despite Pass D running with budget=200. Interleave
+	// (1 tv : 1 untagged) keeps both source-types representable when curate
+	// only sees the first 150 entries.
+	const allUrlItems = [...urlIndexed.values()];
+	const tvTagged = allUrlItems.filter(
+		(i) => i.tvChannel || (i.tvChannelMatches && i.tvChannelMatches.length > 0),
+	);
+	const untagged = allUrlItems.filter(
+		(i) => !i.tvChannel && !(i.tvChannelMatches && i.tvChannelMatches.length > 0),
+	);
+	const interleaved: PoolItem[] = [];
+	const maxLen = Math.max(tvTagged.length, untagged.length);
+	for (let i = 0; i < maxLen; i++) {
+		if (i < tvTagged.length) interleaved.push(tvTagged[i]);
+		if (i < untagged.length) interleaved.push(untagged[i]);
+	}
+	console.log(
+		`[pool] reorder: tv-tagged=${tvTagged.length} untagged=${untagged.length} passC=${passC.length} (round-robin interleave so both survive slice)`,
+	);
+	return [...interleaved, ...passC];
 }
 
 export const __test = {

@@ -11,10 +11,11 @@
  * persisting unclassified noise.
  */
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GEMINI_FLASH } from "@/lib/gemini-models";
 import type { ScrapedSlot } from "./types";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const MODEL_ID = "gemini-3-flash-preview";
+const MODEL_ID = GEMINI_FLASH;
 
 export const SHOPCH_WHITELIST = [
 	"靴・バッグ・小物・インナー",

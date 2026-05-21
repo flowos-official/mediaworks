@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GEMINI_FLASH } from "@/lib/gemini-models";
 import { buildChannelReferencePrompt } from "@/lib/tv-channels";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
@@ -139,7 +140,7 @@ export async function extractProductInfo(
 	mimeType: string,
 	fileName: string,
 ): Promise<ProductInfo> {
-	const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
+	const model = genAI.getGenerativeModel({ model: GEMINI_FLASH });
 
 	const prompt = `You are a product analyst for home shopping channels. Analyze this file and extract all product information.
 
@@ -177,8 +178,8 @@ export async function synthesizeResearch(
 	searchResults: Record<string, string>,
 	broadcastContextPrompt?: string,
 ): Promise<ResearchOutput> {
-	// Use gemini-3-flash-preview (stable, fast)
-	const modelName = "gemini-3-flash-preview";
+	// Use gemini-3.5-flash (stable, fast)
+	const modelName = GEMINI_FLASH;
 	const model = genAI.getGenerativeModel({
 		model: modelName,
 		generationConfig: { maxOutputTokens: 16384 },
@@ -459,7 +460,7 @@ export interface ExpansionAnalysisResult {
 export async function analyzeExpansionStrategy(
 	input: ExpansionInput,
 ): Promise<ExpansionAnalysisResult> {
-	const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
+	const model = genAI.getGenerativeModel({ model: GEMINI_FLASH });
 
 	const productLines = input.topProducts
 		.map(

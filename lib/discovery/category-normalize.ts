@@ -59,9 +59,10 @@ export function validateAgainstWhitelist(
 }
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GEMINI_FLASH } from "@/lib/gemini-models";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-const MODEL_ID = "gemini-3-flash-preview";
+const MODEL_ID = GEMINI_FLASH;
 export const BATCH_SIZE = 50;
 
 let _genAI: GoogleGenerativeAI | null = null;
