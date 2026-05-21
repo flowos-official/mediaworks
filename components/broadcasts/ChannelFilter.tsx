@@ -13,16 +13,16 @@ const OPTIONS: ChannelFilterValue[] = ["all", "shopch", "qvc"];
 
 const STYLES: Record<ChannelFilterValue, { active: string; inactive: string }> = {
   all: {
-    active: "bg-gray-900 text-white border-gray-900",
-    inactive: "bg-white text-gray-700 border-gray-300 hover:bg-gray-50",
+    active: "bg-foreground text-background border-foreground",
+    inactive: "bg-card text-foreground border-border hover:bg-muted",
   },
   shopch: {
     active: "bg-red-600 text-white border-red-600",
-    inactive: "bg-white text-red-700 border-red-300 hover:bg-red-50",
+    inactive: "bg-card text-red-700 dark:text-red-300 border-red-500/40 hover:bg-red-600/10",
   },
   qvc: {
     active: "bg-violet-600 text-white border-violet-600",
-    inactive: "bg-white text-violet-700 border-violet-300 hover:bg-violet-50",
+    inactive: "bg-card text-violet-700 dark:text-violet-300 border-violet-500/40 hover:bg-violet-600/10",
   },
 };
 

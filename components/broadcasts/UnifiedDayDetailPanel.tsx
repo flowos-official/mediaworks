@@ -120,7 +120,7 @@ export default function UnifiedDayDetailPanel({ date }: Props) {
 
 	if (!date) {
 		return (
-			<div className="text-sm text-gray-500 p-6 text-center">
+			<div className="text-sm text-muted-foreground p-6 text-center">
 				{t("empty.day")}
 			</div>
 		);
@@ -185,10 +185,10 @@ export default function UnifiedDayDetailPanel({ date }: Props) {
 			/>
 			<div className="flex items-baseline justify-between mb-3 flex-wrap gap-2">
 				<div>
-					<h2 className="text-xl font-semibold text-gray-900">
+					<h2 className="text-xl font-semibold text-foreground">
 						{formatDateLabel(date)}
 					</h2>
-					<p className="text-xs text-gray-500">
+					<p className="text-xs text-muted-foreground">
 						{loading ? t("loading") : t("broadcastCount", { count: totalShown })}
 					</p>
 				</div>
@@ -203,8 +203,8 @@ export default function UnifiedDayDetailPanel({ date }: Props) {
 					}}
 					className={`px-2.5 py-0.5 rounded-full text-[11px] font-medium border transition-colors ${
 						channelFilter === "all"
-							? "bg-gray-900 text-white border-gray-900"
-							: "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+							? "bg-foreground text-background border-foreground"
+							: "bg-card text-foreground border-border hover:bg-muted"
 					}`}
 				>
 					{t("channelFilter.all")}
@@ -214,7 +214,7 @@ export default function UnifiedDayDetailPanel({ date }: Props) {
 					const active = channelFilter === slug;
 					const palette =
 						CHANNEL_BADGE[slug as BroadcastChannelSlug] ??
-						"bg-gray-100 text-gray-700 border-gray-200";
+						"bg-muted text-foreground border-border";
 					return (
 						<button
 							key={slug}
@@ -230,7 +230,7 @@ export default function UnifiedDayDetailPanel({ date }: Props) {
 							}}
 							className={`px-2.5 py-0.5 rounded-full text-[11px] font-medium border transition-colors ${
 								active
-									? "bg-gray-900 text-white border-gray-900"
+									? "bg-foreground text-background border-foreground"
 									: `${palette} hover:opacity-80`
 							}`}
 						>
@@ -247,8 +247,8 @@ export default function UnifiedDayDetailPanel({ date }: Props) {
 						onClick={() => setCategoryFilter("all")}
 						className={`px-2.5 py-0.5 rounded-full text-[11px] font-medium border transition-colors ${
 							categoryFilter === "all"
-								? "bg-gray-900 text-white border-gray-900"
-								: "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+								? "bg-foreground text-background border-foreground"
+								: "bg-card text-foreground border-border hover:bg-muted"
 						}`}
 					>
 						{t("categoryFilter.all")}
@@ -260,8 +260,8 @@ export default function UnifiedDayDetailPanel({ date }: Props) {
 							onClick={() => setCategoryFilter(c)}
 							className={`px-2.5 py-0.5 rounded-full text-[11px] font-medium border transition-colors ${
 								categoryFilter === c
-									? "bg-gray-900 text-white border-gray-900"
-									: "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+									? "bg-foreground text-background border-foreground"
+									: "bg-card text-foreground border-border hover:bg-muted"
 							}`}
 						>
 							{c}
@@ -271,7 +271,7 @@ export default function UnifiedDayDetailPanel({ date }: Props) {
 			)}
 
 			{totalShown === 0 && !loading ? (
-				<div className="text-sm text-gray-500 p-6 text-center border border-dashed border-gray-200 rounded-lg">
+				<div className="text-sm text-muted-foreground p-6 text-center border border-dashed border-border rounded-lg">
 					{timedRows.length + oaRows.length === 0
 						? t("empty.day")
 						: t("empty.filtered")}
@@ -280,7 +280,7 @@ export default function UnifiedDayDetailPanel({ date }: Props) {
 				<div className="flex flex-col gap-4">
 					{sortedTimed.length > 0 && (
 						<section>
-							<div className="text-xs font-medium text-gray-500 mb-2">
+							<div className="text-xs font-medium text-muted-foreground mb-2">
 								─ {t("unified.timedSection")} ({sortedTimed.length}件)
 								{timedError ? ` · ${t("unified.fetchFailed")}` : ""}
 							</div>
@@ -293,11 +293,11 @@ export default function UnifiedDayDetailPanel({ date }: Props) {
 					)}
 					{filteredOA.length > 0 && (
 						<section>
-							<div className="text-xs font-medium text-gray-500 mb-2">
+							<div className="text-xs font-medium text-muted-foreground mb-2">
 								─ {t("unified.oaSection")} ({filteredOA.length}件)
 								{oaError ? ` · ${t("unified.fetchFailed")}` : ""}
 							</div>
-							<div className="rounded-lg border border-gray-200">
+							<div className="rounded-lg border border-border">
 								{[...oaByChannel.entries()]
 									.sort(([a], [b]) => a.localeCompare(b))
 									.flatMap(([, rows]) =>

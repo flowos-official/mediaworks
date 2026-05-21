@@ -78,23 +78,23 @@ export default function BroadcastVideoModal({
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-3xl max-h-[90dvh] overflow-y-auto bg-white rounded-xl shadow-2xl flex flex-col"
+        className="relative w-full max-w-3xl max-h-[90dvh] overflow-y-auto bg-card rounded-xl shadow-2xl flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 flex-shrink-0">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border flex-shrink-0">
           <div>
-            <h2 className="text-base font-semibold text-gray-900">
+            <h2 className="text-base font-semibold text-foreground">
               {t("archivedBroadcast")}
             </h2>
             {brandName && (
-              <p className="text-xs text-gray-500 mt-0.5">{brandName}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{brandName}</p>
             )}
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-700 transition-colors"
+            className="text-muted-foreground hover:text-foreground transition-colors"
             aria-label="Close"
           >
             <X size={20} />
@@ -115,7 +115,7 @@ export default function BroadcastVideoModal({
 
         {/* Product list */}
         <div className="px-5 py-4">
-          <h3 className="text-sm font-medium text-gray-700 mb-3">
+          <h3 className="text-sm font-medium text-foreground mb-3">
             {loading
               ? t("loading")
               : t("productsInBroadcast", { n: products.length })}
@@ -125,14 +125,14 @@ export default function BroadcastVideoModal({
               {products.map((p) => (
                 <div
                   key={p.product_id}
-                  className="flex gap-3 p-2.5 rounded-lg border border-gray-200 bg-gray-50"
+                  className="flex gap-3 p-2.5 rounded-lg border border-border bg-muted"
                 >
                   {p.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={p.image_url}
                       alt=""
-                      className="w-16 h-16 object-cover rounded flex-shrink-0 bg-gray-200"
+                      className="w-16 h-16 object-cover rounded flex-shrink-0 bg-accent"
                       loading="lazy"
                       onError={(e) => {
                         (e.target as HTMLImageElement).style.visibility =
@@ -140,34 +140,34 @@ export default function BroadcastVideoModal({
                       }}
                     />
                   ) : (
-                    <div className="w-16 h-16 bg-gray-200 text-gray-400 rounded flex-shrink-0 flex items-center justify-center">
+                    <div className="w-16 h-16 bg-accent text-muted-foreground rounded flex-shrink-0 flex items-center justify-center">
                       <ShoppingBag size={18} strokeWidth={1.5} />
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs font-semibold text-gray-900 line-clamp-2 leading-tight">
+                    <div className="text-xs font-semibold text-foreground line-clamp-2 leading-tight">
                       {p.name ?? `#${p.product_id}`}
                     </div>
                     <div className="flex flex-wrap items-center gap-1.5 mt-1">
                       {p.price_jpy != null && (
-                        <span className="text-xs font-mono text-gray-800">
+                        <span className="text-xs font-mono text-foreground">
                           {formatJpy(p.price_jpy)}
                         </span>
                       )}
                       {p.original_price_jpy != null &&
                         p.price_jpy != null &&
                         p.original_price_jpy > p.price_jpy && (
-                          <span className="text-[10px] text-gray-400 line-through font-mono">
+                          <span className="text-[10px] text-muted-foreground line-through font-mono">
                             {formatJpy(p.original_price_jpy)}
                           </span>
                         )}
                       {p.discount_rate != null && p.discount_rate > 0 && (
-                        <span className="text-[10px] bg-red-100 text-red-700 px-1 rounded font-medium">
+                        <span className="text-[10px] bg-red-600/15 text-red-700 dark:text-red-300 px-1 rounded font-medium">
                           -{p.discount_rate}%
                         </span>
                       )}
                       {p.in_stock_at_capture === false && (
-                        <span className="text-[10px] bg-gray-200 text-gray-500 px-1 rounded">
+                        <span className="text-[10px] bg-accent text-muted-foreground px-1 rounded">
                           {t("soldOut")}
                         </span>
                       )}

@@ -41,11 +41,11 @@ interface FetchResult {
 }
 
 const CHANNEL_LABEL: Record<Analysis["recommendedChannel"], { label: string; icon: typeof Tv; cls: string }> = {
-	tv: { label: "TV通販", icon: Tv, cls: "bg-violet-100 text-violet-700" },
-	ec: { label: "EC", icon: ShoppingBag, cls: "bg-blue-100 text-blue-700" },
-	live: { label: "ライブ", icon: Radio, cls: "bg-rose-100 text-rose-700" },
-	"tv+ec": { label: "TV+EC", icon: Tv, cls: "bg-emerald-100 text-emerald-700" },
-	skip: { label: "見送り", icon: Ban, cls: "bg-gray-200 text-gray-600" },
+	tv: { label: "TV通販", icon: Tv, cls: "bg-violet-600/15 text-violet-700 dark:text-violet-300" },
+	ec: { label: "EC", icon: ShoppingBag, cls: "bg-blue-600/15 text-blue-700 dark:text-blue-300" },
+	live: { label: "ライブ", icon: Radio, cls: "bg-rose-600/15 text-rose-700 dark:text-rose-300" },
+	"tv+ec": { label: "TV+EC", icon: Tv, cls: "bg-emerald-600/15 text-emerald-700 dark:text-emerald-300" },
+	skip: { label: "見送り", icon: Ban, cls: "bg-accent text-muted-foreground" },
 };
 
 function scoreColor(s: number): string {
@@ -93,7 +93,7 @@ export function CompetitorFitPanel({ slot }: { slot: SlotInput }) {
 			<button
 				type="button"
 				onClick={() => run(false)}
-				className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-md bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200"
+				className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-md bg-indigo-600/10 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-600/15 border border-indigo-600/30"
 			>
 				<Sparkles size={11} />
 				自社販売適合度を分析
@@ -103,7 +103,7 @@ export function CompetitorFitPanel({ slot }: { slot: SlotInput }) {
 
 	if (state.kind === "loading") {
 		return (
-			<div className="inline-flex items-center gap-1 text-[11px] text-gray-500 px-2 py-1">
+			<div className="inline-flex items-center gap-1 text-[11px] text-muted-foreground px-2 py-1">
 				<Loader2 size={11} className="animate-spin" />
 				AIが分析中… (約30-60秒)
 			</div>
@@ -112,7 +112,7 @@ export function CompetitorFitPanel({ slot }: { slot: SlotInput }) {
 
 	if (state.kind === "error") {
 		return (
-			<div className="mt-2 p-2 rounded-md bg-rose-50 border border-rose-200 text-[11px] text-rose-700 flex items-start gap-1.5">
+			<div className="mt-2 p-2 rounded-md bg-rose-600/10 border border-rose-600/30 text-[11px] text-rose-700 dark:text-rose-300 flex items-start gap-1.5">
 				<AlertTriangle size={12} className="mt-0.5 flex-shrink-0" />
 				<div className="flex-1">
 					<div>{state.message}</div>
@@ -133,7 +133,7 @@ export function CompetitorFitPanel({ slot }: { slot: SlotInput }) {
 	const ChIcon = ch.icon;
 
 	return (
-		<div className="mt-2 p-3 rounded-md bg-indigo-50/50 border border-indigo-200 text-xs space-y-2">
+		<div className="mt-2 p-3 rounded-md bg-indigo-600/5 border border-indigo-600/30 text-xs space-y-2">
 			<div className="flex items-center justify-between gap-2 flex-wrap">
 				<div className="flex items-center gap-2">
 					<span
@@ -148,15 +148,15 @@ export function CompetitorFitPanel({ slot }: { slot: SlotInput }) {
 						<ChIcon size={11} />
 						{ch.label}
 					</span>
-					<span className="text-[10px] text-gray-500">確信度: {a.confidence}</span>
+					<span className="text-[10px] text-muted-foreground">確信度: {a.confidence}</span>
 					{state.data.cached && (
-						<span className="text-[10px] text-gray-400">(cached)</span>
+						<span className="text-[10px] text-muted-foreground">(cached)</span>
 					)}
 				</div>
 				<button
 					type="button"
 					onClick={() => run(true)}
-					className="inline-flex items-center gap-1 text-[10px] text-gray-500 hover:text-gray-800"
+					className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
 					title="再分析 (キャッシュを無視)"
 				>
 					<RefreshCw size={10} />
@@ -164,24 +164,24 @@ export function CompetitorFitPanel({ slot }: { slot: SlotInput }) {
 				</button>
 			</div>
 
-			<p className="text-gray-800 leading-snug">{a.summary}</p>
+			<p className="text-foreground leading-snug">{a.summary}</p>
 
 			<div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-				<div className="bg-white rounded p-2 border border-indigo-100">
-					<div className="text-[10px] font-semibold text-indigo-700 mb-1 flex items-center gap-1">
+				<div className="bg-card rounded p-2 border border-indigo-600/20">
+					<div className="text-[10px] font-semibold text-indigo-700 dark:text-indigo-300 mb-1 flex items-center gap-1">
 						<CheckCircle2 size={10} /> 推奨販売時期
 					</div>
-					<div className="text-[11px] text-gray-700 leading-snug">
+					<div className="text-[11px] text-foreground leading-snug">
 						{a.recommendedTiming}
 					</div>
 				</div>
-				<div className="bg-white rounded p-2 border border-indigo-100">
-					<div className="text-[10px] font-semibold text-indigo-700 mb-1">
+				<div className="bg-card rounded p-2 border border-indigo-600/20">
+					<div className="text-[10px] font-semibold text-indigo-700 dark:text-indigo-300 mb-1">
 						差別化ポイント
 					</div>
 					<ul className="space-y-0.5">
 						{a.differentiation.map((d, i) => (
-							<li key={i} className="text-[11px] text-gray-700 leading-snug">
+							<li key={i} className="text-[11px] text-foreground leading-snug">
 								• {d}
 							</li>
 						))}
@@ -190,13 +190,13 @@ export function CompetitorFitPanel({ slot }: { slot: SlotInput }) {
 			</div>
 
 			{a.risks.length > 0 && (
-				<div className="bg-rose-50/60 rounded p-2 border border-rose-100">
-					<div className="text-[10px] font-semibold text-rose-700 mb-1 flex items-center gap-1">
+				<div className="bg-rose-600/10 rounded p-2 border border-rose-600/20">
+					<div className="text-[10px] font-semibold text-rose-700 dark:text-rose-300 mb-1 flex items-center gap-1">
 						<AlertTriangle size={10} /> リスク
 					</div>
 					<ul className="space-y-0.5">
 						{a.risks.map((r, i) => (
-							<li key={i} className="text-[11px] text-gray-700 leading-snug">
+							<li key={i} className="text-[11px] text-foreground leading-snug">
 								• {r}
 							</li>
 						))}

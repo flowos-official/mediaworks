@@ -80,7 +80,7 @@ export default function MonthGrid({
 
   return (
     <div>
-      <div className="grid grid-cols-7 gap-1 mb-1 text-xs text-gray-500">
+      <div className="grid grid-cols-7 gap-1 mb-1 text-xs text-muted-foreground">
         {headers.map((h) => (
           <div key={h} className="text-center py-1">{h}</div>
         ))}

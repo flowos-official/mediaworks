@@ -145,26 +145,26 @@ export default function BroadcastCalendar({
           <button
             type="button"
             onClick={goPrev}
-            className="p-1.5 rounded hover:bg-gray-100"
+            className="p-1.5 rounded hover:bg-muted"
             aria-label={t("monthNav.prev")}
           >
             <ChevronLeft size={18} />
           </button>
-          <h2 className="text-lg font-semibold text-gray-900">{monthLabel}</h2>
+          <h2 className="text-lg font-semibold text-foreground">{monthLabel}</h2>
           <button
             type="button"
             onClick={goNext}
-            className="p-1.5 rounded hover:bg-gray-100"
+            className="p-1.5 rounded hover:bg-muted"
             aria-label={t("monthNav.next")}
           >
             <ChevronRight size={18} />
           </button>
         </div>
         {loading && (
-          <div className="text-xs text-gray-500 mb-2">Loading…</div>
+          <div className="text-xs text-muted-foreground mb-2">Loading…</div>
         )}
         {error && (
-          <div className="text-xs text-red-600 mb-2">
+          <div className="text-xs text-red-600 dark:text-red-400 mb-2">
             {t("empty.apiError")} ({error})
           </div>
         )}

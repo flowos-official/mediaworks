@@ -32,8 +32,8 @@ export default function DateCell({
     selected
       ? "bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
       : muted
-        ? "bg-gray-50 text-gray-400 border-gray-100 hover:bg-gray-100"
-        : "bg-white text-gray-900 border-gray-200 hover:bg-gray-50",
+        ? "bg-muted text-muted-foreground border-border hover:bg-accent"
+        : "bg-card text-foreground border-border hover:bg-muted",
     todayRing ? "ring-2 ring-blue-400" : "",
   ].join(" ");
 
@@ -41,12 +41,12 @@ export default function DateCell({
     <button type="button" onClick={() => onClick(iso)} className={cls}>
       <div className="text-sm font-semibold leading-tight">{dayLabel}</div>
       {total > 0 ? (
-        <div className={`text-[10px] leading-tight mt-1 ${selected ? "text-blue-100" : "text-gray-500"}`}>
+        <div className={`text-[10px] leading-tight mt-1 ${selected ? "text-blue-100" : "text-muted-foreground"}`}>
           <div>S·{shopchCount}</div>
           <div>Q·{qvcCount}</div>
         </div>
       ) : (
-        <div className={`text-[10px] leading-tight mt-1 ${selected ? "text-blue-200" : "text-gray-300"}`}>—</div>
+        <div className={`text-[10px] leading-tight mt-1 ${selected ? "text-blue-200" : "text-muted-foreground/50"}`}>—</div>
       )}
     </button>
   );
