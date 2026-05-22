@@ -44,7 +44,7 @@ export default function GroupDropdown({ group, role, locale }: Props) {
       <Link
         href={localePath(locale, '/analytics/products')}
         className={`text-sm font-medium ${
-          isActive ? 'text-blue-600' : 'text-gray-600 hover:text-gray-900'
+          isActive ? 'text-blue-600' : 'text-muted-foreground hover:text-foreground'
         }`}
       >
         {t('nav.firm.products')}
@@ -59,7 +59,7 @@ export default function GroupDropdown({ group, role, locale }: Props) {
         className={`inline-flex items-center gap-1 text-sm font-medium ${
           isActive
             ? 'text-blue-600 border-b-2 border-blue-600 -mb-px'
-            : 'text-gray-600 hover:text-gray-900'
+            : 'text-muted-foreground hover:text-foreground'
         }`}
       >
         <Link href={localePath(locale, group.landing)} onFocus={() => setOpen(true)}>
@@ -81,14 +81,14 @@ export default function GroupDropdown({ group, role, locale }: Props) {
         <div className="absolute left-0 top-full pt-1 z-50">
           <div
             role="menu"
-            className="min-w-[180px] bg-white border border-gray-200 rounded-lg shadow-lg py-1"
+            className="min-w-[180px] bg-card border border-border rounded-lg shadow-lg py-1"
           >
             {group.members.map((m) => (
               <Link
                 key={m.href}
                 role="menuitem"
                 href={localePath(locale, m.href)}
-                className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                className="block px-3 py-2 text-sm text-foreground hover:bg-muted"
                 onClick={() => setOpen(false)}
               >
                 {t(m.labelKey)}

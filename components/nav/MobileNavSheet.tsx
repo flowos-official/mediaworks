@@ -38,19 +38,19 @@ export default function MobileNavSheet({ role, locale }: Props) {
         aria-label="Open navigation"
         aria-expanded={open}
         onClick={() => setOpen(true)}
-        className="md:hidden p-2 text-gray-600 hover:text-gray-900"
+        className="md:hidden p-2 text-muted-foreground hover:text-foreground"
       >
         <Menu size={20} />
       </button>
       {open && (
-        <div className="fixed inset-0 z-50 bg-white md:hidden">
-          <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200">
-            <span className="text-lg font-bold text-gray-900">MediaWorks</span>
+        <div className="fixed inset-0 z-50 bg-background md:hidden">
+          <div className="flex items-center justify-between h-16 px-4 border-b border-border">
+            <span className="text-lg font-bold text-foreground">MediaWorks</span>
             <button
               type="button"
               aria-label="Close navigation"
               onClick={() => setOpen(false)}
-              className="p-2 text-gray-600 hover:text-gray-900"
+              className="p-2 text-muted-foreground hover:text-foreground"
             >
               <X size={20} />
             </button>
@@ -64,8 +64,8 @@ export default function MobileNavSheet({ role, locale }: Props) {
                     key={g.key}
                     href={localePath(locale, '/analytics/products')}
                     onClick={() => setOpen(false)}
-                    className={`block py-3 px-3 text-base font-medium rounded-lg hover:bg-gray-50 ${
-                      isActiveGroup ? 'text-blue-600 bg-blue-50' : 'text-gray-900'
+                    className={`block py-3 px-3 text-base font-medium rounded-lg hover:bg-muted ${
+                      isActiveGroup ? 'text-blue-600 bg-blue-600/10' : 'text-foreground'
                     }`}
                   >
                     {t('nav.firm.products')}
@@ -74,11 +74,11 @@ export default function MobileNavSheet({ role, locale }: Props) {
               }
               return (
                 <details key={g.key} className="group" open={isActiveGroup}>
-                  <summary className={`flex items-center justify-between py-3 px-3 text-base font-semibold cursor-pointer rounded-lg hover:bg-gray-50 ${
-                    isActiveGroup ? 'text-blue-600 bg-blue-50' : 'text-gray-900'
+                  <summary className={`flex items-center justify-between py-3 px-3 text-base font-semibold cursor-pointer rounded-lg hover:bg-muted ${
+                    isActiveGroup ? 'text-blue-600 bg-blue-600/10' : 'text-foreground'
                   }`}>
                     {t(g.labelKey)}
-                    <span className="text-gray-400 group-open:rotate-180 transition-transform">▾</span>
+                    <span className="text-muted-foreground group-open:rotate-180 transition-transform">▾</span>
                   </summary>
                   <div className="pl-4 space-y-1 pb-2">
                     {g.members.map((m) => {
@@ -88,8 +88,8 @@ export default function MobileNavSheet({ role, locale }: Props) {
                           key={m.href}
                           href={localePath(locale, m.href)}
                           onClick={() => setOpen(false)}
-                          className={`block py-2 px-3 text-sm rounded-lg hover:bg-gray-50 ${
-                            isActiveMember ? 'text-blue-600 font-medium bg-blue-50' : 'text-gray-700'
+                          className={`block py-2 px-3 text-sm rounded-lg hover:bg-muted ${
+                            isActiveMember ? 'text-blue-600 font-medium bg-blue-600/10' : 'text-foreground'
                           }`}
                         >
                           {t(m.labelKey)}

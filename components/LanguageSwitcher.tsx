@@ -18,16 +18,16 @@ export default function LanguageSwitcher() {
   };
 
   return (
-    <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
-      <Globe size={14} className="text-gray-500 ml-1" />
+    <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+      <Globe size={14} className="text-muted-foreground ml-1" />
       {['ja', 'ko'].map((loc) => (
         <button
           key={loc}
           onClick={() => switchLocale(loc)}
           className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${
             locale === loc
-              ? 'bg-white text-gray-900 shadow-sm'
-              : 'text-gray-500 hover:text-gray-700'
+              ? 'bg-card text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
           }`}
         >
           {t(loc)}
