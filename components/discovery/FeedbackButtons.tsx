@@ -25,28 +25,28 @@ const BUTTONS: Array<{
 		icon: <CheckCircle2 size={12} />,
 		labelKey: "sourceButton",
 		activeClass: "bg-green-500 text-white border-green-500",
-		hoverClass: "hover:bg-green-50 hover:border-green-300",
+		hoverClass: "hover:bg-green-600/10 hover:border-green-300",
 	},
 	{
 		action: "interested",
 		icon: <Star size={12} />,
 		labelKey: "interestedButton",
 		activeClass: "bg-orange-500 text-white border-orange-500",
-		hoverClass: "hover:bg-orange-50 hover:border-orange-300",
+		hoverClass: "hover:bg-orange-600/10 hover:border-orange-300",
 	},
 	{
 		action: "rejected",
 		icon: <XCircle size={12} />,
 		labelKey: "rejectedButton",
 		activeClass: "bg-red-500 text-white border-red-500",
-		hoverClass: "hover:bg-red-50 hover:border-red-300",
+		hoverClass: "hover:bg-red-600/10 hover:border-red-300",
 	},
 	{
 		action: "duplicate",
 		icon: <Copy size={12} />,
 		labelKey: "duplicateButton",
 		activeClass: "bg-gray-500 text-white border-gray-500",
-		hoverClass: "hover:bg-gray-100 hover:border-gray-400",
+		hoverClass: "hover:bg-muted hover:border-border",
 	},
 ];
 
@@ -99,7 +99,7 @@ export function FeedbackButtons({ productId, current, onUpdate }: Props) {
 							onClick={() => handleClick(btn.action)}
 							disabled={loading}
 							className={`inline-flex items-center justify-center gap-1 px-2 py-1.5 text-[10px] font-semibold rounded border transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
-								active ? btn.activeClass : `bg-white text-gray-700 border-gray-200 ${btn.hoverClass}`
+								active ? btn.activeClass : `bg-card text-foreground border-border ${btn.hoverClass}`
 							}`}
 						>
 							{loading && active ? <Loader2 size={10} className="animate-spin" /> : btn.icon}

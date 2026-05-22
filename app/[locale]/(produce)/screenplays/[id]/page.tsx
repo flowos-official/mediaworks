@@ -39,10 +39,10 @@ async function fetchDetail(id: string) {
 }
 
 const STATUS_BADGE: Record<ScreenplayRow["status"], { cls: string; label: string }> = {
-	pending: { cls: "bg-yellow-100 text-yellow-700", label: "待機中" },
-	generating: { cls: "bg-blue-100 text-blue-700", label: "生成中" },
-	ready: { cls: "bg-green-100 text-green-700", label: "完成" },
-	failed: { cls: "bg-red-100 text-red-700", label: "失敗" },
+	pending: { cls: "bg-yellow-600/15 text-yellow-700", label: "待機中" },
+	generating: { cls: "bg-blue-600/15 text-blue-700", label: "生成中" },
+	ready: { cls: "bg-green-600/15 text-green-700", label: "完成" },
+	failed: { cls: "bg-red-600/15 text-red-700", label: "失敗" },
 };
 
 export default async function ScreenplayDetailPage({ params }: { params: Promise<{ id: string; locale: string }> }) {
@@ -56,7 +56,7 @@ export default async function ScreenplayDetailPage({ params }: { params: Promise
 		<>
 			<Link
 				href={localePath(locale, "/screenplays")}
-				className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 mb-5"
+				className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-5"
 			>
 				<ChevronLeft size={14} />
 				台本一覧に戻る
@@ -64,16 +64,16 @@ export default async function ScreenplayDetailPage({ params }: { params: Promise
 
 			<header className="flex items-start justify-between gap-4 mb-6">
 				<div className="min-w-0 flex-1">
-					<div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 text-xs font-medium px-2.5 py-1 rounded-full mb-3">
+					<div className="inline-flex items-center gap-2 bg-blue-600/10 text-blue-700 text-xs font-medium px-2.5 py-1 rounded-full mb-3">
 						<Clapperboard size={12} />
 						テレビショッピング台本
 					</div>
 					<div className="flex items-center gap-3 flex-wrap">
-						<h1 className="text-2xl font-bold text-gray-900">{screenplay.title}</h1>
+						<h1 className="text-2xl font-bold text-foreground">{screenplay.title}</h1>
 						<span className={`inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full ${badge.cls}`}>
 							{badge.label}
 						</span>
-						<span className="text-xs text-gray-400">改稿 {versions.length} 回</span>
+						<span className="text-xs text-muted-foreground">改稿 {versions.length} 回</span>
 					</div>
 				</div>
 			</header>

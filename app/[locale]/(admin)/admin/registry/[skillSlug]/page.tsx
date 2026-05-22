@@ -38,11 +38,11 @@ interface SkillVersionRow {
 }
 
 const CATEGORY_COLOR: Record<string, string> = {
-	analysis: "bg-blue-100 text-blue-700",
-	curation: "bg-emerald-100 text-emerald-700",
-	planning: "bg-violet-100 text-violet-700",
-	enrichment: "bg-amber-100 text-amber-700",
-	generation: "bg-pink-100 text-pink-700",
+	analysis: "bg-blue-600/15 text-blue-700",
+	curation: "bg-emerald-600/15 text-emerald-700",
+	planning: "bg-violet-600/15 text-violet-700",
+	enrichment: "bg-amber-600/15 text-amber-700",
+	generation: "bg-pink-600/15 text-pink-700",
 };
 
 function categoryBadge(category: string | null) {
@@ -98,7 +98,7 @@ export default async function SkillDetailPage({ params, searchParams }: PageProp
 
 	return (
 		<>
-			<div className="mb-4 text-xs text-gray-500">
+			<div className="mb-4 text-xs text-muted-foreground">
 				<Link href={localePath(locale, "/admin/registry")} className="hover:text-blue-600">
 					{t("backToList")}
 				</Link>
@@ -106,11 +106,11 @@ export default async function SkillDetailPage({ params, searchParams }: PageProp
 
 			<header className="mb-6">
 				<div className="flex flex-wrap items-baseline gap-3">
-					<h1 className="font-mono text-2xl font-semibold text-gray-900">{skill.slug}</h1>
-					<span className="text-base text-gray-500">{skill.display_name}</span>
+					<h1 className="font-mono text-2xl font-semibold text-foreground">{skill.slug}</h1>
+					<span className="text-base text-muted-foreground">{skill.display_name}</span>
 					{categoryBadge(skill.category)}
 				</div>
-				<p className="mt-1 text-[11px] text-gray-400">
+				<p className="mt-1 text-[11px] text-muted-foreground">
 					created {formatDateTime(skill.created_at)} · {versions.length} version
 					{versions.length === 1 ? "" : "s"} published
 				</p>
@@ -123,7 +123,7 @@ export default async function SkillDetailPage({ params, searchParams }: PageProp
 				</CardHeader>
 				<CardContent className="overflow-x-auto p-0">
 					<table className="w-full text-sm">
-						<thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+						<thead className="bg-muted text-xs uppercase tracking-wide text-muted-foreground">
 							<tr>
 								<th className="px-4 py-2 text-left">Version</th>
 								<th className="px-4 py-2 text-left">Git SHA</th>
@@ -141,30 +141,30 @@ export default async function SkillDetailPage({ params, searchParams }: PageProp
 								return (
 									<tr
 										key={v.id}
-										className={`border-t border-gray-100 ${
-											isSelected ? "bg-blue-50/40" : "hover:bg-gray-50"
+										className={`border-t border-border ${
+											isSelected ? "bg-blue-600/10" : "hover:bg-muted"
 										}`}
 									>
 										<td className="px-4 py-2">
 											<span className="inline-flex items-center gap-1.5">
 												<span className="font-mono text-[11px]">{v.version_label}</span>
 												{isActive && (
-													<Badge className="bg-green-100 text-[9px] text-green-700">active</Badge>
+													<Badge className="bg-green-600/15 text-[9px] text-green-700">active</Badge>
 												)}
 											</span>
 										</td>
-										<td className="px-4 py-2 font-mono text-[10px] text-gray-500">
+										<td className="px-4 py-2 font-mono text-[10px] text-muted-foreground">
 											{shortSha(v.git_sha)}
 										</td>
-										<td className="px-4 py-2 font-mono text-[11px] text-gray-700">
+										<td className="px-4 py-2 font-mono text-[11px] text-foreground">
 											{v.model}{" "}
-											<span className="text-gray-400">· {v.provider}</span>
+											<span className="text-muted-foreground">· {v.provider}</span>
 										</td>
-										<td className="px-4 py-2 font-mono text-[10px] text-gray-500">
+										<td className="px-4 py-2 font-mono text-[10px] text-muted-foreground">
 											{formatDateTime(v.published_at)}
 										</td>
-										<td className="px-4 py-2 font-mono text-[10px] text-gray-500">{v.published_by}</td>
-										<td className="px-4 py-2 text-right text-[11px] text-gray-500">
+										<td className="px-4 py-2 font-mono text-[10px] text-muted-foreground">{v.published_by}</td>
+										<td className="px-4 py-2 text-right text-[11px] text-muted-foreground">
 											{Array.isArray(v.validators) ? v.validators.length : 0}
 										</td>
 										<td className="px-4 py-2 text-right">
@@ -185,7 +185,7 @@ export default async function SkillDetailPage({ params, searchParams }: PageProp
 
 			{selectedVersion && (
 				<>
-					<div className="mb-3 text-xs text-gray-500">
+					<div className="mb-3 text-xs text-muted-foreground">
 						Showing <span className="font-mono">{selectedVersion.version_label}</span> ·{" "}
 						{shortSha(selectedVersion.git_sha)}
 					</div>
@@ -194,14 +194,15 @@ export default async function SkillDetailPage({ params, searchParams }: PageProp
 					<Card className="mb-4">
 						<CardHeader className="pb-2">
 							<CardTitle className="text-sm font-semibold">Prompt Source</CardTitle>
-							<p className="text-[10px] text-gray-400">
+							<p className="text-[10px] text-muted-foreground">
 								Captured via{" "}
-								<code className="rounded bg-gray-100 px-1">Function.prototype.toString()</code> at
+								<code className="rounded bg-muted px-1">Function.prototype.toString()</code> at
 								publish time.
 							</p>
 						</CardHeader>
 						<CardContent>
-							<pre className="max-h-[480px] overflow-auto rounded bg-gray-900 p-3 font-mono text-[11px] leading-relaxed text-gray-100">
+							{/* intentional: code-block dark surface (always dark regardless of theme) */}
+								<pre className="max-h-[480px] overflow-auto rounded bg-gray-900 p-3 font-mono text-[11px] leading-relaxed text-gray-100">
 								{selectedVersion.prompt_template}
 							</pre>
 						</CardContent>
@@ -211,12 +212,12 @@ export default async function SkillDetailPage({ params, searchParams }: PageProp
 					<Card className="mb-4">
 						<CardHeader className="pb-2">
 							<CardTitle className="text-sm font-semibold">Output Schema</CardTitle>
-							<p className="text-[10px] text-gray-400">
+							<p className="text-[10px] text-muted-foreground">
 								JSON Schema converted from the v1 Zod schema at publish time.
 							</p>
 						</CardHeader>
 						<CardContent>
-							<pre className="max-h-[360px] overflow-auto rounded bg-gray-50 p-3 font-mono text-[11px] text-gray-800">
+							<pre className="max-h-[360px] overflow-auto rounded bg-muted p-3 font-mono text-[11px] text-foreground">
 								{JSON.stringify(selectedVersion.output_schema, null, 2)}
 							</pre>
 						</CardContent>
@@ -232,29 +233,29 @@ export default async function SkillDetailPage({ params, searchParams }: PageProp
 								<MetaPair label="Model" value={selectedVersion.model} mono />
 								<MetaPair label="Provider" value={selectedVersion.provider} mono />
 								<div className="md:col-span-2">
-									<dt className="text-[10px] uppercase tracking-wide text-gray-500">
+									<dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
 										Generation Config
 									</dt>
 									<dd className="mt-1">
-										<pre className="overflow-auto rounded bg-gray-50 p-2 font-mono text-[11px] text-gray-800">
+										<pre className="overflow-auto rounded bg-muted p-2 font-mono text-[11px] text-foreground">
 											{JSON.stringify(selectedVersion.generation_config, null, 2)}
 										</pre>
 									</dd>
 								</div>
 								<div className="md:col-span-2">
-									<dt className="text-[10px] uppercase tracking-wide text-gray-500">Validators</dt>
+									<dt className="text-[10px] uppercase tracking-wide text-muted-foreground">Validators</dt>
 									<dd className="mt-1">
 										{Array.isArray(selectedVersion.validators) &&
 										selectedVersion.validators.length > 0 ? (
 											<ul className="space-y-1 text-xs">
 												{selectedVersion.validators.map((v, i) => (
-													<li key={i} className="font-mono text-gray-700">
+													<li key={i} className="font-mono text-foreground">
 														{typeof v === "string" ? v : JSON.stringify(v)}
 													</li>
 												))}
 											</ul>
 										) : (
-											<p className="text-[11px] text-gray-400">
+											<p className="text-[11px] text-muted-foreground">
 												(none — Phase A will populate deterministic post-validators)
 											</p>
 										)}
@@ -272,8 +273,8 @@ export default async function SkillDetailPage({ params, searchParams }: PageProp
 function MetaPair({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
 	return (
 		<div>
-			<dt className="text-[10px] uppercase tracking-wide text-gray-500">{label}</dt>
-			<dd className={`mt-0.5 text-sm text-gray-900 ${mono ? "font-mono" : ""}`}>{value}</dd>
+			<dt className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</dt>
+			<dd className={`mt-0.5 text-sm text-foreground ${mono ? "font-mono" : ""}`}>{value}</dd>
 		</div>
 	);
 }

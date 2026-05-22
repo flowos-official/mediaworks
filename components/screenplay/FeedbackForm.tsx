@@ -45,15 +45,15 @@ export function FeedbackForm({ screenplayId, baseVersionId, disabled, onStart }:
 	}
 
 	return (
-		<Card className="border-gray-200">
+		<Card className="border-border">
 			<CardContent className="p-5">
 				<div className="flex items-center gap-2 mb-3">
-					<div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
+					<div className="w-8 h-8 bg-blue-600/10 rounded-lg flex items-center justify-center">
 						<Sparkles size={16} className="text-blue-600" />
 					</div>
 					<div>
-						<h3 className="text-sm font-semibold text-gray-900">改稿フィードバック</h3>
-						<p className="text-[11px] text-gray-500">具体的に伝えるほど、自然に反映されます。</p>
+						<h3 className="text-sm font-semibold text-foreground">改稿フィードバック</h3>
+						<p className="text-[11px] text-muted-foreground">具体的に伝えるほど、自然に反映されます。</p>
 					</div>
 				</div>
 
@@ -63,18 +63,18 @@ export function FeedbackForm({ screenplayId, baseVersionId, disabled, onStart }:
 					rows={5}
 					disabled={disabled || busy}
 					placeholder="例: 実演デモを最後に入れてください。お客様の声を3人に増やして、それぞれの職業を変えてください。"
-					className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 resize-none"
+					className="w-full px-3 py-2.5 text-sm border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 resize-none"
 				/>
 
 				<div className="mt-3">
-					<div className="text-[11px] font-medium text-gray-500 mb-1.5">よく使うリクエスト</div>
+					<div className="text-[11px] font-medium text-muted-foreground mb-1.5">よく使うリクエスト</div>
 					<div className="space-y-1.5">
 						{SUGGESTIONS.map((s) => (
 							<button
 								key={s}
 								type="button"
 								onClick={() => setText((t) => (t ? t + "\n" : "") + s)}
-								className="w-full text-left text-xs px-3 py-2 border border-gray-200 rounded-lg hover:border-blue-200 hover:bg-blue-50/40 text-gray-700 transition-colors"
+								className="w-full text-left text-xs px-3 py-2 border border-border rounded-lg hover:border-blue-200 hover:bg-blue-600/10 text-foreground transition-colors"
 							>
 								<span className="text-blue-500 mr-1.5">＋</span>
 								{s}
@@ -84,7 +84,7 @@ export function FeedbackForm({ screenplayId, baseVersionId, disabled, onStart }:
 				</div>
 
 				{err && (
-					<div className="mt-3 p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
+					<div className="mt-3 p-2.5 bg-red-600/10 border border-red-200 rounded-lg text-xs text-red-700">
 						{err}
 					</div>
 				)}

@@ -35,7 +35,7 @@ export function DiscoveryFilters({
 						className={`px-3 py-1 text-xs rounded-full border transition-colors ${
 							status === opt.value
 								? "bg-blue-600 text-white border-blue-600"
-								: "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+								: "bg-card text-foreground border-border hover:bg-muted"
 						}`}
 					>
 						{opt.label}
@@ -47,7 +47,7 @@ export function DiscoveryFilters({
 				<select
 					value={sort}
 					onChange={(e) => onSortChange(e.target.value as SortKey)}
-					className="px-3 py-1 text-xs border border-gray-200 rounded bg-white"
+					className="px-3 py-1 text-xs border border-border rounded bg-card"
 				>
 					<option value="score">{t("sortByScore")}</option>
 					<option value="price">{t("sortByPrice")}</option>

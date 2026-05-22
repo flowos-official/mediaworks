@@ -47,19 +47,19 @@ export default async function ArchiveStatusPage({ params }: PageProps) {
 			<div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
 				{[...counts.entries()].map(([k, v]) => (
 					<div key={k} className="border rounded p-3">
-						<div className="text-xs text-gray-500">{k}</div>
+						<div className="text-xs text-muted-foreground">{k}</div>
 						<div className="text-2xl font-semibold">{v.toLocaleString("ja-JP")}</div>
 					</div>
 				))}
-				<div className="border rounded p-3 bg-gray-50">
-					<div className="text-xs text-gray-500">Total archived bytes</div>
+				<div className="border rounded p-3 bg-muted">
+					<div className="text-xs text-muted-foreground">Total archived bytes</div>
 					<div className="text-lg font-semibold">{(totalBytes / 1e9).toFixed(2)} GB</div>
-					<div className="text-xs text-gray-500">≈ ${r2CostUsd} / month</div>
+					<div className="text-xs text-muted-foreground">≈ ${r2CostUsd} / month</div>
 				</div>
 			</div>
 			<h2 className="text-lg font-semibold mb-2">Recent failures</h2>
 			<table className="w-full text-sm">
-				<thead className="bg-gray-50 border-b">
+				<thead className="bg-muted border-b">
 					<tr>
 						<th className="text-left px-3 py-2">Date</th>
 						<th className="text-left px-3 py-2">Channel</th>
@@ -76,7 +76,7 @@ export default async function ArchiveStatusPage({ params }: PageProps) {
 							<td className="px-3 py-2">{f.channel}</td>
 							<td className="px-3 py-2">{f.video_status}</td>
 							<td className="px-3 py-2">{f.video_download_attempts ?? 0}</td>
-							<td className="px-3 py-2 text-xs text-gray-600">{f.video_error?.slice(0, 80)}</td>
+							<td className="px-3 py-2 text-xs text-muted-foreground">{f.video_error?.slice(0, 80)}</td>
 							<td className="px-3 py-2">
 								<RetryButton broadcastId={f.id} />
 							</td>

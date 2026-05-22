@@ -85,13 +85,13 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-muted">
       <Card className="w-full max-w-md p-8 space-y-4">
         <h1 className="text-xl font-bold">
           {mode === 'request' ? t('requestTitle') : t('confirmTitle')}
         </h1>
         {forced && mode === 'confirm' && (
-          <p className="text-sm text-amber-900 bg-amber-50 border border-amber-300 rounded p-3">
+          <p className="text-sm text-amber-900 bg-amber-600/10 border border-amber-300 rounded p-3">
             {tUsers('banner')}
           </p>
         )}

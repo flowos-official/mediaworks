@@ -198,8 +198,8 @@ export default function UsersTable({ initial, currentUserId }: { initial: Row[];
 
       <div className="border rounded overflow-x-auto">
         <table className="w-full border-collapse text-sm">
-          <thead className="bg-gray-50">
-            <tr className="border-b text-gray-700">
+          <thead className="bg-muted">
+            <tr className="border-b text-foreground">
               <th className="text-left p-3 font-medium">{t('columnsExt.name')}</th>
               <th className="text-left p-3 font-medium">{t('columnsExt.company')}</th>
               <th className="text-left p-3 font-medium">{t('columns.email')}</th>
@@ -213,7 +213,7 @@ export default function UsersTable({ initial, currentUserId }: { initial: Row[];
             {rows.map((row) => {
               const isEditing = editing?.id === row.id;
               return (
-                <tr key={row.id} className="border-b hover:bg-gray-50/50">
+                <tr key={row.id} className="border-b hover:bg-muted/50">
                   <td className="p-3">
                     {isEditing ? (
                       <input
@@ -222,7 +222,7 @@ export default function UsersTable({ initial, currentUserId }: { initial: Row[];
                         className="border rounded px-2 py-1 w-full"
                       />
                     ) : (
-                      <span>{row.display_name ?? <span className="text-gray-400">—</span>}</span>
+                      <span>{row.display_name ?? <span className="text-muted-foreground">—</span>}</span>
                     )}
                   </td>
                   <td className="p-3">
@@ -233,7 +233,7 @@ export default function UsersTable({ initial, currentUserId }: { initial: Row[];
                         className="border rounded px-2 py-1 w-full"
                       />
                     ) : (
-                      <span>{row.company_name ?? <span className="text-gray-400">—</span>}</span>
+                      <span>{row.company_name ?? <span className="text-muted-foreground">—</span>}</span>
                     )}
                   </td>
                   <td className="p-3 font-mono text-xs">
@@ -254,10 +254,10 @@ export default function UsersTable({ initial, currentUserId }: { initial: Row[];
                   </td>
                   <td className="p-3">
                     {row.must_change_password
-                      ? <Badge className="bg-amber-100 text-amber-800 border-amber-200">{t('mustChangeYes')}</Badge>
-                      : <span className="text-xs text-gray-500">{t('mustChangeNo')}</span>}
+                      ? <Badge className="bg-amber-600/15 text-amber-800 border-amber-200">{t('mustChangeYes')}</Badge>
+                      : <span className="text-xs text-muted-foreground">{t('mustChangeNo')}</span>}
                   </td>
-                  <td className="p-3 text-gray-600">{new Date(row.created_at).toISOString().slice(0,10)}</td>
+                  <td className="p-3 text-muted-foreground">{new Date(row.created_at).toISOString().slice(0,10)}</td>
                   <td className="p-3 text-right whitespace-nowrap">
                     {isEditing ? (
                       <>
@@ -307,12 +307,12 @@ export default function UsersTable({ initial, currentUserId }: { initial: Row[];
           <Card className="w-full max-w-lg p-6 space-y-4">
             <div>
               <h2 className="font-bold text-lg">{t('create.heading')}</h2>
-              <p className="text-xs text-gray-600 mt-1">{t('create.forceChangeHint')}</p>
+              <p className="text-xs text-muted-foreground mt-1">{t('create.forceChangeHint')}</p>
             </div>
             <form onSubmit={createUser} className="space-y-3">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <label className="block">
-                  <span className="text-xs text-gray-700">{t('create.nameLabel')}</span>
+                  <span className="text-xs text-foreground">{t('create.nameLabel')}</span>
                   <input
                     type="text" value={newName}
                     onChange={(e) => setNewName(e.target.value)}
@@ -321,7 +321,7 @@ export default function UsersTable({ initial, currentUserId }: { initial: Row[];
                   />
                 </label>
                 <label className="block">
-                  <span className="text-xs text-gray-700">{t('create.companyLabel')}</span>
+                  <span className="text-xs text-foreground">{t('create.companyLabel')}</span>
                   <input
                     type="text" value={newCompany}
                     onChange={(e) => setNewCompany(e.target.value)}
@@ -330,7 +330,7 @@ export default function UsersTable({ initial, currentUserId }: { initial: Row[];
                   />
                 </label>
                 <label className="block">
-                  <span className="text-xs text-gray-700">{t('create.emailLabel')}</span>
+                  <span className="text-xs text-foreground">{t('create.emailLabel')}</span>
                   <input
                     type="email" required value={newEmail}
                     onChange={(e) => setNewEmail(e.target.value)}
@@ -340,7 +340,7 @@ export default function UsersTable({ initial, currentUserId }: { initial: Row[];
                   />
                 </label>
                 <label className="block">
-                  <span className="text-xs text-gray-700">{t('create.roleLabel')}</span>
+                  <span className="text-xs text-foreground">{t('create.roleLabel')}</span>
                   <select
                     value={newRole}
                     onChange={(e) => setNewRole(e.target.value as Role)}
@@ -353,7 +353,7 @@ export default function UsersTable({ initial, currentUserId }: { initial: Row[];
                 </label>
               </div>
               <label className="block">
-                <span className="text-xs text-gray-700">{t('create.passwordLabel')}</span>
+                <span className="text-xs text-foreground">{t('create.passwordLabel')}</span>
                 <div className="mt-1 flex gap-2">
                   <input
                     type="text" value={newPassword}
@@ -391,7 +391,7 @@ export default function UsersTable({ initial, currentUserId }: { initial: Row[];
                 {copied === 'all' ? t('credentials.copied') : t('credentials.copyAll')}
               </Button>
             </div>
-            <p className="text-sm text-amber-900 bg-amber-50 border border-amber-300 rounded p-3">
+            <p className="text-sm text-amber-900 bg-amber-600/10 border border-amber-300 rounded p-3">
               {t('credentials.hint')}
             </p>
             <div className="space-y-2">
@@ -451,12 +451,12 @@ function CredRow({
 }) {
   return (
     <div className="grid grid-cols-[100px_1fr_auto] items-center gap-3 py-1">
-      <span className="text-xs text-gray-600">{label}</span>
+      <span className="text-xs text-muted-foreground">{label}</span>
       <code
         className={[
           'px-3 py-2 rounded border text-sm break-all',
           mono ? 'font-mono' : '',
-          highlight ? 'bg-amber-50 border-amber-300 text-amber-900 font-semibold tracking-wider text-base' : 'bg-gray-50',
+          highlight ? 'bg-amber-600/10 border-amber-300 text-amber-900 font-semibold tracking-wider text-base' : 'bg-muted',
         ].join(' ')}
       >
         {value}

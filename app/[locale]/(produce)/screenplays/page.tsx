@@ -32,8 +32,8 @@ export default async function ScreenplaysPage({ params }: { params: Promise<{ lo
 		<>
 			<header className="flex items-start justify-between gap-4">
 				<div>
-					<h2 className="text-xl font-semibold text-gray-900">台本一覧</h2>
-					<p className="text-sm text-gray-500 mt-1 max-w-xl">
+					<h2 className="text-xl font-semibold text-foreground">台本一覧</h2>
+					<p className="text-sm text-muted-foreground mt-1 max-w-xl">
 						商品を選んで、生放送さながらのテレビショッピング台本を作成します。フィードバックを送ると何度でも改稿できます。
 					</p>
 				</div>

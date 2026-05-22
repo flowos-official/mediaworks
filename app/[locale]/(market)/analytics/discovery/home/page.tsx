@@ -115,12 +115,12 @@ export default function DiscoveryHomePage() {
 		<div>
 			<ContextSubTabs />
 			<div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-				<p className="text-sm text-gray-500">{t("subtitle")} — ホームショッピング</p>
+				<p className="text-sm text-muted-foreground">{t("subtitle")} — ホームショッピング</p>
 				<ManualTriggerButton context="home_shopping" onStarted={() => setTimeout(load, 180_000)} />
 			</div>
 
 			{loading ? (
-				<div className="py-20 text-center text-sm text-gray-500">{t("loading")}</div>
+				<div className="py-20 text-center text-sm text-muted-foreground">{t("loading")}</div>
 			) : (
 				<>
 					<DiscoveryHeader
@@ -145,7 +145,7 @@ export default function DiscoveryHomePage() {
 							<>
 								{tier1.length > 0 && (
 									<section className="mt-4">
-										<h3 className="text-sm font-semibold text-gray-800 mb-2">
+										<h3 className="text-sm font-semibold text-foreground mb-2">
 											{t("tvChannelSectionTitle")} ({tier1.length})
 										</h3>
 										<div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
@@ -162,7 +162,7 @@ export default function DiscoveryHomePage() {
 								)}
 								{tier2.length > 0 && (
 									<section className="mt-6">
-										<h3 className="text-sm font-semibold text-gray-800 mb-2">
+										<h3 className="text-sm font-semibold text-foreground mb-2">
 											{t("otherSectionTitle")} ({tier2.length})
 										</h3>
 										<div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
@@ -178,7 +178,7 @@ export default function DiscoveryHomePage() {
 									</section>
 								)}
 								{filtered.length === 0 && (
-									<div className="py-12 text-center text-sm text-gray-400">
+									<div className="py-12 text-center text-sm text-muted-foreground">
 										(no products match the current filter)
 									</div>
 								)}
@@ -188,15 +188,15 @@ export default function DiscoveryHomePage() {
 				</>
 			)}
 			{selectedIds.size >= 1 && (
-				<div className="sticky bottom-0 left-0 right-0 z-20 bg-white/95 border-t border-indigo-200 px-4 py-3 mt-4 flex items-center justify-between shadow-lg backdrop-blur">
-					<span className="text-sm font-medium text-gray-700">
+				<div className="sticky bottom-0 left-0 right-0 z-20 bg-card/95 border-t border-indigo-200 px-4 py-3 mt-4 flex items-center justify-between shadow-lg backdrop-blur">
+					<span className="text-sm font-medium text-foreground">
 						{t("selectionSelected", { count: selectedIds.size })}
 					</span>
 					<div className="flex gap-2">
 						<button
 							type="button"
 							onClick={() => setSelectedIds(new Set())}
-							className="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700"
+							className="px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
 						>
 							{t("selectionClear")}
 						</button>

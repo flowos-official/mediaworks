@@ -56,7 +56,7 @@ export function SelectionGrid() {
 	return (
 		<div>
 			<div className="flex flex-wrap items-center gap-2 mb-4">
-				<span className="text-xs text-gray-500">Status:</span>
+				<span className="text-xs text-muted-foreground">Status:</span>
 				{(["all", "sourced", "interested", "rejected", "duplicate"] as Status[]).map((s) => (
 					<button
 						key={s}
@@ -64,7 +64,7 @@ export function SelectionGrid() {
 						className={`px-3 py-1 text-xs rounded-full border transition-colors ${
 							status === s
 								? "bg-amber-500 text-white border-amber-500"
-								: "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+								: "bg-card text-foreground border-border hover:bg-muted"
 						}`}
 					>
 						{s === "all"
@@ -78,7 +78,7 @@ export function SelectionGrid() {
 							: t("duplicateButton")}
 					</button>
 				))}
-				<span className="text-xs text-gray-500 ml-2">Context:</span>
+				<span className="text-xs text-muted-foreground ml-2">Context:</span>
 				{(["all", "home_shopping", "live_commerce"] as ContextFilter[]).map((c) => (
 					<button
 						key={c}
@@ -86,13 +86,13 @@ export function SelectionGrid() {
 						className={`px-3 py-1 text-xs rounded-full border transition-colors ${
 							context === c
 								? "bg-blue-500 text-white border-blue-500"
-								: "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+								: "bg-card text-foreground border-border hover:bg-muted"
 						}`}
 					>
 						{c === "all" ? t("allStatuses") : c === "home_shopping" ? "ホーム" : "ライブ"}
 					</button>
 				))}
-				<span className="text-xs text-gray-500 ml-2">Period:</span>
+				<span className="text-xs text-muted-foreground ml-2">Period:</span>
 				{([7, 30, 90] as Period[]).map((d) => (
 					<button
 						key={d}
@@ -100,13 +100,13 @@ export function SelectionGrid() {
 						className={`px-3 py-1 text-xs rounded-full border transition-colors ${
 							days === d
 								? "bg-gray-600 text-white border-gray-600"
-								: "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+								: "bg-card text-foreground border-border hover:bg-muted"
 						}`}
 					>
 						{t(d === 7 ? "periodFilter7" : d === 30 ? "periodFilter30" : "periodFilter90")}
 					</button>
 				))}
-				<span className="ml-auto text-xs text-gray-500">{products.length}/{total}</span>
+				<span className="ml-auto text-xs text-muted-foreground">{products.length}/{total}</span>
 			</div>
 
 			<div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
@@ -114,19 +114,19 @@ export function SelectionGrid() {
 					<ProductCard key={p.id} product={p} />
 				))}
 				{products.length === 0 && !loading && (
-					<div className="col-span-full py-12 text-center text-sm text-gray-400">
+					<div className="col-span-full py-12 text-center text-sm text-muted-foreground">
 						{t("noData")}
 					</div>
 				)}
 			</div>
 
-			{loading && <div className="py-8 text-center text-sm text-gray-500">Loading...</div>}
+			{loading && <div className="py-8 text-center text-sm text-muted-foreground">Loading...</div>}
 
 			{!loading && products.length < total && (
 				<div className="py-4 text-center">
 					<button
 						onClick={() => setPage((p) => p + 1)}
-						className="px-6 py-2 text-xs border border-gray-300 rounded hover:bg-gray-50"
+						className="px-6 py-2 text-xs border border-border rounded hover:bg-muted"
 					>
 						{t("loadMore")}
 					</button>

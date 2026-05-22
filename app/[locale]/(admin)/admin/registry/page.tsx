@@ -32,11 +32,11 @@ interface SkillVersionCountRow {
 }
 
 const CATEGORY_COLOR: Record<string, string> = {
-	analysis: "bg-blue-100 text-blue-700",
-	curation: "bg-emerald-100 text-emerald-700",
-	planning: "bg-violet-100 text-violet-700",
-	enrichment: "bg-amber-100 text-amber-700",
-	generation: "bg-pink-100 text-pink-700",
+	analysis: "bg-blue-600/15 text-blue-700",
+	curation: "bg-emerald-600/15 text-emerald-700",
+	planning: "bg-violet-600/15 text-violet-700",
+	enrichment: "bg-amber-600/15 text-amber-700",
+	generation: "bg-pink-600/15 text-pink-700",
 };
 
 function categoryBadge(category: string | null) {
@@ -105,10 +105,10 @@ export default async function RegistryListPage() {
 	return (
 		<>
 			<header className="mb-6">
-				<h1 className="text-2xl font-semibold text-gray-900">{t("title")}</h1>
-				<p className="mt-1 text-sm text-gray-500">
+				<h1 className="text-2xl font-semibold text-foreground">{t("title")}</h1>
+				<p className="mt-1 text-sm text-muted-foreground">
 					All Gemini-calling skills cataloged from the codebase. Git is the source of truth — DB rows are immutable copies keyed by{" "}
-					<code className="rounded bg-gray-100 px-1 text-[11px]">git_sha</code>.
+					<code className="rounded bg-muted px-1 text-[11px]">git_sha</code>.
 				</p>
 			</header>
 
@@ -134,7 +134,7 @@ export default async function RegistryListPage() {
 				</CardHeader>
 				<CardContent className="overflow-x-auto p-0">
 					<table className="w-full text-sm">
-						<thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+						<thead className="bg-muted text-xs uppercase tracking-wide text-muted-foreground">
 							<tr>
 								<th className="px-4 py-2 text-left">Slug</th>
 								<th className="px-4 py-2 text-left">Display Name</th>
@@ -150,34 +150,34 @@ export default async function RegistryListPage() {
 								const active = s.active_version_id ? versionsBySkill.get(s.id) : undefined;
 								const versionCount = versionCountBySkill.get(s.id) ?? 0;
 								return (
-									<tr key={s.id} className="border-t border-gray-100 hover:bg-gray-50">
+									<tr key={s.id} className="border-t border-border hover:bg-muted">
 										<td className="px-4 py-2 font-mono text-[12px] text-blue-700">
 											<Link href={`/admin/registry/${s.slug}`}>{s.slug}</Link>
 										</td>
-										<td className="px-4 py-2 text-gray-800">{s.display_name}</td>
+										<td className="px-4 py-2 text-foreground">{s.display_name}</td>
 										<td className="px-4 py-2">{categoryBadge(s.category)}</td>
 										<td className="px-4 py-2">
 											{active ? (
 												<span className="inline-flex items-center gap-1.5">
-													<Badge className="bg-green-100 text-[10px] text-green-700">{active.version_label}</Badge>
-													<span className="font-mono text-[10px] text-gray-400">{shortSha(active.git_sha)}</span>
+													<Badge className="bg-green-600/15 text-[10px] text-green-700">{active.version_label}</Badge>
+													<span className="font-mono text-[10px] text-muted-foreground">{shortSha(active.git_sha)}</span>
 												</span>
 											) : (
-												<span className="text-[11px] text-gray-400">(none active)</span>
+												<span className="text-[11px] text-muted-foreground">(none active)</span>
 											)}
 										</td>
-										<td className="px-4 py-2 font-mono text-[11px] text-gray-600">
+										<td className="px-4 py-2 font-mono text-[11px] text-muted-foreground">
 											{active ? (
 												<>
 													{active.model}{" "}
-													<span className="text-gray-400">· {active.provider}</span>
+													<span className="text-muted-foreground">· {active.provider}</span>
 												</>
 											) : (
-												<span className="text-gray-400">—</span>
+												<span className="text-muted-foreground">—</span>
 											)}
 										</td>
-										<td className="px-4 py-2 text-right font-mono text-[11px] text-gray-600">{versionCount}</td>
-										<td className="px-4 py-2 text-right font-mono text-[11px] text-gray-500">
+										<td className="px-4 py-2 text-right font-mono text-[11px] text-muted-foreground">{versionCount}</td>
+										<td className="px-4 py-2 text-right font-mono text-[11px] text-muted-foreground">
 											{active ? formatDate(active.published_at) : "—"}
 										</td>
 									</tr>
@@ -185,9 +185,9 @@ export default async function RegistryListPage() {
 							})}
 							{skills.length === 0 && (
 								<tr>
-									<td colSpan={7} className="px-4 py-12 text-center text-sm text-gray-400">
+									<td colSpan={7} className="px-4 py-12 text-center text-sm text-muted-foreground">
 										No skills published yet. Run{" "}
-										<code className="rounded bg-gray-100 px-1 text-[11px]">npm run publish-registry</code>.
+										<code className="rounded bg-muted px-1 text-[11px]">npm run publish-registry</code>.
 									</td>
 								</tr>
 							)}
@@ -203,9 +203,9 @@ function KPI({ label, value, sub }: { label: string; value: number; sub?: string
 	return (
 		<Card>
 			<CardContent className="p-3">
-				<div className="text-[10px] uppercase tracking-wide text-gray-500">{label}</div>
-				<div className="mt-1 text-xl font-semibold text-gray-900">{value}</div>
-				{sub && <div className="mt-0.5 text-[10px] text-gray-400">{sub}</div>}
+				<div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
+				<div className="mt-1 text-xl font-semibold text-foreground">{value}</div>
+				{sub && <div className="mt-0.5 text-[10px] text-muted-foreground">{sub}</div>}
 			</CardContent>
 		</Card>
 	);

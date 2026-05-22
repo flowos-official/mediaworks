@@ -65,12 +65,12 @@ export default function DiscoveryLivePage() {
 		<div>
 			<ContextSubTabs />
 			<div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-				<p className="text-sm text-gray-500">{t("subtitle")} — ライブコマース</p>
+				<p className="text-sm text-muted-foreground">{t("subtitle")} — ライブコマース</p>
 				<ManualTriggerButton context="live_commerce" onStarted={() => setTimeout(load, 180_000)} />
 			</div>
 
 			{loading ? (
-				<div className="py-20 text-center text-sm text-gray-500">Loading...</div>
+				<div className="py-20 text-center text-sm text-muted-foreground">Loading...</div>
 			) : (
 				<>
 					<DiscoveryHeader
@@ -85,7 +85,7 @@ export default function DiscoveryLivePage() {
 							<ProductCard key={p.id} product={p} />
 						))}
 						{filtered.length === 0 && (
-							<div className="col-span-full py-12 text-center text-sm text-gray-400">
+							<div className="col-span-full py-12 text-center text-sm text-muted-foreground">
 								(no products match the current filter)
 							</div>
 						)}

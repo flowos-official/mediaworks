@@ -54,7 +54,7 @@ export default function OverviewPage() {
   return (
     <>
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+        <div className="p-4 bg-red-600/10 border border-red-200 rounded-lg text-sm text-red-700">
           {error}
         </div>
       )}
@@ -62,7 +62,7 @@ export default function OverviewPage() {
       {loading && (
         <div className="flex items-center justify-center py-20">
           <Loader2 size={24} className="animate-spin text-blue-600" />
-          <span className="ml-2 text-sm text-gray-500">{tCommon('loading')}</span>
+          <span className="ml-2 text-sm text-muted-foreground">{tCommon('loading')}</span>
         </div>
       )}
 

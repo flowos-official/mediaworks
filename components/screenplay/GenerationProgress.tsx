@@ -100,11 +100,11 @@ export function GenerationProgress({ runId, onComplete }: Props) {
 	const pctTarget = error ? 0 : doneAt ? 100 : Math.min(95, Math.floor((chars / 45000) * 100));
 
 	return (
-		<Card className="border-gray-200">
+		<Card className="border-border">
 			<CardContent className="p-5">
 				<div className="flex items-start gap-3">
 					<div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-						error ? "bg-red-50" : doneAt ? "bg-green-50" : "bg-blue-50"
+						error ? "bg-red-600/10" : doneAt ? "bg-green-600/10" : "bg-blue-600/10"
 					}`}>
 						{error ? (
 							<AlertTriangle size={18} className="text-red-600" />
@@ -116,16 +116,16 @@ export function GenerationProgress({ runId, onComplete }: Props) {
 					</div>
 					<div className="flex-1 min-w-0">
 						<div className="flex items-center justify-between gap-3">
-							<h3 className="text-sm font-semibold text-gray-900">
+							<h3 className="text-sm font-semibold text-foreground">
 								{error ? "生成に失敗しました" : doneAt ? `第 ${doneAt.versionNumber} 稿を生成しました` : "台本を生成中"}
 							</h3>
 							{!error && !doneAt && (
-								<span className="text-xs text-gray-500 tabular-nums">
+								<span className="text-xs text-muted-foreground tabular-nums">
 									{min}:{sec}
 								</span>
 							)}
 						</div>
-						<p className="text-xs text-gray-500 mt-0.5">
+						<p className="text-xs text-muted-foreground mt-0.5">
 							{error
 								? error
 								: doneAt
@@ -135,11 +135,11 @@ export function GenerationProgress({ runId, onComplete }: Props) {
 
 						{!error && !doneAt && (
 							<div className="mt-3">
-								<div className="flex items-center justify-between text-[11px] text-gray-500 mb-1.5">
+								<div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1.5">
 									<span>{chars > 0 ? `${chars.toLocaleString()} 文字を受信` : "接続中..."}</span>
 									<span className="tabular-nums">{pctTarget}%</span>
 								</div>
-								<div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+								<div className="h-1.5 bg-muted rounded-full overflow-hidden">
 									<div
 										className="h-full bg-blue-500 rounded-full transition-[width] duration-700 ease-out"
 										style={{ width: `${Math.max(pctTarget, 5)}%` }}

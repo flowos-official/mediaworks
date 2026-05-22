@@ -26,11 +26,11 @@ import { getServerClient } from '@/lib/supabase/server';
 type ProductStatus = 'pending' | 'extracted' | 'analyzing' | 'completed' | 'failed';
 
 const STATUS_BADGE_CLASS: Record<ProductStatus, string> = {
-  pending: 'bg-gray-100 text-gray-700 border-0',
-  extracted: 'bg-blue-100 text-blue-700 border-0',
-  analyzing: 'bg-amber-100 text-amber-700 border-0',
-  completed: 'bg-green-100 text-green-700 border-0',
-  failed: 'bg-red-100 text-red-700 border-0',
+  pending: 'bg-muted text-foreground border-0',
+  extracted: 'bg-blue-600/15 text-blue-700 border-0',
+  analyzing: 'bg-amber-600/15 text-amber-700 border-0',
+  completed: 'bg-green-600/15 text-green-700 border-0',
+  failed: 'bg-red-600/15 text-red-700 border-0',
 };
 
 function normalizeStatus(s: string | null | undefined): ProductStatus {
@@ -109,15 +109,15 @@ export default async function ProductReportPage({
           <div className="flex items-center gap-4">
             <Link
               href={localePath(locale, backPath)}
-              className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
             >
               <ArrowLeft size={16} />
               {t("back")}
             </Link>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">{product.name}</h1>
+              <h1 className="text-2xl font-bold text-foreground">{product.name}</h1>
               <div className="flex items-center gap-3 mt-1">
-                <span className="flex items-center gap-1 text-xs text-gray-500">
+                <span className="flex items-center gap-1 text-xs text-muted-foreground">
                   <Calendar size={12} />
                   {new Date(product.created_at).toLocaleDateString()}
                 </span>
@@ -134,7 +134,7 @@ export default async function ProductReportPage({
         </div>
 
         {!research ? (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-8 text-center">
+          <div className="bg-yellow-600/10 border border-yellow-200 rounded-xl p-8 text-center">
             <p className="text-yellow-700">
               {status === 'analyzing'
                 ? t('generating')
@@ -145,13 +145,13 @@ export default async function ProductReportPage({
         ) : (
           <div id="report-content" className="space-y-6">
             {/* Product Info */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+            <div className="bg-card rounded-2xl border border-border p-6">
+              <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
                 <Package size={20} className="text-blue-600" />
                 {t('productInfo')}
               </h2>
               {product.description && (
-                <p className="text-gray-600 leading-relaxed">{product.description}</p>
+                <p className="text-muted-foreground leading-relaxed">{product.description}</p>
               )}
             </div>
 

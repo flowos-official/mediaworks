@@ -76,11 +76,11 @@ export function SeedEnrichGateModal({
 			onClick={() => !running && onClose()}
 		>
 			<div
-				className="bg-white rounded-lg shadow-lg p-5 w-full max-w-md mx-4"
+				className="bg-card rounded-lg shadow-lg p-5 w-full max-w-md mx-4"
 				onClick={(e) => e.stopPropagation()}
 			>
 				<div className="flex items-center justify-between mb-3">
-					<h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+					<h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
 						<AlertTriangle size={14} className="text-amber-500" />
 						{t("seedGateTitle")}
 					</h3>
@@ -88,14 +88,14 @@ export function SeedEnrichGateModal({
 						<button
 							type="button"
 							onClick={onClose}
-							className="text-gray-400 hover:text-gray-600"
+							className="text-muted-foreground hover:text-foreground"
 						>
 							<X size={16} />
 						</button>
 					)}
 				</div>
 
-				<p className="text-xs text-gray-600 leading-relaxed mb-4">
+				<p className="text-xs text-muted-foreground leading-relaxed mb-4">
 					{failed ? t("seedGateFailed") : t("seedGateBody")}
 				</p>
 
@@ -109,7 +109,7 @@ export function SeedEnrichGateModal({
 						<button
 							type="button"
 							onClick={onClose}
-							className="px-4 py-1.5 text-xs text-gray-700 border border-gray-200 rounded hover:bg-gray-50"
+							className="px-4 py-1.5 text-xs text-foreground border border-border rounded hover:bg-muted"
 						>
 							{t("cancel")}
 						</button>
@@ -126,7 +126,7 @@ export function SeedEnrichGateModal({
 						<button
 							type="button"
 							onClick={onSkip}
-							className="px-4 py-1.5 text-xs text-gray-700 border border-gray-200 rounded hover:bg-gray-50"
+							className="px-4 py-1.5 text-xs text-foreground border border-border rounded hover:bg-muted"
 						>
 							{t("seedGateSkip")}
 						</button>

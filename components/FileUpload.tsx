@@ -138,8 +138,8 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
         className={cn(
           'relative border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all duration-200',
           isDragging
-            ? 'border-blue-400 bg-blue-50'
-            : 'border-gray-300 bg-white hover:border-blue-400 hover:bg-blue-50/30',
+            ? 'border-blue-400 bg-blue-600/10'
+            : 'border-border bg-card hover:border-blue-400 hover:bg-blue-600/10',
           uploading && 'cursor-not-allowed opacity-70'
         )}
       >
@@ -155,17 +155,17 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
 
         <div className="flex flex-col items-center gap-4">
           {uploading ? (
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+            <div className="w-16 h-16 bg-blue-600/15 rounded-full flex items-center justify-center">
               <Loader2 size={32} className="text-blue-600 animate-spin" />
             </div>
           ) : (
-            <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center">
+            <div className="w-16 h-16 bg-blue-600/10 rounded-full flex items-center justify-center">
               <Upload size={32} className="text-blue-600" />
             </div>
           )}
 
           <div>
-            <p className="text-lg font-semibold text-gray-800">
+            <p className="text-lg font-semibold text-foreground">
               {uploading
                 ? locale === 'ja'
                   ? `${uploadCount}件のファイルをアップロード中...`
@@ -173,12 +173,12 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
                 : t('uploadTitle')}
             </p>
             {!uploading && (
-              <p className="text-sm text-gray-500 mt-1">{t('uploadDescription')}</p>
+              <p className="text-sm text-muted-foreground mt-1">{t('uploadDescription')}</p>
             )}
           </div>
 
           {!uploading && (
-            <div className="flex items-center gap-4 text-xs text-gray-400">
+            <div className="flex items-center gap-4 text-xs text-muted-foreground">
               <span className="flex items-center gap-1">
                 <FileText size={12} /> PDF, PPT, DOCX, XLS
               </span>
@@ -191,13 +191,13 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
       </div>
 
       {status === 'success' && (
-        <div className="mt-3 flex items-center gap-2 text-green-600 text-sm bg-green-50 px-4 py-2 rounded-lg">
+        <div className="mt-3 flex items-center gap-2 text-green-600 text-sm bg-green-600/10 px-4 py-2 rounded-lg">
           <CheckCircle size={16} />
           {statusMsg}
         </div>
       )}
       {status === 'error' && (
-        <div className="mt-3 flex items-center gap-2 text-red-600 text-sm bg-red-50 px-4 py-2 rounded-lg">
+        <div className="mt-3 flex items-center gap-2 text-red-600 text-sm bg-red-600/10 px-4 py-2 rounded-lg">
           <AlertCircle size={16} />
           {statusMsg}
         </div>
