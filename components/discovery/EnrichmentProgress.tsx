@@ -26,7 +26,7 @@ export function EnrichmentProgress({
 			<button
 				type="button"
 				disabled
-				className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold rounded-lg"
+				className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-amber-600/10 border border-amber-200 text-amber-800 text-xs font-semibold rounded-lg"
 			>
 				<Loader2 size={12} className="animate-spin" />
 				{t("deepDiveRunning")}
@@ -45,7 +45,7 @@ export function EnrichmentProgress({
 				<button
 					type="button"
 					onClick={onTrigger}
-					className="w-full px-4 py-2 bg-white hover:bg-amber-50 border border-amber-300 text-amber-800 text-xs font-semibold rounded-lg"
+					className="w-full px-4 py-2 bg-card hover:bg-amber-600/10 border border-amber-300 text-amber-800 text-xs font-semibold rounded-lg"
 				>
 					<Sparkles size={12} className="inline mr-1" />
 					{t("deepDive")}
@@ -59,7 +59,7 @@ export function EnrichmentProgress({
 			<button
 				type="button"
 				onClick={onToggleDetails}
-				className="w-full px-4 py-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-800 text-xs font-semibold rounded-lg"
+				className="w-full px-4 py-2 bg-blue-600/10 hover:bg-blue-600/15 border border-blue-200 text-blue-800 text-xs font-semibold rounded-lg"
 			>
 				{showDetails ? t("hideDetails") : t("viewDetails")}
 			</button>
@@ -71,7 +71,7 @@ export function EnrichmentProgress({
 		<button
 			type="button"
 			onClick={onTrigger}
-			className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 text-xs font-semibold rounded-lg"
+			className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-amber-600/10 hover:bg-amber-600/15 border border-amber-200 text-amber-800 text-xs font-semibold rounded-lg"
 		>
 			<Sparkles size={12} />
 			{t("deepDive")}

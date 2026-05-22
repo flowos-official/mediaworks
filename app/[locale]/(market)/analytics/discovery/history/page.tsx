@@ -43,7 +43,7 @@ export default function DiscoveryHistoryPage() {
 			<ContextSubTabs />
 
 			<div className="flex items-center gap-2 mb-4 flex-wrap">
-				<span className="text-xs text-gray-500">Context:</span>
+				<span className="text-xs text-muted-foreground">Context:</span>
 				{(["all", "home_shopping", "live_commerce"] as FilterContext[]).map((c) => (
 					<button
 						key={c}
@@ -51,7 +51,7 @@ export default function DiscoveryHistoryPage() {
 						className={`px-3 py-1 text-xs rounded-full border transition-colors ${
 							contextFilter === c
 								? "bg-amber-500 text-white border-amber-500"
-								: "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+								: "bg-card text-foreground border-border hover:bg-muted"
 						}`}
 					>
 						{c === "all" ? "全て" : c === "home_shopping" ? "ホーム" : "ライブ"}
@@ -60,16 +60,16 @@ export default function DiscoveryHistoryPage() {
 				<div className="ml-auto flex items-center gap-2">
 					<button
 						onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}
-						className="px-2 py-1 text-xs bg-white border border-gray-200 rounded hover:bg-gray-50"
+						className="px-2 py-1 text-xs bg-card border border-border rounded hover:bg-muted"
 					>
 						←
 					</button>
-					<span className="text-xs text-gray-600 font-mono">
+					<span className="text-xs text-muted-foreground font-mono">
 						{month.getFullYear()}-{String(month.getMonth() + 1).padStart(2, "0")}
 					</span>
 					<button
 						onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}
-						className="px-2 py-1 text-xs bg-white border border-gray-200 rounded hover:bg-gray-50"
+						className="px-2 py-1 text-xs bg-card border border-border rounded hover:bg-muted"
 					>
 						→
 					</button>
@@ -77,7 +77,7 @@ export default function DiscoveryHistoryPage() {
 			</div>
 
 			{loading ? (
-				<div className="py-20 text-center text-sm text-gray-500">Loading...</div>
+				<div className="py-20 text-center text-sm text-muted-foreground">Loading...</div>
 			) : (
 				<SessionCalendar sessions={sessions} month={month} />
 			)}

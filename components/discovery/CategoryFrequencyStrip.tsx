@@ -19,10 +19,10 @@ export interface CategoryFrequencyStripProps {
 }
 
 function shareColor(share: number): string {
-	if (share >= 25) return "bg-rose-100 text-rose-700 border-rose-200";
-	if (share >= 15) return "bg-amber-100 text-amber-700 border-amber-200";
-	if (share >= 8) return "bg-blue-100 text-blue-700 border-blue-200";
-	return "bg-gray-100 text-gray-600 border-gray-200";
+	if (share >= 25) return "bg-rose-600/15 text-rose-700 border-rose-200";
+	if (share >= 15) return "bg-amber-600/15 text-amber-700 border-amber-200";
+	if (share >= 8) return "bg-blue-600/15 text-blue-700 border-blue-200";
+	return "bg-muted text-muted-foreground border-border";
 }
 
 export function CategoryFrequencyStrip({
@@ -35,8 +35,8 @@ export function CategoryFrequencyStrip({
 	}
 
 	return (
-		<div className="bg-white border border-gray-200 rounded-lg px-4 py-3 mb-4">
-			<div className="flex items-center gap-2 mb-2 text-xs text-gray-500">
+		<div className="bg-card border border-border rounded-lg px-4 py-3 mb-4">
+			<div className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
 				<BarChart3 size={12} />
 				<span>
 					{t("categoryShareTitle", {

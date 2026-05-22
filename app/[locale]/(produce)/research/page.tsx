@@ -18,7 +18,7 @@ export default function ResearchPage() {
       <FileUpload onUploadComplete={handleUploadComplete} />
 
       <section>
-        <h2 className="text-xl font-semibold text-gray-900 mb-6">{t('recentProducts')}</h2>
+        <h2 className="text-xl font-semibold text-foreground mb-6">{t('recentProducts')}</h2>
         <ProductList refreshTrigger={refreshTrigger} />
       </section>
     </>

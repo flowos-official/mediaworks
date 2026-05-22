@@ -92,9 +92,9 @@ function FeedbackIcon({ state, size = 11 }: { state: FeedbackState; size?: numbe
 		case "partial":
 			return <CircleDot size={size} className="text-amber-500" />;
 		case "none":
-			return <CircleDashed size={size} className="text-gray-400" />;
+			return <CircleDashed size={size} className="text-muted-foreground" />;
 		default:
-			return <CircleDashed size={size} className="text-gray-200" />;
+			return <CircleDashed size={size} className="text-muted-foreground" />;
 	}
 }
 
@@ -120,15 +120,15 @@ function SessionRowInline({
 	return (
 		<Link
 			href={href}
-			className="flex items-center gap-1.5 px-1 py-1 rounded hover:bg-gray-50 text-[10px] leading-tight transition-colors"
+			className="flex items-center gap-1.5 px-1 py-1 rounded hover:bg-muted text-[10px] leading-tight transition-colors"
 			title={`${hhmm(s.run_at)} • ${isHome ? "ホーム" : "ライブ"} • ${statusLabel(s.status)} • ${s.produced_count}件 • ${feedbackTitle(s)}`}
 		>
-			<span className="font-mono text-gray-500 shrink-0">{hhmm(s.run_at)}</span>
+			<span className="font-mono text-muted-foreground shrink-0">{hhmm(s.run_at)}</span>
 			<span
 				className={`inline-flex items-center gap-0.5 px-1 py-px rounded-full font-semibold shrink-0 ${
 					isHome
-						? "bg-blue-50 text-blue-700 border border-blue-200"
-						: "bg-purple-50 text-purple-700 border border-purple-200"
+						? "bg-blue-600/10 text-blue-700 border border-blue-200"
+						: "bg-purple-600/10 text-purple-700 border border-purple-200"
 				}`}
 			>
 				{isHome ? <Home size={9} /> : <Tv size={9} />}
@@ -137,7 +137,7 @@ function SessionRowInline({
 			<span className="shrink-0" title={statusLabel(s.status)}>
 				<StatusIcon status={s.status} size={11} />
 			</span>
-			<span className="ml-auto flex items-center gap-0.5 text-gray-600 shrink-0">
+			<span className="ml-auto flex items-center gap-0.5 text-muted-foreground shrink-0">
 				<FeedbackIcon state={fb} size={10} />
 				<span className="font-mono">
 					{fbDone}/{fbTotal || s.produced_count}
@@ -184,11 +184,11 @@ export function SessionCalendar({ sessions, month }: { sessions: SessionRow[]; m
 	const MAX_ROWS = 6;
 
 	return (
-		<div className="bg-white border border-gray-200 rounded-lg p-4">
-			<div className="text-sm font-semibold text-gray-800 mb-3">
+		<div className="bg-card border border-border rounded-lg p-4">
+			<div className="text-sm font-semibold text-foreground mb-3">
 				{year}年 {mon + 1}月
 			</div>
-			<div className="grid grid-cols-7 gap-1 text-[10px] text-gray-400 mb-1">
+			<div className="grid grid-cols-7 gap-1 text-[10px] text-muted-foreground mb-1">
 				{["日", "月", "火", "水", "木", "金", "土"].map((d) => (
 					<div key={d} className="text-center py-1">{d}</div>
 				))}
@@ -211,10 +211,10 @@ export function SessionCalendar({ sessions, month }: { sessions: SessionRow[]; m
 							key={i}
 							className={`min-h-[180px] rounded border px-1.5 pt-1 pb-1 flex flex-col ${
 								isToday
-									? "border-amber-300 bg-amber-50/40"
+									? "border-amber-300 bg-amber-600/10"
 									: cell.sessions.length > 0
-										? "border-gray-200 bg-white"
-										: "border-gray-100 bg-gray-50/30"
+										? "border-border bg-card"
+										: "border-border bg-muted/30"
 							}`}
 						>
 							<div className="flex items-center justify-between mb-1">
@@ -223,14 +223,14 @@ export function SessionCalendar({ sessions, month }: { sessions: SessionRow[]; m
 										isToday
 											? "font-bold text-amber-700"
 											: cell.sessions.length > 0
-												? "font-semibold text-gray-700"
-												: "text-gray-400"
+												? "font-semibold text-foreground"
+												: "text-muted-foreground"
 									}`}
 								>
 									{cell.day}
 								</span>
 								{cell.sessions.length > 0 && (
-									<span className="text-[9px] text-gray-400 font-mono">
+									<span className="text-[9px] text-muted-foreground font-mono">
 										{cell.sessions.length}
 									</span>
 								)}
@@ -244,7 +244,7 @@ export function SessionCalendar({ sessions, month }: { sessions: SessionRow[]; m
 									/>
 								))}
 								{hidden > 0 && (
-									<div className="text-[9px] text-gray-500 px-1 pt-0.5">
+									<div className="text-[9px] text-muted-foreground px-1 pt-0.5">
 										+{hidden} more
 									</div>
 								)}
@@ -253,7 +253,7 @@ export function SessionCalendar({ sessions, month }: { sessions: SessionRow[]; m
 					);
 				})}
 			</div>
-			<div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-[10px] text-gray-500">
+			<div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-[10px] text-muted-foreground">
 				<span className="flex items-center gap-1">
 					<Home size={10} className="text-blue-600" />
 					ホーム
@@ -262,7 +262,7 @@ export function SessionCalendar({ sessions, month }: { sessions: SessionRow[]; m
 					<Tv size={10} className="text-purple-600" />
 					ライブ
 				</span>
-				<span className="flex items-center gap-1 pl-2 border-l border-gray-200">
+				<span className="flex items-center gap-1 pl-2 border-l border-border">
 					<StatusIcon status="completed" size={11} />完了
 				</span>
 				<span className="flex items-center gap-1">
@@ -274,7 +274,7 @@ export function SessionCalendar({ sessions, month }: { sessions: SessionRow[]; m
 				<span className="flex items-center gap-1">
 					<StatusIcon status="running" size={11} />実行中
 				</span>
-				<span className="flex items-center gap-1 pl-2 border-l border-gray-200">
+				<span className="flex items-center gap-1 pl-2 border-l border-border">
 					<FeedbackIcon state="complete" size={11} />FB完了
 				</span>
 				<span className="flex items-center gap-1">

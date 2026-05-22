@@ -60,16 +60,16 @@ export function ScreenplayViewer({
 	const chars = markdown.length;
 
 	return (
-		<Card className="border-gray-200 overflow-hidden">
+		<Card className="border-border overflow-hidden">
 			{/* toolbar */}
-			<div className="sticky top-0 z-10 flex items-center justify-between gap-3 bg-white/95 backdrop-blur-sm border-b border-gray-100 px-4 py-2.5">
+			<div className="sticky top-0 z-10 flex items-center justify-between gap-3 bg-card/95 backdrop-blur-sm border-b border-border px-4 py-2.5">
 				<div className="flex items-center gap-1">
 					<button
 						type="button"
 						onClick={onPrev}
 						disabled={!hasPrev}
 						title={prevLabel ? `前のバージョン (第 ${prevLabel.replace("v", "")} 稿)` : "前のバージョン"}
-						className="inline-flex items-center gap-1 px-2 py-1.5 text-xs text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md disabled:text-gray-300 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors"
+						className="inline-flex items-center gap-1 px-2 py-1.5 text-xs text-foreground hover:text-foreground hover:bg-muted rounded-md disabled:text-muted-foreground disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors"
 					>
 						<ChevronLeft size={14} />
 						前へ
@@ -79,15 +79,15 @@ export function ScreenplayViewer({
 						onClick={onNext}
 						disabled={!hasNext}
 						title={nextLabel ? `次のバージョン (第 ${nextLabel.replace("v", "")} 稿)` : "次のバージョン"}
-						className="inline-flex items-center gap-1 px-2 py-1.5 text-xs text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md disabled:text-gray-300 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors"
+						className="inline-flex items-center gap-1 px-2 py-1.5 text-xs text-foreground hover:text-foreground hover:bg-muted rounded-md disabled:text-muted-foreground disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors"
 					>
 						次へ
 						<ChevronRight size={14} />
 					</button>
 				</div>
 
-				<div className="flex items-baseline gap-3 text-xs text-gray-500 min-w-0 overflow-hidden">
-					{versionLabel && <span className="font-semibold text-gray-900">{versionLabel}</span>}
+				<div className="flex items-baseline gap-3 text-xs text-muted-foreground min-w-0 overflow-hidden">
+					{versionLabel && <span className="font-semibold text-foreground">{versionLabel}</span>}
 					{createdAt && <span className="tabular-nums truncate">{formatStamp(createdAt)}</span>}
 					<span className="tabular-nums hidden sm:inline">{chars.toLocaleString()} 文字</span>
 				</div>
@@ -96,7 +96,7 @@ export function ScreenplayViewer({
 					<button
 						type="button"
 						onClick={copyMd}
-						className="inline-flex items-center gap-1 px-3 py-1.5 text-xs text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+						className="inline-flex items-center gap-1 px-3 py-1.5 text-xs text-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
 					>
 						{copied ? <Check size={12} /> : <Copy size={12} />}
 						{copied ? "コピー済み" : "コピー"}
@@ -104,7 +104,7 @@ export function ScreenplayViewer({
 					<button
 						type="button"
 						onClick={downloadMd}
-						className="inline-flex items-center gap-1 px-3 py-1.5 text-xs text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+						className="inline-flex items-center gap-1 px-3 py-1.5 text-xs text-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
 					>
 						<Download size={12} />
 						.md

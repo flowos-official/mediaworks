@@ -109,11 +109,11 @@ export function ScreenplayWorkspace({ initialScreenplay, initialVersions }: Prop
 		<div className="grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)_340px] gap-6">
 			{/* LEFT — REVISION TIMELINE */}
 			<aside className="lg:sticky lg:top-20 self-start">
-				<Card className="border-gray-200">
+				<Card className="border-border">
 					<CardContent className="p-4">
 						<div className="flex items-center justify-between mb-3">
-							<h2 className="text-sm font-semibold text-gray-900">改稿履歴</h2>
-							<span className="text-[11px] text-gray-400">{versions.length}件</span>
+							<h2 className="text-sm font-semibold text-foreground">改稿履歴</h2>
+							<span className="text-[11px] text-muted-foreground">{versions.length}件</span>
 						</div>
 						{versions.length > 0 ? (
 							<VersionTimeline
@@ -127,11 +127,11 @@ export function ScreenplayWorkspace({ initialScreenplay, initialVersions }: Prop
 								onSelect={setSelectedId}
 							/>
 						) : (
-							<p className="text-xs text-gray-500 py-4 text-center">
+							<p className="text-xs text-muted-foreground py-4 text-center">
 								まだ稿がありません
 							</p>
 						)}
-						<div className="text-[11px] text-gray-400 mt-4 pt-3 border-t border-gray-100 leading-relaxed">
+						<div className="text-[11px] text-muted-foreground mt-4 pt-3 border-t border-border leading-relaxed">
 							⌘← / ⌘→ で版を移動できます
 						</div>
 					</CardContent>
@@ -159,13 +159,13 @@ export function ScreenplayWorkspace({ initialScreenplay, initialVersions }: Prop
 						nextLabel={next ? `v${pad(next.version_number, 2)}` : undefined}
 					/>
 				) : !isGenerating ? (
-					<Card className="border-gray-200 border-dashed">
+					<Card className="border-border border-dashed">
 						<CardContent className="py-16 flex flex-col items-center justify-center text-center">
-							<div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mb-3">
-								<FileText size={24} className="text-gray-400" />
+							<div className="w-14 h-14 bg-muted rounded-full flex items-center justify-center mb-3">
+								<FileText size={24} className="text-muted-foreground" />
 							</div>
-							<p className="text-sm text-gray-900 font-medium">まだ台本がありません</p>
-							<p className="text-xs text-gray-500 mt-1">
+							<p className="text-sm text-foreground font-medium">まだ台本がありません</p>
+							<p className="text-xs text-muted-foreground mt-1">
 								右側のフォームから最初の台本を生成してください。
 							</p>
 						</CardContent>
@@ -183,8 +183,8 @@ export function ScreenplayWorkspace({ initialScreenplay, initialVersions }: Prop
 						onStart={handleRefineStart}
 					/>
 				) : (
-					<Card className="border-gray-200">
-						<CardContent className="p-5 text-center text-xs text-gray-500">
+					<Card className="border-border">
+						<CardContent className="p-5 text-center text-xs text-muted-foreground">
 							最初の台本ができたら、ここで改稿できます。
 						</CardContent>
 					</Card>

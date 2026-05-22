@@ -24,20 +24,20 @@ const CUE_TAGS = new Set(["テロップ", "カメラ", "BGM", "SE", "インサ�
 const SPEAKER_TAGS = new Set(["N", "高橋", "山内", "小島", "お客様"]);
 
 const CUE_STYLES: Record<string, { bg: string; ring: string; text: string }> = {
-	"テロップ": { bg: "bg-blue-50/60", ring: "border-blue-200", text: "text-blue-900" },
-	"カメラ": { bg: "bg-gray-50", ring: "border-gray-200", text: "text-gray-900" },
-	"BGM": { bg: "bg-purple-50/60", ring: "border-purple-200", text: "text-purple-900" },
-	"SE": { bg: "bg-orange-50/60", ring: "border-orange-200", text: "text-orange-900" },
-	"インサート": { bg: "bg-cyan-50/60", ring: "border-cyan-200", text: "text-cyan-900" },
-	"小道具": { bg: "bg-amber-50/60", ring: "border-amber-200", text: "text-amber-900" },
+	"テロップ": { bg: "bg-blue-600/10", ring: "border-blue-200", text: "text-blue-900" },
+	"カメラ": { bg: "bg-muted", ring: "border-border", text: "text-foreground" },
+	"BGM": { bg: "bg-purple-600/10", ring: "border-purple-200", text: "text-purple-900" },
+	"SE": { bg: "bg-orange-600/10", ring: "border-orange-200", text: "text-orange-900" },
+	"インサート": { bg: "bg-cyan-600/10", ring: "border-cyan-200", text: "text-cyan-900" },
+	"小道具": { bg: "bg-amber-600/10", ring: "border-amber-200", text: "text-amber-900" },
 };
 
 const ROLE_STYLES: Record<string, string> = {
-	N: "bg-gray-100 text-gray-900",
-	"高橋": "bg-blue-100 text-blue-900",
-	"山内": "bg-green-100 text-green-900",
-	"小島": "bg-pink-100 text-pink-900",
-	"お客様": "bg-amber-100 text-amber-900",
+	N: "bg-muted text-foreground",
+	"高橋": "bg-blue-600/15 text-blue-900",
+	"山内": "bg-green-600/15 text-green-900",
+	"小島": "bg-pink-600/15 text-pink-900",
+	"お客様": "bg-amber-600/15 text-amber-900",
 };
 
 function parseMarkdown(md: string): Block[] {
@@ -139,16 +139,16 @@ export function ScreenplayMarkdown({ markdown }: { markdown: string }) {
 	const blocks = parseMarkdown(markdown);
 
 	return (
-		<article className="text-gray-900 leading-[1.85]">
+		<article className="text-foreground leading-[1.85]">
 			{blocks.map((b, idx) => {
 				if (b.kind === "heading") {
 					if (b.level === 1) {
 						return (
-							<header key={idx} className="mb-10 pb-6 border-b border-gray-200">
-								<div className="text-xs font-medium text-blue-700 bg-blue-50 inline-block px-2 py-0.5 rounded-full mb-3">
+							<header key={idx} className="mb-10 pb-6 border-b border-border">
+								<div className="text-xs font-medium text-blue-700 bg-blue-600/10 inline-block px-2 py-0.5 rounded-full mb-3">
 									完成版 台本
 								</div>
-								<h1 className="text-3xl font-bold tracking-tight text-gray-900 leading-tight">
+								<h1 className="text-3xl font-bold tracking-tight text-foreground leading-tight">
 									{b.text}
 								</h1>
 							</header>
@@ -156,13 +156,13 @@ export function ScreenplayMarkdown({ markdown }: { markdown: string }) {
 					}
 					if (b.level === 2) {
 						return (
-							<h2 key={idx} className="mt-12 mb-4 text-xs font-semibold tracking-wide text-gray-500 uppercase border-b border-gray-100 pb-2">
-								<span className="text-gray-900 normal-case text-lg font-bold">{b.text}</span>
+							<h2 key={idx} className="mt-12 mb-4 text-xs font-semibold tracking-wide text-muted-foreground uppercase border-b border-border pb-2">
+								<span className="text-foreground normal-case text-lg font-bold">{b.text}</span>
 							</h2>
 						);
 					}
 					return (
-						<h3 key={idx} className="mt-10 mb-4 text-lg font-bold text-gray-900 flex items-center gap-2">
+						<h3 key={idx} className="mt-10 mb-4 text-lg font-bold text-foreground flex items-center gap-2">
 							<span className="w-1 h-5 bg-blue-600 rounded-full" aria-hidden />
 							{b.text}
 						</h3>
@@ -172,44 +172,44 @@ export function ScreenplayMarkdown({ markdown }: { markdown: string }) {
 				if (b.kind === "hr") {
 					return (
 						<div key={idx} className="my-10 flex items-center gap-3">
-							<div className="h-px flex-1 bg-gray-200" />
-							<span className="text-[10px] tracking-widest uppercase text-gray-400">場面転換</span>
-							<div className="h-px flex-1 bg-gray-200" />
+							<div className="h-px flex-1 bg-border" />
+							<span className="text-[10px] tracking-widest uppercase text-muted-foreground">場面転換</span>
+							<div className="h-px flex-1 bg-border" />
 						</div>
 					);
 				}
 
 				if (b.kind === "cue") {
-					const style = CUE_STYLES[b.tag] ?? { bg: "bg-gray-50", ring: "border-gray-200", text: "text-gray-900" };
+					const style = CUE_STYLES[b.tag] ?? { bg: "bg-muted", ring: "border-border", text: "text-foreground" };
 					return (
 						<div key={idx} className={`my-4 rounded-xl border ${style.ring} ${style.bg} px-4 py-3`}>
 							<div className={`text-[11px] font-bold tracking-wide ${style.text} mb-1.5`}>
 								［{b.tag}］
 							</div>
 							{b.lines.map((l, li) => (
-								<div key={li} className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{l}</div>
+								<div key={li} className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{l}</div>
 							))}
 						</div>
 					);
 				}
 
 				if (b.kind === "speaker") {
-					const roleCls = ROLE_STYLES[b.role] ?? "bg-gray-100 text-gray-900";
+					const roleCls = ROLE_STYLES[b.role] ?? "bg-muted text-foreground";
 					return (
-						<div key={idx} className="my-5 grid grid-cols-[120px_1fr] gap-4 py-2 border-b border-dashed border-gray-100">
+						<div key={idx} className="my-5 grid grid-cols-[120px_1fr] gap-4 py-2 border-b border-dashed border-border">
 							<div>
 								<span className={`inline-flex items-center text-xs font-bold px-2 py-1 rounded-md ${roleCls}`}>
 									{b.role}
 								</span>
-								<div className="text-[10px] text-gray-400 mt-1">{ROLE_LABELS[b.role] ?? ""}</div>
+								<div className="text-[10px] text-muted-foreground mt-1">{ROLE_LABELS[b.role] ?? ""}</div>
 							</div>
 							<div>
 								{b.delivery && (
-									<div className="text-xs italic text-gray-500 mb-1.5">（{b.delivery}）</div>
+									<div className="text-xs italic text-muted-foreground mb-1.5">（{b.delivery}）</div>
 								)}
-								<p className="text-[15px] leading-[1.9] whitespace-pre-wrap text-gray-900">{b.jp}</p>
+								<p className="text-[15px] leading-[1.9] whitespace-pre-wrap text-foreground">{b.jp}</p>
 								{b.en && (
-									<p className="text-[11px] text-gray-400 mt-1.5 pl-3 border-l-2 border-gray-200 italic">
+									<p className="text-[11px] text-muted-foreground mt-1.5 pl-3 border-l-2 border-border italic">
 										{b.en}
 									</p>
 								)}
@@ -222,7 +222,7 @@ export function ScreenplayMarkdown({ markdown }: { markdown: string }) {
 					return (
 						<ul key={idx} className="my-3 pl-0 list-none space-y-1">
 							{b.items.map((it, ii) => (
-								<li key={ii} className="text-[13.5px] leading-[1.7] grid grid-cols-[20px_1fr] gap-1 text-gray-700">
+								<li key={ii} className="text-[13.5px] leading-[1.7] grid grid-cols-[20px_1fr] gap-1 text-foreground">
 									<span className="text-blue-500 tabular-nums">{(ii + 1).toString().padStart(2, "0")}</span>
 									<span>{it}</span>
 								</li>
@@ -234,15 +234,15 @@ export function ScreenplayMarkdown({ markdown }: { markdown: string }) {
 				if (b.kind === "table") {
 					const [head, ...body] = b.rows;
 					return (
-						<div key={idx} className="my-6 border border-gray-200 rounded-xl overflow-hidden">
+						<div key={idx} className="my-6 border border-border rounded-xl overflow-hidden">
 							<table className="w-full border-collapse text-sm">
 								{head && (
-									<thead className="bg-gray-50">
+									<thead className="bg-muted">
 										<tr>
 											{head.map((c, ci) => (
 												<th
 													key={ci}
-													className="px-3 py-2.5 text-left text-xs font-semibold text-gray-700 border-b border-gray-200"
+													className="px-3 py-2.5 text-left text-xs font-semibold text-foreground border-b border-border"
 												>
 													{c}
 												</th>
@@ -252,9 +252,9 @@ export function ScreenplayMarkdown({ markdown }: { markdown: string }) {
 								)}
 								<tbody>
 									{body.map((row, ri) => (
-										<tr key={ri} className="border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50">
+										<tr key={ri} className="border-b border-border last:border-b-0 hover:bg-muted/50">
 											{row.map((c, ci) => (
-												<td key={ci} className="px-3 py-2.5 align-top text-gray-800 leading-relaxed">
+												<td key={ci} className="px-3 py-2.5 align-top text-foreground leading-relaxed">
 													{c}
 												</td>
 											))}
@@ -267,7 +267,7 @@ export function ScreenplayMarkdown({ markdown }: { markdown: string }) {
 				}
 
 				return (
-					<p key={idx} className="text-[14.5px] leading-[1.9] my-3 text-gray-700">
+					<p key={idx} className="text-[14.5px] leading-[1.9] my-3 text-foreground">
 						{b.text}
 					</p>
 				);

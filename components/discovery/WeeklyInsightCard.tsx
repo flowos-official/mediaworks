@@ -17,18 +17,18 @@ export function WeeklyInsightCard({ insight }: { insight: Insight | null }) {
 
 	if (!insight) {
 		return (
-			<div className="bg-white border border-gray-200 rounded-lg p-5 text-sm text-gray-400">
+			<div className="bg-card border border-border rounded-lg p-5 text-sm text-muted-foreground">
 				{t("noData")}
 			</div>
 		);
 	}
 
 	return (
-		<div className="bg-gradient-to-br from-indigo-50 to-white border border-indigo-200 rounded-lg p-5">
+		<div className="bg-gradient-to-br from-indigo-600/10 to-card border border-indigo-200 rounded-lg p-5">
 			<div className="flex items-center gap-2 mb-3">
 				<Sparkles size={14} className="text-indigo-600" />
-				<h3 className="text-sm font-semibold text-gray-900">{t("weeklyInsightTitle")}</h3>
-				<span className="text-[10px] text-gray-500 ml-auto">
+				<h3 className="text-sm font-semibold text-foreground">{t("weeklyInsightTitle")}</h3>
+				<span className="text-[10px] text-muted-foreground ml-auto">
 					{insight.week_start}~ · {insight.context === "home_shopping" ? "ホーム" : "ライブ"}
 				</span>
 			</div>
@@ -48,7 +48,7 @@ function Section({ label, text }: { label: string; text: string | null }) {
 			<div className="text-[10px] font-bold text-indigo-700 uppercase tracking-wide mb-1">
 				{label}
 			</div>
-			<p className="text-xs text-gray-800 leading-relaxed">{text}</p>
+			<p className="text-xs text-foreground leading-relaxed">{text}</p>
 		</div>
 	);
 }

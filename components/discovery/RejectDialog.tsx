@@ -61,17 +61,17 @@ export function RejectDialog({
 			onClick={onCancel}
 		>
 			<div
-				className="bg-white rounded-lg shadow-lg p-5 w-full max-w-sm mx-4"
+				className="bg-card rounded-lg shadow-lg p-5 w-full max-w-sm mx-4"
 				onClick={(e) => e.stopPropagation()}
 			>
 				<div className="flex items-center justify-between mb-3">
-					<h3 className="text-sm font-semibold text-gray-900">
+					<h3 className="text-sm font-semibold text-foreground">
 						{t("rejectDialogTitle")}
 					</h3>
 					<button
 						type="button"
 						onClick={onCancel}
-						className="text-gray-400 hover:text-gray-600"
+						className="text-muted-foreground hover:text-foreground"
 					>
 						<X size={16} />
 					</button>
@@ -83,8 +83,8 @@ export function RejectDialog({
 							<label
 								className={`flex items-center gap-2 px-3 py-2 rounded border cursor-pointer transition-colors ${
 									selected === key
-										? "bg-red-50 border-red-300"
-										: "bg-white border-gray-200 hover:bg-gray-50"
+										? "bg-red-600/10 border-red-300"
+										: "bg-card border-border hover:bg-muted"
 								}`}
 							>
 								<input
@@ -95,7 +95,7 @@ export function RejectDialog({
 									onChange={() => setSelected(key)}
 									className="accent-red-500"
 								/>
-								<span className="text-xs text-gray-800">{t(key)}</span>
+								<span className="text-xs text-foreground">{t(key)}</span>
 							</label>
 							{key === "rejectReason_other" && isOther && (
 								<textarea
@@ -115,7 +115,7 @@ export function RejectDialog({
 					<button
 						type="button"
 						onClick={onCancel}
-						className="px-4 py-1.5 text-xs text-gray-700 border border-gray-200 rounded hover:bg-gray-50"
+						className="px-4 py-1.5 text-xs text-foreground border border-border rounded hover:bg-muted"
 					>
 						{t("cancel")}
 					</button>

@@ -77,7 +77,7 @@ export default function ProductsPage() {
   return (
     <>
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+        <div className="p-4 bg-red-600/10 border border-red-200 rounded-lg text-sm text-red-700">
           {error}
         </div>
       )}
@@ -85,7 +85,7 @@ export default function ProductsPage() {
       {loading && (
         <div className="flex items-center justify-center py-20">
           <Loader2 size={24} className="animate-spin text-blue-600" />
-          <span className="ml-2 text-sm text-gray-500">{tc('loading')}</span>
+          <span className="ml-2 text-sm text-muted-foreground">{tc('loading')}</span>
         </div>
       )}
 
@@ -94,7 +94,7 @@ export default function ProductsPage() {
           <button
             type="button"
             onClick={() => setShowTaicho(true)}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-xl text-sm text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-border rounded-xl text-sm text-muted-foreground hover:border-blue-400 hover:text-blue-600 transition-colors"
           >
             <FileSpreadsheet size={16} />
             {tg('uploadButton')} (.xlsx / .xlsm)
@@ -112,40 +112,40 @@ export default function ProductsPage() {
             className="absolute inset-0 bg-black/40"
             onClick={() => { setShowTaicho(false); setTaichoResult(null); }}
           />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6">
+          <div className="relative bg-card rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-gray-900">{tg('uploadTitle')}</h2>
+              <h2 className="text-lg font-bold text-foreground">{tg('uploadTitle')}</h2>
               <button
                 type="button"
                 onClick={() => { setShowTaicho(false); setTaichoResult(null); }}
-                className="p-1.5 hover:bg-gray-100 rounded-lg"
+                className="p-1.5 hover:bg-muted rounded-lg"
               >
-                <X size={18} className="text-gray-500" />
+                <X size={18} className="text-muted-foreground" />
               </button>
             </div>
-            <p className="text-sm text-gray-500 mb-4">{tg('uploadDescription')}</p>
+            <p className="text-sm text-muted-foreground mb-4">{tg('uploadDescription')}</p>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{tg('productCode')}</label>
+                <label className="block text-sm font-medium text-foreground mb-1">{tg('productCode')}</label>
                 <input
                   type="text"
                   value={taichoCode}
                   onChange={(e) => setTaichoCode(e.target.value)}
                   placeholder={tg('productCodePlaceholder')}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{tg('selectFile')}</label>
+                <label className="block text-sm font-medium text-foreground mb-1">{tg('selectFile')}</label>
                 <input
                   type="file"
                   accept=".xlsx,.xlsm"
                   onChange={(e) => setTaichoFile(e.target.files?.[0] ?? null)}
-                  className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  className="w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-600/10 file:text-blue-700 hover:file:bg-blue-600/15"
                 />
               </div>
               {taichoResult && (
-                <div className={`text-sm p-3 rounded-lg ${taichoResult.includes(tg('uploadSuccess')) ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                <div className={`text-sm p-3 rounded-lg ${taichoResult.includes(tg('uploadSuccess')) ? 'bg-green-600/10 text-green-700' : 'bg-red-600/10 text-red-700'}`}>
                   {taichoResult}
                 </div>
               )}

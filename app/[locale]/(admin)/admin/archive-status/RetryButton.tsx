@@ -10,7 +10,7 @@ export default function RetryButton({ broadcastId }: { broadcastId: string }) {
 	};
 	return (
 		<button type="button" disabled={pending} onClick={onClick}
-		  className="text-xs px-2 py-1 rounded border hover:bg-gray-50 disabled:opacity-50">
+		  className="text-xs px-2 py-1 rounded border hover:bg-muted disabled:opacity-50">
 			{pending ? "..." : "Retry"}
 		</button>
 	);

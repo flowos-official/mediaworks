@@ -61,7 +61,7 @@ export default function ProductList({ refreshTrigger }: ProductListProps) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-32 bg-gray-100 rounded-xl animate-pulse" />
+          <div key={i} className="h-32 bg-muted rounded-xl animate-pulse" />
         ))}
       </div>
     );
@@ -70,10 +70,10 @@ export default function ProductList({ refreshTrigger }: ProductListProps) {
   if (products.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-          <Package size={32} className="text-gray-400" />
+        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+          <Package size={32} className="text-muted-foreground" />
         </div>
-        <p className="text-gray-500">{t('noProducts')}</p>
+        <p className="text-muted-foreground">{t('noProducts')}</p>
       </div>
     );
   }
@@ -82,16 +82,16 @@ export default function ProductList({ refreshTrigger }: ProductListProps) {
     <div>
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <div className="relative flex-1">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t('search.placeholder')}
-            className="w-full pl-9 pr-9 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+            className="w-full pl-9 pr-9 py-2 text-sm border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
           />
           {searchQuery && (
-            <button type="button" onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+            <button type="button" onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
               <X size={14} />
             </button>
           )}
@@ -105,7 +105,7 @@ export default function ProductList({ refreshTrigger }: ProductListProps) {
               className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
                 statusFilter === s
                   ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+                  : 'bg-card text-muted-foreground border-border hover:border-border'
               }`}
             >
               {s === 'all' ? t('search.allStatuses') : t(`status.${s}` as 'status.completed' | 'status.analyzing' | 'status.pending' | 'status.failed')}
@@ -114,14 +114,14 @@ export default function ProductList({ refreshTrigger }: ProductListProps) {
         </div>
       </div>
 
-      <p className="text-xs text-gray-400 mb-3">
+      <p className="text-xs text-muted-foreground mb-3">
         {searchQuery || statusFilter !== 'all'
           ? t('search.filteredCount', { filtered: filteredProducts.length, total: products.length })
           : t('search.resultCount', { count: products.length })}
       </p>
 
       {filteredProducts.length === 0 ? (
-        <div className="text-center py-12 text-gray-400 text-sm">
+        <div className="text-center py-12 text-muted-foreground text-sm">
           {t('search.noResults')}
         </div>
       ) : (

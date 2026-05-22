@@ -57,8 +57,8 @@ export function StatsDashboard() {
 			.catch(() => setLoading(false));
 	}, [context]);
 
-	if (loading) return <div className="py-20 text-center text-sm text-gray-500">Loading...</div>;
-	if (!data) return <div className="py-20 text-center text-sm text-gray-400">{t("noData")}</div>;
+	if (loading) return <div className="py-20 text-center text-sm text-muted-foreground">Loading...</div>;
+	if (!data) return <div className="py-20 text-center text-sm text-muted-foreground">{t("noData")}</div>;
 
 	const categoryData = Object.entries(data.categoryWeights).map(([category, rate]) => ({
 		category,
@@ -72,7 +72,7 @@ export function StatsDashboard() {
 	return (
 		<div className="space-y-6">
 			<div className="flex flex-wrap items-center gap-2">
-				<span className="text-xs text-gray-500">Context:</span>
+				<span className="text-xs text-muted-foreground">Context:</span>
 				{(["all", "home_shopping", "live_commerce"] as ContextFilter[]).map((c) => (
 					<button
 						key={c}
@@ -81,7 +81,7 @@ export function StatsDashboard() {
 						className={`px-3 py-1 text-xs rounded-full border transition-colors ${
 							context === c
 								? "bg-blue-500 text-white border-blue-500"
-								: "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+								: "bg-card text-foreground border-border hover:bg-muted"
 						}`}
 					>
 						{c === "all" ? t("allStatuses") : c === "home_shopping" ? "ホーム" : "ライブ"}
@@ -136,8 +136,8 @@ export function StatsDashboard() {
 
 function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
 	return (
-		<div className="bg-white border border-gray-200 rounded-lg p-4">
-			<h4 className="text-sm font-semibold text-gray-900 mb-3">{title}</h4>
+		<div className="bg-card border border-border rounded-lg p-4">
+			<h4 className="text-sm font-semibold text-foreground mb-3">{title}</h4>
 			{children}
 		</div>
 	);

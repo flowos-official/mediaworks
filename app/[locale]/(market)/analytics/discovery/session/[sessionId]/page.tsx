@@ -48,13 +48,13 @@ export default function SessionDetailPage() {
 		sourced: products.filter((p) => (p as unknown as { user_action?: string }).user_action === "sourced").length,
 	};
 
-	if (loading) return <div className="py-20 text-center text-sm text-gray-500">Loading...</div>;
+	if (loading) return <div className="py-20 text-center text-sm text-muted-foreground">Loading...</div>;
 
 	return (
 		<div>
 			<ContextSubTabs />
 			<div className="mb-4">
-				<p className="text-xs text-gray-500">session: {sessionId}</p>
+				<p className="text-xs text-muted-foreground">session: {sessionId}</p>
 			</div>
 			<DiscoveryHeader
 				session={session}
@@ -67,7 +67,7 @@ export default function SessionDetailPage() {
 					<ProductCard key={p.id} product={p} />
 				))}
 				{products.length === 0 && (
-					<div className="col-span-full py-12 text-center text-sm text-gray-400">
+					<div className="col-span-full py-12 text-center text-sm text-muted-foreground">
 						(no products in this session)
 					</div>
 				)}
