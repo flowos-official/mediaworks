@@ -77,7 +77,7 @@ export default function ProductsPage() {
   return (
     <>
       {error && (
-        <div className="p-4 bg-red-600/10 border border-red-200 rounded-lg text-sm text-red-700">
+        <div className="p-4 bg-red-600/10 border border-red-200 dark:border-red-900/40 rounded-lg text-sm text-red-700 dark:text-red-300">
           {error}
         </div>
       )}
@@ -145,7 +145,7 @@ export default function ProductsPage() {
                 />
               </div>
               {taichoResult && (
-                <div className={`text-sm p-3 rounded-lg ${taichoResult.includes(tg('uploadSuccess')) ? 'bg-green-600/10 text-green-700' : 'bg-red-600/10 text-red-700'}`}>
+                <div className={`text-sm p-3 rounded-lg ${taichoResult.includes(tg('uploadSuccess')) ? 'bg-green-600/10 text-green-700 dark:text-green-300' : 'bg-red-600/10 text-red-700 dark:text-red-300'}`}>
                   {taichoResult}
                 </div>
               )}

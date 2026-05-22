@@ -51,7 +51,7 @@ const CHANNEL_LABEL: Record<Analysis["recommendedChannel"], { label: string; ico
 function scoreColor(s: number): string {
 	if (s >= 80) return "bg-emerald-500 text-white";
 	if (s >= 60) return "bg-blue-500 text-white";
-	if (s >= 40) return "bg-amber-400 text-amber-900";
+	if (s >= 40) return "bg-amber-400 text-amber-900 dark:text-amber-100";
 	return "bg-rose-400 text-white";
 }
 

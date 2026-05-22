@@ -39,10 +39,10 @@ async function fetchDetail(id: string) {
 }
 
 const STATUS_BADGE: Record<ScreenplayRow["status"], { cls: string; label: string }> = {
-	pending: { cls: "bg-yellow-600/15 text-yellow-700", label: "待機中" },
-	generating: { cls: "bg-blue-600/15 text-blue-700", label: "生成中" },
-	ready: { cls: "bg-green-600/15 text-green-700", label: "完成" },
-	failed: { cls: "bg-red-600/15 text-red-700", label: "失敗" },
+	pending: { cls: "bg-yellow-600/15 text-yellow-700 dark:text-yellow-300", label: "待機中" },
+	generating: { cls: "bg-blue-600/15 text-blue-700 dark:text-blue-300", label: "生成中" },
+	ready: { cls: "bg-green-600/15 text-green-700 dark:text-green-300", label: "完成" },
+	failed: { cls: "bg-red-600/15 text-red-700 dark:text-red-300", label: "失敗" },
 };
 
 export default async function ScreenplayDetailPage({ params }: { params: Promise<{ id: string; locale: string }> }) {
@@ -64,7 +64,7 @@ export default async function ScreenplayDetailPage({ params }: { params: Promise
 
 			<header className="flex items-start justify-between gap-4 mb-6">
 				<div className="min-w-0 flex-1">
-					<div className="inline-flex items-center gap-2 bg-blue-600/10 text-blue-700 text-xs font-medium px-2.5 py-1 rounded-full mb-3">
+					<div className="inline-flex items-center gap-2 bg-blue-600/10 text-blue-700 dark:text-blue-300 text-xs font-medium px-2.5 py-1 rounded-full mb-3">
 						<Clapperboard size={12} />
 						テレビショッピング台本
 					</div>

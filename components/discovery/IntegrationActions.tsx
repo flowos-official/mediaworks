@@ -90,7 +90,7 @@ export function IntegrationActions({
 			<button
 				type="button"
 				onClick={handleClick}
-				className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600/10 hover:bg-indigo-600/15 border border-indigo-200 text-indigo-800 text-xs font-semibold rounded-lg transition-colors"
+				className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600/10 hover:bg-indigo-600/15 border border-indigo-200 dark:border-indigo-900/40 text-indigo-800 dark:text-indigo-200 text-xs font-semibold rounded-lg transition-colors"
 			>
 				{icon}
 				{label}
@@ -99,7 +99,7 @@ export function IntegrationActions({
 				type="button"
 				onClick={handlePromote}
 				disabled={!canPromote || promoting}
-				className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 mt-2 bg-emerald-600/10 hover:bg-emerald-600/15 border border-emerald-200 text-emerald-800 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+				className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 mt-2 bg-emerald-600/10 hover:bg-emerald-600/15 border border-emerald-200 dark:border-emerald-900/40 text-emerald-800 dark:text-emerald-200 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 			>
 				{promoting ? "リサーチ作成中…" : "リサーチ実施"}
 			</button>

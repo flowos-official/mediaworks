@@ -188,7 +188,7 @@ export default function DiscoveryHomePage() {
 				</>
 			)}
 			{selectedIds.size >= 1 && (
-				<div className="sticky bottom-0 left-0 right-0 z-20 bg-card/95 border-t border-indigo-200 px-4 py-3 mt-4 flex items-center justify-between shadow-lg backdrop-blur">
+				<div className="sticky bottom-0 left-0 right-0 z-20 bg-card/95 border-t border-indigo-200 dark:border-indigo-900/40 px-4 py-3 mt-4 flex items-center justify-between shadow-lg backdrop-blur">
 					<span className="text-sm font-medium text-foreground">
 						{t("selectionSelected", { count: selectedIds.size })}
 					</span>

@@ -25,7 +25,7 @@ export function DiscoveryHeader({
 
 	if (!session) {
 		return (
-			<div className="bg-yellow-600/10 border border-yellow-200 rounded-lg px-4 py-3 text-yellow-800 text-sm">
+			<div className="bg-yellow-600/10 border border-yellow-200 dark:border-yellow-900/40 rounded-lg px-4 py-3 text-yellow-800 dark:text-yellow-200 text-sm">
 				{t("noSession")}
 			</div>
 		);
@@ -33,12 +33,12 @@ export function DiscoveryHeader({
 
 	const statusColor =
 		session.status === "completed"
-			? "bg-green-600/10 text-green-700 border-green-200"
+			? "bg-green-600/10 text-green-700 dark:text-green-300 border-green-200 dark:border-green-900/40"
 			: session.status === "partial"
-			? "bg-yellow-600/10 text-yellow-700 border-yellow-200"
+			? "bg-yellow-600/10 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-900/40"
 			: session.status === "failed"
-			? "bg-red-600/10 text-red-700 border-red-200"
-			: "bg-blue-600/10 text-blue-700 border-blue-200";
+			? "bg-red-600/10 text-red-700 dark:text-red-300 border-red-200 dark:border-red-900/40"
+			: "bg-blue-600/10 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-900/40";
 
 	const statusLabel =
 		session.status === "completed"
@@ -64,7 +64,7 @@ export function DiscoveryHeader({
 				<span className="px-2 py-0.5 rounded bg-muted text-muted-foreground">
 					{t("filterUncategorized")}: <strong>{uncategorizedCount}</strong>
 				</span>
-				<span className="px-2 py-0.5 rounded bg-green-600/15 text-green-700">
+				<span className="px-2 py-0.5 rounded bg-green-600/15 text-green-700 dark:text-green-300">
 					{t("filterSourced")}: <strong>{sourcedCount}</strong>
 				</span>
 			</div>

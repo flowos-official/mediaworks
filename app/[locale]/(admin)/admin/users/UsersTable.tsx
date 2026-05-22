@@ -254,7 +254,7 @@ export default function UsersTable({ initial, currentUserId }: { initial: Row[];
                   </td>
                   <td className="p-3">
                     {row.must_change_password
-                      ? <Badge className="bg-amber-600/15 text-amber-800 border-amber-200">{t('mustChangeYes')}</Badge>
+                      ? <Badge className="bg-amber-600/15 text-amber-800 dark:text-amber-200 border-amber-200 dark:border-amber-900/40">{t('mustChangeYes')}</Badge>
                       : <span className="text-xs text-muted-foreground">{t('mustChangeNo')}</span>}
                   </td>
                   <td className="p-3 text-muted-foreground">{new Date(row.created_at).toISOString().slice(0,10)}</td>
@@ -391,7 +391,7 @@ export default function UsersTable({ initial, currentUserId }: { initial: Row[];
                 {copied === 'all' ? t('credentials.copied') : t('credentials.copyAll')}
               </Button>
             </div>
-            <p className="text-sm text-amber-900 bg-amber-600/10 border border-amber-300 rounded p-3">
+            <p className="text-sm text-amber-900 dark:text-amber-100 bg-amber-600/10 border border-amber-300 dark:border-amber-800/40 rounded p-3">
               {t('credentials.hint')}
             </p>
             <div className="space-y-2">
@@ -456,7 +456,7 @@ function CredRow({
         className={[
           'px-3 py-2 rounded border text-sm break-all',
           mono ? 'font-mono' : '',
-          highlight ? 'bg-amber-600/10 border-amber-300 text-amber-900 font-semibold tracking-wider text-base' : 'bg-muted',
+          highlight ? 'bg-amber-600/10 border-amber-300 dark:border-amber-800/40 text-amber-900 dark:text-amber-100 font-semibold tracking-wider text-base' : 'bg-muted',
         ].join(' ')}
       >
         {value}

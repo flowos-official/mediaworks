@@ -83,7 +83,7 @@ export function RejectDialog({
 							<label
 								className={`flex items-center gap-2 px-3 py-2 rounded border cursor-pointer transition-colors ${
 									selected === key
-										? "bg-red-600/10 border-red-300"
+										? "bg-red-600/10 border-red-300 dark:border-red-800/40"
 										: "bg-card border-border hover:bg-muted"
 								}`}
 							>
@@ -104,7 +104,7 @@ export function RejectDialog({
 									onChange={(e) => setOtherText(e.target.value)}
 									placeholder="理由を入力..."
 									rows={2}
-									className="w-full mt-2 px-3 py-2 text-xs border border-red-300 rounded resize-none focus:outline-none focus:ring-1 focus:ring-red-400"
+									className="w-full mt-2 px-3 py-2 text-xs border border-red-300 dark:border-red-800/40 rounded resize-none focus:outline-none focus:ring-1 focus:ring-red-400"
 								/>
 							)}
 						</div>

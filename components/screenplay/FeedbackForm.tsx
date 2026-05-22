@@ -84,7 +84,7 @@ export function FeedbackForm({ screenplayId, baseVersionId, disabled, onStart }:
 				</div>
 
 				{err && (
-					<div className="mt-3 p-2.5 bg-red-600/10 border border-red-200 rounded-lg text-xs text-red-700">
+					<div className="mt-3 p-2.5 bg-red-600/10 border border-red-200 dark:border-red-900/40 rounded-lg text-xs text-red-700 dark:text-red-300">
 						{err}
 					</div>
 				)}

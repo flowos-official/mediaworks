@@ -49,10 +49,10 @@ export type DiscoveredProductRow = {
 };
 
 function scoreColor(score: number): string {
-	if (score >= 80) return "text-green-700 bg-green-600/15 border-green-300";
-	if (score >= 60) return "text-blue-700 bg-blue-600/15 border-blue-300";
-	if (score >= 40) return "text-yellow-700 bg-yellow-600/15 border-yellow-300";
-	return "text-red-700 bg-red-600/15 border-red-300";
+	if (score >= 80) return "text-green-700 dark:text-green-300 bg-green-600/15 border-green-300 dark:border-green-800/40";
+	if (score >= 60) return "text-blue-700 dark:text-blue-300 bg-blue-600/15 border-blue-300 dark:border-blue-800/40";
+	if (score >= 40) return "text-yellow-700 dark:text-yellow-300 bg-yellow-600/15 border-yellow-300 dark:border-yellow-800/40";
+	return "text-red-700 dark:text-red-300 bg-red-600/15 border-red-300 dark:border-red-800/40";
 }
 
 // max points per signal — mirrors lib/discovery/curate.ts §採点基準 (rebalanced 2026-05-21)
@@ -171,14 +171,14 @@ export function ProductCard({
 
 	const broadcastBadge =
 		product.broadcast_tag === "broadcast_confirmed"
-			? { label: t("broadcastConfirmed"), color: "bg-red-600/15 text-red-700 border-red-200", icon: <Tv size={10} /> }
+			? { label: t("broadcastConfirmed"), color: "bg-red-600/15 text-red-700 dark:text-red-300 border-red-200 dark:border-red-900/40", icon: <Tv size={10} /> }
 			: product.broadcast_tag === "broadcast_likely"
-			? { label: t("broadcastLikely"), color: "bg-orange-600/15 text-orange-700 border-orange-200", icon: <Tv size={10} /> }
+			? { label: t("broadcastLikely"), color: "bg-orange-600/15 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-900/40", icon: <Tv size={10} /> }
 			: null;
 
 	return (
 		<article
-			className={`relative bg-card border border-amber-200 rounded-xl p-4 shadow-sm flex flex-col hover:shadow-md transition-all ${
+			className={`relative bg-card border border-amber-200 dark:border-amber-900/40 rounded-xl p-4 shadow-sm flex flex-col hover:shadow-md transition-all ${
 				isDimmed ? "opacity-60" : ""
 			}`}
 			title={isRejected && feedbackReason ? `却下理由: ${feedbackReason}` : undefined}
@@ -199,10 +199,10 @@ export function ProductCard({
 					<span
 						className={`text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0 ${
 							product.source === "rakuten"
-								? "bg-red-600/15 text-red-700"
+								? "bg-red-600/15 text-red-700 dark:text-red-300"
 								: product.source === "tv_channel"
-								? "bg-purple-600/15 text-purple-700"
-								: "bg-blue-600/15 text-blue-700"
+								? "bg-purple-600/15 text-purple-700 dark:text-purple-300"
+								: "bg-blue-600/15 text-blue-700 dark:text-blue-300"
 						}`}
 					>
 						{product.source === "rakuten"
@@ -246,7 +246,7 @@ export function ProductCard({
 							</strong>
 						</span>
 						{product.review_avg !== null && (
-							<span className="bg-yellow-600/10 border border-yellow-200 rounded px-1.5 py-0.5 text-yellow-800 flex items-center gap-0.5">
+							<span className="bg-yellow-600/10 border border-yellow-200 dark:border-yellow-900/40 rounded px-1.5 py-0.5 text-yellow-800 dark:text-yellow-200 flex items-center gap-0.5">
 								<Star size={9} className="fill-yellow-500 text-yellow-500" />
 								<strong>{product.review_avg}</strong>
 								<span className="text-yellow-600">({product.review_count ?? 0})</span>
@@ -257,8 +257,8 @@ export function ProductCard({
 						<span
 							className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-semibold ${
 								isTV
-									? "bg-purple-600/10 text-purple-700 border border-purple-200"
-									: "bg-emerald-600/10 text-emerald-700 border border-emerald-200"
+									? "bg-purple-600/10 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-900/40"
+									: "bg-emerald-600/10 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/40"
 							}`}
 						>
 							{isTV ? <Tv size={10} /> : <Compass size={10} />}
@@ -277,7 +277,7 @@ export function ProductCard({
 							return (
 								<span
 									key={slug}
-									className="inline-flex items-center text-[10px] px-2 py-0.5 rounded-full bg-purple-600/10 text-purple-700 border border-purple-200 font-semibold"
+									className="inline-flex items-center text-[10px] px-2 py-0.5 rounded-full bg-purple-600/10 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-900/40 font-semibold"
 									title={ch?.name ?? slug}
 								>
 									{ch?.name ?? slug}
@@ -289,7 +289,7 @@ export function ProductCard({
 						{/* their own review/sales data. */}
 						{product.tv_evidence && product.tv_evidence.airing_count > 0 && (
 							<span
-								className="inline-flex items-center gap-0.5 text-[10px] px-2 py-0.5 rounded-full bg-rose-600/10 text-rose-700 border border-rose-200 font-semibold"
+								className="inline-flex items-center gap-0.5 text-[10px] px-2 py-0.5 rounded-full bg-rose-600/10 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/40 font-semibold"
 								title={`実測放送 ${product.tv_evidence.airing_count}回 (直近30日 ${product.tv_evidence.recent_30d_count}回)`}
 							>
 								<Tv size={10} />
@@ -301,7 +301,7 @@ export function ProductCard({
 								href={product.rakuten_cross_match.itemUrl}
 								target="_blank"
 								rel="noopener noreferrer"
-								className="inline-flex items-center gap-0.5 text-[10px] px-2 py-0.5 rounded-full bg-red-600/10 text-red-700 border border-red-200 font-semibold hover:bg-red-600/15"
+								className="inline-flex items-center gap-0.5 text-[10px] px-2 py-0.5 rounded-full bg-red-600/10 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900/40 font-semibold hover:bg-red-600/15"
 								title={`楽天で同等品が出品されており、その販売実績を popularity proxy として参照しています: ${product.rakuten_cross_match.itemName}`}
 								onClick={(e) => e.stopPropagation()}
 							>
@@ -328,11 +328,11 @@ export function ProductCard({
 
 			{/* TV fit reason + score breakdown toggle */}
 			{(product.tv_fit_reason || product.score_breakdown) && (
-				<div className="bg-amber-600/10 border border-amber-200 rounded px-3 py-2 mb-3">
+				<div className="bg-amber-600/10 border border-amber-200 dark:border-amber-900/40 rounded px-3 py-2 mb-3">
 					<div className="flex items-center justify-between gap-2 mb-0.5">
 						<div className="flex items-center gap-1">
 							<TrendingUp size={11} className="text-amber-600" />
-							<span className="text-[10px] font-bold text-amber-700 uppercase tracking-wide">
+							<span className="text-[10px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wide">
 								TV適合性
 							</span>
 						</div>
@@ -340,7 +340,7 @@ export function ProductCard({
 							<button
 								type="button"
 								onClick={() => setShowBreakdown((v) => !v)}
-								className="flex items-center gap-0.5 text-[10px] text-amber-700 hover:text-amber-900 font-semibold"
+								className="flex items-center gap-0.5 text-[10px] text-amber-700 dark:text-amber-300 hover:text-amber-900 font-semibold"
 								aria-expanded={showBreakdown}
 							>
 								内訳
@@ -352,7 +352,7 @@ export function ProductCard({
 						)}
 					</div>
 					{product.tv_fit_reason && (
-						<p className="text-[11px] text-amber-900 leading-relaxed">
+						<p className="text-[11px] text-amber-900 dark:text-amber-100 leading-relaxed">
 							{product.tv_fit_reason}
 						</p>
 					)}

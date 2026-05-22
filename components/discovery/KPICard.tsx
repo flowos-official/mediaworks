@@ -7,9 +7,9 @@ interface Props {
 }
 
 const ACCENT = {
-	green: "bg-green-600/10 border-green-200 text-green-700",
-	red: "bg-red-600/10 border-red-200 text-red-700",
-	blue: "bg-blue-600/10 border-blue-200 text-blue-700",
+	green: "bg-green-600/10 border-green-200 dark:border-green-900/40 text-green-700 dark:text-green-300",
+	red: "bg-red-600/10 border-red-200 dark:border-red-900/40 text-red-700 dark:text-red-300",
+	blue: "bg-blue-600/10 border-blue-200 dark:border-blue-900/40 text-blue-700 dark:text-blue-300",
 	gray: "bg-muted border-border text-foreground",
 };
 

@@ -91,7 +91,7 @@ function Stepper({ active }: { active: Step }) {
 									done
 										? "bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-200"
 										: current
-										? "bg-card text-blue-700 border-blue-500 ring-4 ring-blue-600/15"
+										? "bg-card text-blue-700 dark:text-blue-300 border-blue-500 ring-4 ring-blue-600/15"
 										: "bg-card text-muted-foreground border-border",
 								].join(" ")}
 								aria-current={current ? "step" : undefined}
@@ -527,7 +527,7 @@ export function ScreenplayCreateForm({ locale }: { locale: string }) {
 					<div className="relative px-6 pt-5 pb-4 border-b border-border bg-gradient-to-b from-emerald-600/10 to-transparent">
 						<div className="flex items-start justify-between gap-4">
 							<div className="min-w-0">
-								<div className="inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.16em] uppercase text-emerald-700 bg-emerald-600/10 border border-emerald-200/80 rounded-full px-2 py-0.5">
+								<div className="inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.16em] uppercase text-emerald-700 dark:text-emerald-300 bg-emerald-600/10 border border-emerald-200/80 rounded-full px-2 py-0.5">
 									<CheckCircle2 size={12} />
 									抽出完了
 								</div>
@@ -563,7 +563,7 @@ export function ScreenplayCreateForm({ locale }: { locale: string }) {
 									: `${source.fileName} · ${source.kind}`}
 							</span>
 							{typeof source.imageCount === "number" && source.imageCount > 0 && (
-								<span className="ml-auto inline-flex items-center gap-1 text-[10px] font-medium tracking-wide uppercase text-emerald-700 bg-emerald-600/10 border border-emerald-200/80 rounded-full px-2 py-0.5 shrink-0">
+								<span className="ml-auto inline-flex items-center gap-1 text-[10px] font-medium tracking-wide uppercase text-emerald-700 dark:text-emerald-300 bg-emerald-600/10 border border-emerald-200/80 rounded-full px-2 py-0.5 shrink-0">
 									<ImageIcon size={10} />
 									画像 {source.imageCount} 枚を解析
 								</span>
@@ -723,7 +723,7 @@ export function ScreenplayCreateForm({ locale }: { locale: string }) {
 			)}
 
 			{error && (
-				<div className="flex items-start gap-2.5 p-3.5 bg-red-600/10 border border-red-200/80 rounded-xl text-sm text-red-700 shadow-sm">
+				<div className="flex items-start gap-2.5 p-3.5 bg-red-600/10 border border-red-200/80 rounded-xl text-sm text-red-700 dark:text-red-300 shadow-sm">
 					<AlertCircle size={16} className="shrink-0 mt-0.5 text-red-500" />
 					<div className="leading-relaxed">{error}</div>
 				</div>

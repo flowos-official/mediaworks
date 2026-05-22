@@ -27,10 +27,10 @@ type ProductStatus = 'pending' | 'extracted' | 'analyzing' | 'completed' | 'fail
 
 const STATUS_BADGE_CLASS: Record<ProductStatus, string> = {
   pending: 'bg-muted text-foreground border-0',
-  extracted: 'bg-blue-600/15 text-blue-700 border-0',
-  analyzing: 'bg-amber-600/15 text-amber-700 border-0',
-  completed: 'bg-green-600/15 text-green-700 border-0',
-  failed: 'bg-red-600/15 text-red-700 border-0',
+  extracted: 'bg-blue-600/15 text-blue-700 dark:text-blue-300 border-0',
+  analyzing: 'bg-amber-600/15 text-amber-700 dark:text-amber-300 border-0',
+  completed: 'bg-green-600/15 text-green-700 dark:text-green-300 border-0',
+  failed: 'bg-red-600/15 text-red-700 dark:text-red-300 border-0',
 };
 
 function normalizeStatus(s: string | null | undefined): ProductStatus {
@@ -134,8 +134,8 @@ export default async function ProductReportPage({
         </div>
 
         {!research ? (
-          <div className="bg-yellow-600/10 border border-yellow-200 rounded-xl p-8 text-center">
-            <p className="text-yellow-700">
+          <div className="bg-yellow-600/10 border border-yellow-200 dark:border-yellow-900/40 rounded-xl p-8 text-center">
+            <p className="text-yellow-700 dark:text-yellow-300">
               {status === 'analyzing'
                 ? t('generating')
                 : tDetail('notAvailable')}

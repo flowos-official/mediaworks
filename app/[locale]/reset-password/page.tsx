@@ -91,7 +91,7 @@ export default function ResetPasswordPage() {
           {mode === 'request' ? t('requestTitle') : t('confirmTitle')}
         </h1>
         {forced && mode === 'confirm' && (
-          <p className="text-sm text-amber-900 bg-amber-600/10 border border-amber-300 rounded p-3">
+          <p className="text-sm text-amber-900 dark:text-amber-100 bg-amber-600/10 border border-amber-300 dark:border-amber-800/40 rounded p-3">
             {tUsers('banner')}
           </p>
         )}
@@ -118,7 +118,7 @@ export default function ResetPasswordPage() {
           </form>
         )}
         {err && <p className="text-sm text-red-600">{err}</p>}
-        {done && <p className="text-sm text-green-700">{done}</p>}
+        {done && <p className="text-sm text-green-700 dark:text-green-300">{done}</p>}
       </Card>
     </div>
   );

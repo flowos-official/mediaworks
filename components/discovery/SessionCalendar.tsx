@@ -127,8 +127,8 @@ function SessionRowInline({
 			<span
 				className={`inline-flex items-center gap-0.5 px-1 py-px rounded-full font-semibold shrink-0 ${
 					isHome
-						? "bg-blue-600/10 text-blue-700 border border-blue-200"
-						: "bg-purple-600/10 text-purple-700 border border-purple-200"
+						? "bg-blue-600/10 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900/40"
+						: "bg-purple-600/10 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-900/40"
 				}`}
 			>
 				{isHome ? <Home size={9} /> : <Tv size={9} />}
@@ -211,7 +211,7 @@ export function SessionCalendar({ sessions, month }: { sessions: SessionRow[]; m
 							key={i}
 							className={`min-h-[180px] rounded border px-1.5 pt-1 pb-1 flex flex-col ${
 								isToday
-									? "border-amber-300 bg-amber-600/10"
+									? "border-amber-300 dark:border-amber-800/40 bg-amber-600/10"
 									: cell.sessions.length > 0
 										? "border-border bg-card"
 										: "border-border bg-muted/30"
@@ -221,7 +221,7 @@ export function SessionCalendar({ sessions, month }: { sessions: SessionRow[]; m
 								<span
 									className={`text-[11px] ${
 										isToday
-											? "font-bold text-amber-700"
+											? "font-bold text-amber-700 dark:text-amber-300"
 											: cell.sessions.length > 0
 												? "font-semibold text-foreground"
 												: "text-muted-foreground"

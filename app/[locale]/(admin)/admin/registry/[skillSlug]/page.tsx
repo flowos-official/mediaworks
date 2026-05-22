@@ -38,11 +38,11 @@ interface SkillVersionRow {
 }
 
 const CATEGORY_COLOR: Record<string, string> = {
-	analysis: "bg-blue-600/15 text-blue-700",
-	curation: "bg-emerald-600/15 text-emerald-700",
-	planning: "bg-violet-600/15 text-violet-700",
-	enrichment: "bg-amber-600/15 text-amber-700",
-	generation: "bg-pink-600/15 text-pink-700",
+	analysis: "bg-blue-600/15 text-blue-700 dark:text-blue-300",
+	curation: "bg-emerald-600/15 text-emerald-700 dark:text-emerald-300",
+	planning: "bg-violet-600/15 text-violet-700 dark:text-violet-300",
+	enrichment: "bg-amber-600/15 text-amber-700 dark:text-amber-300",
+	generation: "bg-pink-600/15 text-pink-700 dark:text-pink-300",
 };
 
 function categoryBadge(category: string | null) {
@@ -149,7 +149,7 @@ export default async function SkillDetailPage({ params, searchParams }: PageProp
 											<span className="inline-flex items-center gap-1.5">
 												<span className="font-mono text-[11px]">{v.version_label}</span>
 												{isActive && (
-													<Badge className="bg-green-600/15 text-[9px] text-green-700">active</Badge>
+													<Badge className="bg-green-600/15 text-[9px] text-green-700 dark:text-green-300">active</Badge>
 												)}
 											</span>
 										</td>
