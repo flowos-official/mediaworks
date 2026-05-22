@@ -426,7 +426,7 @@
     "retry": "再試行",
     "back": "ホームに戻る",
     "historical": {
-      "titleForDate": "{date} のOA放送（8チャネル）",
+      "titleForDate": "{date} のOA放送（10チャネル）",
       "searchTitle": "全履歴検索 (12 チャネル)",
       "emptyNoQuery": "検索ワードを入力してください。",
       "subtitle": "QVC・Shop CH・ジャパネット 等 12チャネル全期間検索。商品/番組名で検索、または特定チャネルを選択。",

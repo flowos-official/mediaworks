@@ -17,7 +17,7 @@ interface Props {
 
 const PAGE_SIZE = 100;
 
-// Unified row shape merging broadcasts (QVC/ShopCh) and historical_broadcasts (8 OA).
+// Unified row shape merging broadcasts (QVC/ShopCh) and historical_broadcasts (10 OA).
 interface UnifiedRow {
 	id: string;
 	channel: string;
