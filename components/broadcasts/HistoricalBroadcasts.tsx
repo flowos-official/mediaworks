@@ -195,7 +195,7 @@ export default function HistoricalBroadcasts({ channelCounts }: Props) {
 	return (
 		<section>
 			<header className="mb-4 pt-4">
-				<p className="text-sm text-gray-500">{t("subtitle")}</p>
+				<p className="text-sm text-muted-foreground">{t("subtitle")}</p>
 			</header>
 
 			<div className="flex flex-wrap items-center gap-2 mb-4">
@@ -204,8 +204,8 @@ export default function HistoricalBroadcasts({ channelCounts }: Props) {
 					onClick={() => handleChannelClick("all")}
 					className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
 						channel === "all"
-							? "bg-gray-900 text-white border-gray-900"
-							: "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+							? "bg-foreground text-background border-foreground"
+							: "bg-card text-foreground border-border hover:bg-muted"
 					}`}
 				>
 					{t("all")}
@@ -214,7 +214,7 @@ export default function HistoricalBroadcasts({ channelCounts }: Props) {
 					const n = channelCounts[c.slug] ?? 0;
 					const active = channel === c.slug;
 					const colorClass =
-						CHANNEL_BADGE[c.slug] ?? "bg-gray-100 text-gray-700 border-gray-200";
+						CHANNEL_BADGE[c.slug] ?? "bg-muted text-foreground border-border";
 					return (
 						<button
 							key={c.slug}
@@ -223,9 +223,9 @@ export default function HistoricalBroadcasts({ channelCounts }: Props) {
 							disabled={n === 0}
 							className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
 								active
-									? "bg-gray-900 text-white border-gray-900"
+									? "bg-foreground text-background border-foreground"
 									: n === 0
-										? "bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed"
+										? "bg-muted text-muted-foreground border-border cursor-not-allowed"
 										: `${colorClass} hover:opacity-80`
 							}`}
 						>
@@ -239,19 +239,19 @@ export default function HistoricalBroadcasts({ channelCounts }: Props) {
 				<div className="flex-1 relative">
 					<Search
 						size={16}
-						className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+						className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
 					/>
 					<input
 						type="text"
 						value={searchInput}
 						onChange={(e) => setSearchInput(e.target.value)}
 						placeholder={t("searchPlaceholder")}
-						className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-gray-900"
+						className="w-full pl-9 pr-3 py-2 text-sm border border-border bg-background text-foreground rounded-lg focus:outline-none focus:ring-2 focus:ring-foreground focus:border-foreground"
 					/>
 				</div>
 				<button
 					type="submit"
-					className="px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800"
+					className="px-4 py-2 text-sm font-medium text-background bg-foreground rounded-lg hover:bg-foreground/90"
 				>
 					{t("search")}
 				</button>
@@ -263,54 +263,54 @@ export default function HistoricalBroadcasts({ channelCounts }: Props) {
 							setSearchInput("");
 							setOffset(0);
 						}}
-						className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+						className="px-3 py-2 text-sm font-medium text-foreground bg-card border border-border rounded-lg hover:bg-muted"
 					>
 						{t("clear")}
 					</button>
 				)}
 			</form>
 
-			<div className="mb-3 text-xs text-gray-500">
+			<div className="mb-3 text-xs text-muted-foreground">
 				{loading
 					? t("loading")
 					: t("resultCount", { total: total.toLocaleString("ja-JP") })}
 			</div>
 
 			{rows.length === 0 ? (
-				<div className="text-sm text-gray-500 p-12 text-center border border-dashed border-gray-200 rounded-lg">
+				<div className="text-sm text-muted-foreground p-12 text-center border border-dashed border-border rounded-lg">
 					{hasQuery ? t("emptyForDate", { date: "" }) : t("emptyNoQuery")}
 				</div>
 			) : (
-				<div className="border border-gray-200 rounded-lg overflow-hidden">
+				<div className="border border-border rounded-lg overflow-hidden">
 					<table className="w-full text-sm">
-						<thead className="bg-gray-50 border-b border-gray-200">
+						<thead className="bg-muted border-b border-border">
 							<tr>
-								<th className="text-left px-3 py-2 font-medium text-gray-700 w-24">
+								<th className="text-left px-3 py-2 font-medium text-foreground w-24">
 									{t("col.date")}
 								</th>
-								<th className="text-left px-3 py-2 font-medium text-gray-700 w-32">
+								<th className="text-left px-3 py-2 font-medium text-foreground w-32">
 									{t("col.channel")}
 								</th>
-								<th className="text-left px-3 py-2 font-medium text-gray-700">
+								<th className="text-left px-3 py-2 font-medium text-foreground">
 									{t("col.product")}
 								</th>
-								<th className="text-right px-3 py-2 font-medium text-gray-700 w-32">
+								<th className="text-right px-3 py-2 font-medium text-foreground w-32">
 									{t("col.price")}
 								</th>
 								<th className="w-8 px-3 py-2"></th>
 							</tr>
 						</thead>
-						<tbody className="divide-y divide-gray-100">
+						<tbody className="divide-y divide-border">
 							{rows.map((r) => {
 								const badge =
 									CHANNEL_BADGE[r.channel as keyof typeof CHANNEL_BADGE] ??
-									"bg-gray-100 text-gray-700 border-gray-200";
+									"bg-muted text-foreground border-border";
 								return (
-									<tr key={r.id} className="hover:bg-gray-50">
-										<td className="px-3 py-2 text-gray-600 whitespace-nowrap">
+									<tr key={r.id} className="hover:bg-muted">
+										<td className="px-3 py-2 text-muted-foreground whitespace-nowrap">
 											{r.air_date}
 											{r.day_of_week ? (
-												<span className="ml-1 text-gray-400">
+												<span className="ml-1 text-muted-foreground/70">
 													({r.day_of_week})
 												</span>
 											) : null}
@@ -322,8 +322,8 @@ export default function HistoricalBroadcasts({ channelCounts }: Props) {
 												{channelDisplayName(r.channel)}
 											</span>
 										</td>
-										<td className="px-3 py-2 text-gray-900">{r.name}</td>
-										<td className="px-3 py-2 text-right text-gray-700 whitespace-nowrap">
+										<td className="px-3 py-2 text-foreground">{r.name}</td>
+										<td className="px-3 py-2 text-right text-foreground whitespace-nowrap">
 											{r.priceText ?? "—"}
 										</td>
 										<td className="px-3 py-2 text-right">
@@ -332,7 +332,7 @@ export default function HistoricalBroadcasts({ channelCounts }: Props) {
 													href={r.source_url}
 													target="_blank"
 													rel="noopener noreferrer"
-													className="inline-flex items-center text-gray-400 hover:text-gray-700"
+													className="inline-flex items-center text-muted-foreground hover:text-foreground"
 													aria-label={t("col.openSource")}
 												>
 													<ExternalLink size={14} />
@@ -353,12 +353,12 @@ export default function HistoricalBroadcasts({ channelCounts }: Props) {
 						type="button"
 						onClick={() => setOffset(Math.max(offset - PAGE_SIZE, 0))}
 						disabled={offset === 0 || loading}
-						className="inline-flex items-center gap-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+						className="inline-flex items-center gap-1 px-3 py-1.5 text-sm border border-border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted"
 					>
 						<ChevronLeft size={14} />
 						{t("prev")}
 					</button>
-					<span className="text-xs text-gray-500">
+					<span className="text-xs text-muted-foreground">
 						{t("page", {
 							current: currentPage.toLocaleString("ja-JP"),
 							total: totalPages.toLocaleString("ja-JP"),
@@ -368,7 +368,7 @@ export default function HistoricalBroadcasts({ channelCounts }: Props) {
 						type="button"
 						onClick={() => setOffset(offset + PAGE_SIZE)}
 						disabled={offset + PAGE_SIZE >= total || loading}
-						className="inline-flex items-center gap-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+						className="inline-flex items-center gap-1 px-3 py-1.5 text-sm border border-border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted"
 					>
 						{t("next")}
 						<ChevronRight size={14} />

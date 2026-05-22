@@ -48,8 +48,8 @@ function isProductImage(b: Broadcast): boolean {
 }
 
 const CHANNEL_PLACEHOLDER: Record<Broadcast["channel"], string> = {
-  shopch: "bg-red-50 text-red-400",
-  qvc: "bg-violet-50 text-violet-400",
+  shopch: "bg-red-600/10 text-red-400",
+  qvc: "bg-violet-600/10 text-violet-400",
 };
 
 function ShopchHeader({ b }: { b: Broadcast }) {
@@ -64,7 +64,7 @@ function ShopchHeader({ b }: { b: Broadcast }) {
         <img
           src={b.thumbnail_url!}
           alt=""
-          className="w-20 h-20 object-cover rounded flex-shrink-0 bg-gray-100"
+          className="w-20 h-20 object-cover rounded flex-shrink-0 bg-muted"
           loading="lazy"
           onError={(e) => {
             (e.target as HTMLImageElement).style.visibility = "hidden";
@@ -77,17 +77,17 @@ function ShopchHeader({ b }: { b: Broadcast }) {
       )}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 text-xs flex-wrap">
-          <span className="font-mono font-semibold text-gray-700">{formatTime(b.start_time)}</span>
+          <span className="font-mono font-semibold text-foreground">{formatTime(b.start_time)}</span>
           <ChannelBadge channel={b.channel} />
           {b.presenter && (
-            <span className="text-gray-400 truncate max-w-[12rem]">· {b.presenter}</span>
+            <span className="text-muted-foreground truncate max-w-[12rem]">· {b.presenter}</span>
           )}
         </div>
-        <div className="font-semibold text-gray-900 mt-1 text-base line-clamp-2 leading-snug">
+        <div className="font-semibold text-foreground mt-1 text-base line-clamp-2 leading-snug">
           {productName}
         </div>
         {context && (
-          <div className="text-xs text-gray-500 mt-1 truncate">{context}</div>
+          <div className="text-xs text-muted-foreground mt-1 truncate">{context}</div>
         )}
       </div>
     </div>
@@ -97,13 +97,13 @@ function ShopchHeader({ b }: { b: Broadcast }) {
 function QvcHeader({ b }: { b: Broadcast }) {
   return (
     <div className="flex items-center gap-2 text-xs flex-wrap">
-      <span className="font-mono font-semibold text-gray-700">{formatTime(b.start_time)}</span>
+      <span className="font-mono font-semibold text-foreground">{formatTime(b.start_time)}</span>
       <ChannelBadge channel={b.channel} />
-      <span className="font-semibold text-sm text-gray-900 truncate max-w-[28rem]">
+      <span className="font-semibold text-sm text-foreground truncate max-w-[28rem]">
         {b.program_title}
       </span>
       {b.presenter && (
-        <span className="text-gray-400 truncate max-w-[10rem]">· {b.presenter}</span>
+        <span className="text-muted-foreground truncate max-w-[10rem]">· {b.presenter}</span>
       )}
     </div>
   );
@@ -115,29 +115,29 @@ function ProductCard({ p }: { p: QvcProduct }) {
       href={p.source_url}
       target="_blank"
       rel="noopener noreferrer"
-      className="group flex gap-2 p-2 rounded border border-gray-200 bg-white hover:border-violet-300 hover:bg-violet-50/40 transition-colors"
+      className="group flex gap-2 p-2 rounded border border-border bg-card hover:border-violet-500/40 hover:bg-violet-600/10 transition-colors"
     >
       {p.image_url ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={p.image_url}
           alt=""
-          className="w-16 h-16 object-cover rounded flex-shrink-0 bg-gray-100"
+          className="w-16 h-16 object-cover rounded flex-shrink-0 bg-muted"
           loading="lazy"
           onError={(e) => {
             (e.target as HTMLImageElement).style.visibility = "hidden";
           }}
         />
       ) : (
-        <div className="w-16 h-16 bg-violet-50 text-violet-400 rounded flex-shrink-0 flex items-center justify-center">
+        <div className="w-16 h-16 bg-violet-600/10 text-violet-400 rounded flex-shrink-0 flex items-center justify-center">
           <ShoppingBag size={20} strokeWidth={1.5} />
         </div>
       )}
       <div className="flex-1 min-w-0">
-        <div className="text-xs font-semibold text-gray-900 line-clamp-2 leading-tight group-hover:text-violet-800">
+        <div className="text-xs font-semibold text-foreground line-clamp-2 leading-tight group-hover:text-violet-800 dark:group-hover:text-violet-300">
           {p.name ?? `Product #${p.id}`}
         </div>
-        <div className="flex items-center gap-2 mt-1 text-[10px] text-gray-500">
+        <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground">
           <span className="font-mono">#{p.id}</span>
           {p.video_url && (
             <span className="inline-flex items-center gap-0.5 text-violet-600">
@@ -177,12 +177,12 @@ export default function BroadcastListItem({ broadcast, onPlayVideo }: Props) {
   const hasArchive = !!b.archived_video_s3;
 
   return (
-    <div className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50/60 transition-colors">
+    <div className="p-3 border border-border rounded-lg hover:bg-muted/60 transition-colors">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           {b.channel === "shopch" ? <ShopchHeader b={b} /> : <QvcHeader b={b} />}
           {b.channel === "qvc" && b.description && (
-            <div className="text-xs text-gray-500 mt-1 line-clamp-2">{b.description}</div>
+            <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{b.description}</div>
           )}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0 self-start mt-1">
@@ -191,7 +191,7 @@ export default function BroadcastListItem({ broadcast, onPlayVideo }: Props) {
               type="button"
               title={t("playArchive")}
               onClick={(e) => { e.stopPropagation(); onPlayVideo?.(b); }}
-              className="flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-800 transition-colors"
+              className="flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-800 dark:hover:text-emerald-300 transition-colors"
             >
               <Play size={14} />
             </button>
@@ -208,7 +208,7 @@ export default function BroadcastListItem({ broadcast, onPlayVideo }: Props) {
             href={b.source_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
+            className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 dark:hover:text-blue-300"
           >
             <ExternalLink size={12} />
             {t("openSource")}
@@ -221,7 +221,7 @@ export default function BroadcastListItem({ broadcast, onPlayVideo }: Props) {
             <ProductCard key={p.id} p={p} />
           ))}
           {pendingProductCount > 0 && (
-            <div className="text-[10px] text-gray-400 italic sm:col-span-2">
+            <div className="text-[10px] text-muted-foreground italic sm:col-span-2">
               ({pendingProductCount} 件の商品情報が未取得 — enrich:qvc-products 実行待ち)
             </div>
           )}

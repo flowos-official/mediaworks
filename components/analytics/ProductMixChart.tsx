@@ -37,30 +37,30 @@ function CategoryTooltip({ active, payload, products }: CustomTooltipProps) {
   const top10 = topProducts.slice(0, 10);
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-lg p-3 text-xs max-w-[280px]">
-      <div className="flex items-center justify-between gap-4 mb-2 pb-2 border-b border-gray-100">
-        <span className="font-semibold text-gray-800">{category}</span>
-        <span className="font-mono text-gray-600">&yen;{formatYenShort(revenue)}</span>
+    <div className="bg-card rounded-lg border border-border shadow-lg p-3 text-xs max-w-[280px]">
+      <div className="flex items-center justify-between gap-4 mb-2 pb-2 border-b border-border">
+        <span className="font-semibold text-foreground">{category}</span>
+        <span className="font-mono text-foreground">&yen;{formatYenShort(revenue)}</span>
       </div>
       {top10.length > 0 ? (
         <div className="space-y-1">
           {top10.map((p, i) => (
             <div key={p.code} className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-1.5 min-w-0">
-                <span className="w-4 text-right text-gray-400 font-mono flex-shrink-0">{i + 1}</span>
-                <span className="text-gray-700 truncate">{p.name}</span>
+                <span className="w-4 text-right text-muted-foreground font-mono flex-shrink-0">{i + 1}</span>
+                <span className="text-foreground truncate">{p.name}</span>
               </div>
-              <span className="font-mono text-gray-500 flex-shrink-0">&yen;{formatYenShort(p.totalRevenue)}</span>
+              <span className="font-mono text-muted-foreground flex-shrink-0">&yen;{formatYenShort(p.totalRevenue)}</span>
             </div>
           ))}
           {topProducts.length > 10 && (
-            <div className="text-[10px] text-gray-400 pl-5 pt-0.5">
+            <div className="text-[10px] text-muted-foreground pl-5 pt-0.5">
               +{topProducts.length - 10}件
             </div>
           )}
         </div>
       ) : (
-        <div className="text-gray-400">データなし</div>
+        <div className="text-muted-foreground">データなし</div>
       )}
     </div>
   );
@@ -98,7 +98,7 @@ export default function ProductMixChart({
   };
 
   return (
-    <Card className="border-gray-200">
+    <Card className="border-border">
       <CardHeader className="pb-2">
         <CardTitle className="text-base font-semibold">カテゴリ別売上構成</CardTitle>
       </CardHeader>
@@ -149,19 +149,19 @@ export default function ProductMixChart({
                   type="button"
                   onClick={() => hasProducts && toggleCategory(d.category)}
                   className={`w-full flex items-center justify-between text-xs py-1.5 px-2 rounded-lg transition-colors ${
-                    hasProducts ? 'hover:bg-gray-50 cursor-pointer' : 'cursor-default'
-                  } ${isExpanded ? 'bg-gray-50' : ''}`}
+                    hasProducts ? 'hover:bg-muted cursor-pointer' : 'cursor-default'
+                  } ${isExpanded ? 'bg-muted' : ''}`}
                 >
                   <div className="flex items-center gap-2">
                     <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-                    <span className="text-gray-700">{d.category}</span>
+                    <span className="text-foreground">{d.category}</span>
                     {hasProducts && (
                       isExpanded
-                        ? <ChevronUp size={12} className="text-gray-400" />
-                        : <ChevronDown size={12} className="text-gray-400" />
+                        ? <ChevronUp size={12} className="text-muted-foreground" />
+                        : <ChevronDown size={12} className="text-muted-foreground" />
                     )}
                   </div>
-                  <div className="flex items-center gap-3 text-gray-500">
+                  <div className="flex items-center gap-3 text-muted-foreground">
                     <span className="font-mono">&yen;{formatYenShort(d.revenue)}</span>
                     <span className="font-mono">{d.quantity.toLocaleString()}個</span>
                     <span className="font-mono w-10 text-right">{d.pct}%</span>
@@ -169,12 +169,12 @@ export default function ProductMixChart({
                 </button>
 
                 {isExpanded && categoryProducts.length > 0 && (
-                  <div className="ml-5 mt-1 mb-2 border-l-2 border-gray-200 pl-3 space-y-1">
+                  <div className="ml-5 mt-1 mb-2 border-l-2 border-border pl-3 space-y-1">
                     {categoryProducts.slice(0, 10).map((p, rank) => (
-                      <div key={p.code} className="flex items-center justify-between text-[11px] text-gray-500 py-0.5">
+                      <div key={p.code} className="flex items-center justify-between text-[11px] text-muted-foreground py-0.5">
                         <div className="flex items-center gap-2">
-                          <span className="w-4 text-right text-gray-400 font-mono">{rank + 1}</span>
-                          <span className="text-gray-700 truncate max-w-[180px]">{p.name}</span>
+                          <span className="w-4 text-right text-muted-foreground font-mono">{rank + 1}</span>
+                          <span className="text-foreground truncate max-w-[180px]">{p.name}</span>
                         </div>
                         <div className="flex items-center gap-3">
                           <span className="font-mono">&yen;{formatYenShort(p.totalRevenue)}</span>
@@ -183,7 +183,7 @@ export default function ProductMixChart({
                       </div>
                     ))}
                     {categoryProducts.length > 10 && (
-                      <div className="text-[10px] text-gray-400 pl-6">
+                      <div className="text-[10px] text-muted-foreground pl-6">
                         +{categoryProducts.length - 10}件
                       </div>
                     )}

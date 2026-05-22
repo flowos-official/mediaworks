@@ -23,7 +23,7 @@ export function StrategySubTabs() {
 	})();
 
 	return (
-		<div className="flex gap-1 p-1 bg-white border border-gray-200 rounded-lg shadow-sm mb-4 w-fit">
+		<div className="flex gap-1 p-1 bg-card border border-border rounded-lg shadow-sm mb-4 w-fit">
 			{TABS.map((tab) => {
 				const href = localePath(locale, `/analytics/strategy/${tab.key}`);
 				const active = activeTab === tab.key;
@@ -34,7 +34,7 @@ export function StrategySubTabs() {
 						className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
 							active
 								? "bg-indigo-500 text-white shadow-sm"
-								: "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+								: "text-muted-foreground hover:text-foreground hover:bg-muted"
 						}`}
 					>
 						{tab.icon}

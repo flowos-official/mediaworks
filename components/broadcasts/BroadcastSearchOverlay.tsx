@@ -43,7 +43,7 @@ export default function BroadcastSearchOverlay({ channelCounts }: Props) {
 			<button
 				type="button"
 				onClick={() => setOpen(true)}
-				className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+				className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-foreground bg-card border border-border rounded-lg hover:bg-muted"
 				aria-label={t("historical.searchTitle")}
 			>
 				<Search size={14} />
@@ -62,18 +62,18 @@ export default function BroadcastSearchOverlay({ channelCounts }: Props) {
 						className="absolute inset-0 bg-black/40"
 						onClick={() => setOpen(false)}
 					/>
-					<div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[calc(100vh-6rem)] overflow-y-auto">
-						<div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-3 flex items-center justify-between rounded-t-2xl z-10">
-							<h2 className="text-base font-semibold text-gray-900">
+					<div className="relative bg-card rounded-2xl shadow-2xl w-full max-w-5xl max-h-[calc(100vh-6rem)] overflow-y-auto">
+						<div className="sticky top-0 bg-card border-b border-border px-6 py-3 flex items-center justify-between rounded-t-2xl z-10">
+							<h2 className="text-base font-semibold text-foreground">
 								{t("historical.searchTitle")}
 							</h2>
 							<button
 								type="button"
 								onClick={() => setOpen(false)}
-								className="p-1.5 hover:bg-gray-100 rounded-lg"
+								className="p-1.5 hover:bg-muted rounded-lg"
 								aria-label="close"
 							>
-								<X size={18} className="text-gray-500" />
+								<X size={18} className="text-muted-foreground" />
 							</button>
 						</div>
 						<div className="px-6 pb-6">

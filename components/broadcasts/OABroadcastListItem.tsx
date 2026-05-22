@@ -35,24 +35,24 @@ export default function OABroadcastListItem({ row }: { row: OARow }) {
 	const [open, setOpen] = useState(false);
 	const badge =
 		CHANNEL_BADGE[row.channel as keyof typeof CHANNEL_BADGE] ??
-		"bg-gray-100 text-gray-700 border-gray-200";
+		"bg-muted text-foreground border-border";
 	return (
-		<div className="border-b border-gray-100 last:border-b-0">
-			<div className="flex items-start gap-3 py-2 px-3 hover:bg-gray-50/50">
-				<span className="shrink-0 font-mono text-[11px] text-gray-700 w-10 text-right tabular-nums pt-0.5">
+		<div className="border-b border-border last:border-b-0">
+			<div className="flex items-start gap-3 py-2 px-3 hover:bg-muted/50">
+				<span className="shrink-0 font-mono text-[11px] text-foreground w-10 text-right tabular-nums pt-0.5">
 					{row.start_time ? formatTime(row.start_time) : "—"}
 				</span>
 				{row.image_url ? (
 					<img
 						src={row.image_url}
 						alt=""
-						className="shrink-0 w-12 h-12 object-cover rounded border border-gray-100"
+						className="shrink-0 w-12 h-12 object-cover rounded border border-border"
 						loading="lazy"
 						onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
 					/>
 				) : (
 					<div
-						className="shrink-0 w-12 h-12 rounded bg-gray-50 border border-gray-100"
+						className="shrink-0 w-12 h-12 rounded bg-muted border border-border"
 						aria-hidden="true"
 					/>
 				)}
@@ -62,18 +62,18 @@ export default function OABroadcastListItem({ row }: { row: OARow }) {
 					{channelDisplayName(row.channel)}
 				</span>
 				<div className="flex-1 min-w-0">
-					<div className="text-sm text-gray-900 truncate">{row.product_name}</div>
+					<div className="text-sm text-foreground truncate">{row.product_name}</div>
 					{row.category && (
-						<div className="text-[10px] text-gray-500 mt-0.5">{row.category}</div>
+						<div className="text-[10px] text-muted-foreground mt-0.5">{row.category}</div>
 					)}
 				</div>
-				<div className="shrink-0 text-right text-xs text-gray-700 font-mono whitespace-nowrap">
+				<div className="shrink-0 text-right text-xs text-foreground font-mono whitespace-nowrap">
 					{formatPrice(row)}
 				</div>
 				<button
 					type="button"
 					onClick={() => setOpen((v) => !v)}
-					className={`shrink-0 text-gray-400 hover:text-indigo-600 transition-transform ${open ? "rotate-180 text-indigo-600" : ""}`}
+					className={`shrink-0 text-muted-foreground hover:text-indigo-600 transition-transform ${open ? "rotate-180 text-indigo-600" : ""}`}
 					aria-label="toggle analysis"
 					aria-expanded={open}
 				>
@@ -84,7 +84,7 @@ export default function OABroadcastListItem({ row }: { row: OARow }) {
 						href={row.source_url}
 						target="_blank"
 						rel="noopener noreferrer"
-						className="shrink-0 text-gray-400 hover:text-gray-700"
+						className="shrink-0 text-muted-foreground hover:text-foreground"
 						aria-label="external link"
 					>
 						<ExternalLink size={14} />

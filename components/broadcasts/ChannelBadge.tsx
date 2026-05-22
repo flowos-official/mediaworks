@@ -8,8 +8,8 @@ interface Props {
 }
 
 const COLORS: Record<Channel, string> = {
-  shopch: "bg-red-100 text-red-700 border-red-300",
-  qvc: "bg-violet-100 text-violet-700 border-violet-300",
+  shopch: "bg-red-600/15 text-red-700 dark:text-red-200 border-red-500/40",
+  qvc: "bg-violet-600/15 text-violet-700 dark:text-violet-200 border-violet-500/40",
 };
 
 export default function ChannelBadge({ channel, short = true }: Props) {

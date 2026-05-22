@@ -10,10 +10,10 @@ interface Props {
 
 function severityBadge(level: string): string {
 	switch (level) {
-		case 'high': return 'bg-red-100 text-red-700 border-red-200';
-		case 'medium': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
-		case 'low': return 'bg-green-100 text-green-700 border-green-200';
-		default: return 'bg-gray-100 text-gray-600 border-gray-200';
+		case 'high': return 'bg-red-600/15 text-red-700 dark:text-red-300 border-red-600/30';
+		case 'medium': return 'bg-yellow-500/15 text-yellow-700 dark:text-yellow-300 border-yellow-500/30';
+		case 'low': return 'bg-green-600/15 text-green-700 dark:text-green-300 border-green-600/30';
+		default: return 'bg-muted text-muted-foreground border-border';
 	}
 }
 
@@ -31,13 +31,13 @@ export default function RiskAnalysisSection({ data }: Props) {
 		<div className="space-y-4">
 			<div className="flex items-center gap-2">
 				<ShieldAlert size={18} className="text-red-600" />
-				<h3 className="text-lg font-bold text-gray-900">リスク分析</h3>
+				<h3 className="text-lg font-bold text-foreground">リスク分析</h3>
 			</div>
 
 			{/* Risk cards */}
 			<div className="space-y-2">
 				{(data.risks ?? []).map((risk, i) => (
-					<Card key={i} className="border-gray-200">
+					<Card key={i} className="border-border">
 						<CardContent className="p-3">
 							<div className="flex items-start gap-3">
 								<div className="flex flex-col gap-1 shrink-0">
@@ -50,11 +50,11 @@ export default function RiskAnalysisSection({ data }: Props) {
 								</div>
 								<div className="flex-1 min-w-0">
 									<div className="flex items-center gap-2 mb-0.5">
-										<span className="text-[9px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">{risk.category}</span>
+										<span className="text-[9px] px-1.5 py-0.5 bg-muted text-muted-foreground rounded">{risk.category}</span>
 									</div>
-									<p className="text-xs text-gray-800 font-medium">{risk.description}</p>
-									<p className="text-[11px] text-gray-500 mt-1">
-										<span className="font-medium text-blue-600">対策:</span> {risk.mitigation}
+									<p className="text-xs text-foreground font-medium">{risk.description}</p>
+									<p className="text-[11px] text-muted-foreground mt-1">
+										<span className="font-medium text-blue-600 dark:text-blue-400">対策:</span> {risk.mitigation}
 									</p>
 								</div>
 							</div>
@@ -65,14 +65,14 @@ export default function RiskAnalysisSection({ data }: Props) {
 
 			{/* Contingency plans */}
 			{(data.contingency_plans ?? []).length > 0 && (
-				<Card className="border-orange-200 bg-orange-50/20">
+				<Card className="border-orange-600/30 bg-orange-600/5">
 					<CardContent className="p-4">
-						<span className="text-xs font-semibold text-orange-700">コンティンジェンシープラン</span>
+						<span className="text-xs font-semibold text-orange-700 dark:text-orange-300">コンティンジェンシープラン</span>
 						<div className="mt-2 space-y-2">
 							{data.contingency_plans.map((cp, i) => (
-								<div key={i} className="bg-white rounded-lg p-2.5 border border-orange-100">
-									<p className="text-xs font-medium text-gray-800">シナリオ: {cp.scenario}</p>
-									<p className="text-[11px] text-gray-500 mt-0.5">対応: {cp.response}</p>
+								<div key={i} className="bg-card rounded-lg p-2.5 border border-orange-600/20">
+									<p className="text-xs font-medium text-foreground">シナリオ: {cp.scenario}</p>
+									<p className="text-[11px] text-muted-foreground mt-0.5">対応: {cp.response}</p>
 								</div>
 							))}
 						</div>
@@ -82,15 +82,15 @@ export default function RiskAnalysisSection({ data }: Props) {
 
 			{/* Success factors */}
 			{(data.success_factors ?? []).length > 0 && (
-				<Card className="border-green-200 bg-green-50/20">
+				<Card className="border-green-600/30 bg-green-600/5">
 					<CardContent className="p-4">
 						<div className="flex items-center gap-1.5 mb-2">
 							<CheckCircle size={14} className="text-green-600" />
-							<span className="text-xs font-semibold text-green-700">成功の重要要因</span>
+							<span className="text-xs font-semibold text-green-700 dark:text-green-300">成功の重要要因</span>
 						</div>
 						<ul className="space-y-1">
 							{data.success_factors.map((f, i) => (
-								<li key={i} className="text-xs text-gray-700 flex items-start gap-1.5">
+								<li key={i} className="text-xs text-foreground flex items-start gap-1.5">
 									<span className="text-green-500 mt-0.5">&#x2713;</span>{f}
 								</li>
 							))}

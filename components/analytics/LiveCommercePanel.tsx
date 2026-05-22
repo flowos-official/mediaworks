@@ -86,11 +86,11 @@ function LCProgress({ skillStatuses, dataFetchStatus }: {
 	dataFetchStatus: 'pending' | 'running' | 'complete';
 }) {
 	return (
-		<div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-			<h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">分析進捗</h4>
-			<div className="flex items-center gap-3 mb-2 pb-2 border-b border-gray-100">
+		<div className="bg-card border border-border rounded-xl p-4 shadow-sm">
+			<h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">分析進捗</h4>
+			<div className="flex items-center gap-3 mb-2 pb-2 border-b border-border">
 				<StatusIcon status={dataFetchStatus} />
-				<span className={`text-sm ${dataFetchStatus === 'running' ? 'text-blue-700 font-medium' : 'text-gray-600'}`}>
+				<span className={`text-sm ${dataFetchStatus === 'running' ? 'text-blue-700 dark:text-blue-300 font-medium' : 'text-muted-foreground'}`}>
 					ウェブリサーチ
 				</span>
 			</div>
@@ -103,16 +103,16 @@ function LCProgress({ skillStatuses, dataFetchStatus }: {
 							<div className="relative flex items-center justify-center w-5">
 								{i > 0 && (
 									<div className={`absolute -top-2.5 w-px h-2.5 ${
-										skillStatuses[LC_SKILL_ORDER[i - 1]] === 'complete' ? 'bg-green-300' : 'bg-gray-200'
+										skillStatuses[LC_SKILL_ORDER[i - 1]] === 'complete' ? 'bg-green-500/40' : 'bg-border'
 									}`} />
 								)}
 								<StatusIcon status={status} />
 							</div>
 							<div className="flex items-center gap-2 flex-1 min-w-0">
 								<span className={`text-sm truncate ${
-									status === 'running' ? 'text-blue-700 font-medium' :
-									status === 'complete' ? 'text-gray-700' :
-									status === 'error' ? 'text-red-600' : 'text-gray-400'
+									status === 'running' ? 'text-blue-700 dark:text-blue-300 font-medium' :
+									status === 'complete' ? 'text-foreground' :
+									status === 'error' ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'
 								}`}>
 									{meta.labelJa}
 								</span>
@@ -132,8 +132,8 @@ function StatusIcon({ status }: { status: string }) {
 	switch (status) {
 		case 'complete': return <CheckCircle size={16} className="text-green-500 shrink-0" />;
 		case 'running': return <Loader2 size={16} className="text-blue-600 animate-spin shrink-0" />;
-		case 'error': return <AlertTriangle size={16} className="text-red-500 shrink-0" />;
-		default: return <Circle size={16} className="text-gray-300 shrink-0" />;
+		case 'error': return <AlertTriangle size={16} className="text-red-500 dark:text-red-400 shrink-0" />;
+		default: return <Circle size={16} className="text-muted-foreground/40 shrink-0" />;
 	}
 }
 
@@ -145,13 +145,13 @@ function SourcesCited({ sources }: { sources?: Array<{ title: string; url: strin
 	if (!sources || sources.length === 0) return null;
 	const unique = sources.filter((s, i, arr) => arr.findIndex((x) => x.url === s.url) === i).slice(0, 20);
 	return (
-		<div className="border-t border-gray-100 pt-3 mt-4">
-			<span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">出典</span>
+		<div className="border-t border-border pt-3 mt-4">
+			<span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">出典</span>
 			<div className="mt-1 space-y-0.5">
 				{unique.map((s, i) => (
 					<a key={i} href={s.url} target="_blank" rel="noopener noreferrer"
-						className="flex items-center gap-1.5 text-[10px] text-blue-500 hover:text-blue-700 hover:underline truncate">
-						<span className="text-gray-400 font-mono shrink-0">[{i + 1}]</span>
+						className="flex items-center gap-1.5 text-[10px] text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 hover:underline truncate">
+						<span className="text-muted-foreground font-mono shrink-0">[{i + 1}]</span>
 						<ExternalLink size={9} className="shrink-0" />
 						<span className="truncate">{s.title || s.url}</span>
 					</a>
@@ -204,37 +204,37 @@ function LCHistory({ onView, refreshKey }: { onView: (id: string) => void; refre
 	};
 
 	if (loading) {
-		return <div className="flex items-center gap-2 py-4 text-sm text-gray-400"><Loader2 size={14} className="animate-spin" />履歴を読み込み中...</div>;
+		return <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground"><Loader2 size={14} className="animate-spin" />履歴を読み込み中...</div>;
 	}
 	if (strategies.length === 0) return null;
 
 	return (
-		<Card className="border-gray-200">
+		<Card className="border-border">
 			<CardContent className="p-4">
-				<span className="text-sm font-semibold text-gray-700 flex items-center gap-1.5 mb-3">
+				<span className="text-sm font-semibold text-foreground flex items-center gap-1.5 mb-3">
 					過去のライブコマース戦略
 				</span>
 				<div className="space-y-2">
 					{strategies.map((s) => (
-						<div key={s.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100 hover:border-gray-200 transition-colors">
+						<div key={s.id} className="flex items-center gap-3 p-3 bg-muted rounded-lg border border-border hover:border-border/80 transition-colors">
 							<div className="flex-1 min-w-0">
 								<div className="flex items-center gap-2 mb-0.5">
-									<span className="text-xs font-mono text-gray-500">
+									<span className="text-xs font-mono text-muted-foreground">
 										{new Date(s.created_at).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
 									</span>
 									{(s.target_platforms ?? []).slice(0, 2).map((p) => (
-										<span key={p} className="text-[9px] px-1.5 py-0.5 bg-pink-50 text-pink-700 rounded">{p}</span>
+										<span key={p} className="text-[9px] px-1.5 py-0.5 bg-pink-600/10 text-pink-700 dark:text-pink-300 rounded">{p}</span>
 									))}
 								</div>
-								<p className="text-xs text-gray-600 truncate">{s.user_goal || '目標指定なし'}</p>
+								<p className="text-xs text-muted-foreground truncate">{s.user_goal || '目標指定なし'}</p>
 							</div>
 							<div className="flex items-center gap-1.5 shrink-0">
 								<button type="button" onClick={() => onView(s.id)}
-									className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
+									className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-600/10 hover:bg-blue-600/20 rounded-lg transition-colors">
 									表示
 								</button>
 								<button type="button" onClick={() => handleDelete(s.id)} disabled={deleting === s.id}
-									className="flex items-center gap-1 px-2 py-1.5 text-xs text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50">
+									className="flex items-center gap-1 px-2 py-1.5 text-xs text-red-500 dark:text-red-400 hover:bg-red-600/10 rounded-lg transition-colors disabled:opacity-50">
 									{deleting === s.id ? <Loader2 size={12} className="animate-spin" /> : '削除'}
 								</button>
 							</div>
@@ -266,7 +266,7 @@ function ResultsView({ results, sources, generatedAt, backHref, strategyId, onRe
 		<>
 			<Link
 				href={backHref}
-				className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors mb-2 w-fit"
+				className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-2 w-fit"
 			>
 				<ArrowLeft size={14} />一覧に戻る
 			</Link>
@@ -290,7 +290,7 @@ function ResultsView({ results, sources, generatedAt, backHref, strategyId, onRe
 				<SourcesCited sources={sources} />
 			</div>
 			{generatedAt && (
-				<p className="text-[10px] text-gray-400 mt-4">生成: {new Date(generatedAt).toLocaleString('ja-JP')}</p>
+				<p className="text-[10px] text-muted-foreground mt-4">生成: {new Date(generatedAt).toLocaleString('ja-JP')}</p>
 			)}
 		</>
 	);
@@ -402,12 +402,12 @@ function LCDetailView({ initialData, backHref }: { initialData: SavedLCData; bac
 		<div className="space-y-6">
 			<div className="flex items-center gap-2">
 				<Radio size={18} className="text-pink-600" />
-				<h3 className="text-lg font-semibold text-gray-900">ライブコマース戦略</h3>
-				<span className="text-[10px] px-2 py-0.5 rounded-full bg-pink-100 text-pink-700 font-medium">6-Skill AI</span>
+				<h3 className="text-lg font-semibold text-foreground">ライブコマース戦略</h3>
+				<span className="text-[10px] px-2 py-0.5 rounded-full bg-pink-600/15 text-pink-700 dark:text-pink-300 font-medium">6-Skill AI</span>
 			</div>
 
 			{error && (
-				<div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+				<div className="flex items-center gap-2 p-3 bg-red-600/10 border border-red-600/30 rounded-lg text-sm text-red-700 dark:text-red-300">
 					<AlertTriangle size={14} />{error}
 				</div>
 			)}
@@ -595,14 +595,14 @@ function LCListView({ locale, router }: { locale: string; router: ReturnType<typ
 		<div className="space-y-6">
 			<div className="flex items-center gap-2">
 				<Radio size={18} className="text-pink-600" />
-				<h3 className="text-lg font-semibold text-gray-900">ライブコマース戦略</h3>
-				<span className="text-[10px] px-2 py-0.5 rounded-full bg-pink-100 text-pink-700 font-medium">6-Skill AI</span>
+				<h3 className="text-lg font-semibold text-foreground">ライブコマース戦略</h3>
+				<span className="text-[10px] px-2 py-0.5 rounded-full bg-pink-600/15 text-pink-700 dark:text-pink-300 font-medium">6-Skill AI</span>
 			</div>
 
-			<Card className="border-gray-200">
+			<Card className="border-border">
 				<CardContent className="p-4 space-y-3">
 					<div>
-						<label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">
+						<label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">
 							ライブコマースの目標・方向性 (任意)
 						</label>
 						<textarea
@@ -611,12 +611,12 @@ function LCListView({ locale, router }: { locale: string; router: ReturnType<typ
 							placeholder="例: TikTok Liveを中心に月商1000万円を目指したい / Instagram Liveで美容商品の販売を始めたい"
 							rows={3}
 							disabled={isRunning}
-							className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-300 resize-none disabled:bg-gray-50"
+							className="w-full border border-border bg-background text-foreground rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500/40 resize-none disabled:bg-muted"
 						/>
 					</div>
 
 					<div>
-						<label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">
+						<label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">
 							対象プラットフォーム (任意・複数選択可)
 						</label>
 						<div className="flex flex-wrap gap-2">
@@ -628,8 +628,8 @@ function LCListView({ locale, router }: { locale: string; router: ReturnType<typ
 									disabled={isRunning}
 									className={`px-3 py-1.5 text-xs rounded-lg border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
 										selectedPlatforms.includes(p)
-											? 'bg-pink-50 border-pink-300 text-pink-700 font-medium'
-											: 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
+											? 'bg-pink-600/10 border-pink-600/40 text-pink-700 dark:text-pink-300 font-medium'
+											: 'bg-card border-border text-muted-foreground hover:border-border/80'
 									}`}
 								>
 									{p}
@@ -639,7 +639,7 @@ function LCListView({ locale, router }: { locale: string; router: ReturnType<typ
 					</div>
 
 					<div className="flex items-center justify-between pt-1">
-						<p className="text-[10px] text-gray-400">
+						<p className="text-[10px] text-muted-foreground">
 							6つの専門スキル（目標分析→市場調査→プラットフォーム分析→コンテンツ戦略→実行計画→リスク分析）が順次分析します
 						</p>
 						<button
@@ -656,14 +656,14 @@ function LCListView({ locale, router }: { locale: string; router: ReturnType<typ
 			</Card>
 
 			{error && (
-				<div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+				<div className="flex items-center gap-2 p-3 bg-red-600/10 border border-red-600/30 rounded-lg text-sm text-red-700 dark:text-red-300">
 					<AlertTriangle size={14} />{error}
 				</div>
 			)}
 
 			{isRunning && (
 				<>
-					<div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
+					<div className="flex items-center gap-2 p-3 bg-amber-600/10 border border-amber-600/30 rounded-lg text-xs text-amber-700 dark:text-amber-300">
 						<AlertTriangle size={12} />
 						分析中はタブを離れたりページを閉じたりしないでください（中断されます）
 					</div>

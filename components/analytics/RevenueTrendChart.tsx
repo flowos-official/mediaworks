@@ -38,7 +38,7 @@ export default function RevenueTrendChart({
   const chartData = data.map((d) => ({ ...d, cost: d.revenue - d.profit }));
 
   return (
-    <Card className="border-gray-200">
+    <Card className="border-border">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base font-semibold">売上推移</CardTitle>
@@ -47,7 +47,7 @@ export default function RevenueTrendChart({
               type="button"
               onClick={() => setShowProfit(!showProfit)}
               className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
-                showProfit ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                showProfit ? 'bg-green-600/15 text-green-700 dark:text-green-300' : 'bg-muted text-muted-foreground'
               }`}
             >
               粗利表示
@@ -56,14 +56,14 @@ export default function RevenueTrendChart({
               type="button"
               onClick={() => setShowCost(!showCost)}
               className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
-                showCost ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-500'
+                showCost ? 'bg-orange-600/15 text-orange-700 dark:text-orange-300' : 'bg-muted text-muted-foreground'
               }`}
             >
               原価表示
             </button>
           </div>
         </div>
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-muted-foreground">
           {period === 'weekly' ? '週次' : '月次'} | {data.length}期間
         </p>
       </CardHeader>
