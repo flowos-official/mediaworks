@@ -215,7 +215,7 @@ export async function withLightTheme<T>(fn: () => Promise<T>): Promise<T> {
 
 Direct DOM mutation is used (not `useTheme().setTheme`) because `setTheme` triggers an async re-render that races the html2canvas snapshot. Synchronous classList toggle guarantees the captured DOM matches the intended theme.
 
-## 8. Rollout Plan (4 PRs)
+## 8. Rollout Plan (4 PRs + 1 follow-up)
 
 Each PR must build (`npm run build` + `npx tsc --noEmit`) and pass manual visual verification before merging.
 
@@ -246,6 +246,17 @@ Each PR must build (`npm run build` + `npx tsc --noEmit`) and pass manual visual
 - Confirm `.pdf-mode` CSS specificity beats `.dark` rules where needed.
 - **Verify:** Dark user downloads a PDF → output is light-background with black text; tabbed content all visible in PDF.
 - Final grep check across `components/` and `app/` for surviving hardcoded color utilities; result attached to PR description.
+
+### PR 5 — Residual migration (follow-up, scope discovered during PR 4 audit)
+- `components/discovery/**`, `components/screenplay/**`.
+- `components/FileUpload.tsx`, `components/ProductCard.tsx`, `components/ProductList.tsx`.
+- `components/nav/GroupSubNav.tsx`, `components/nav/PageHeader.tsx`.
+- `app/[locale]/(admin)/admin/archive-status/**`, `**/registry/**`, `**/users/**` page files.
+- `app/[locale]/(document|firm|market|produce|reset-password)/**` page files.
+- Same mapping table (§6); same per-occurrence judgment.
+- **Verify:** Final whole-app re-grep is in low double digits with all survivors being explicit brand colors. Lighthouse a11y ≥ baseline on both themes.
+
+The original PR 1-4 plan named the four directories then known to dominate the UI (`analytics`, `broadcasts`, `admin`, `report`). PR 4's audit produced the first complete inventory and exposed the additional directories above. Treat PR 5 as the closeout of the same mapping work — not a redesign.
 
 ## 9. Verification
 
