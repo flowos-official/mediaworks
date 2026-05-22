@@ -24,7 +24,7 @@ export function WeeklyInsightCard({ insight }: { insight: Insight | null }) {
 	}
 
 	return (
-		<div className="bg-gradient-to-br from-indigo-600/10 to-card border border-indigo-200 rounded-lg p-5">
+		<div className="bg-gradient-to-br from-indigo-600/10 to-card border border-indigo-200 dark:border-indigo-900/40 rounded-lg p-5">
 			<div className="flex items-center gap-2 mb-3">
 				<Sparkles size={14} className="text-indigo-600" />
 				<h3 className="text-sm font-semibold text-foreground">{t("weeklyInsightTitle")}</h3>
@@ -45,7 +45,7 @@ function Section({ label, text }: { label: string; text: string | null }) {
 	if (!text) return null;
 	return (
 		<div>
-			<div className="text-[10px] font-bold text-indigo-700 uppercase tracking-wide mb-1">
+			<div className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wide mb-1">
 				{label}
 			</div>
 			<p className="text-xs text-foreground leading-relaxed">{text}</p>

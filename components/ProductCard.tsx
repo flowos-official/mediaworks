@@ -21,27 +21,27 @@ interface ProductCardProps {
 const statusConfig = {
 	pending: {
 		icon: Clock,
-		color: "bg-yellow-600/15 text-yellow-700",
+		color: "bg-yellow-600/15 text-yellow-700 dark:text-yellow-300",
 		label: "pending",
 	},
 	extracted: {
 		icon: Loader2,
-		color: "bg-blue-600/15 text-blue-700",
+		color: "bg-blue-600/15 text-blue-700 dark:text-blue-300",
 		label: "analyzing",
 	},
 	analyzing: {
 		icon: Loader2,
-		color: "bg-blue-600/15 text-blue-700",
+		color: "bg-blue-600/15 text-blue-700 dark:text-blue-300",
 		label: "analyzing",
 	},
 	completed: {
 		icon: CheckCircle,
-		color: "bg-green-600/15 text-green-700",
+		color: "bg-green-600/15 text-green-700 dark:text-green-300",
 		label: "completed",
 	},
 	failed: {
 		icon: AlertCircle,
-		color: "bg-red-600/15 text-red-700",
+		color: "bg-red-600/15 text-red-700 dark:text-red-300",
 		label: "failed",
 	},
 };

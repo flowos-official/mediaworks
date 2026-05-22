@@ -11,10 +11,10 @@ interface Row {
 }
 
 const STATUS_CONFIG: Record<Row["status"], { icon: typeof Clock; cls: string; label: string }> = {
-	pending: { icon: Clock, cls: "bg-yellow-600/10 text-yellow-700 border-yellow-200/80", label: "待機中" },
-	generating: { icon: Loader2, cls: "bg-blue-600/10 text-blue-700 border-blue-200/80", label: "生成中" },
-	ready: { icon: CheckCircle, cls: "bg-emerald-600/10 text-emerald-700 border-emerald-200/80", label: "完成" },
-	failed: { icon: AlertCircle, cls: "bg-red-600/10 text-red-700 border-red-200/80", label: "失敗" },
+	pending: { icon: Clock, cls: "bg-yellow-600/10 text-yellow-700 dark:text-yellow-300 border-yellow-200/80", label: "待機中" },
+	generating: { icon: Loader2, cls: "bg-blue-600/10 text-blue-700 dark:text-blue-300 border-blue-200/80", label: "生成中" },
+	ready: { icon: CheckCircle, cls: "bg-emerald-600/10 text-emerald-700 dark:text-emerald-300 border-emerald-200/80", label: "完成" },
+	failed: { icon: AlertCircle, cls: "bg-red-600/10 text-red-700 dark:text-red-300 border-red-200/80", label: "失敗" },
 };
 
 function formatStamp(iso: string): string {

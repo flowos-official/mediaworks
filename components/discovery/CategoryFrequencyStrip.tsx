@@ -19,9 +19,9 @@ export interface CategoryFrequencyStripProps {
 }
 
 function shareColor(share: number): string {
-	if (share >= 25) return "bg-rose-600/15 text-rose-700 border-rose-200";
-	if (share >= 15) return "bg-amber-600/15 text-amber-700 border-amber-200";
-	if (share >= 8) return "bg-blue-600/15 text-blue-700 border-blue-200";
+	if (share >= 25) return "bg-rose-600/15 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-900/40";
+	if (share >= 15) return "bg-amber-600/15 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900/40";
+	if (share >= 8) return "bg-blue-600/15 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-900/40";
 	return "bg-muted text-muted-foreground border-border";
 }
 

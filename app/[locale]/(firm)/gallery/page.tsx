@@ -129,7 +129,7 @@ export default function GalleryPage() {
           {!detailLoading && detailError && (
             <div
               role="alert"
-              className="mb-4 rounded-lg border border-red-200 bg-red-600/10 px-4 py-3 text-sm text-red-700"
+              className="mb-4 rounded-lg border border-red-200 dark:border-red-900/40 bg-red-600/10 px-4 py-3 text-sm text-red-700 dark:text-red-300"
             >
               {detailError}
             </div>
@@ -268,7 +268,7 @@ export default function GalleryPage() {
         {!loading && listError && (
           <div
             role="alert"
-            className="mb-4 rounded-lg border border-red-200 bg-red-600/10 px-4 py-3 text-sm text-red-700"
+            className="mb-4 rounded-lg border border-red-200 dark:border-red-900/40 bg-red-600/10 px-4 py-3 text-sm text-red-700 dark:text-red-300"
           >
             {listError}
           </div>

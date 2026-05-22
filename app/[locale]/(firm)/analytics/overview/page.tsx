@@ -54,7 +54,7 @@ export default function OverviewPage() {
   return (
     <>
       {error && (
-        <div className="p-4 bg-red-600/10 border border-red-200 rounded-lg text-sm text-red-700">
+        <div className="p-4 bg-red-600/10 border border-red-200 dark:border-red-900/40 rounded-lg text-sm text-red-700 dark:text-red-300">
           {error}
         </div>
       )}

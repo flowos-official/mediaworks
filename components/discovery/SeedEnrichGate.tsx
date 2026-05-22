@@ -100,7 +100,7 @@ export function SeedEnrichGateModal({
 				</p>
 
 				{running ? (
-					<div className="flex items-center justify-center gap-2 py-4 text-sm text-amber-700">
+					<div className="flex items-center justify-center gap-2 py-4 text-sm text-amber-700 dark:text-amber-300">
 						<Loader2 size={16} className="animate-spin" />
 						{t("seedGateRunning")}
 					</div>

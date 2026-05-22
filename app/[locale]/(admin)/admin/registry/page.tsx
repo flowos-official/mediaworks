@@ -32,11 +32,11 @@ interface SkillVersionCountRow {
 }
 
 const CATEGORY_COLOR: Record<string, string> = {
-	analysis: "bg-blue-600/15 text-blue-700",
-	curation: "bg-emerald-600/15 text-emerald-700",
-	planning: "bg-violet-600/15 text-violet-700",
-	enrichment: "bg-amber-600/15 text-amber-700",
-	generation: "bg-pink-600/15 text-pink-700",
+	analysis: "bg-blue-600/15 text-blue-700 dark:text-blue-300",
+	curation: "bg-emerald-600/15 text-emerald-700 dark:text-emerald-300",
+	planning: "bg-violet-600/15 text-violet-700 dark:text-violet-300",
+	enrichment: "bg-amber-600/15 text-amber-700 dark:text-amber-300",
+	generation: "bg-pink-600/15 text-pink-700 dark:text-pink-300",
 };
 
 function categoryBadge(category: string | null) {
@@ -151,7 +151,7 @@ export default async function RegistryListPage() {
 								const versionCount = versionCountBySkill.get(s.id) ?? 0;
 								return (
 									<tr key={s.id} className="border-t border-border hover:bg-muted">
-										<td className="px-4 py-2 font-mono text-[12px] text-blue-700">
+										<td className="px-4 py-2 font-mono text-[12px] text-blue-700 dark:text-blue-300">
 											<Link href={`/admin/registry/${s.slug}`}>{s.slug}</Link>
 										</td>
 										<td className="px-4 py-2 text-foreground">{s.display_name}</td>
@@ -159,7 +159,7 @@ export default async function RegistryListPage() {
 										<td className="px-4 py-2">
 											{active ? (
 												<span className="inline-flex items-center gap-1.5">
-													<Badge className="bg-green-600/15 text-[10px] text-green-700">{active.version_label}</Badge>
+													<Badge className="bg-green-600/15 text-[10px] text-green-700 dark:text-green-300">{active.version_label}</Badge>
 													<span className="font-mono text-[10px] text-muted-foreground">{shortSha(active.git_sha)}</span>
 												</span>
 											) : (

@@ -17,8 +17,8 @@ import type { CPackage, Confidence } from "@/lib/discovery/types";
 function ConfidenceBadge({ confidence }: { confidence: Confidence }) {
 	const t = useTranslations("discovery");
 	const colorMap = {
-		high: "bg-green-600/15 text-green-800 border-green-200",
-		medium: "bg-yellow-600/15 text-yellow-800 border-yellow-200",
+		high: "bg-green-600/15 text-green-800 dark:text-green-200 border-green-200 dark:border-green-900/40",
+		medium: "bg-yellow-600/15 text-yellow-800 dark:text-yellow-200 border-yellow-200 dark:border-yellow-900/40",
 		low: "bg-muted text-muted-foreground border-border",
 	};
 	const labelMap = {
@@ -48,9 +48,9 @@ export function CPackageDrawer({ pkg }: { pkg: CPackage }) {
 		none: t("snsNone"),
 	}[s.signal_strength];
 	const snsColor = {
-		high: "text-red-700 bg-red-600/10 border-red-200",
-		medium: "text-orange-700 bg-orange-600/10 border-orange-200",
-		low: "text-yellow-700 bg-yellow-600/10 border-yellow-200",
+		high: "text-red-700 dark:text-red-300 bg-red-600/10 border-red-200 dark:border-red-900/40",
+		medium: "text-orange-700 dark:text-orange-300 bg-orange-600/10 border-orange-200 dark:border-orange-900/40",
+		low: "text-yellow-700 dark:text-yellow-300 bg-yellow-600/10 border-yellow-200 dark:border-yellow-900/40",
 		none: "text-muted-foreground bg-muted border-border",
 	}[s.signal_strength];
 
@@ -67,18 +67,18 @@ export function CPackageDrawer({ pkg }: { pkg: CPackage }) {
 	return (
 		<div className="mt-3 pt-3 border-t border-border space-y-3">
 			{pkg.partial && (
-				<div className="flex items-center gap-1 text-[10px] text-amber-700 bg-amber-600/10 border border-amber-200 rounded px-2 py-1">
+				<div className="flex items-center gap-1 text-[10px] text-amber-700 dark:text-amber-300 bg-amber-600/10 border border-amber-200 dark:border-amber-900/40 rounded px-2 py-1">
 					<AlertCircle size={10} />
 					{t("partialResult")}
 				</div>
 			)}
 
 			{/* Manufacturer */}
-			<div className="bg-blue-600/10 border border-blue-200 rounded p-2 space-y-1">
+			<div className="bg-blue-600/10 border border-blue-200 dark:border-blue-900/40 rounded p-2 space-y-1">
 				<div className="flex items-center justify-between">
 					<div className="flex items-center gap-1">
 						<Building2 size={11} className="text-blue-600" />
-						<span className="text-[10px] font-bold text-blue-700 uppercase tracking-wide">
+						<span className="text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wide">
 							{t("manufacturer")}
 						</span>
 					</div>
@@ -114,11 +114,11 @@ export function CPackageDrawer({ pkg }: { pkg: CPackage }) {
 			</div>
 
 			{/* Wholesale */}
-			<div className="bg-green-600/10 border border-green-200 rounded p-2 space-y-1">
+			<div className="bg-green-600/10 border border-green-200 dark:border-green-900/40 rounded p-2 space-y-1">
 				<div className="flex items-center justify-between">
 					<div className="flex items-center gap-1">
 						<DollarSign size={11} className="text-green-600" />
-						<span className="text-[10px] font-bold text-green-700 uppercase tracking-wide">
+						<span className="text-[10px] font-bold text-green-700 dark:text-green-300 uppercase tracking-wide">
 							{t("wholesaleEstimate")}
 						</span>
 					</div>
@@ -128,7 +128,7 @@ export function CPackageDrawer({ pkg }: { pkg: CPackage }) {
 					<>
 						<div className="text-[11px] text-foreground">
 							¥{w.retail_jpy.toLocaleString()} →{" "}
-							<strong className="text-green-700">
+							<strong className="text-green-700 dark:text-green-300">
 								¥{w.estimated_cost_jpy.toLocaleString()}
 							</strong>{" "}
 							<span className="text-muted-foreground">
@@ -159,11 +159,11 @@ export function CPackageDrawer({ pkg }: { pkg: CPackage }) {
 			)}
 
 			{/* TV Script */}
-			<div className="bg-purple-600/10 border border-purple-200 rounded p-2 space-y-1">
+			<div className="bg-purple-600/10 border border-purple-200 dark:border-purple-900/40 rounded p-2 space-y-1">
 				<div className="flex items-center justify-between">
 					<div className="flex items-center gap-1">
 						<Tv size={11} className="text-purple-600" />
-						<span className="text-[10px] font-bold text-purple-700 uppercase tracking-wide">
+						<span className="text-[10px] font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wide">
 							{t("tvScript")}
 						</span>
 					</div>

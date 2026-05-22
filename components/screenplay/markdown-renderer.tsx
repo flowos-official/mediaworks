@@ -24,20 +24,20 @@ const CUE_TAGS = new Set(["テロップ", "カメラ", "BGM", "SE", "インサ�
 const SPEAKER_TAGS = new Set(["N", "高橋", "山内", "小島", "お客様"]);
 
 const CUE_STYLES: Record<string, { bg: string; ring: string; text: string }> = {
-	"テロップ": { bg: "bg-blue-600/10", ring: "border-blue-200", text: "text-blue-900" },
+	"テロップ": { bg: "bg-blue-600/10", ring: "border-blue-200 dark:border-blue-900/40", text: "text-blue-900 dark:text-blue-100" },
 	"カメラ": { bg: "bg-muted", ring: "border-border", text: "text-foreground" },
-	"BGM": { bg: "bg-purple-600/10", ring: "border-purple-200", text: "text-purple-900" },
-	"SE": { bg: "bg-orange-600/10", ring: "border-orange-200", text: "text-orange-900" },
-	"インサート": { bg: "bg-cyan-600/10", ring: "border-cyan-200", text: "text-cyan-900" },
-	"小道具": { bg: "bg-amber-600/10", ring: "border-amber-200", text: "text-amber-900" },
+	"BGM": { bg: "bg-purple-600/10", ring: "border-purple-200 dark:border-purple-900/40", text: "text-purple-900 dark:text-purple-100" },
+	"SE": { bg: "bg-orange-600/10", ring: "border-orange-200 dark:border-orange-900/40", text: "text-orange-900 dark:text-orange-100" },
+	"インサート": { bg: "bg-cyan-600/10", ring: "border-cyan-200 dark:border-cyan-900/40", text: "text-cyan-900 dark:text-cyan-100" },
+	"小道具": { bg: "bg-amber-600/10", ring: "border-amber-200 dark:border-amber-900/40", text: "text-amber-900 dark:text-amber-100" },
 };
 
 const ROLE_STYLES: Record<string, string> = {
 	N: "bg-muted text-foreground",
-	"高橋": "bg-blue-600/15 text-blue-900",
-	"山内": "bg-green-600/15 text-green-900",
-	"小島": "bg-pink-600/15 text-pink-900",
-	"お客様": "bg-amber-600/15 text-amber-900",
+	"高橋": "bg-blue-600/15 text-blue-900 dark:text-blue-100",
+	"山内": "bg-green-600/15 text-green-900 dark:text-green-100",
+	"小島": "bg-pink-600/15 text-pink-900 dark:text-pink-100",
+	"お客様": "bg-amber-600/15 text-amber-900 dark:text-amber-100",
 };
 
 function parseMarkdown(md: string): Block[] {
@@ -145,7 +145,7 @@ export function ScreenplayMarkdown({ markdown }: { markdown: string }) {
 					if (b.level === 1) {
 						return (
 							<header key={idx} className="mb-10 pb-6 border-b border-border">
-								<div className="text-xs font-medium text-blue-700 bg-blue-600/10 inline-block px-2 py-0.5 rounded-full mb-3">
+								<div className="text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-600/10 inline-block px-2 py-0.5 rounded-full mb-3">
 									完成版 台本
 								</div>
 								<h1 className="text-3xl font-bold tracking-tight text-foreground leading-tight">
