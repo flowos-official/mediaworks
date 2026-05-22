@@ -2,7 +2,7 @@
 // Single source of truth so DayDetailPanel and HistoricalBroadcasts stay
 // consistent.
 //
-// Scope: 9 channels (qvc + shopch + 7 OA channels with scrapeable schedule
+// Scope: 12 channels (qvc + shopch + 10 OA channels with scrapeable schedule
 // pages). Discovery uses a different, larger registry —
 // `lib/discovery/tv-channels.ts` (15 channels) — that adds Brave site:-only
 // channels with no schedule pages. Don't unify the two: this list is the
@@ -10,6 +10,7 @@
 // search products from" set.
 //
 // History: btops was removed 2026-05-17 after the site closed.
+// ropping + kantv added 2026-05-21 (PR #69 broadcast parsers).
 
 export type BroadcastChannelSlug =
 	| "qvc"
@@ -21,7 +22,9 @@ export type BroadcastChannelSlug =
 	| "dinos"
 	| "senobura"
 	| "uranoura"
-	| "txd";
+	| "txd"
+	| "ropping"
+	| "kantv";
 
 export const OA_CHANNELS: { slug: BroadcastChannelSlug; name: string }[] = [
 	{ slug: "japanet", name: "ジャパネット" },
@@ -32,6 +35,8 @@ export const OA_CHANNELS: { slug: BroadcastChannelSlug; name: string }[] = [
 	{ slug: "senobura", name: "ABCせのぶら" },
 	{ slug: "uranoura", name: "ABCウラのウラまで" },
 	{ slug: "txd", name: "テレ東マート" },
+	{ slug: "ropping", name: "ロッピング" },
+	{ slug: "kantv", name: "カンテレSHOPPING" },
 ];
 
 export const ALL_CHANNELS: { slug: BroadcastChannelSlug; name: string }[] = [
@@ -43,14 +48,52 @@ export const ALL_CHANNELS: { slug: BroadcastChannelSlug; name: string }[] = [
 export const CHANNEL_BADGE: Record<BroadcastChannelSlug, string> = {
 	qvc: "bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-500/15 dark:text-purple-200 dark:border-purple-500/30",
 	shopch: "bg-red-100 text-red-800 border-red-200 dark:bg-red-500/15 dark:text-red-200 dark:border-red-500/30",
-	japanet: "bg-red-100 text-red-800 border-red-200 dark:bg-red-500/15 dark:text-red-200 dark:border-red-500/30",
+	japanet: "bg-pink-100 text-pink-800 border-pink-200 dark:bg-pink-500/15 dark:text-pink-200 dark:border-pink-500/30",
 	junsanpo: "bg-cyan-100 text-cyan-800 border-cyan-200 dark:bg-cyan-500/15 dark:text-cyan-200 dark:border-cyan-500/30",
 	ntv: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-500/15 dark:text-amber-200 dark:border-amber-500/30",
 	tbs: "bg-sky-100 text-sky-800 border-sky-200 dark:bg-sky-500/15 dark:text-sky-200 dark:border-sky-500/30",
 	dinos: "bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-500/15 dark:text-rose-200 dark:border-rose-500/30",
 	senobura: "bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-500/15 dark:text-indigo-200 dark:border-indigo-500/30",
-	uranoura: "bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-500/15 dark:text-purple-200 dark:border-purple-500/30",
+	uranoura: "bg-violet-100 text-violet-800 border-violet-200 dark:bg-violet-500/15 dark:text-violet-200 dark:border-violet-500/30",
 	txd: "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-200 dark:border-emerald-500/30",
+	ropping: "bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-500/15 dark:text-orange-200 dark:border-orange-500/30",
+	kantv: "bg-teal-100 text-teal-800 border-teal-200 dark:bg-teal-500/15 dark:text-teal-200 dark:border-teal-500/30",
+};
+
+// Solid dots for compact calendar-cell rendering. Mirror the badge palette
+// at -500 weight so dots stay legible on white and on the selected blue cell.
+export const CHANNEL_DOT: Record<BroadcastChannelSlug, string> = {
+	qvc: "bg-purple-500",
+	shopch: "bg-red-500",
+	japanet: "bg-pink-500",
+	junsanpo: "bg-cyan-500",
+	ntv: "bg-amber-500",
+	tbs: "bg-sky-500",
+	dinos: "bg-rose-500",
+	senobura: "bg-indigo-500",
+	uranoura: "bg-violet-500",
+	txd: "bg-emerald-500",
+	ropping: "bg-orange-500",
+	kantv: "bg-teal-500",
+};
+
+// One-character abbreviation used on the calendar cell when a tooltip alone
+// isn't enough (compact icon mode). Uses the most evocative Japanese
+// character from the channel name so distinct channels with similar colors
+// remain identifiable. ASCII fallback for qvc/shopch.
+export const CHANNEL_SHORT: Record<BroadcastChannelSlug, string> = {
+	qvc: "Q",
+	shopch: "S",
+	japanet: "ジ",
+	junsanpo: "散",
+	ntv: "ポ",
+	tbs: "キ",
+	dinos: "デ",
+	senobura: "せ",
+	uranoura: "ウ",
+	txd: "東",
+	ropping: "ロ",
+	kantv: "関",
 };
 
 export function channelDisplayName(slug: string): string {

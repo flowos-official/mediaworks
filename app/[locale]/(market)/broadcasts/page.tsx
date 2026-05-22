@@ -3,9 +3,8 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/require-user";
 import BroadcastCalendar from "@/components/broadcasts/BroadcastCalendar";
 import BroadcastSearchOverlay from "@/components/broadcasts/BroadcastSearchOverlay";
-import type { Broadcast } from "@/components/broadcasts/BroadcastListItem";
-import { loadProductsForBroadcasts } from "@/lib/qvc-products/attach";
 import { localePath } from "@/lib/i18n/locale-path";
+import { aggregateCalendarCounts } from "@/lib/broadcasts/aggregate-counts";
 
 const OA_CHANNEL_SLUGS = [
   "japanet",
@@ -16,6 +15,8 @@ const OA_CHANNEL_SLUGS = [
   "senobura",
   "uranoura",
   "txd",
+  "ropping",
+  "kantv",
 ] as const;
 
 interface PageProps {
@@ -61,36 +62,12 @@ export default async function Page({ params, searchParams }: PageProps) {
   const selected = sp.date && /^\d{4}-\d{2}-\d{2}$/.test(sp.date) ? sp.date : todayIso;
   const { y, m, from, to } = monthBoundsAround(selected);
 
-  const { data } = await sb
-    .from("broadcasts")
-    .select(
-      "id,channel,air_date,start_time,program_title,presenter,description,thumbnail_url,source_url,product_ids,category,archived_video_s3,video_status,brand_name,brand_code",
-    )
-    .gte("air_date", from)
-    .lte("air_date", to)
-    .order("air_date", { ascending: true })
-    .order("start_time", { ascending: true })
-    .order("channel", { ascending: true });
+  // Per-day per-channel counts power the calendar cell icons. The helper
+  // paginates internally so wide SSR windows don't silently drop channels
+  // past the PostgREST 10k row cap.
+  const initialCounts = await aggregateCalendarCounts(sb, from, to);
 
-  const rows = (data ?? []) as Array<{
-    id: string;
-    channel: "shopch" | "qvc";
-    air_date: string;
-    start_time: string;
-    program_title: string;
-    presenter: string | null;
-    description: string | null;
-    thumbnail_url: string | null;
-    source_url: string;
-    product_ids: string[] | null;
-    category: string | null;
-  }>;
-  const productMap = await loadProductsForBroadcasts(rows);
-
-  const initialBroadcasts: Broadcast[] = rows.map((r) => ({
-    ...r,
-    products: productMap.get(r.id) ?? null,
-  }));
+  const hasAny = Object.keys(initialCounts).length > 0;
 
   // Per-channel total counts (across all dates) drive the chip "(N)" labels
   // in the bottom search panel. QVC/ShopCh counts come from `broadcasts`;
@@ -119,8 +96,6 @@ export default async function Page({ params, searchParams }: PageProps) {
     ...oaCountResults,
   ]);
 
-  const hasAny = initialBroadcasts.length > 0;
-
   return (
     <>
       <div className="flex justify-end mb-6">
@@ -128,7 +103,7 @@ export default async function Page({ params, searchParams }: PageProps) {
       </div>
 
       {!hasAny ? (
-        <div className="text-sm text-gray-500 p-12 text-center border border-dashed border-gray-200 rounded-lg">
+        <div className="text-sm text-muted-foreground p-12 text-center border border-dashed border-border rounded-lg">
           {t("empty.all")}
         </div>
       ) : (
@@ -136,7 +111,7 @@ export default async function Page({ params, searchParams }: PageProps) {
           initialYear={y}
           initialMonth={m}
           initialDate={selected}
-          initialBroadcasts={initialBroadcasts}
+          initialCounts={initialCounts}
         />
       )}
     </>
