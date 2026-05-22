@@ -25,20 +25,20 @@ export default function DemographicsSection({ demographics }: Props) {
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="bg-gray-50 rounded-xl p-4">
-            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">{t('ageGroup')}</p>
-            <p className="text-gray-900 font-semibold">{demographics.age_group}</p>
+          <div className="bg-muted rounded-xl p-4">
+            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">{t('ageGroup')}</p>
+            <p className="text-foreground font-semibold">{demographics.age_group}</p>
           </div>
-          <div className="bg-gray-50 rounded-xl p-4">
-            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">{t('gender')}</p>
-            <p className="text-gray-900 font-semibold">{demographics.gender}</p>
+          <div className="bg-muted rounded-xl p-4">
+            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">{t('gender')}</p>
+            <p className="text-foreground font-semibold">{demographics.gender}</p>
           </div>
-          <div className="bg-gray-50 rounded-xl p-4">
-            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">{t('income')}</p>
-            <p className="text-gray-900 font-semibold">{demographics.income_level}</p>
+          <div className="bg-muted rounded-xl p-4">
+            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">{t('income')}</p>
+            <p className="text-foreground font-semibold">{demographics.income_level}</p>
           </div>
-          <div className="bg-gray-50 rounded-xl p-4">
-            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-2">{t('interests')}</p>
+          <div className="bg-muted rounded-xl p-4">
+            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-2">{t('interests')}</p>
             <div className="flex flex-wrap gap-1">
               {demographics.interests.map((interest, i) => (
                 <Badge key={i} variant="secondary" className="text-xs">

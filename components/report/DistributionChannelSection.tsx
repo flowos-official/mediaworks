@@ -27,18 +27,18 @@ interface Channel {
 }
 
 const TYPE_CONFIG: Record<string, { color: string; icon: typeof Tv; groupKey: string }> = {
-	"TV通販": { color: "bg-purple-100 text-purple-800", icon: Tv, groupKey: "tvShopping" },
-	"TVホームショッピング": { color: "bg-purple-100 text-purple-800", icon: Tv, groupKey: "tvShopping" },
-	"TV홈쇼핑": { color: "bg-purple-100 text-purple-800", icon: Tv, groupKey: "tvShopping" },
-	"EC": { color: "bg-blue-100 text-blue-800", icon: ShoppingCart, groupKey: "ec" },
-	"カタログ通販": { color: "bg-blue-100 text-blue-800", icon: ShoppingCart, groupKey: "ec" },
-	"クラウドファンディング": { color: "bg-blue-100 text-blue-800", icon: ShoppingCart, groupKey: "ec" },
-	"SNSコマース": { color: "bg-pink-100 text-pink-800", icon: Share2, groupKey: "sns" },
-	"SNS커머스": { color: "bg-pink-100 text-pink-800", icon: Share2, groupKey: "sns" },
-	"メディア": { color: "bg-amber-100 text-amber-800", icon: Newspaper, groupKey: "media" },
-	"オフライン": { color: "bg-orange-100 text-orange-800", icon: MoreHorizontal, groupKey: "other" },
-	"오프라인": { color: "bg-orange-100 text-orange-800", icon: MoreHorizontal, groupKey: "other" },
-	"その他": { color: "bg-gray-100 text-gray-800", icon: MoreHorizontal, groupKey: "other" },
+	"TV通販": { color: "bg-purple-600/10 text-purple-800 dark:text-purple-300", icon: Tv, groupKey: "tvShopping" },
+	"TVホームショッピング": { color: "bg-purple-600/10 text-purple-800 dark:text-purple-300", icon: Tv, groupKey: "tvShopping" },
+	"TV홈쇼핑": { color: "bg-purple-600/10 text-purple-800 dark:text-purple-300", icon: Tv, groupKey: "tvShopping" },
+	"EC": { color: "bg-blue-600/10 text-blue-800 dark:text-blue-300", icon: ShoppingCart, groupKey: "ec" },
+	"カタログ通販": { color: "bg-blue-600/10 text-blue-800 dark:text-blue-300", icon: ShoppingCart, groupKey: "ec" },
+	"クラウドファンディング": { color: "bg-blue-600/10 text-blue-800 dark:text-blue-300", icon: ShoppingCart, groupKey: "ec" },
+	"SNSコマース": { color: "bg-pink-600/10 text-pink-800 dark:text-pink-300", icon: Share2, groupKey: "sns" },
+	"SNS커머스": { color: "bg-pink-600/10 text-pink-800 dark:text-pink-300", icon: Share2, groupKey: "sns" },
+	"メディア": { color: "bg-amber-600/10 text-amber-800 dark:text-amber-300", icon: Newspaper, groupKey: "media" },
+	"オフライン": { color: "bg-orange-600/10 text-orange-800 dark:text-orange-300", icon: MoreHorizontal, groupKey: "other" },
+	"오프라인": { color: "bg-orange-600/10 text-orange-800 dark:text-orange-300", icon: MoreHorizontal, groupKey: "other" },
+	"その他": { color: "bg-muted text-muted-foreground", icon: MoreHorizontal, groupKey: "other" },
 };
 
 function ScoreBar({ score }: { score: number }) {
@@ -49,7 +49,7 @@ function ScoreBar({ score }: { score: number }) {
 
 	return (
 		<div className="flex items-center gap-2">
-			<div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+			<div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
 				<div
 					className={`h-full rounded-full transition-all ${color}`}
 					style={{ width: `${score}%` }}
@@ -72,8 +72,8 @@ function ScoringBreakdown({ breakdown, t }: { breakdown: NonNullable<Channel["sc
 		<div className="mt-3 space-y-1.5">
 			{BREAKDOWN_ITEMS.map(({ key, labelKey, color }) => (
 				<div key={key} className="flex items-center gap-2">
-					<span className="text-[10px] text-gray-500 w-20 shrink-0">{t(`distribution.${labelKey}` as `distribution.${typeof labelKey}`)}</span>
-					<div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+					<span className="text-[10px] text-muted-foreground w-20 shrink-0">{t(`distribution.${labelKey}` as `distribution.${typeof labelKey}`)}</span>
+					<div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
 						<div className={`h-full rounded-full ${color}`} style={{ width: `${Math.min((breakdown[key] / 25) * 100, 100)}%` }} />
 					</div>
 					<span className="text-[10px] font-medium tabular-nums w-8 text-right">{breakdown[key]}/25</span>
@@ -90,21 +90,21 @@ function ChannelCard({ ch, t }: { ch: Channel; t: ReturnType<typeof useTranslati
 	const hasSimilar = ch.similar_products_on_channel && ch.similar_products_on_channel.length > 0;
 
 	return (
-		<div className="border border-gray-100 rounded-xl p-4 bg-gray-50/50">
+		<div className="border border-border rounded-xl p-4 bg-muted/50">
 			<div className="flex items-start justify-between mb-3">
 				<div>
 					<h4 className="font-semibold text-sm">{ch.channel_name}</h4>
 					{ch.broadcaster && (
-						<p className="text-[11px] text-gray-400 mt-0.5">{ch.broadcaster}</p>
+						<p className="text-[11px] text-muted-foreground mt-0.5">{ch.broadcaster}</p>
 					)}
-					<p className="text-xs text-gray-500 mt-0.5">{ch.primary_age_group}</p>
+					<p className="text-xs text-muted-foreground mt-0.5">{ch.primary_age_group}</p>
 				</div>
 				<Badge className={`text-[10px] ${cfg.color}`}>
 					{ch.channel_type}
 				</Badge>
 			</div>
 			<div className="mb-3">
-				<div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+				<div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
 					<span>{t("distribution.fitScore")}</span>
 				</div>
 				<ScoreBar score={ch.fit_score} />
@@ -114,21 +114,21 @@ function ChannelCard({ ch, t }: { ch: Channel; t: ReturnType<typeof useTranslati
 				<ScoringBreakdown breakdown={ch.scoring_breakdown} t={t} />
 			)}
 
-			<p className="text-xs text-gray-600 leading-relaxed mt-3">{ch.reason}</p>
+			<p className="text-xs text-muted-foreground leading-relaxed mt-3">{ch.reason}</p>
 
 			{hasSimilar && (
 				<div className="mt-3">
-					<p className="text-[10px] font-medium text-gray-500 mb-1.5">{t("distribution.similarProducts")}</p>
+					<p className="text-[10px] font-medium text-muted-foreground mb-1.5">{t("distribution.similarProducts")}</p>
 					<div className="flex flex-wrap gap-1.5">
 						{ch.similar_products_on_channel!.map((sp, i) => (
 							<span key={i} className="inline-flex items-center gap-1">
 								{sp.source_url ? (
-									<a href={sp.source_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] bg-green-50 text-green-700 border border-green-200 rounded-full px-2 py-0.5 hover:bg-green-100 transition-colors">
+									<a href={sp.source_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] bg-green-600/10 text-green-700 dark:text-green-300 border border-green-600/30 rounded-full px-2 py-0.5 hover:bg-green-600/20 transition-colors">
 										{sp.product_name}{sp.price && ` (${sp.price})`}
 										<ExternalLink size={8} />
 									</a>
 								) : (
-									<Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 border-green-200">
+									<Badge variant="outline" className="text-[10px] bg-green-600/10 text-green-700 dark:text-green-300 border-green-600/30">
 										{sp.product_name}{sp.price && ` (${sp.price})`}
 									</Badge>
 								)}
@@ -139,7 +139,7 @@ function ChannelCard({ ch, t }: { ch: Channel; t: ReturnType<typeof useTranslati
 			)}
 
 			<div className="flex items-center justify-between mt-3">
-				<div className="flex gap-3 text-[11px] text-gray-400">
+				<div className="flex gap-3 text-[11px] text-muted-foreground">
 					{ch.monthly_visitors && (
 						<span>{t("distribution.visitors")} {ch.monthly_visitors}</span>
 					)}
@@ -161,7 +161,7 @@ function ChannelCard({ ch, t }: { ch: Channel; t: ReturnType<typeof useTranslati
 			</div>
 
 			{hasEvidence && (
-				<div className="mt-3 border-t border-gray-100 pt-2">
+				<div className="mt-3 border-t border-border pt-2">
 					<button
 						type="button"
 						onClick={() => setShowEvidence(!showEvidence)}
@@ -169,17 +169,17 @@ function ChannelCard({ ch, t }: { ch: Channel; t: ReturnType<typeof useTranslati
 					>
 						{showEvidence ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
 						{showEvidence ? t("distribution.hideEvidence") : t("distribution.showEvidence")}
-						<span className="text-gray-400">({ch.evidence_sources!.length} {t("distribution.evidenceCount")})</span>
+						<span className="text-muted-foreground">({ch.evidence_sources!.length} {t("distribution.evidenceCount")})</span>
 					</button>
 					{showEvidence && (
 						<div className="mt-2 space-y-2">
 							{ch.evidence_sources!.map((ev, i) => (
-								<div key={i} className="text-[11px] bg-blue-50/50 rounded-lg p-2">
+								<div key={i} className="text-[11px] bg-blue-600/10 rounded-lg p-2">
 									<a href={ev.url} target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:underline flex items-center gap-1">
 										{ev.title}
 										<ExternalLink size={9} />
 									</a>
-									<p className="text-gray-500 mt-0.5 leading-relaxed">{ev.snippet}</p>
+									<p className="text-muted-foreground mt-0.5 leading-relaxed">{ev.snippet}</p>
 								</div>
 							))}
 						</div>
@@ -227,7 +227,7 @@ export default function DistributionChannelSection({ channels }: DistributionCha
 			<CardContent className="p-6">
 				<div className="flex items-center gap-2 mb-5">
 					<TrendingUp className="h-5 w-5 text-blue-500" />
-					<h3 className="text-lg font-semibold text-gray-900">{t("distribution.title")}</h3>
+					<h3 className="text-lg font-semibold text-foreground">{t("distribution.title")}</h3>
 				</div>
 
 				<div className="space-y-6">
@@ -240,11 +240,11 @@ export default function DistributionChannelSection({ channels }: DistributionCha
 						return (
 							<div key={groupKey}>
 								<div className="flex items-center gap-2 mb-3">
-									<Icon size={16} className="text-gray-500" />
-									<h4 className="text-sm font-semibold text-gray-700">
+									<Icon size={16} className="text-muted-foreground" />
+									<h4 className="text-sm font-semibold text-foreground">
 										{t(`distribution.${groupKey}` as "distribution.tvShopping" | "distribution.ec" | "distribution.sns" | "distribution.media" | "distribution.other")}
 									</h4>
-									<span className="text-xs text-gray-400">({groupChannels.length})</span>
+									<span className="text-xs text-muted-foreground">({groupChannels.length})</span>
 								</div>
 								<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 									{groupChannels.map((ch, i) => (

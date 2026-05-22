@@ -30,19 +30,19 @@ export default function CogsSection({ cogs_estimate }: Props) {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left py-2 pr-4 text-gray-500 font-medium">{t('supplier')}</th>
-                <th className="text-left py-2 pr-4 text-gray-500 font-medium">{t('estimatedCost')}</th>
-                <th className="text-left py-2 pr-4 text-gray-500 font-medium">{t('moq')}</th>
-                <th className="text-left py-2 text-gray-500 font-medium">{t('link')}</th>
+              <tr className="border-b border-border">
+                <th className="text-left py-2 pr-4 text-muted-foreground font-medium">{t('supplier')}</th>
+                <th className="text-left py-2 pr-4 text-muted-foreground font-medium">{t('estimatedCost')}</th>
+                <th className="text-left py-2 pr-4 text-muted-foreground font-medium">{t('moq')}</th>
+                <th className="text-left py-2 text-muted-foreground font-medium">{t('link')}</th>
               </tr>
             </thead>
             <tbody>
               {cogs_estimate.items.map((item, i) => (
-                <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="py-3 pr-4 font-medium text-gray-900">{item.supplier}</td>
-                  <td className="py-3 pr-4 text-green-700 font-semibold">{item.estimated_cost}</td>
-                  <td className="py-3 pr-4 text-gray-600">{item.moq}</td>
+                <tr key={i} className="border-b border-border hover:bg-muted">
+                  <td className="py-3 pr-4 font-medium text-foreground">{item.supplier}</td>
+                  <td className="py-3 pr-4 text-green-700 dark:text-green-400 font-semibold">{item.estimated_cost}</td>
+                  <td className="py-3 pr-4 text-muted-foreground">{item.moq}</td>
                   <td className="py-3">
                     {item.link ? (
                       <a
@@ -55,7 +55,7 @@ export default function CogsSection({ cogs_estimate }: Props) {
                         Link
                       </a>
                     ) : (
-                      <span className="text-gray-400">—</span>
+                      <span className="text-muted-foreground">—</span>
                     )}
                   </td>
                 </tr>
@@ -63,13 +63,13 @@ export default function CogsSection({ cogs_estimate }: Props) {
             </tbody>
           </table>
         </div>
-        <p className="text-sm text-gray-600 bg-green-50 p-3 rounded-lg">{cogs_estimate.summary}</p>
+        <p className="text-sm text-muted-foreground bg-green-600/10 p-3 rounded-lg">{cogs_estimate.summary}</p>
         {cogs_estimate.margin_analysis && (
-          <div className="bg-yellow-50 p-3 rounded-lg">
-            <p className="text-xs font-semibold text-yellow-700 mb-1">
+          <div className="bg-yellow-600/10 p-3 rounded-lg">
+            <p className="text-xs font-semibold text-yellow-700 dark:text-yellow-400 mb-1">
               マージン分析 / Margin Analysis
             </p>
-            <p className="text-sm text-yellow-900">{cogs_estimate.margin_analysis}</p>
+            <p className="text-sm text-yellow-900 dark:text-yellow-200">{cogs_estimate.margin_analysis}</p>
           </div>
         )}
       </CardContent>

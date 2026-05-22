@@ -26,13 +26,13 @@ export default function CompetitorSection({
 	return (
 		<Card>
 			<CardContent className="p-6">
-				<h3 className="text-lg font-semibold text-gray-900 mb-4">
+				<h3 className="text-lg font-semibold text-foreground mb-4">
 					{t("competitor.title")}
 				</h3>
 
 				{recommendedPriceRange && (
-					<div className="mb-4 p-3 bg-blue-50 rounded-lg">
-						<p className="text-sm text-blue-800">
+					<div className="mb-4 p-3 bg-blue-600/10 rounded-lg">
+						<p className="text-sm text-blue-800 dark:text-blue-300">
 							<span className="font-semibold">{t("competitor.recommendedPrice")}</span>{" "}
 							{recommendedPriceRange}
 						</p>
@@ -43,9 +43,9 @@ export default function CompetitorSection({
 					{competitors.map((comp, i) => (
 						<div
 							key={comp.name || i}
-							className="flex items-start gap-4 p-3 bg-gray-50 rounded-lg"
+							className="flex items-start gap-4 p-3 bg-muted rounded-lg"
 						>
-							<div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-sm font-bold text-gray-600">
+							<div className="w-8 h-8 bg-accent rounded-full flex items-center justify-center text-sm font-bold text-muted-foreground">
 								{i + 1}
 							</div>
 							<div className="flex-1">
@@ -55,8 +55,8 @@ export default function CompetitorSection({
 										{comp.platform}
 									</Badge>
 								</div>
-								<p className="text-sm text-gray-600">{comp.price}</p>
-								<p className="text-xs text-gray-500 mt-1">{comp.key_difference}</p>
+								<p className="text-sm text-muted-foreground">{comp.price}</p>
+								<p className="text-xs text-muted-foreground mt-1">{comp.key_difference}</p>
 							</div>
 						</div>
 					))}

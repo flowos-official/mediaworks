@@ -9,10 +9,10 @@ interface JapanExportSectionProps {
 }
 
 function getScoreColor(score: number): string {
-	if (score >= 80) return "text-green-600 bg-green-50";
-	if (score >= 60) return "text-blue-600 bg-blue-50";
-	if (score >= 40) return "text-yellow-600 bg-yellow-50";
-	return "text-red-600 bg-red-50";
+	if (score >= 80) return "text-green-600 bg-green-600/10";
+	if (score >= 60) return "text-blue-600 bg-blue-600/10";
+	if (score >= 40) return "text-yellow-600 bg-yellow-600/10";
+	return "text-red-600 bg-red-600/10";
 }
 
 export default function JapanExportSection({
@@ -31,7 +31,7 @@ export default function JapanExportSection({
 	return (
 		<Card>
 			<CardContent className="p-6">
-				<h3 className="text-lg font-semibold text-gray-900 mb-4">
+				<h3 className="text-lg font-semibold text-foreground mb-4">
 					{t("japanExport.title")}
 				</h3>
 
@@ -46,11 +46,11 @@ export default function JapanExportSection({
 					<div className="flex-1">
 						<p className="text-lg font-semibold">{label}</p>
 						{recommendedPriceRange && (
-							<p className="text-sm text-gray-600 mt-1">
+							<p className="text-sm text-muted-foreground mt-1">
 								{t("japanExport.recommendedPrice")} {recommendedPriceRange}
 							</p>
 						)}
-						<div className="mt-3 h-2 bg-gray-100 rounded-full overflow-hidden">
+						<div className="mt-3 h-2 bg-muted rounded-full overflow-hidden">
 							<div
 								className={`h-full rounded-full transition-all duration-500 ${
 									score >= 60 ? "bg-green-500" : score >= 40 ? "bg-yellow-500" : "bg-red-500"
