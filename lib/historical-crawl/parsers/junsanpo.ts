@@ -19,8 +19,11 @@ function parse(html: string, jstDate: string): HistoricalRow[] {
 		const desc = card.find("p.c-product-card__description").text().replace(/\s+/g, " ").trim();
 		const title = card.find(".c-product-card__title, .c-product-card__name").text().trim() || desc;
 		if (!title || title.length < 3) return;
-		const priceText = desc;
-		const { price, incl } = parsePrice(priceText);
+		const { price, incl } = parsePrice(desc);
+		// Only persist price_text when parsePrice actually extracted a JPY value.
+		// The card description otherwise contains a marketing blurb (no yen
+		// figure), which would render as a fake price in the UI's price column.
+		const priceText = price != null ? desc : null;
 		const href = link.attr("href") ?? "";
 		rows.push({
 			channel: "junsanpo",

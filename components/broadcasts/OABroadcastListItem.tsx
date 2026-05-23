@@ -64,10 +64,13 @@ export default function OABroadcastListItem({ row }: { row: OARow }) {
 				<div className="flex-1 min-w-0">
 					<div className="text-sm text-foreground truncate">{row.product_name}</div>
 					{row.category && (
-						<div className="text-[10px] text-muted-foreground mt-0.5">{row.category}</div>
+						<div className="text-[10px] text-muted-foreground mt-0.5 truncate">{row.category}</div>
 					)}
 				</div>
-				<div className="shrink-0 text-right text-xs text-foreground font-mono whitespace-nowrap">
+				<div
+					className="shrink-0 text-right text-xs text-foreground font-mono truncate max-w-[7rem]"
+					title={formatPrice(row)}
+				>
 					{formatPrice(row)}
 				</div>
 				<button

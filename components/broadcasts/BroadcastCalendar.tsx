@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import UnifiedDayDetailPanel from "./UnifiedDayDetailPanel";
 import MonthGrid from "./MonthGrid";
 import {
@@ -165,7 +165,10 @@ export default function BroadcastCalendar({
 					</button>
 				</div>
 				{loading && (
-					<div className="text-xs text-muted-foreground mb-2">Loading…</div>
+					<div className="inline-flex items-center gap-1.5 text-sm text-foreground/80 mb-2">
+						<Loader2 size={14} className="animate-spin" />
+						{t("loading")}
+					</div>
 				)}
 				{error && (
 					<div className="text-xs text-red-600 dark:text-red-400 mb-2">
