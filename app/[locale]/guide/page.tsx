@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import {
 	AlertCircle,
@@ -38,7 +39,7 @@ export default async function GuidePage({
 	return (
 		<main className="bg-background">
 			<section className="border-b border-border bg-muted/30">
-				<div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+				<div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
 					<div className="max-w-3xl">
 						<div className="mb-3 flex items-center gap-2 text-sm font-medium text-blue-600">
 							<BookOpen size={18} />
@@ -66,8 +67,8 @@ export default async function GuidePage({
 				</div>
 			</section>
 
-			<div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-				<section aria-labelledby="workflow-title" className="mb-10">
+			<div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+				<section aria-labelledby="workflow-title" className="mb-12">
 					<div className="mb-4 flex items-center gap-2">
 						<CheckCircle2 size={20} className="text-blue-600" />
 						<h2 id="workflow-title" className="text-xl font-semibold text-foreground">
@@ -94,25 +95,71 @@ export default async function GuidePage({
 					</div>
 				</section>
 
-				<section aria-label={guide.sectionsLabel} className="grid gap-5 lg:grid-cols-2">
+				<section aria-label={guide.sectionsLabel} className="space-y-10">
 					{guide.sections.map((section, index) => {
 						const Icon = sectionIcons[index] ?? BookOpen;
 						return (
-							<article key={section.title} className="rounded-lg border border-border bg-card p-5">
-								<div className="mb-4 flex items-start gap-3">
-									<div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-blue-600 text-white">
-										<Icon size={18} />
+							<article
+								key={section.title}
+								className="rounded-xl border border-border bg-card p-6 shadow-sm"
+							>
+								<header className="mb-6 flex items-start gap-3 border-b border-border pb-5">
+									<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-blue-600 text-white">
+										<Icon size={20} />
 									</div>
 									<div>
-										<h2 className="text-lg font-semibold text-foreground">{section.title}</h2>
-										<p className="mt-1 text-sm leading-6 text-muted-foreground">{section.summary}</p>
+										<div className="text-xs font-medium uppercase tracking-wide text-blue-600">
+											Step {index + 1}
+										</div>
+										<h2 className="mt-1 text-xl font-semibold text-foreground">
+											{section.title}
+										</h2>
+										<p className="mt-1 text-sm leading-6 text-muted-foreground">
+											{section.summary}
+										</p>
 									</div>
-								</div>
-								<div className="space-y-4">
+								</header>
+								<div className="space-y-8">
 									{section.items.map((item) => (
-										<div key={item.title}>
-											<h3 className="text-sm font-semibold text-foreground">{item.title}</h3>
-											<p className="mt-1 text-sm leading-6 text-muted-foreground">{item.body}</p>
+										<div key={item.title} className="space-y-3">
+											<h3 className="text-base font-semibold text-foreground">{item.title}</h3>
+											<p className="text-sm leading-7 text-muted-foreground">{item.body}</p>
+											{item.steps && item.steps.length > 0 ? (
+												<div className="rounded-md border border-border bg-muted/40 p-4">
+													<div className="mb-2 text-xs font-semibold uppercase tracking-wide text-blue-600">
+														{guide.stepsLabel}
+													</div>
+													<ol className="space-y-2 text-sm leading-6 text-foreground">
+														{item.steps.map((step, stepIdx) => (
+															<li key={step} className="flex gap-3">
+																<span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-semibold text-white">
+																	{stepIdx + 1}
+																</span>
+																<span>{step}</span>
+															</li>
+														))}
+													</ol>
+												</div>
+											) : null}
+											{item.image ? (
+												<figure className="overflow-hidden rounded-md border border-border bg-background">
+													<div className="relative aspect-[16/10] w-full">
+														<Image
+															src={item.image.src}
+															alt={item.image.alt}
+															fill
+															sizes="(max-width: 768px) 100vw, 800px"
+															className="object-cover object-top"
+															unoptimized
+														/>
+													</div>
+													{item.image.caption ? (
+														<figcaption className="border-t border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+															{item.image.caption}
+														</figcaption>
+													) : null}
+												</figure>
+											) : null}
 										</div>
 									))}
 								</div>
