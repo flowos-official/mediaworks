@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { getServiceClient } from "@/lib/supabase";
 
 const CHUNK_SIZE = 1000;
 // Safety stop in case the table grows unexpectedly. 45-day SSR window with
@@ -13,12 +13,15 @@ export type CountsByDate = Record<string, Record<string, number>>;
  * to bypass the PostgREST row cap that silently truncated wider date
  * windows (May 21 2026 incident: ntv dropped because rows landed past
  * the 10k cap of a single `.range()` call).
+ *
+ * Uses the service-role client internally. Callers must gate access at
+ * their own layer (page-level `requireUser`).
  */
 export async function aggregateCalendarCounts(
-	sb: SupabaseClient,
 	from: string,
 	to: string,
 ): Promise<CountsByDate> {
+	const sb = getServiceClient();
 	const counts: CountsByDate = {};
 
 	const drainTable = async (table: "broadcasts" | "historical_broadcasts") => {

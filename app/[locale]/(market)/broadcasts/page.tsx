@@ -65,7 +65,7 @@ export default async function Page({ params, searchParams }: PageProps) {
   // Per-day per-channel counts power the calendar cell icons. The helper
   // paginates internally so wide SSR windows don't silently drop channels
   // past the PostgREST 10k row cap.
-  const initialCounts = await aggregateCalendarCounts(sb, from, to);
+  const initialCounts = await aggregateCalendarCounts(from, to);
 
   const hasAny = Object.keys(initialCounts).length > 0;
 

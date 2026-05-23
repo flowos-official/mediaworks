@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
 		);
 	}
 
-	const counts = await aggregateCalendarCounts(auth.sb, from, to);
+	const counts = await aggregateCalendarCounts(from, to);
 
 	return NextResponse.json(
 		{ counts } satisfies CalendarCountsResponse,
