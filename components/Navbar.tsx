@@ -1,7 +1,6 @@
 // components/Navbar.tsx
 import Link from 'next/link';
 import { getLocale } from 'next-intl/server';
-import LanguageSwitcher from './LanguageSwitcher';
 import UserMenu from './UserMenu';
 import GroupDropdown from './nav/GroupDropdown';
 import MobileNavSheet from './nav/MobileNavSheet';
@@ -51,16 +50,24 @@ export default async function Navbar() {
               {NAV_GROUPS.map((g) => (
                 <GroupDropdown key={g.key} group={g} role={role!} locale={locale} />
               ))}
-              <LanguageSwitcher />
-              <UserMenu email={user?.email ?? null} role={role} locale={locale} />
+              <UserMenu
+                email={user?.email ?? null}
+                role={role}
+                locale={locale}
+                triggerId="user-menu-trigger-desktop"
+              />
             </div>
           )}
 
           {/* Mobile nav */}
           {role && (
             <div className="flex md:hidden items-center gap-2">
-              <LanguageSwitcher />
-              <UserMenu email={user?.email ?? null} role={role} locale={locale} />
+              <UserMenu
+                email={user?.email ?? null}
+                role={role}
+                locale={locale}
+                triggerId="user-menu-trigger-mobile"
+              />
               <MobileNavSheet role={role} locale={locale} />
             </div>
           )}
@@ -68,8 +75,12 @@ export default async function Navbar() {
           {/* Logged-out fallback (login page itself) */}
           {!role && (
             <div className="flex items-center gap-2">
-              <LanguageSwitcher />
-              <UserMenu email={null} role={null} locale={locale} />
+              <UserMenu
+                email={null}
+                role={null}
+                locale={locale}
+                triggerId="user-menu-trigger-guest"
+              />
             </div>
           )}
         </div>

@@ -7,7 +7,7 @@ import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Menu, X } from 'lucide-react';
 import { localePath } from '@/lib/i18n/locale-path';
-import { NAV_GROUPS, findActiveGroup, findActiveMember } from '@/lib/nav/groups';
+import { NAV_GROUPS, findActiveGroup, findActiveMember, stripLocale } from '@/lib/nav/groups';
 import type { Role } from '@/lib/auth/route-permissions';
 
 interface Props {
@@ -21,6 +21,7 @@ export default function MobileNavSheet({ role, locale }: Props) {
   const pathname = usePathname();
   const activeGroup = findActiveGroup(pathname);
   const activeMemberHref = activeGroup ? (findActiveMember(activeGroup, pathname)?.href ?? null) : null;
+  const isGuideActive = stripLocale(pathname) === '/guide';
 
   useEffect(() => {
     if (!open) return;
@@ -56,6 +57,15 @@ export default function MobileNavSheet({ role, locale }: Props) {
             </button>
           </div>
           <nav className="p-4 space-y-2">
+            <Link
+              href={localePath(locale, '/guide')}
+              onClick={() => setOpen(false)}
+              className={`block py-3 px-3 text-base font-medium rounded-lg hover:bg-muted ${
+                isGuideActive ? 'text-blue-600 bg-blue-600/10' : 'text-foreground'
+              }`}
+            >
+              {t('nav.guide')}
+            </Link>
             {groups.map((g) => {
               const isActiveGroup = activeGroup?.key === g.key;
               if (g.visibility[role] === 'productsOnly') {

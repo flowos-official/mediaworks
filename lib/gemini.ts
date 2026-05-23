@@ -135,6 +135,77 @@ export interface ResearchOutput {
 	};
 }
 
+export function parseJsonFromModelText<T>(raw: string, context: string): T {
+	let cleaned = raw.trim();
+	const fenceMatch = cleaned.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/);
+	if (fenceMatch) cleaned = fenceMatch[1].trim();
+
+	try {
+		return JSON.parse(cleaned) as T;
+	} catch {
+		// Fall through to extracting a balanced JSON object/array from surrounding prose.
+	}
+
+	const objectStart = cleaned.indexOf("{");
+	const arrayStart = cleaned.indexOf("[");
+	if (objectStart === -1 && arrayStart === -1) {
+		throw new Error(
+			`Failed to parse JSON from ${context}: no JSON object or array found. Head: ${cleaned.slice(0, 200)}`,
+		);
+	}
+
+	const startsWithObject = arrayStart === -1 || (objectStart !== -1 && objectStart < arrayStart);
+	const start = startsWithObject ? objectStart : arrayStart;
+	const open = startsWithObject ? "{" : "[";
+	const close = startsWithObject ? "}" : "]";
+	let depth = 0;
+	let inString = false;
+	let escaped = false;
+	let end = -1;
+
+	for (let i = start; i < cleaned.length; i += 1) {
+		const ch = cleaned[i];
+		if (escaped) {
+			escaped = false;
+			continue;
+		}
+		if (ch === "\\") {
+			escaped = true;
+			continue;
+		}
+		if (ch === '"') {
+			inString = !inString;
+			continue;
+		}
+		if (inString) continue;
+		if (ch === open) {
+			depth += 1;
+		} else if (ch === close) {
+			depth -= 1;
+			if (depth === 0) {
+				end = i;
+				break;
+			}
+		}
+	}
+
+	if (end === -1) {
+		throw new Error(
+			`Failed to parse JSON from ${context}: unbalanced ${open}. Head: ${cleaned.slice(0, 200)}`,
+		);
+	}
+
+	const jsonText = cleaned.slice(start, end + 1).replace(/,\s*([}\]])/g, "$1");
+	try {
+		return JSON.parse(jsonText) as T;
+	} catch (err) {
+		const message = err instanceof Error ? err.message : String(err);
+		throw new Error(
+			`Failed to parse JSON from ${context}: ${message}. Head: ${jsonText.slice(0, 200)}`,
+		);
+	}
+}
+
 export async function extractProductInfo(
 	fileBase64: string,
 	mimeType: string,
@@ -167,10 +238,7 @@ Return only valid JSON, no markdown.`;
 	]);
 
 	const text = result.response.text().trim();
-	const jsonMatch = text.match(/\{[\s\S]*\}/);
-	if (!jsonMatch) throw new Error("Failed to extract product info from file");
-
-	return JSON.parse(jsonMatch[0]) as ProductInfo;
+	return parseJsonFromModelText<ProductInfo>(text, "product extraction");
 }
 
 export async function synthesizeResearch(
@@ -182,7 +250,7 @@ export async function synthesizeResearch(
 	const modelName = GEMINI_FLASH;
 	const model = genAI.getGenerativeModel({
 		model: modelName,
-		generationConfig: { maxOutputTokens: 16384 },
+		generationConfig: { maxOutputTokens: 32768, responseMimeType: "application/json" },
 	});
 
 	const prompt = `You are a home shopping marketing research analyst specializing in Japan market expansion. Based on the product information and web search results, generate a comprehensive research report.
@@ -377,23 +445,40 @@ Generate a JSON response with these exact fields:
 
 IMPORTANT:
 - Provide exactly 3 competitor products in competitor_analysis
-- Provide 16-22 distribution_channels. MUST include ALL 13 Japanese TV shopping channels listed above. fit_score MUST equal the sum of 4 scoring_breakdown values (each 0-25, total 0-100). Include evidence_sources (URLs from search results only). Include 3-9 EC/other channels.
+- Keep all prose concise so the JSON response is complete and syntactically valid.
+- Provide 8-12 distribution_channels. Include the highest-fit Japanese TV shopping channels from the channel reference plus 2-4 EC/other channels. fit_score MUST equal the sum of 4 scoring_breakdown values (each 0-25, total 0-100). Include at most 2 evidence_sources per channel, using URLs from search results only.
 - Provide 3-4 channel_pricing entries in pricing_strategy
 - Provide 3-5 marketing_strategy items sorted by efficiency_score desc
-- live_commerce should include 3-4 platform analyses, scripts for each major platform, and 5 talking points
+- live_commerce should include 3 platform analyses, concise scripts for each major platform, and 5 talking points
 - korea_market_fit should analyze Korea-specific consumer patterns and channels
 - recommended_price_range should be based on Japan home shopping market pricing (in JPY)
-- broadcast_scripts should be written in Japanese (日本語) as these are for Japan home shopping broadcasts
+- broadcast_scripts should be written in Japanese (日本語) as these are for Japan home shopping broadcasts; keep each script concise enough for JSON output
 - japan_export_fit_score should consider: Japan consumer preferences, regulatory requirements, market demand, cultural fit
 - Provide 3-5 items for influencers and content_ideas
 - Return only valid JSON, no markdown.`;
 
-	const result = await model.generateContent(prompt);
-	const text = result.response.text().trim();
-	const jsonMatch = text.match(/\{[\s\S]*\}/);
-	if (!jsonMatch) throw new Error("Failed to synthesize research");
-
-	return JSON.parse(jsonMatch[0]) as ResearchOutput;
+	let lastParseError: unknown;
+	for (let attempt = 0; attempt < 2; attempt += 1) {
+		const retrySuffix =
+			attempt === 0
+				? ""
+				: "\n\nYour previous response was invalid JSON or incomplete. Regenerate the full response as a single syntactically valid JSON object only. Override any earlier length guidance if needed: use terse strings, 6-8 distribution_channels, 2 channel_pricing entries, 3 marketing_strategy entries, and short scripts. Do not include markdown, comments, or trailing prose.";
+		const result = await model.generateContent(`${prompt}${retrySuffix}`);
+		const text = result.response.text().trim();
+		try {
+			return parseJsonFromModelText<ResearchOutput>(text, "research synthesis");
+		} catch (err) {
+			lastParseError = err;
+			console.warn(
+				`[synthesizeResearch] Gemini returned invalid JSON on attempt ${attempt + 1}/2: ${
+					err instanceof Error ? err.message : String(err)
+				}`,
+			);
+		}
+	}
+	throw lastParseError instanceof Error
+		? lastParseError
+		: new Error("Failed to synthesize research");
 }
 
 // ---------------------------------------------------------------------------

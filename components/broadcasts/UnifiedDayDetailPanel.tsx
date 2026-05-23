@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import BroadcastListItem, {
 	type Broadcast,
@@ -64,6 +64,14 @@ interface Props {
 	date: string | null;
 }
 
+type DayLoadState = {
+	date: string | null;
+	timedRows: Broadcast[];
+	oaRows: OARow[];
+	timedError: boolean;
+	oaError: boolean;
+};
+
 function formatDateLabel(iso: string): string {
 	const [y, m, d] = iso.split("-");
 	return `${y}年${parseInt(m, 10)}月${parseInt(d, 10)}日`;
@@ -73,50 +81,71 @@ export default function UnifiedDayDetailPanel({ date }: Props) {
 	const t = useTranslations("broadcasts");
 	const [channelFilter, setChannelFilter] = useState<string>("all");
 	const [categoryFilter, setCategoryFilter] = useState<string>("all");
-	const [timedRows, setTimedRows] = useState<Broadcast[]>([]);
-	const [oaRows, setOaRows] = useState<OARow[]>([]);
-	const [loading, setLoading] = useState(false);
-	const [timedError, setTimedError] = useState(false);
-	const [oaError, setOaError] = useState(false);
+	const [dayState, setDayState] = useState<DayLoadState>({
+		date: null,
+		timedRows: [],
+		oaRows: [],
+		timedError: false,
+		oaError: false,
+	});
 	const [modalBroadcast, setModalBroadcast] = useState<Broadcast | null>(null);
-
-	const fetchDay = useCallback(async (iso: string, signal: AbortSignal) => {
-		setLoading(true);
-		setTimedError(false);
-		setOaError(false);
-		const [bRes, hRes] = await Promise.allSettled([
-			fetch(`/api/broadcasts?from=${iso}&to=${iso}`, { signal }),
-			fetch(`/api/historical-broadcasts?date=${iso}&limit=500`, { signal }),
-		]);
-
-		if (bRes.status === "fulfilled" && bRes.value.ok) {
-			const json = (await bRes.value.json()) as { broadcasts: Broadcast[] };
-			setTimedRows(json.broadcasts ?? []);
-		} else {
-			setTimedRows([]);
-			const isAbort =
-				bRes.status === "rejected" && bRes.reason instanceof DOMException;
-			if (!isAbort) setTimedError(true);
-		}
-
-		if (hRes.status === "fulfilled" && hRes.value.ok) {
-			const json = (await hRes.value.json()) as { rows: OARow[] };
-			setOaRows(json.rows ?? []);
-		} else {
-			setOaRows([]);
-			const isAbort =
-				hRes.status === "rejected" && hRes.reason instanceof DOMException;
-			if (!isAbort) setOaError(true);
-		}
-		setLoading(false);
-	}, []);
 
 	useEffect(() => {
 		if (!date) return;
 		const ctrl = new AbortController();
-		void fetchDay(date, ctrl.signal);
+		const loadDay = async () => {
+			const [bRes, hRes] = await Promise.allSettled([
+				fetch(`/api/broadcasts?from=${date}&to=${date}`, {
+					signal: ctrl.signal,
+				}),
+				fetch(`/api/historical-broadcasts?date=${date}&limit=500`, {
+					signal: ctrl.signal,
+				}),
+			]);
+
+			if (ctrl.signal.aborted) return;
+
+			let timedRows: Broadcast[] = [];
+			let oaRows: OARow[] = [];
+			let timedError = false;
+			let oaError = false;
+
+			if (bRes.status === "fulfilled" && bRes.value.ok) {
+				try {
+					const json = (await bRes.value.json()) as { broadcasts: Broadcast[] };
+					timedRows = json.broadcasts ?? [];
+				} catch {
+					timedError = true;
+				}
+			} else {
+				timedError = true;
+			}
+
+			if (hRes.status === "fulfilled" && hRes.value.ok) {
+				try {
+					const json = (await hRes.value.json()) as { rows: OARow[] };
+					oaRows = json.rows ?? [];
+				} catch {
+					oaError = true;
+				}
+			} else {
+				oaError = true;
+			}
+
+			if (!ctrl.signal.aborted) {
+				setDayState({ date, timedRows, oaRows, timedError, oaError });
+			}
+		};
+		void loadDay();
 		return () => ctrl.abort();
-	}, [date, fetchDay]);
+	}, [date]);
+
+	const isCurrentDay = date !== null && dayState.date === date;
+	const timedRows = isCurrentDay ? dayState.timedRows : [];
+	const oaRows = isCurrentDay ? dayState.oaRows : [];
+	const timedError = isCurrentDay ? dayState.timedError : false;
+	const oaError = isCurrentDay ? dayState.oaError : false;
+	const loading = date !== null && !isCurrentDay;
 
 	if (!date) {
 		return (

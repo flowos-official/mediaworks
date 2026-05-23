@@ -39,6 +39,16 @@ function resolveMimeType(file: File): string | null {
   return null;
 }
 
+export function buildAnalyzeTriggerHeaders(
+  cronSecret: string | undefined,
+): Record<string, string> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (cronSecret) headers.Authorization = `Bearer ${cronSecret}`;
+  return headers;
+}
+
 export async function POST(request: NextRequest) {
 	// auth: requireUser
 	const auth = await requireUser(["member", "admin"]);
@@ -159,9 +169,14 @@ export async function POST(request: NextRequest) {
     // Trigger async analysis with primary file
     const base64 = Buffer.from(primary.fileBytes).toString('base64');
     const baseUrl = request.nextUrl.origin;
+    const cronSecret = process.env.CRON_SECRET;
+    if (!cronSecret) {
+      console.warn('[upload] CRON_SECRET not set; async analyze trigger may be rejected');
+    }
+
     fetch(`${baseUrl}/api/analyze`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: buildAnalyzeTriggerHeaders(cronSecret),
       body: JSON.stringify({
         productId: product.id,
         fileBase64: base64,

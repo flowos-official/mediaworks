@@ -13,6 +13,7 @@ import StrategyHistory from './md-strategy/StrategyHistory';
 import ProductSelectionSection from './md-strategy/ProductSelectionSection';
 import DiscoveredProductsHero from './DiscoveredProductsHero';
 import { localePath } from '@/lib/i18n/locale-path';
+import { summarizeMdStrategyEvidence } from '@/lib/recommendation/strategy-evidence';
 import type {
 	SkillName,
 	ParsedGoal,
@@ -146,7 +147,7 @@ function DataPreview() {
 					<div>
 						<span className="text-[10px] font-semibold text-muted-foreground uppercase">カテゴリ別売上 (万円)</span>
 						<div className="h-36 mt-1">
-							<ResponsiveContainer width="100%" height="100%">
+							<ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={{ width: 1, height: 1 }}>
 								<BarChart data={catData} layout="vertical" margin={{ top: 0, right: 5, left: 0, bottom: 0 }}>
 									<XAxis type="number" tick={{ fontSize: 9, fill: '#9ca3af' }} tickFormatter={(v) => `${v}万`} />
 									<YAxis type="category" dataKey="name" width={70} tick={{ fontSize: 9, fill: '#6b7280' }} />
@@ -179,6 +180,26 @@ function SkillResultsView({ results, generatedAt, backHref, strategyId, onRedisc
 }) {
 	const hasAny = Object.keys(results).length > 0;
 	if (!hasAny) return null;
+	const evidence = results.product_selection
+		? summarizeMdStrategyEvidence({
+				id: strategyId ?? 'current',
+				user_goal: null,
+				product_selection: {
+					...results.product_selection,
+					discovered_new_products:
+						discoveredProducts ?? results.product_selection.discovered_new_products,
+				},
+			})
+		: null;
+	const sourceLabels: Record<string, string> = {
+		discovery_pool: '発掘プール',
+		fresh_search: '新検索',
+		research: 'リサーチ',
+		seed: 'シード',
+		rakuten: '楽天',
+		web: 'Web',
+		tv_channel: 'TV局',
+	};
 
 	return (
 		<>
@@ -192,6 +213,39 @@ function SkillResultsView({ results, generatedAt, backHref, strategyId, onRedisc
 			</Link>
 
 			<div id="md-strategy-content" className="space-y-8">
+				{evidence && (
+					<div className="rounded-xl border border-blue-600/25 bg-blue-600/5 px-4 py-3">
+						<div className="flex flex-wrap items-center gap-2">
+							<span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-600/15 text-blue-700 dark:text-blue-300 font-bold">
+								内部実績 {evidence.internalProductCount}件
+							</span>
+							<span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-600/15 text-amber-800 dark:text-amber-200 font-bold">
+								外部候補 {evidence.externalCandidateCount}件
+							</span>
+							{evidence.poolSourceCounts.map(({ source, count }) => (
+								<span
+									key={source}
+									className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border font-semibold"
+								>
+									{sourceLabels[source] ?? source} {count}件
+								</span>
+							))}
+							{evidence.tvSignalCount > 0 && (
+								<span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-600/15 text-purple-700 dark:text-purple-300 border border-purple-600/30 font-semibold">
+									TV/OAシグナル {evidence.tvSignalCount}件
+								</span>
+							)}
+							{evidence.discoveredProductIds.length > 0 && (
+								<span className="text-[10px] px-2 py-0.5 rounded-full bg-green-600/15 text-green-700 dark:text-green-300 border border-green-600/30 font-semibold">
+									Discovery連携 {evidence.discoveredProductIds.length}件
+								</span>
+							)}
+						</div>
+						<p className="text-xs text-muted-foreground mt-2">
+							既存の販売実績から投入チャネルと主力商品を選び、競合ホームショッピング・発掘プール・リサーチ・新規検索由来の候補を組み合わせて販売戦略を構成しています。
+						</p>
+					</div>
+				)}
 				{(discoveredProducts ?? results.product_selection?.discovered_new_products)?.length ? (
 					<DiscoveredProductsHero
 						products={discoveredProducts ?? results.product_selection!.discovered_new_products!}

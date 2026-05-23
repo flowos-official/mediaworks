@@ -62,6 +62,28 @@ function mkRow(overrides: Partial<Row>): Row {
 	assert.deepEqual(out.map((r) => r.id).sort(), ["cat-hit", "kw-hit"], "R4: category fuzzy match");
 }
 
+// --- R4: normalized competitor category maps back to internal sales categories ---
+{
+	const rows = [
+		mkRow({ id: "sales-cosme", category: "化粧品", seed_keyword: "基礎化粧品" }),
+		mkRow({ id: "sales-beauty", category: "美容・運動", seed_keyword: "美容器具" }),
+		mkRow({ id: "miss", category: "食品", seed_keyword: "おかず" }),
+		mkRow({ id: "miss2", category: "食品", seed_keyword: "おかず2" }),
+		mkRow({ id: "miss3", category: "食品", seed_keyword: "おかず3" }),
+		mkRow({ id: "miss4", category: "食品", seed_keyword: "おかず4" }),
+		mkRow({ id: "miss5", category: "食品", seed_keyword: "おかず5" }),
+	];
+	const out = __test.applyFilters(rows, {
+		context: "home_shopping",
+		uiCategory: "コスメ",
+	});
+	assert.deepEqual(
+		out.map((r) => r.id).sort(),
+		["sales-beauty", "sales-cosme"],
+		"R4: competitor category aliases match internal sales categories",
+	);
+}
+
 // --- R4 fail-open: 결과가 5개 미만이면 카테고리 필터 무시 ---
 {
 	const rows = [

@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth/require-user";
 import { getServiceClient } from "@/lib/supabase";
 import { screenplayWorkflow } from "@/lib/workflows/screenplay.workflow";
 import type { ProductBrief } from "@/lib/screenplay/types";
+import { loadProductBriefForScreenplay } from "@/lib/screenplay/product-brief";
 
 export const maxDuration = 60;
 
@@ -21,7 +22,7 @@ export async function GET() {
 }
 
 interface ValidationFailure { ok: false; status: number; error: string }
-interface ValidationSuccess { ok: true; brief: ProductBrief }
+interface ValidationSuccess { ok: true; brief: ProductBrief; productId: string | null }
 
 function resolveBrief(body: unknown): ValidationFailure | ValidationSuccess {
 	if (!body || typeof body !== "object") {
@@ -66,23 +67,29 @@ function resolveBrief(body: unknown): ValidationFailure | ValidationSuccess {
 	if (o.customization && typeof o.customization === "object") {
 		brief.customization = o.customization as ProductBrief["customization"];
 	}
-	return { ok: true, brief };
+	return { ok: true, brief, productId: null };
 }
 
 export async function POST(request: NextRequest) {
 	const auth = await requireUser(["member", "admin"]);
 	if ("error" in auth) return auth.error;
 	const body = await request.json().catch(() => null);
-	const v = resolveBrief(body);
+	const supabase = getServiceClient();
+	const productId =
+		body && typeof body === "object" && typeof (body as Record<string, unknown>).productId === "string"
+			? ((body as Record<string, unknown>).productId as string).trim()
+			: "";
+	const v = productId
+		? await loadProductBriefForScreenplay(supabase, productId)
+		: resolveBrief(body);
 	if (!v.ok) return Response.json({ error: v.error }, { status: v.status });
 
 	const { brief: productBrief } = v;
 
-	const supabase = getServiceClient();
 	const { data: inserted, error: insErr } = await supabase
 		.from("screenplays")
 		.insert({
-			product_id: null,
+			product_id: v.productId,
 			title: productBrief.name,
 			product_info_snapshot: productBrief,
 			status: "generating",

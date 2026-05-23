@@ -3,6 +3,7 @@
     "loading": "読み込み中..."
   },
   "nav": {
+    "guide": "利用ガイド",
     "groups": {
       "firm": "自社",
       "market": "市場",
@@ -37,6 +38,11 @@
       "discovery": "新規発掘",
       "strategy": "MD戦略"
     },
+    "strategyTabs": {
+      "expansion": "拡大戦略",
+      "live": "ライブコマース戦略",
+      "status": "連携状態"
+    },
     "produce": {
       "screenplays": "番組台本",
       "research": "新規リサーチ"
@@ -44,7 +50,8 @@
     "admin": {
       "users": "ユーザー管理",
       "historicalCrawl": "OA収集状況",
-      "registry": "スキル登録"
+      "registry": "スキル登録",
+      "preferences": "環境設定"
     }
   },
   "home": {
@@ -585,6 +592,15 @@
       "totalSkills": "登録スキル数",
       "activeVersions": "アクティブ版数",
       "backToList": "← 一覧に戻る"
+    },
+    "preferences": {
+      "languageTitle": "言語",
+      "languageDescription": "画面に表示する言語を選択します。標準画面は日本語です。",
+      "themeTitle": "テーマ",
+      "themeDescription": "業務環境に合わせてライト、ダーク、システムテーマを選択します。",
+      "guideTitle": "利用ガイド",
+      "guideDescription": "利用者向けの業務ガイドを別画面で確認します。",
+      "guideButton": "ガイドを開く"
     },
     "historicalCrawl": {
       "title": "他局OA収集モニター",

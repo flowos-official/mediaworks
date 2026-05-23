@@ -24,7 +24,13 @@ export default function ResetPasswordPage() {
 
   // Forced flow lands here already logged-in (middleware redirected because
   // must_change_password=true), so start in confirm mode.
-  const [mode, setMode] = useState<Mode>(forced ? 'confirm' : 'request');
+  const [mode, setMode] = useState<Mode>(() => {
+    if (forced) return 'confirm';
+    if (typeof window !== 'undefined' && hashSignalsConfirm(window.location.hash)) {
+      return 'confirm';
+    }
+    return 'request';
+  });
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [done, setDone] = useState<string | null>(null);
@@ -39,10 +45,6 @@ export default function ResetPasswordPage() {
   );
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && hashSignalsConfirm(window.location.hash)) {
-      setMode('confirm');
-    }
-
     const { data: { subscription } } = sb.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
         setMode('confirm');

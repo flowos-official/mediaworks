@@ -147,7 +147,7 @@ export function ProductCard({
 			stopPolling();
 			if (data.status === "completed") setShowDetails(true);
 		}
-	}, [product.id, stopPolling]);
+	}, [product.id, setShowDetails, stopPolling]);
 
 	const startPolling = useCallback(() => {
 		stopPolling();

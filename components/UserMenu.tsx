@@ -14,7 +14,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ThemeSubmenu } from '@/components/theme/ThemeSubmenu';
 import type { Role } from '@/lib/auth/route-permissions';
 import { localePath } from '@/lib/i18n/locale-path';
 
@@ -22,10 +21,12 @@ export default function UserMenu({
   email,
   role,
   locale,
+  triggerId,
 }: {
   email: string | null;
   role: Role | null;
   locale: string;
+  triggerId: string;
 }) {
   const router = useRouter();
   const t = useTranslations('auth');
@@ -53,7 +54,10 @@ export default function UserMenu({
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger render={<Button variant="ghost" size="sm" className="gap-2" />}>
+      <DropdownMenuTrigger
+        id={triggerId}
+        render={<Button variant="ghost" size="sm" className="gap-2" />}
+      >
         <UserCircle2 className="h-4 w-4" />
         <span className="hidden sm:inline text-sm">{email}</span>
       </DropdownMenuTrigger>
@@ -64,7 +68,6 @@ export default function UserMenu({
             {t(`roleBadge.${role}`)}
           </Badge>
         </DropdownMenuLabel>
-        <ThemeSubmenu />
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={logout}>{t('logout')}</DropdownMenuItem>
       </DropdownMenuContent>

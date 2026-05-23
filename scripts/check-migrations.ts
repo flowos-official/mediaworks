@@ -1,6 +1,7 @@
 /**
- * Verify all Phase 1-6 migrations are applied to the Supabase project.
- * Usage: npm run check:migrations
+ * Verify critical recommendation-system migrations are applied to the
+ * configured Supabase project.
+ * Usage: npm run test:migrations
  */
 
 import { getServiceClient } from "@/lib/supabase";
@@ -11,6 +12,9 @@ const REQUIRED_TABLES = [
 	"product_feedback",
 	"learning_state",
 	"learning_insights",
+	"channel_categories",
+	"discovered_category_normalization",
+	"competitor_fit_analyses",
 ];
 
 const REQUIRED_COLUMNS: Record<string, string[]> = {
@@ -81,6 +85,30 @@ const REQUIRED_COLUMNS: Record<string, string[]> = {
 		"next_week_suggestions",
 		"context",
 	],
+	channel_categories: [
+		"channel",
+		"category",
+		"is_allowed",
+		"created_at",
+		"updated_at",
+	],
+	discovered_category_normalization: [
+		"raw_category",
+		"whitelist_categories",
+		"source",
+		"classified_at",
+		"notes",
+	],
+	competitor_fit_analyses: [
+		"id",
+		"slot_key",
+		"channel",
+		"product_name",
+		"category",
+		"fit_score",
+		"summary",
+		"created_at",
+	],
 };
 
 async function main() {
@@ -92,7 +120,6 @@ async function main() {
 
 	// Check each required table + columns
 	for (const table of REQUIRED_TABLES) {
-		const { data, error } = await sb.rpc("pg_table_exists", {}).select().limit(0);
 		// Fallback: query information_schema via raw SQL through a simple select trick
 		// Just try to select 1 row; if table doesn't exist, error.
 		const probe = await sb.from(table).select("*").limit(1);
@@ -117,7 +144,7 @@ async function main() {
 		}
 
 		// Sanity: count rows
-		const { count } = await sb.from(table).select("id", { count: "exact", head: true });
+		const { count } = await sb.from(table).select("*", { count: "exact", head: true });
 		console.log(`   → ${count ?? 0} rows`);
 	}
 
@@ -153,6 +180,7 @@ async function main() {
 	} else {
 		console.log(`❌ ${problems.length} issue(s) found:`);
 		for (const p of problems) console.log(`   - ${p}`);
+		process.exitCode = 1;
 	}
 }
 

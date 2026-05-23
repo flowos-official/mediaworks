@@ -80,6 +80,15 @@ async function runAll() {
 		return r.status === 400 ? true : `got ${r.status}`;
 	});
 
+	await check("POST with malformed productId → 400", async () => {
+		const r = await json("/api/screenplays", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ productId: "not-a-uuid" }),
+		});
+		return r.status === 400 ? true : `got ${r.status}`;
+	});
+
 	await check("POST with non-existent productId → 404", async () => {
 		const r = await json("/api/screenplays", {
 			method: "POST",

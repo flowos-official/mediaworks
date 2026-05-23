@@ -26,6 +26,11 @@ interface Props {
   onClose: () => void;
 }
 
+type ProductLoadState = {
+  broadcastId: string | null;
+  products: BroadcastProduct[];
+};
+
 function formatJpy(n: number): string {
   return `¥${n.toLocaleString("ja-JP")}`;
 }
@@ -37,11 +42,16 @@ export default function BroadcastVideoModal({
   onClose,
 }: Props) {
   const t = useTranslations("broadcasts");
-  const [products, setProducts] = useState<BroadcastProduct[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [productState, setProductState] = useState<ProductLoadState>({
+    broadcastId: null,
+    products: [],
+  });
 
   const isOpen = !!(broadcastId && videoKey);
   const videoUrl = `${process.env.NEXT_PUBLIC_VIDEO_ARCHIVE_BASE_URL ?? ""}/${videoKey ?? ""}`;
+  const hasCurrentProducts = isOpen && productState.broadcastId === broadcastId;
+  const products = hasCurrentProducts ? productState.products : [];
+  const loading = isOpen && !hasCurrentProducts;
 
   // ESC to close
   useEffect(() => {
@@ -56,17 +66,18 @@ export default function BroadcastVideoModal({
   // Fetch products for this broadcast
   useEffect(() => {
     if (!isOpen || !broadcastId) return;
-    setProducts([]);
-    setLoading(true);
-    fetch(`/api/broadcasts/${broadcastId}/products`)
+    const ctrl = new AbortController();
+    fetch(`/api/broadcasts/${broadcastId}/products`, { signal: ctrl.signal })
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
       .then((json: { products: BroadcastProduct[] }) => {
-        setProducts(json.products ?? []);
+        setProductState({ broadcastId, products: json.products ?? [] });
       })
       .catch(() => {
-        setProducts([]);
-      })
-      .finally(() => setLoading(false));
+        if (!ctrl.signal.aborted) {
+          setProductState({ broadcastId, products: [] });
+        }
+      });
+    return () => ctrl.abort();
   }, [isOpen, broadcastId]);
 
   // Early return after all hooks

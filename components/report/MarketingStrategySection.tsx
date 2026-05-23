@@ -45,8 +45,8 @@ interface MarketingStrategySectionProps {
 
 export default function MarketingStrategySection({ strategies }: MarketingStrategySectionProps) {
 	const t = useTranslations("report");
-	if (!strategies || strategies.length === 0) return null;
 	const [expanded, setExpanded] = useState<number | null>(null);
+	if (!strategies || strategies.length === 0) return null;
 
 	const sorted = [...strategies].sort((a, b) => b.efficiency_score - a.efficiency_score);
 

@@ -35,8 +35,8 @@ interface PricingStrategySectionProps {
 
 export default function PricingStrategySection({ pricingStrategy }: PricingStrategySectionProps) {
 	const t = useTranslations("report");
-	if (!pricingStrategy) return null;
 	const [tab, setTab] = useState<"pricing" | "bep">("pricing");
+	if (!pricingStrategy) return null;
 	const { channel_pricing, bep_analysis } = pricingStrategy;
 
 	return (

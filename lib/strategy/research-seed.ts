@@ -1,6 +1,6 @@
 // lib/strategy/research-seed.ts
 import { getServiceClient } from "@/lib/supabase";
-import { mapUiCategoryToSalesCategories } from "@/lib/strategy/category-mapping";
+import { buildCategoryMatchTerms } from "@/lib/strategy/category-mapping";
 
 export interface ResearchPoolItem {
 	name: string;
@@ -119,18 +119,7 @@ export async function queryResearchPool(
 	// Category filter with fail-open.
 	let afterCategory = scored;
 	if (input.uiCategory && scored.length >= FAIL_OPEN_THRESHOLD) {
-		const targets = mapUiCategoryToSalesCategories(input.uiCategory);
-		const uiTokens = input.uiCategory
-			.split("・")
-			.map((s) => s.trim())
-			.filter(Boolean);
-		const matchTerms = Array.from(
-			new Set(
-				[...targets, input.uiCategory, ...uiTokens].filter(
-					(s) => s.length > 0,
-				),
-			),
-		);
+		const matchTerms = buildCategoryMatchTerms([input.uiCategory]);
 		const filtered = scored.filter((x) =>
 			matchTerms.some((term) =>
 				(x.row.category ?? "").toLowerCase().includes(term.toLowerCase()),

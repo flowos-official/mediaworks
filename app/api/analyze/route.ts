@@ -1,4 +1,4 @@
-import { requireUser } from "@/lib/auth/require-user";
+import { hasInternalSecret, requireUser } from "@/lib/auth/require-user";
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
 import { extractProductInfo } from "@/lib/gemini";
@@ -6,9 +6,11 @@ import { extractProductInfo } from "@/lib/gemini";
 export const maxDuration = 120; // Extract only — fast, but buffer for large files
 
 export async function POST(request: NextRequest) {
-	// auth: requireUser
-	const auth = await requireUser(["member", "admin"]);
-	if ("error" in auth) return auth.error;
+	const isInternal = hasInternalSecret(request);
+	if (!isInternal) {
+		const auth = await requireUser(["member", "admin"]);
+		if ("error" in auth) return auth.error;
+	}
 
 	const { productId, fileBase64, mimeType, fileName } = await request.json();
 

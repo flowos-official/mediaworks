@@ -14,7 +14,7 @@
  */
 
 import { getServiceClient } from "@/lib/supabase";
-import { mapUiCategoryToSalesCategories } from "@/lib/strategy/category-mapping";
+import { buildCategoryMatchTerms } from "@/lib/strategy/category-mapping";
 
 const FAIL_OPEN_THRESHOLD = 5;
 const DEFAULT_LOOKBACK_DAYS = 60;
@@ -82,22 +82,10 @@ function applyFilters(rows: PoolRow[], opts: FilterOptions): PoolRow[] {
 	// to apply a meaningful filter; otherwise honor the strict result even if small.
 	let afterCategory = baseFiltered;
 	if (opts.uiCategory && baseFiltered.length >= FAIL_OPEN_THRESHOLD) {
-		const targets = mapUiCategoryToSalesCategories(opts.uiCategory);
-		const supplement = opts.supplementCategories ?? [];
-		// Split UI label on "・" so each token can match independently
-		// (e.g. "美容・スキンケア" → ["美容", "スキンケア"]). This catches
-		// seed_keyword values like "美容ケア用品" that contain just one token.
-		const uiTokens = opts.uiCategory
-			.split("・")
-			.map((s) => s.trim())
-			.filter((s) => s.length > 0);
-		const matchTerms = [
-			...new Set(
-				[...targets, ...supplement, opts.uiCategory, ...uiTokens].filter(
-					(s) => s.length > 0,
-				),
-			),
-		];
+		const matchTerms = buildCategoryMatchTerms([
+			opts.uiCategory,
+			...(opts.supplementCategories ?? []),
+		]);
 		if (matchTerms.length > 0) {
 			afterCategory = baseFiltered.filter((r) => {
 				const hay = `${r.category ?? ""} ${r.seed_keyword}`.toLowerCase();

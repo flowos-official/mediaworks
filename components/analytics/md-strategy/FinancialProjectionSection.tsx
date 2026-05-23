@@ -67,7 +67,7 @@ export default function FinancialProjectionSection({ data }: Props) {
 					</CardHeader>
 					<CardContent>
 						<div className="h-56">
-							<ResponsiveContainer width="100%" height="100%">
+							<ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={{ width: 1, height: 1 }}>
 								<AreaChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
 									<CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
 									<XAxis dataKey="month" tick={{ fontSize: 10, fill: '#9ca3af' }} />
@@ -90,7 +90,7 @@ export default function FinancialProjectionSection({ data }: Props) {
 					</CardHeader>
 					<CardContent>
 						<div className="h-56">
-							<ResponsiveContainer width="100%" height="100%">
+							<ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={{ width: 1, height: 1 }}>
 								<BarChart data={stackedData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
 									<CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
 									<XAxis dataKey="month" tick={{ fontSize: 10, fill: '#9ca3af' }} />

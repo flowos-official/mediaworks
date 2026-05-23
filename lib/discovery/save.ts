@@ -21,6 +21,59 @@ const CATEGORY_ENRICH_CONCURRENCY = Math.max(
 	1,
 	Number(process.env.DISCOVERY_CATEGORY_ENRICH_CONCURRENCY ?? 5),
 );
+const CATEGORY_ENRICH_MIN_BUDGET_MS = Math.max(
+	1_000,
+	Number(process.env.DISCOVERY_CATEGORY_ENRICH_MIN_BUDGET_MS ?? 10_000),
+);
+const STALE_RUNNING_SESSION_MS = Math.max(
+	60_000,
+	Number(process.env.DISCOVERY_STALE_RUNNING_SESSION_MS ?? 10 * 60 * 1000),
+);
+
+export interface CategoryEnrichmentBudget {
+	nowMs?: number;
+	deadlineMs?: number;
+	minBudgetMs?: number;
+}
+
+export interface SaveDiscoveredProductsOptions {
+	/**
+	 * Optional wall-clock deadline for best-effort category enrichment. When the
+	 * deadline is near, enrichment is skipped so core rows can be saved and the
+	 * session can be finalized before the hosting function times out.
+	 */
+	categoryEnrichmentDeadlineMs?: number;
+	minCategoryEnrichmentBudgetMs?: number;
+}
+
+export interface ReconcileStaleDiscoveryRunsInput {
+	context?: Context;
+	staleAfterMs?: number;
+	now?: Date;
+}
+
+export interface ReconcileStaleDiscoveryRunsResult {
+	checked: number;
+	reconciled: number;
+	completed: number;
+	partial: number;
+	failed: number;
+}
+
+function hasCategoryEnrichmentBudget(input: CategoryEnrichmentBudget): boolean {
+	if (!input.deadlineMs) return true;
+	const nowMs = input.nowMs ?? Date.now();
+	const minBudgetMs = input.minBudgetMs ?? CATEGORY_ENRICH_MIN_BUDGET_MS;
+	return nowMs + minBudgetMs <= input.deadlineMs;
+}
+
+function reconciledStatusForProductCount(
+	productCount: number,
+	targetCount: number,
+): Exclude<SessionStatus, "running"> {
+	if (productCount <= 0) return "failed";
+	return productCount < targetCount ? "partial" : "completed";
+}
 
 /**
  * Create a new discovery_runs row with status='running'.
@@ -141,7 +194,10 @@ export function buildDiscoveredProductRows(
 	}));
 }
 
-async function enrichMissingCategories(batch: SaveBatch[]): Promise<SaveBatch[]> {
+async function enrichMissingCategories(
+	batch: SaveBatch[],
+	options: SaveDiscoveredProductsOptions = {},
+): Promise<SaveBatch[]> {
 	const next = batch.map((entry) => ({
 		...entry,
 		candidate: { ...entry.candidate },
@@ -163,6 +219,16 @@ async function enrichMissingCategories(batch: SaveBatch[]): Promise<SaveBatch[]>
 	let cursor = 0;
 	const worker = async () => {
 		while (cursor < targetIndexes.length) {
+			if (
+				!hasCategoryEnrichmentBudget({
+					deadlineMs: options.categoryEnrichmentDeadlineMs,
+					minBudgetMs:
+						options.minCategoryEnrichmentBudgetMs ??
+						CATEGORY_ENRICH_MIN_BUDGET_MS,
+				})
+			) {
+				break;
+			}
 			const target = targetIndexes[cursor];
 			cursor += 1;
 			const entry = next[target];
@@ -192,10 +258,11 @@ async function enrichMissingCategories(batch: SaveBatch[]): Promise<SaveBatch[]>
 export async function saveDiscoveredProducts(
 	sessionId: string,
 	batch: SaveBatch[],
+	options: SaveDiscoveredProductsOptions = {},
 ): Promise<number> {
 	if (batch.length === 0) return 0;
 	const sb = getServiceClient();
-	const enrichedBatch = await enrichMissingCategories(batch);
+	const enrichedBatch = await enrichMissingCategories(batch, options);
 	const rows = buildDiscoveredProductRows(sessionId, enrichedBatch);
 
 	const { data, error } = await sb
@@ -213,6 +280,8 @@ export async function saveDiscoveredProducts(
 
 export const __test = {
 	buildDiscoveredProductRows,
+	hasCategoryEnrichmentBudget,
+	reconciledStatusForProductCount,
 };
 
 /**
@@ -241,4 +310,85 @@ export async function finalizeSession(input: {
 			`[save] finalizeSession failed (${input.sessionId}): ${error.message}`,
 		);
 	}
+}
+
+/**
+ * Recover sessions that were left as running after the hosting function timed
+ * out. Product rows are the source of truth: if rows exist, the session can be
+ * safely surfaced as completed/partial; otherwise it is marked failed so the UI
+ * does not wait on a run that can no longer finish.
+ */
+export async function reconcileStaleDiscoveryRuns(
+	input: ReconcileStaleDiscoveryRunsInput = {},
+): Promise<ReconcileStaleDiscoveryRunsResult> {
+	const sb = getServiceClient();
+	const now = input.now ?? new Date();
+	const staleAfterMs = input.staleAfterMs ?? STALE_RUNNING_SESSION_MS;
+	const cutoff = new Date(now.getTime() - staleAfterMs).toISOString();
+
+	let query = sb
+		.from("discovery_runs")
+		.select("id, target_count, context")
+		.eq("status", "running")
+		.lt("run_at", cutoff);
+
+	if (input.context) {
+		query = query.eq("context", input.context);
+	}
+
+	const { data: sessions, error } = await query;
+	if (error) {
+		throw new Error(
+			`[save] reconcileStaleDiscoveryRuns query failed: ${error.message}`,
+		);
+	}
+
+	const result: ReconcileStaleDiscoveryRunsResult = {
+		checked: sessions?.length ?? 0,
+		reconciled: 0,
+		completed: 0,
+		partial: 0,
+		failed: 0,
+	};
+
+	for (const session of sessions ?? []) {
+		const { count, error: countErr } = await sb
+			.from("discovered_products")
+			.select("id", { count: "exact", head: true })
+			.eq("session_id", session.id);
+		if (countErr) {
+			throw new Error(
+				`[save] reconcileStaleDiscoveryRuns count failed (${session.id}): ${countErr.message}`,
+			);
+		}
+
+		const productCount = count ?? 0;
+		const status = reconciledStatusForProductCount(
+			productCount,
+			session.target_count,
+		);
+		const { error: updateErr } = await sb
+			.from("discovery_runs")
+			.update({
+				status,
+				produced_count: productCount,
+				completed_at: now.toISOString(),
+				error:
+					status === "failed"
+						? "Reconciled stale running session: function stopped before saving products."
+						: null,
+			})
+			.eq("id", session.id)
+			.eq("status", "running");
+		if (updateErr) {
+			throw new Error(
+				`[save] reconcileStaleDiscoveryRuns update failed (${session.id}): ${updateErr.message}`,
+			);
+		}
+
+		result.reconciled += 1;
+		result[status] += 1;
+	}
+
+	return result;
 }

@@ -1,4 +1,10 @@
-import { __test, aggregateBroadcastRows, type BroadcastRow } from "../lib/discovery/tv-evidence";
+import {
+	__test,
+	aggregateBroadcastRows,
+	applyEvidenceBonus,
+	type BroadcastRow,
+} from "../lib/discovery/tv-evidence";
+import type { TvEvidence } from "../lib/discovery/types";
 
 const { splitCategoryToKeywords, tokenizeName, percentile } = __test;
 
@@ -60,7 +66,6 @@ assert(percentile([10], 0.5) === 10, "single-element percentile = element");
 assert(percentile([], 0.5) === 0, "empty array percentile = 0");
 
 // aggregateBroadcastRows
-const todayIso = new Date().toISOString().slice(0, 10);
 const daysAgoIso = (n: number) =>
 	new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10);
 
@@ -109,7 +114,6 @@ console.log("\nAll unit tests passed.");
 // ────────────────────────────────────────────────────────────────────────────
 // applyEvidenceBonus tests
 // ────────────────────────────────────────────────────────────────────────────
-import { applyEvidenceBonus } from "../lib/discovery/tv-evidence";
 
 const baseCandidate = (score: number) => ({
 	name: "test",
@@ -125,13 +129,30 @@ const baseCandidate = (score: number) => ({
 	scoreBreakdown: { review_signal: 0, tv_category_match: 0, trend_signal: 0, price_fit: 0, purchase_signal: 0, total: 0 },
 });
 
+const tvEvidence = (evidenceStrength: number): TvEvidence => ({
+	matched_at: "2026-05-23T00:00:00.000Z",
+	match_basis: {
+		category_keywords: [],
+		price_band: null,
+		name_tokens: [],
+	},
+	airing_count: 1,
+	recent_30d_count: 1,
+	recent_90d_count: 1,
+	channel_breakdown: { qvc: 1 },
+	price_jpy: null,
+	top_timeslots: [],
+	samples: [],
+	evidence_strength: evidenceStrength,
+});
+
 const c1 = baseCandidate(50);
 c1.productUrl = "https://example.com/x";
 const c2 = baseCandidate(60);
 c2.productUrl = "https://example.com/y";
 
 const evMap = new Map([
-	[c1.productUrl, { evidence_strength: 0.8 } as any],
+	[c1.productUrl, tvEvidence(0.8)],
 	[c2.productUrl, null],
 ]);
 
@@ -145,7 +166,7 @@ assert(c1.tvFitReason.includes("実測"), "c1 reason annotated");
 // Cap at 100
 const c3 = baseCandidate(95);
 c3.productUrl = "https://example.com/z";
-const evMap2 = new Map([[c3.productUrl, { evidence_strength: 1.0 } as any]]);
+const evMap2 = new Map([[c3.productUrl, tvEvidence(1.0)]]);
 applyEvidenceBonus([c3], evMap2);
 assert(c3.tvFitScore === 100, "score capped at 100");
 

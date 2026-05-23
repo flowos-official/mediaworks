@@ -1,31 +1,31 @@
 "use client";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
-import { TrendingUp, Radio } from "lucide-react";
+import { Activity, Radio, TrendingUp } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { localePath } from "@/lib/i18n/locale-path";
+import {
+	getStrategyActiveTab,
+	STRATEGY_SUB_TABS,
+	type StrategySubTabKey,
+} from "@/lib/nav/strategy-subtabs";
 
-type SubTab = "expansion" | "live";
-
-const TABS: Array<{ key: SubTab; icon: React.ReactNode; label: string }> = [
-	{ key: "expansion", icon: <TrendingUp size={14} />, label: "拡大戦略" },
-	{ key: "live", icon: <Radio size={14} />, label: "ライブコマース戦略" },
-];
+const TAB_ICONS: Record<StrategySubTabKey, React.ReactNode> = {
+	expansion: <TrendingUp size={14} />,
+	live: <Radio size={14} />,
+	status: <Activity size={14} />,
+};
 
 export function StrategySubTabs() {
 	const { locale } = useParams<{ locale: string }>();
 	const pathname = usePathname();
-
-	const activeTab = (() => {
-		const parts = pathname.split("/").filter(Boolean);
-		const sub = parts[3];
-		if (sub === "expansion" || sub === "live") return sub;
-		return "expansion";
-	})();
+	const t = useTranslations("nav");
+	const activeTab = getStrategyActiveTab(pathname);
 
 	return (
 		<div className="flex gap-1 p-1 bg-card border border-border rounded-lg shadow-sm mb-4 w-fit">
-			{TABS.map((tab) => {
-				const href = localePath(locale, `/analytics/strategy/${tab.key}`);
+			{STRATEGY_SUB_TABS.map((tab) => {
+				const href = localePath(locale, tab.href);
 				const active = activeTab === tab.key;
 				return (
 					<Link
@@ -37,8 +37,8 @@ export function StrategySubTabs() {
 								: "text-muted-foreground hover:text-foreground hover:bg-muted"
 						}`}
 					>
-						{tab.icon}
-						{tab.label}
+						{TAB_ICONS[tab.key]}
+						{t(tab.labelKey)}
 					</Link>
 				);
 			})}

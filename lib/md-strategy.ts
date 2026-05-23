@@ -13,7 +13,7 @@ import type {
 } from "@/lib/supabase";
 import type { SeedContext } from "@/lib/strategy/seed-context";
 import { formatSeedPromptSection, formatMultiSeedPromptSection } from "@/lib/strategy/seed-context";
-import { CATEGORY_MAPPING } from "@/lib/strategy/category-mapping";
+import { mapUiCategoryToSalesCategories } from "@/lib/strategy/category-mapping";
 import { queryDiscoveredPool } from "@/lib/strategy/pool-query";
 import { queryResearchPool } from "@/lib/strategy/research-seed";
 import {
@@ -250,7 +250,7 @@ const CHANNEL_REFERENCE = [
 // ---------------------------------------------------------------------------
 // Category mapping for filtering — shared with pool-query.
 // ---------------------------------------------------------------------------
-// CATEGORY_MAPPING is imported from "@/lib/strategy/category-mapping" (see top of file).
+// Category mapping is imported from "@/lib/strategy/category-mapping" (see top of file).
 
 // ---------------------------------------------------------------------------
 // Parsed Goal (Skill 0 output)
@@ -1278,7 +1278,7 @@ export async function fetchStrategyContext(
 
 	// --- Category filtering when recommend.category is provided ---
 	if (recommend?.category) {
-		const salesCategories = CATEGORY_MAPPING[recommend.category] ?? [];
+		const salesCategories = mapUiCategoryToSalesCategories(recommend.category);
 		if (salesCategories.length > 0) {
 			const matched = sortedProducts.filter((p) => p.category && salesCategories.includes(p.category));
 			const unmatched = sortedProducts.filter((p) => !p.category || !salesCategories.includes(p.category));
@@ -1357,7 +1357,7 @@ export async function fetchStrategyContext(
 
 	// Filter categoryBreakdown to prioritize matching categories
 	if (recommend?.category) {
-		const salesCategories = CATEGORY_MAPPING[recommend.category] ?? [];
+		const salesCategories = mapUiCategoryToSalesCategories(recommend.category);
 		if (salesCategories.length > 0) {
 			const matchedCats = categoryBreakdown.filter((c) => salesCategories.includes(c.category));
 			const unmatchedCats = categoryBreakdown.filter((c) => !salesCategories.includes(c.category));

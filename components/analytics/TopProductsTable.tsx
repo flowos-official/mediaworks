@@ -21,6 +21,19 @@ type ProductRow = {
 type SortKey = 'name' | 'totalRevenue' | 'totalQuantity' | 'avgWeeklyQuantity' | 'firstDate';
 type SortDir = 'asc' | 'desc';
 
+function SortIcon({
+  col,
+  sortKey,
+  sortDir,
+}: {
+  col: SortKey;
+  sortKey: SortKey;
+  sortDir: SortDir;
+}) {
+  if (sortKey !== col) return <ArrowUpDown size={11} className="opacity-40" />;
+  return sortDir === 'desc' ? <ArrowDown size={11} /> : <ArrowUp size={11} />;
+}
+
 function formatYen(v: number): string {
   if (v >= 100_000_000) return `¥${(v / 100_000_000).toFixed(1)}億`;
   if (v >= 10_000) return `¥${Math.round(v / 10_000)}万`;
@@ -59,11 +72,6 @@ export default function TopProductsTable({
     setPage(0);
   };
 
-  const SortIcon = ({ col }: { col: SortKey }) => {
-    if (sortKey !== col) return <ArrowUpDown size={11} className="opacity-40" />;
-    return sortDir === 'desc' ? <ArrowDown size={11} /> : <ArrowUp size={11} />;
-  };
-
   const sorted = [...products].sort((a, b) => {
     const dir = sortDir === 'desc' ? -1 : 1;
     if (sortKey === 'name') return dir * a.name.localeCompare(b.name, 'ja');
@@ -94,7 +102,7 @@ export default function TopProductsTable({
                     onClick={() => toggleSort('name')}
                     className={`flex items-center gap-1 ${sortKey === 'name' ? 'text-blue-600' : ''}`}
                   >
-                    商品名 <SortIcon col="name" />
+                    商品名 <SortIcon col="name" sortKey={sortKey} sortDir={sortDir} />
                   </button>
                 </th>
                 {!compact && <th className="text-left px-4 py-2.5 font-medium">カテゴリ</th>}
@@ -108,7 +116,7 @@ export default function TopProductsTable({
                       onClick={() => toggleSort(h.key)}
                       className={`flex items-center gap-1 ml-auto ${sortKey === h.key ? 'text-blue-600' : ''}`}
                     >
-                      {h.label} <SortIcon col={h.key} />
+                      {h.label} <SortIcon col={h.key} sortKey={sortKey} sortDir={sortDir} />
                     </button>
                   </th>
                 ))}
@@ -119,7 +127,7 @@ export default function TopProductsTable({
                       onClick={() => toggleSort('avgWeeklyQuantity')}
                       className={`flex items-center gap-1 ml-auto ${sortKey === 'avgWeeklyQuantity' ? 'text-blue-600' : ''}`}
                     >
-                      週平均 <SortIcon col="avgWeeklyQuantity" />
+                      週平均 <SortIcon col="avgWeeklyQuantity" sortKey={sortKey} sortDir={sortDir} />
                     </button>
                   </th>
                 )}
@@ -130,7 +138,7 @@ export default function TopProductsTable({
                       onClick={() => toggleSort('firstDate')}
                       className={`flex items-center gap-1 mx-auto ${sortKey === 'firstDate' ? 'text-blue-600' : ''}`}
                     >
-                      期間 <SortIcon col="firstDate" />
+                      期間 <SortIcon col="firstDate" sortKey={sortKey} sortDir={sortDir} />
                     </button>
                   </th>
                 )}

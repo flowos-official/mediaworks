@@ -3,6 +3,7 @@
     "loading": "불러오는 중..."
   },
   "nav": {
+    "guide": "사용 가이드",
     "groups": {
       "firm": "자사",
       "market": "시장",
@@ -37,6 +38,11 @@
       "discovery": "신규 상품 발굴",
       "strategy": "신규 상품 추천"
     },
+    "strategyTabs": {
+      "expansion": "확장 전략",
+      "live": "라이브 커머스 전략",
+      "status": "연결 상태"
+    },
     "produce": {
       "screenplays": "방송 대본",
       "research": "신규 리서치"
@@ -44,7 +50,8 @@
     "admin": {
       "users": "사용자 관리",
       "historicalCrawl": "OA 수집 상태",
-      "registry": "스킬 레지스트리"
+      "registry": "스킬 레지스트리",
+      "preferences": "환경 설정"
     }
   },
   "home": {
@@ -585,6 +592,15 @@
       "totalSkills": "등록 스킬 수",
       "activeVersions": "활성 버전 수",
       "backToList": "← 목록으로"
+    },
+    "preferences": {
+      "languageTitle": "언어",
+      "languageDescription": "화면에 표시되는 언어를 선택합니다. 기본 화면은 일본어입니다.",
+      "themeTitle": "테마",
+      "themeDescription": "업무 환경에 맞게 라이트, 다크, 시스템 테마를 선택합니다.",
+      "guideTitle": "사용 가이드",
+      "guideDescription": "사용자용 업무 가이드를 별도 화면에서 확인합니다.",
+      "guideButton": "가이드 열기"
     },
     "historicalCrawl": {
       "title": "타사 방송 수집 모니터",

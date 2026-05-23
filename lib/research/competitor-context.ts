@@ -1,4 +1,5 @@
 // lib/research/competitor-context.ts
+import { normalizeCategory } from "@/lib/discovery/category-normalize";
 import { getServiceClient } from "@/lib/supabase";
 
 export interface RecentAiring {
@@ -34,6 +35,19 @@ function isoDaysAgo(days: number): string {
 	return d.toISOString().slice(0, 10);
 }
 
+export function uniqueCategoryCandidates(
+	rawCategory: string | null | undefined,
+	normalizedCategories: string[],
+): string[] {
+	const out: string[] = [];
+	for (const value of [rawCategory, ...normalizedCategories]) {
+		const trimmed = typeof value === "string" ? value.trim() : "";
+		if (!trimmed || out.includes(trimmed)) continue;
+		out.push(trimmed);
+	}
+	return out;
+}
+
 /**
  * Loads competitor airing + operator fit context for a category.
  * Returns null if category is null/empty (no meaningful query). All errors
@@ -49,28 +63,63 @@ export async function loadBroadcastContext(
 	const sinceFit = isoDaysAgo(FIT_LOOKBACK_DAYS);
 
 	try {
+		const normalized = await normalizeCategory(sb, category);
+		const categoryCandidates = uniqueCategoryCandidates(category, normalized);
+		if (categoryCandidates.length === 0) return null;
+
+		const recentQuery =
+			categoryCandidates.length === 1
+				? sb
+						.from("broadcasts")
+						.select("channel, program_title, brand_name, air_date, start_time")
+						.eq("category", categoryCandidates[0])
+						.gte("air_date", sinceBroadcasts)
+						.order("air_date", { ascending: false })
+						.limit(10)
+				: sb
+						.from("broadcasts")
+						.select("channel, program_title, brand_name, air_date, start_time")
+						.in("category", categoryCandidates)
+						.gte("air_date", sinceBroadcasts)
+						.order("air_date", { ascending: false })
+						.limit(10);
+		const oaQuery =
+			categoryCandidates.length === 1
+				? sb
+						.from("historical_broadcasts")
+						.select("channel, product_name, air_date, start_time")
+						.eq("category", categoryCandidates[0])
+						.gte("air_date", sinceBroadcasts)
+						.order("air_date", { ascending: false })
+						.limit(10)
+				: sb
+						.from("historical_broadcasts")
+						.select("channel, product_name, air_date, start_time")
+						.in("category", categoryCandidates)
+						.gte("air_date", sinceBroadcasts)
+						.order("air_date", { ascending: false })
+						.limit(10);
+		const fitQuery =
+			categoryCandidates.length === 1
+				? sb
+						.from("competitor_fit_analyses")
+						.select("product_name, fit_score, summary")
+						.eq("category", categoryCandidates[0])
+						.gte("created_at", sinceFit)
+						.order("fit_score", { ascending: false })
+						.limit(20)
+				: sb
+						.from("competitor_fit_analyses")
+						.select("product_name, fit_score, summary")
+						.in("category", categoryCandidates)
+						.gte("created_at", sinceFit)
+						.order("fit_score", { ascending: false })
+						.limit(20);
+
 		const [recentRes, oaRes, fitRes] = await Promise.all([
-			sb
-				.from("broadcasts")
-				.select("channel, program_title, brand_name, air_date, start_time")
-				.eq("category", category)
-				.gte("air_date", sinceBroadcasts)
-				.order("air_date", { ascending: false })
-				.limit(10),
-			sb
-				.from("historical_broadcasts")
-				.select("channel, product_name, air_date, start_time")
-				.eq("category", category)
-				.gte("air_date", sinceBroadcasts)
-				.order("air_date", { ascending: false })
-				.limit(10),
-			sb
-				.from("competitor_fit_analyses")
-				.select("product_name, fit_score, summary")
-				.eq("category", category)
-				.gte("created_at", sinceFit)
-				.order("fit_score", { ascending: false })
-				.limit(20),
+			recentQuery,
+			oaQuery,
+			fitQuery,
 		]);
 
 		const recentAirings: RecentAiring[] = (recentRes.data ?? []).map((r) => ({
@@ -164,3 +213,7 @@ ${fitSamples}
 以下の Competitor / Seasonality セクションでは、上記の実測データを優先して引用し、Web検索結果は補助としてのみ使用すること。
 `;
 }
+
+export const __test = {
+	uniqueCategoryCandidates,
+};

@@ -6,6 +6,7 @@ import {
 	analyzeCompetitorFit,
 	type CompetitorSlotInput,
 } from "@/lib/competitor-fit/analyze";
+import { inferOperatorFitCategory } from "@/lib/competitor-fit/category-backfill";
 
 export const maxDuration = 120;
 
@@ -34,7 +35,7 @@ export async function POST(req: NextRequest) {
 	const productName = isStr(body.productName) ? body.productName.trim() : "";
 	const airDate = isStr(body.airDate) ? body.airDate.trim() : "";
 	const startTime = isStr(body.startTime) ? body.startTime.trim() : null;
-	const category = isStr(body.category) ? body.category.trim() : null;
+	let category = isStr(body.category) ? body.category.trim() : null;
 	const priceText = isStr(body.priceText) ? body.priceText.trim() : null;
 	const description = isStr(body.description) ? body.description.trim() : null;
 	const sourceUrl = isStr(body.sourceUrl) ? body.sourceUrl.trim() : null;
@@ -55,6 +56,13 @@ export async function POST(req: NextRequest) {
 
 	const sb = getServiceClient();
 	const key = slotKey(channel, productName, airDate);
+	if (!category) {
+		category = await inferOperatorFitCategory(sb, {
+			channel,
+			product_name: productName,
+			air_date: airDate,
+		});
+	}
 
 	if (!forceRefresh) {
 		const cutoff = new Date(Date.now() - CACHE_TTL_DAYS * 24 * 3600 * 1000).toISOString();

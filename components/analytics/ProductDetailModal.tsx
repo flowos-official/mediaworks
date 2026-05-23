@@ -100,6 +100,13 @@ type ImageData = {
 
 type ModalTab = 'overview' | 'sku' | 'logistics' | 'confidential' | 'contacts' | 'images';
 
+type ProductDetailLoadState = {
+  productCode: string | null;
+  data: ProductDetailData | null;
+  images: ImageData[];
+  error: string | null;
+};
+
 function formatYen(v: number): string {
   if (v >= 100_000_000) return `¥${(v / 100_000_000).toFixed(1)}億`;
   if (v >= 10_000) return `¥${Math.round(v / 10_000)}万`;
@@ -124,11 +131,16 @@ export default function ProductDetailModal({
   onClose: () => void;
 }) {
   const t = useTranslations('productDetailModal');
-  const [data, setData] = useState<ProductDetailData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<ModalTab>('overview');
-  const [images, setImages] = useState<ImageData[]>([]);
+  const [loadState, setLoadState] = useState<ProductDetailLoadState>({
+    productCode: null,
+    data: null,
+    images: [],
+    error: null,
+  });
+  const [activeTabState, setActiveTabState] = useState<{
+    productCode: string;
+    tab: ModalTab;
+  } | null>(null);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const lightboxRef = useRef<HTMLDivElement | null>(null);
 
@@ -147,10 +159,7 @@ export default function ProductDetailModal({
   }, [lightboxIndex]);
 
   useEffect(() => {
-    setLoading(true);
-    setError(null);
-    setActiveTab('overview');
-    setImages([]);
+    let ignore = false;
     // Fetch product data and images in parallel
     Promise.all([
       fetch(`/api/analytics/products/${productCode}?year=2025,2026`)
@@ -160,12 +169,38 @@ export default function ProductDetailModal({
         .catch(() => ({ images: [] })),
     ])
       .then(([productData, imageData]) => {
-        setData(productData);
-        setImages(imageData.images ?? []);
+        if (ignore) return;
+        setLoadState({
+          productCode,
+          data: productData,
+          images: imageData.images ?? [],
+          error: null,
+        });
       })
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
+      .catch((err) => {
+        if (ignore) return;
+        setLoadState({
+          productCode,
+          data: null,
+          images: [],
+          error: err.message,
+        });
+      });
+    return () => {
+      ignore = true;
+    };
   }, [productCode]);
+
+  const isCurrentLoad = loadState.productCode === productCode;
+  const data = isCurrentLoad ? loadState.data : null;
+  const images = isCurrentLoad ? loadState.images : [];
+  const error = isCurrentLoad ? loadState.error : null;
+  const loading = !isCurrentLoad;
+  const activeTab =
+    activeTabState?.productCode === productCode ? activeTabState.tab : 'overview';
+  const setActiveTab = (tab: ModalTab) => {
+    setActiveTabState({ productCode, tab });
+  };
 
   const d = data?.detail;
   const isViewer = data?.viewer === true;

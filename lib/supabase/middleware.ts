@@ -1,8 +1,9 @@
 // lib/supabase/middleware.ts
-import { createServerClient } from '@supabase/ssr';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextRequest, NextResponse } from 'next/server';
 
 type Role = 'admin' | 'member' | 'viewer';
+type SupabaseCookieToSet = { name: string; value: string; options?: CookieOptions };
 
 export interface SessionInfo {
   response: NextResponse;
@@ -25,7 +26,7 @@ export async function updateSession(req: NextRequest): Promise<SessionInfo> {
     {
       cookies: {
         getAll: () => req.cookies.getAll(),
-        setAll: (toSet: { name: string; value: string; options?: any }[]) => {
+        setAll: (toSet: SupabaseCookieToSet[]) => {
           for (const { name, value } of toSet) {
             req.cookies.set(name, value);
           }
