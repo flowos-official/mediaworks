@@ -23,6 +23,18 @@ export default function GroupDropdown({ group, role, locale }: Props) {
   const visibility = group.visibility[role];
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const cancelClose = () => {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  };
+  const scheduleClose = () => {
+    cancelClose();
+    closeTimer.current = setTimeout(() => setOpen(false), 120);
+  };
 
   // Close on outside click
   useEffect(() => {
@@ -35,6 +47,8 @@ export default function GroupDropdown({ group, role, locale }: Props) {
     document.addEventListener('mousedown', onDocClick);
     return () => document.removeEventListener('mousedown', onDocClick);
   }, [open]);
+
+  useEffect(() => () => cancelClose(), []);
 
   if (visibility === 'hidden') return null;
 
@@ -54,7 +68,15 @@ export default function GroupDropdown({ group, role, locale }: Props) {
 
   // 'full': dropdown
   return (
-    <div ref={wrapperRef} className="relative">
+    <div
+      ref={wrapperRef}
+      className="relative"
+      onMouseEnter={() => {
+        cancelClose();
+        setOpen(true);
+      }}
+      onMouseLeave={scheduleClose}
+    >
       <div
         className={`inline-flex items-center gap-1 text-sm font-medium ${
           isActive
@@ -62,7 +84,11 @@ export default function GroupDropdown({ group, role, locale }: Props) {
             : 'text-muted-foreground hover:text-foreground'
         }`}
       >
-        <Link href={localePath(locale, group.landing)} onFocus={() => setOpen(true)}>
+        <Link
+          href={localePath(locale, group.landing)}
+          onFocus={() => setOpen(true)}
+          onClick={() => setOpen(false)}
+        >
           {t(group.labelKey)}
         </Link>
         <button

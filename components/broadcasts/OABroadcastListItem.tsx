@@ -95,7 +95,62 @@ export default function OABroadcastListItem({ row }: { row: OARow }) {
 				)}
 			</div>
 			{open && (
-				<div className="px-3 pb-3">
+				<div className="px-3 pb-3 flex flex-col gap-3">
+					<div className="flex gap-3 items-start">
+						{row.image_url ? (
+							<img
+								src={row.image_url}
+								alt=""
+								className="shrink-0 w-28 h-28 object-cover rounded border border-border bg-muted"
+								loading="lazy"
+								onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+							/>
+						) : (
+							<div
+								className="shrink-0 w-28 h-28 rounded bg-muted border border-border"
+								aria-hidden="true"
+							/>
+						)}
+						<div className="flex-1 min-w-0 space-y-2">
+							<div className="text-sm font-medium text-foreground leading-snug break-words">
+								{row.product_name}
+							</div>
+							<dl className="grid grid-cols-[5rem_1fr] gap-x-3 gap-y-1 text-[11px]">
+								<dt className="text-muted-foreground">放送日</dt>
+								<dd className="text-foreground">
+									{row.air_date}
+									{row.day_of_week ? `（${row.day_of_week}）` : ""}
+									{row.start_time ? ` ${formatTime(row.start_time)}` : ""}
+								</dd>
+								<dt className="text-muted-foreground">チャンネル</dt>
+								<dd className="text-foreground">{channelDisplayName(row.channel)}</dd>
+								{row.category && (
+									<>
+										<dt className="text-muted-foreground">カテゴリ</dt>
+										<dd className="text-foreground break-words">{row.category}</dd>
+									</>
+								)}
+								<dt className="text-muted-foreground">価格</dt>
+								<dd className="text-foreground break-words">
+									{formatPrice(row)}
+									{row.price_jpy != null && row.price_text && row.price_text !== formatPrice(row) && (
+										<span className="text-muted-foreground"> （{row.price_text}）</span>
+									)}
+								</dd>
+							</dl>
+							{row.source_url && (
+								<a
+									href={row.source_url}
+									target="_blank"
+									rel="noopener noreferrer"
+									className="inline-flex items-center gap-1 text-[11px] text-blue-600 dark:text-blue-400 hover:underline"
+								>
+									<ExternalLink size={11} />
+									元のページを開く
+								</a>
+							)}
+						</div>
+					</div>
 					<CompetitorFitPanel
 						slot={{
 							channel: row.channel,
