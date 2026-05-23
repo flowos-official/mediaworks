@@ -43,9 +43,11 @@ export async function GET(req: NextRequest) {
 	try {
 		const now = jstNow();
 		const currentYM = getJSTYearMonth(now);
-		const prevDate = new Date(now);
-		prevDate.setUTCMonth(prevDate.getUTCMonth() - 1);
-		const prevYM = getJSTYearMonth(prevDate);
+		// Pin day to 1 before decrementing month so setUTCMonth never overflows
+		// into the wrong month on the 29th/30th/31st.
+		const prevFirst = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+		prevFirst.setUTCMonth(prevFirst.getUTCMonth() - 1);
+		const prevYM = getJSTYearMonth(prevFirst);
 		revalidateTag(`broadcasts:calendar:${prevYM}`, "max");
 		revalidateTag(`broadcasts:calendar:${currentYM}`, "max");
 		revalidateTag("broadcasts:totals", "max");
