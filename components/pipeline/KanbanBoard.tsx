@@ -1,5 +1,6 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   DndContext, DragEndEvent, useDroppable, useDraggable, PointerSensor, useSensor, useSensors,
 } from "@dnd-kit/core";
@@ -66,6 +67,19 @@ export function KanbanBoard({
   } | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
   const previousBoard = useRef<BoardData>(initialBoard);
+
+  const params = useSearchParams();
+  const focus = params.get("focus");
+
+  useEffect(() => {
+    if (!focus) return;
+    const el = document.querySelector<HTMLElement>(`[data-selection-id="${focus}"]`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.classList.add("ring-2", "ring-indigo-400");
+    const t = setTimeout(() => el.classList.remove("ring-2", "ring-indigo-400"), 1500);
+    return () => clearTimeout(t);
+  }, [focus]);
 
   async function refresh() {
     try {

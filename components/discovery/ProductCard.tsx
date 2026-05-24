@@ -10,6 +10,7 @@ import { FeedbackButtons, type FeedbackState } from "./FeedbackButtons";
 import type { CPackage, CurationScore } from "@/lib/discovery/types";
 import { getChannelBySlug, parseChannelSlugs } from "@/lib/discovery/tv-channels";
 import TvEvidenceBadge from "@/components/discovery/TvEvidenceBadge";
+import { PipelineStatusChip } from "@/components/pipeline/PipelineStatusChip";
 
 type EnrichmentStatus = "idle" | "queued" | "running" | "completed" | "failed";
 
@@ -46,6 +47,7 @@ export type DiscoveredProductRow = {
 	context?: "home_shopping" | "live_commerce";
 	user_action?: FeedbackState;
 	action_reason?: string | null;
+	active_selection?: { id: string; status: string } | null;
 };
 
 function scoreColor(score: number): string {
@@ -211,6 +213,12 @@ export function ProductCard({
 							? "TV"
 							: "Web"}
 					</span>
+					{product.active_selection && (
+						<PipelineStatusChip
+							selectionId={product.active_selection.id}
+							stage={product.active_selection.status as "selected" | "sourcing" | "scheduled" | "closed"}
+						/>
+					)}
 					<h3 className="font-bold text-sm text-foreground line-clamp-2" title={product.name}>
 						{product.name}
 					</h3>

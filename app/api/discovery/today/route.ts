@@ -39,6 +39,31 @@ export async function GET(req: NextRequest) {
 			if (trackFilter) {
 				products = products.filter((p) => (p as { track?: string }).track === trackFilter);
 			}
+
+			// Merge active_selection onto each product (non-cached query — always fresh)
+			const productIds = products.map((p) => (p as { id: string }).id).filter(Boolean);
+			if (productIds.length > 0) {
+				const sb = getServiceClient();
+				const { data: selections } = await sb
+					.from("product_selections")
+					.select("id, status, discovered_product_id")
+					.neq("status", "closed")
+					.in("discovered_product_id", productIds);
+				if (selections && selections.length > 0) {
+					const selMap = new Map<string, { id: string; status: string }>();
+					for (const sel of selections) {
+						if (sel.discovered_product_id) {
+							selMap.set(sel.discovered_product_id, { id: sel.id, status: sel.status });
+						}
+					}
+					products = products.map((p) => {
+						const pid = (p as { id: string }).id;
+						const sel = selMap.get(pid);
+						return sel ? { ...p, active_selection: sel } : p;
+					});
+				}
+			}
+
 			return NextResponse.json({
 				session: cached.session,
 				products,
@@ -79,9 +104,33 @@ export async function GET(req: NextRequest) {
 	if (prodResult.error)
 		return NextResponse.json({ error: prodResult.error.message }, { status: 500 });
 
+	let products: Array<Record<string, unknown>> = (prodResult.data ?? []) as Array<Record<string, unknown>>;
+
+	// Merge active_selection onto each product
+	const productIds = products.map((p) => p.id as string).filter(Boolean);
+	if (productIds.length > 0) {
+		const { data: selections } = await sb
+			.from("product_selections")
+			.select("id, status, discovered_product_id")
+			.neq("status", "closed")
+			.in("discovered_product_id", productIds);
+		if (selections && selections.length > 0) {
+			const selMap = new Map<string, { id: string; status: string }>();
+			for (const sel of selections) {
+				if (sel.discovered_product_id) {
+					selMap.set(sel.discovered_product_id, { id: sel.id, status: sel.status });
+				}
+			}
+			products = products.map((p) => {
+				const sel = selMap.get(p.id as string);
+				return sel ? { ...p, active_selection: sel } : p;
+			});
+		}
+	}
+
 	return NextResponse.json({
 		session,
-		products: prodResult.data ?? [],
+		products,
 		categoryStats,
 	});
 }

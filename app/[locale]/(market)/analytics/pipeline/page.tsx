@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
 import { requireUser } from "@/lib/auth/require-user";
 import type { BoardData, BoardCard } from "@/lib/selections/types";
@@ -52,7 +53,9 @@ export default async function PipelinePage() {
         <h1 className="text-2xl font-bold">{t("title")}</h1>
         <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
       </header>
-      <KanbanBoard initialBoard={board} canWrite={canWrite} />
+      <Suspense>
+        <KanbanBoard initialBoard={board} canWrite={canWrite} />
+      </Suspense>
     </main>
   );
 }
