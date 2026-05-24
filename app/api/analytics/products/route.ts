@@ -17,6 +17,10 @@ export async function GET(request: NextRequest) {
 		return NextResponse.json({ error: "Invalid year parameter" }, { status: 400 });
 	}
 
+	if (isNaN(limitParam) || limitParam < 1 || limitParam > 500) {
+		return NextResponse.json({ error: "Invalid limit parameter" }, { status: 400 });
+	}
+
 	const isViewer = auth.role === "viewer";
 	// For viewer, "margin" sort would be incoherent (they can't see margin).
 	// Fall back to "revenue" before hitting the cache so we share its entry.
