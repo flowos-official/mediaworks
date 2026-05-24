@@ -22,8 +22,8 @@ async function loadBoard(
   `;
 
   const [activeRes, closedRes] = await Promise.all([
-    (sb as any).from("product_selections").select(baseSelect).neq("status", "closed").order("updated_at", { ascending: false }),
-    (sb as any).from("product_selections").select(baseSelect).eq("status", "closed").gte("closed_at", sevenDaysAgo).order("closed_at", { ascending: false }),
+    sb.from("product_selections").select(baseSelect).neq("status", "closed").order("updated_at", { ascending: false }),
+    sb.from("product_selections").select(baseSelect).eq("status", "closed").gte("closed_at", sevenDaysAgo).order("closed_at", { ascending: false }),
   ]);
 
   if (activeRes.error) console.warn("[pipeline/loadBoard] active query failed:", activeRes.error.message);
