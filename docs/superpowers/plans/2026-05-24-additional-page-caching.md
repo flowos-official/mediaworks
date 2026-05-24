@@ -150,6 +150,7 @@ export interface CachedDiscoveryInsights {
 export async function getCachedDiscoveryInsights(
 	context: Context | null,
 	weeks: number,
+	mondayIso: string,
 ): Promise<CachedDiscoveryInsights> {
 	"use cache";
 	cacheTag("discovery:insights");
@@ -160,17 +161,10 @@ export async function getCachedDiscoveryInsights(
 	const weeksAgo = new Date();
 	weeksAgo.setUTCDate(weeksAgo.getUTCDate() - weeks * 7);
 
-	const now = new Date();
-	const monday = new Date(now);
-	const day = monday.getUTCDay();
-	const daysFromMonday = day === 0 ? 6 : day - 1;
-	monday.setUTCDate(now.getUTCDate() - daysFromMonday);
-	monday.setUTCHours(0, 0, 0, 0);
-
 	let kpiQuery = sb
 		.from("discovered_products")
 		.select("user_action")
-		.gte("created_at", monday.toISOString());
+		.gte("created_at", mondayIso);
 	if (context) kpiQuery = kpiQuery.eq("context", context);
 	const { data: thisWeek } = await kpiQuery;
 	const thisWeekRows = (thisWeek ?? []) as Array<{ user_action: string | null }>;
@@ -427,6 +421,8 @@ Expected: no errors. If any, fix before committing.
 
 Run: `npm run lint`
 Expected: no new warnings or errors from this file.
+
+**Implementation notes (T1):** `mondayIso` is passed from the route handler instead of being computed inside the `'use cache'` body. A `new Date()` call inside `'use cache'` would bake the original timestamp into the cached entry — on Mondays between JST 00:00 and the daily-learning cron at JST 07:45, the cached "this week" KPI would return last week's numbers. `thirtyDaysAgo` drift inside the cached body is acceptable (sub-1% of a 30-day window) and is left unchanged. `getCachedDiscoverySelections` `days`/`now` drift is similarly small and unchanged.
 
 - [ ] **Step 4: Commit**
 
@@ -910,8 +906,16 @@ export async function GET(req: NextRequest) {
 			: null;
 	const weeks = Math.min(Number(searchParams.get("weeks") ?? 12), 52);
 
+	const now = new Date();
+	const day = now.getUTCDay();
+	const daysFromMonday = day === 0 ? 6 : day - 1;
+	const monday = new Date(now);
+	monday.setUTCDate(now.getUTCDate() - daysFromMonday);
+	monday.setUTCHours(0, 0, 0, 0);
+	const mondayIso = monday.toISOString();
+
 	try {
-		const data = await getCachedDiscoveryInsights(context, weeks);
+		const data = await getCachedDiscoveryInsights(context, weeks, mondayIso);
 		return NextResponse.json(data);
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err);

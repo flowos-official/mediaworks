@@ -99,6 +99,7 @@ export interface CachedDiscoveryInsights {
 export async function getCachedDiscoveryInsights(
 	context: Context | null,
 	weeks: number,
+	mondayIso: string,
 ): Promise<CachedDiscoveryInsights> {
 	"use cache";
 	cacheTag("discovery:insights");
@@ -109,17 +110,10 @@ export async function getCachedDiscoveryInsights(
 	const weeksAgo = new Date();
 	weeksAgo.setUTCDate(weeksAgo.getUTCDate() - weeks * 7);
 
-	const now = new Date();
-	const monday = new Date(now);
-	const day = monday.getUTCDay();
-	const daysFromMonday = day === 0 ? 6 : day - 1;
-	monday.setUTCDate(now.getUTCDate() - daysFromMonday);
-	monday.setUTCHours(0, 0, 0, 0);
-
 	let kpiQuery = sb
 		.from("discovered_products")
 		.select("user_action")
-		.gte("created_at", monday.toISOString());
+		.gte("created_at", mondayIso);
 	if (context) kpiQuery = kpiQuery.eq("context", context);
 	const { data: thisWeek } = await kpiQuery;
 	const thisWeekRows = (thisWeek ?? []) as Array<{ user_action: string | null }>;
