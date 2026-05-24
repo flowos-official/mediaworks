@@ -30,7 +30,10 @@ const SOURCE_TO_DP_SOURCE: Record<string, string> = {
 function parsePriceJpy(input: string | undefined | null): number | null {
   if (!input) return null;
   const digits = String(input).replace(/[^\d]/g, "");
-  if (!digits) return null;
+  if (!digits) {
+    console.warn(`[fresh-search-persist] parsePriceJpy: could not extract digits from "${input}"`);
+    return null;
+  }
   const n = Number(digits);
   return Number.isFinite(n) ? n : null;
 }
@@ -58,7 +61,7 @@ export async function persistStrategyFreshSearch(
   const { data: session, error: sessErr } = await sb
     .from("discovery_runs")
     .insert({
-      status: "completed",
+      status: "running",
       target_count: targetCount,
       produced_count: targetCount,
       exploration_ratio: 0,
@@ -115,6 +118,24 @@ export async function persistStrategyFreshSearch(
   for (const row of inserted ?? []) {
     if (row.product_url) idByUrl.set(row.product_url as string, row.id as string);
   }
+
+  // Recover IDs for URLs the duplicate-guard trigger silently skipped.
+  const submittedUrls = rows.map((r) => r.product_url);
+  const missingUrls = submittedUrls.filter((u) => !idByUrl.has(u));
+  if (missingUrls.length > 0) {
+    const { data: existing } = await sb
+      .from("discovered_products")
+      .select("id, product_url")
+      .in("product_url", missingUrls);
+    for (const row of existing ?? []) {
+      if (row.product_url) idByUrl.set(row.product_url as string, row.id as string);
+    }
+  }
+
+  await sb
+    .from("discovery_runs")
+    .update({ status: "completed" })
+    .eq("id", session.id);
 
   return { idByUrl, sessionId: session.id };
 }
