@@ -1,5 +1,6 @@
 import "server-only";
 import {
+	revalidateTag,
 	unstable_cacheLife as cacheLife,
 	unstable_cacheTag as cacheTag,
 } from "next/cache";
@@ -358,4 +359,28 @@ export async function getCachedDiscoverySelections(
 		page,
 		limit,
 	};
+}
+
+const MUTATION_TAGS = [
+	"discovery:home_shopping",
+	"discovery:live_commerce",
+	"discovery:insights",
+	"discovery:history",
+	"discovery:selections",
+] as const;
+
+/**
+ * Coarse invalidation called from discovery mutation endpoints. Best-effort:
+ * failures are logged but do not propagate. The 24h expire cacheLife is the
+ * safety net.
+ */
+export function invalidateDiscoveryAfterMutation(source: string): void {
+	try {
+		for (const tag of MUTATION_TAGS) {
+			revalidateTag(tag, "max");
+		}
+	} catch (err) {
+		const msg = err instanceof Error ? err.message : String(err);
+		console.warn("[cache] revalidateTag failed", { source, error: msg });
+	}
 }

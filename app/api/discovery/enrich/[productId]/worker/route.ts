@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { enrichProduct } from "@/lib/discovery/enrich-agent";
 import { getServiceClient } from "@/lib/supabase";
 import { hasInternalSecret } from "@/lib/auth/require-user";
+import { invalidateDiscoveryAfterMutation } from "@/lib/discovery/cached";
 
 export const maxDuration = 60;
 
@@ -64,6 +65,7 @@ export async function POST(
 			})
 			.eq("id", productId);
 
+		invalidateDiscoveryAfterMutation("enrich-worker");
 		return NextResponse.json({ ok: true, productId, partial: pkg.partial });
 	} catch (err) {
 		const msg = err instanceof Error ? err.message : String(err);

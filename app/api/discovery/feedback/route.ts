@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
 import { requireUser } from "@/lib/auth/require-user";
+import { invalidateDiscoveryAfterMutation } from "@/lib/discovery/cached";
 
 export const maxDuration = 10;
 
@@ -115,6 +116,7 @@ export async function POST(req: NextRequest) {
 		if (updErr) {
 			return NextResponse.json({ error: updErr.message }, { status: 500 });
 		}
+		invalidateDiscoveryAfterMutation("feedback");
 		return NextResponse.json({
 			ok: true,
 			action: "toggled_off",
@@ -142,6 +144,7 @@ export async function POST(req: NextRequest) {
 		return NextResponse.json({ error: updRes.error.message }, { status: 500 });
 	}
 
+	invalidateDiscoveryAfterMutation("feedback");
 	return NextResponse.json({
 		ok: true,
 		action: "set",

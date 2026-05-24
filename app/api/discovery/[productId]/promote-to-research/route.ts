@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/require-user";
 import { getServiceClient } from "@/lib/supabase";
+import { invalidateDiscoveryAfterMutation } from "@/lib/discovery/cached";
 import {
 	PromotionError,
 	promoteDiscoveredProductToResearch,
@@ -29,6 +30,7 @@ export async function POST(
 		const result = await promoteDiscoveredProductToResearch(sb, dpId, {
 			triggerSynthesis: true,
 		});
+		invalidateDiscoveryAfterMutation("promote-to-research");
 		return NextResponse.json(result);
 	} catch (err) {
 		if (err instanceof PromotionError) {
