@@ -1,5 +1,6 @@
 import { Suspense } from "react";
-import { getTranslations } from "next-intl/server";
+import { redirect } from "next/navigation";
+import { getTranslations, getLocale } from "next-intl/server";
 import { requireUser } from "@/lib/auth/require-user";
 import type { BoardData, BoardCard } from "@/lib/selections/types";
 import { KanbanBoard } from "@/components/pipeline/KanbanBoard";
@@ -38,11 +39,12 @@ async function loadBoard(
 }
 
 export default async function PipelinePage() {
-  const [t, auth] = await Promise.all([
+  const [t, locale, auth] = await Promise.all([
     getTranslations("pipeline"),
+    getLocale(),
     requireUser(["viewer", "member", "admin"]),
   ]);
-  if ("error" in auth) return auth.error;
+  if ("error" in auth) redirect(`/${locale}/login`);
 
   const board = await loadBoard(auth.sb);
   const canWrite = auth.role !== "viewer";
