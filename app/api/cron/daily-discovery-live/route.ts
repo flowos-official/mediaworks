@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
-import { applyBroadcastBoost, tagBroadcastEvidence } from "@/lib/discovery/broadcast";
-import { applyRecentBroadcastPenalty } from "@/lib/discovery/recent-broadcast-penalty";
-import { applyCompetitorTrendBoost } from "@/lib/discovery/competitor-trend-boost";
-import { applyEvidenceBonus, computeTvEvidence } from "@/lib/discovery/tv-evidence";
+import { applyRakutenRoomBoost } from "@/lib/discovery/rakuten-room-boost";
+import { applyRakutenLiveArchiveBoost } from "@/lib/discovery/rakuten-live-archive-boost";
+import { applyCreatorContentBoost } from "@/lib/discovery/creator-content-boost";
+import { applyHashtagMentionBoost } from "@/lib/discovery/hashtag-mention-boost";
+import { clampLiveBoosts } from "@/lib/discovery/live-boost-clamp";
 import { runStage1 } from "@/lib/discovery/orchestrator";
 import { runOptionalStage } from "@/lib/discovery/cron-budget";
 import {
@@ -23,15 +24,10 @@ const CONTEXT = "live_commerce" as const;
 const SAVE_FINALIZE_DEADLINE_MS = Number(
 	process.env.DISCOVERY_SAVE_FINALIZE_DEADLINE_MS ?? 270_000,
 );
-const TV_EVIDENCE_MIN_BUDGET_MS = Number(
-	process.env.DISCOVERY_TV_EVIDENCE_MIN_BUDGET_MS ?? 45_000,
-);
-const CATEGORY_ENRICH_MIN_BUDGET_MS = Number(
-	process.env.DISCOVERY_CATEGORY_ENRICH_MIN_BUDGET_MS ?? 10_000,
-);
 const OPTIONAL_STAGE_MIN_SAVE_BUDGET_MS = Number(
 	process.env.DISCOVERY_OPTIONAL_STAGE_MIN_SAVE_BUDGET_MS ?? 20_000,
 );
+const LIVE_BOOST_TOTAL_CAP = Number(process.env.LIVE_BOOST_TOTAL_CAP ?? 15);
 
 async function loadLearningState(): Promise<LearningState> {
 	try {
@@ -97,102 +93,75 @@ export async function GET(req: NextRequest) {
 		const orchestrated = await runStage1(learning, TARGET_COUNT, CONTEXT);
 		await attachPlanToSession(sessionId, orchestrated.plan);
 
-		const broadcasts = await runOptionalStage({
-			label: `${CONTEXT}:broadcast-evidence`,
-			startedAtMs: startedAt,
-			deadlineMs: SAVE_FINALIZE_DEADLINE_MS,
-			minSaveBudgetMs: OPTIONAL_STAGE_MIN_SAVE_BUDGET_MS,
-			fallback: [] as Awaited<ReturnType<typeof tagBroadcastEvidence>>,
-			task: () => tagBroadcastEvidence(orchestrated.candidates),
-		});
-		const broadcastMap = new Map(broadcasts.map((b) => [b.productUrl, b]));
-
-		applyBroadcastBoost(
-			orchestrated.candidates,
-			new Map(broadcasts.map((b) => [b.productUrl, b.tag])),
+		// Snapshot the post-curate score for every candidate. The four boost
+		// layers each add up to +5; clampLiveBoosts enforces that the total
+		// delta from this baseline stays <= LIVE_BOOST_TOTAL_CAP.
+		const baselineByUrl = new Map<string, number>(
+			orchestrated.candidates.map((c) => [c.productUrl, c.tvFitScore]),
 		);
 
-		// Soft penalty for products MediaWorks just aired on QVC. Only
-		// candidates whose productUrl is a qvc.jp/product.{id}.html page
-		// are considered; others are unaffected.
-		await runOptionalStage({
-			label: `${CONTEXT}:recent-broadcast-penalty`,
-			startedAtMs: startedAt,
-			deadlineMs: SAVE_FINALIZE_DEADLINE_MS,
-			minSaveBudgetMs: OPTIONAL_STAGE_MIN_SAVE_BUDGET_MS,
-			fallback: null,
-			task: async () => {
-				await applyRecentBroadcastPenalty(orchestrated.candidates);
-				return null;
-			},
-		});
+		// L1-L4 are independent (each only adds to tvFitScore on a single
+		// candidate at a time, no cross-candidate state). Running them in
+		// parallel is safe under JS single-threaded execution + the final
+		// clamp.
+		await Promise.all([
+			runOptionalStage({
+				label: `${CONTEXT}:L1-room-mention`,
+				startedAtMs: startedAt,
+				deadlineMs: SAVE_FINALIZE_DEADLINE_MS,
+				minSaveBudgetMs: OPTIONAL_STAGE_MIN_SAVE_BUDGET_MS,
+				fallback: null,
+				task: async () => {
+					await applyRakutenRoomBoost(orchestrated.candidates);
+					return null;
+				},
+			}),
+			runOptionalStage({
+				label: `${CONTEXT}:L2-rakuten-live-archive`,
+				startedAtMs: startedAt,
+				deadlineMs: SAVE_FINALIZE_DEADLINE_MS,
+				minSaveBudgetMs: OPTIONAL_STAGE_MIN_SAVE_BUDGET_MS,
+				fallback: null,
+				task: async () => {
+					await applyRakutenLiveArchiveBoost(orchestrated.candidates);
+					return null;
+				},
+			}),
+			runOptionalStage({
+				label: `${CONTEXT}:L3-creator-content`,
+				startedAtMs: startedAt,
+				deadlineMs: SAVE_FINALIZE_DEADLINE_MS,
+				minSaveBudgetMs: OPTIONAL_STAGE_MIN_SAVE_BUDGET_MS,
+				fallback: null,
+				task: async () => {
+					await applyCreatorContentBoost(orchestrated.candidates);
+					return null;
+				},
+			}),
+			runOptionalStage({
+				label: `${CONTEXT}:L4-hashtag-mention`,
+				startedAtMs: startedAt,
+				deadlineMs: SAVE_FINALIZE_DEADLINE_MS,
+				minSaveBudgetMs: OPTIONAL_STAGE_MIN_SAVE_BUDGET_MS,
+				fallback: null,
+				task: async () => {
+					await applyHashtagMentionBoost(orchestrated.candidates);
+					return null;
+				},
+			}),
+		]);
 
-		// Phase 3-C: small boost when the candidate aligns with categories
-		// that are hot on competitor channels (QVC + ShopCh, last 30 days).
-		await runOptionalStage({
-			label: `${CONTEXT}:competitor-trend-boost`,
-			startedAtMs: startedAt,
-			deadlineMs: SAVE_FINALIZE_DEADLINE_MS,
-			minSaveBudgetMs: OPTIONAL_STAGE_MIN_SAVE_BUDGET_MS,
-			fallback: null,
-			task: async () => {
-				await applyCompetitorTrendBoost(orchestrated.candidates);
-				return null;
-			},
-		});
+		clampLiveBoosts(orchestrated.candidates, baselineByUrl, LIVE_BOOST_TOTAL_CAP);
+		orchestrated.candidates.sort((a, b) => b.tvFitScore - a.tvFitScore);
 
-		// TV evidence: per-candidate broadcast-history aggregate.
-		// Spec: docs/superpowers/specs/2026-05-17-tv-evidence-mining-design.md
-		const sb = getServiceClient();
-		const fallbackEvidenceEntries = orchestrated.candidates.map(
-			(c) => [c.productUrl, null] as const,
-		);
-		const evidenceEntries = await runOptionalStage({
-			label: `${CONTEXT}:tv-evidence`,
-			startedAtMs: startedAt,
-			deadlineMs: SAVE_FINALIZE_DEADLINE_MS,
-			minSaveBudgetMs: Math.max(
-				OPTIONAL_STAGE_MIN_SAVE_BUDGET_MS,
-				TV_EVIDENCE_MIN_BUDGET_MS,
-			),
-			fallback: fallbackEvidenceEntries,
-			task: async () =>
-				Promise.all(
-					orchestrated.candidates.map(async (c) => {
-						const tvChannels = c.tvChannelMatches?.length
-							? c.tvChannelMatches
-							: c.tvChannel
-								? [c.tvChannel]
-								: undefined;
-						const ev = await computeTvEvidence(sb, {
-							name: c.name,
-							category: c.category ?? null,
-							price_jpy: c.priceJpy ?? null,
-							tv_channels: tvChannels,
-						}).catch((err) => {
-							console.warn(`[tv-evidence] compute failed for ${c.productUrl}:`, err?.message ?? err);
-							return null;
-						});
-						return [c.productUrl, ev] as const;
-					}),
-				),
-		});
-		const evidenceMap = new Map(evidenceEntries);
-		applyEvidenceBonus(orchestrated.candidates, evidenceMap);
-
-		const batch = orchestrated.candidates.map((c) => {
-			const bc = broadcastMap.get(c.productUrl);
-			return {
-				candidate: c,
-				broadcastTag: bc?.tag ?? ("unknown" as const),
-				broadcastSources: bc?.sources ?? [],
-				tvEvidence: evidenceMap.get(c.productUrl) ?? null,
-			};
-		});
+		const batch = orchestrated.candidates.map((c) => ({
+			candidate: c,
+			broadcastTag: "unknown" as const,
+			broadcastSources: [],
+			tvEvidence: null,
+		}));
 		const savedCount = await saveDiscoveredProducts(sessionId, batch, {
-			categoryEnrichmentDeadlineMs:
-				startedAt + SAVE_FINALIZE_DEADLINE_MS,
-			minCategoryEnrichmentBudgetMs: CATEGORY_ENRICH_MIN_BUDGET_MS,
+			categoryEnrichmentDeadlineMs: startedAt + SAVE_FINALIZE_DEADLINE_MS,
 		});
 
 		const partial = savedCount < TARGET_COUNT;
