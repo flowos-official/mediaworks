@@ -36,7 +36,8 @@
     "market": {
       "broadcasts": "방송 캘린더",
       "discovery": "신규 상품 발굴",
-      "strategy": "신규 상품 추천"
+      "strategy": "신규 상품 추천",
+      "pipeline": "파이프라인"
     },
     "strategyTabs": {
       "expansion": "확장 전략",
@@ -266,6 +267,10 @@
     "financialProjection": "수익 예측",
     "riskContingency": "리스크·대책",
     "downloadPdf": "PDF 전략서 다운로드"
+  },
+  "pipeline": {
+    "title": "상품 선정 파이프라인",
+    "subtitle": "선택 → 소싱 → 방송예정 → 종료 흐름을 확인합니다"
   },
   "language": {
     "ja": "日本語",

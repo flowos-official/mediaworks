@@ -4,6 +4,7 @@ export type Role = 'admin' | 'member' | 'viewer';
 /** All three roles can read these page paths (just viewer-allowed list below). */
 export const VIEWER_ALLOWED_PATH_PREFIXES = [
   '/analytics/products', // covers /[locale]/analytics/products and /[locale]/analytics/products/[code]
+  '/analytics/pipeline',
   '/guide',
 ] as const;
 

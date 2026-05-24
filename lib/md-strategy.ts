@@ -452,6 +452,7 @@ export interface StrategyContext {
 			priceJpy: number;
 			similarityScore: number;
 		} | null;
+		active_selection?: { id: string; status: string } | null;
 	}>;
 	recommendCategory?: string;
 	recommendTargetMarket?: string;

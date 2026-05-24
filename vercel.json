@@ -68,6 +68,9 @@
     },
     "app/api/cron/archive-videos/route.ts": {
       "maxDuration": 300
+    },
+    "app/api/cron/pipeline-auto-advance/route.ts": {
+      "maxDuration": 60
     }
   },
   "crons": [
@@ -114,6 +117,10 @@
     {
       "path": "/api/cron/archive-videos",
       "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/pipeline-auto-advance",
+      "schedule": "0 18 * * *"
     }
   ]
 }

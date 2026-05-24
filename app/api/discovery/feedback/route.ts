@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
 import { requireUser } from "@/lib/auth/require-user";
 import { invalidateDiscoveryAfterMutation } from "@/lib/discovery/cached";
+import { invalidateSelectionsAfterMutation } from "@/lib/selections/cached";
 
 export const maxDuration = 10;
 
@@ -117,7 +118,52 @@ export async function POST(req: NextRequest) {
 		if (updErr) {
 			return NextResponse.json({ error: updErr.message }, { status: 500 });
 		}
+		if (body.action === "sourced") {
+			const { data: stillSelected } = await sb
+				.from("product_selections")
+				.select("id")
+				.eq("discovered_product_id", body.productId)
+				.eq("status", "selected")
+				.maybeSingle();
+
+			if (stillSelected) {
+				const { error: updSelErr } = await sb
+					.from("product_selections")
+					.update({
+						status: "closed",
+						closed_reason: "dropped",
+						closed_at: now,
+						closed_by: auth.user.id,
+						closed_note: "sourced toggle removed",
+					})
+					.eq("id", stillSelected.id)
+					.eq("status", "selected");
+
+				if (!updSelErr) {
+					await sb.from("product_selection_events").insert([
+						{
+							selection_id: stillSelected.id,
+							event_type: "status_changed",
+							from_status: "selected",
+							to_status: "closed",
+							actor_id: auth.user.id,
+						},
+						{
+							selection_id: stillSelected.id,
+							event_type: "closed",
+							closed_reason: "dropped",
+							actor_id: auth.user.id,
+							note: "sourced toggle removed",
+						},
+					]);
+				} else {
+					console.warn("[feedback] auto-close failed:", updSelErr.message);
+				}
+			}
+		}
+
 		invalidateDiscoveryAfterMutation("feedback");
+		invalidateSelectionsAfterMutation("feedback");
 		return NextResponse.json({
 			ok: true,
 			action: "toggled_off",
@@ -145,7 +191,40 @@ export async function POST(req: NextRequest) {
 		return NextResponse.json({ error: updRes.error.message }, { status: 500 });
 	}
 
+	if (body.action === "sourced") {
+		const { data: existingActive } = await sb
+			.from("product_selections")
+			.select("id, status")
+			.eq("discovered_product_id", body.productId)
+			.neq("status", "closed")
+			.maybeSingle();
+
+		if (!existingActive) {
+			const { data: selection, error: selErr } = await sb
+				.from("product_selections")
+				.insert({
+					discovered_product_id: body.productId,
+					status: "selected",
+					owner_id: auth.user.id,
+				})
+				.select("id")
+				.single();
+
+			if (!selErr && selection) {
+				await sb.from("product_selection_events").insert({
+					selection_id: selection.id,
+					event_type: "created",
+					to_status: "selected",
+					actor_id: auth.user.id,
+				});
+			} else if (selErr) {
+				console.warn("[feedback] selection create failed:", selErr.message);
+			}
+		}
+	}
+
 	invalidateDiscoveryAfterMutation("feedback");
+	invalidateSelectionsAfterMutation("feedback");
 	return NextResponse.json({
 		ok: true,
 		action: "set",

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
 	Sparkles, ExternalLink, Target, Megaphone, Palette, Tag, Users, ShoppingCart,
 	RefreshCw, ChevronDown, ChevronUp, AlertTriangle, CheckCircle2, Calendar, Lightbulb,
@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import type { DiscoveredProduct, DiscoveryBatch } from '@/lib/md-strategy';
 import { getChannelBySlug, parseChannelSlugs } from "@/lib/discovery/tv-channels";
+import { FeedbackButtons, type FeedbackState } from "@/components/discovery/FeedbackButtons";
+import { PipelineStatusChip } from "@/components/pipeline/PipelineStatusChip";
 
 interface Props {
 	products: DiscoveredProduct[];
@@ -26,13 +28,15 @@ function scoreColor(score: number): string {
 	return 'text-red-700 dark:text-red-300 bg-red-600/15 border-red-600/40';
 }
 
-function ProductCard({ p, idx, onAnalyze, analyzing }: {
+function ProductCard({ p, idx, onAnalyze, analyzing, activeSelection }: {
 	p: DiscoveredProduct;
 	idx: number;
 	onAnalyze?: (sourceUrl: string) => void;
 	analyzing?: boolean;
+	activeSelection?: { id: string; status: string } | null;
 }) {
 	const [expanded, setExpanded] = useState(false);
+	const [feedback, setFeedback] = useState<FeedbackState>(null);
 	const s = p.sales_strategy;
 	const channelSlugs = parseChannelSlugs(p.tv_channel_source ?? null);
 
@@ -84,6 +88,12 @@ function ProductCard({ p, idx, onAnalyze, analyzing }: {
 							</span>
 						);
 					})}
+					{(activeSelection ?? p.active_selection) && (
+						<PipelineStatusChip
+							selectionId={(activeSelection ?? p.active_selection)!.id}
+							stage={(activeSelection ?? p.active_selection)!.status as "selected" | "sourcing" | "scheduled" | "closed"}
+						/>
+					)}
 					<h3 className="font-bold text-sm text-foreground truncate" title={p.name}>
 						<span className="text-muted-foreground mr-1">#{idx + 1}</span>
 						{p.name}
@@ -378,6 +388,15 @@ function ProductCard({ p, idx, onAnalyze, analyzing }: {
 					</span>
 				)}
 			</div>
+			{p.discovered_product_id && (
+				<div className="mt-3">
+					<FeedbackButtons
+						productId={p.discovered_product_id}
+						current={feedback}
+						onUpdate={(next) => setFeedback(next)}
+					/>
+				</div>
+			)}
 		</article>
 	);
 }
@@ -394,6 +413,31 @@ export default function DiscoveredProductsHero({
 	const [focus, setFocus] = useState('');
 	const [showHistory, setShowHistory] = useState(false);
 	const [activeBatchIndex, setActiveBatchIndex] = useState(0);
+	const [selectionMap, setSelectionMap] = useState<Map<string, { id: string; status: string }>>(new Map());
+
+	// Bulk-fetch active selections for all products that have a discovered_product_id
+	useEffect(() => {
+		const ids = products
+			.map((p) => p.discovered_product_id)
+			.filter((id): id is string => !!id);
+		if (ids.length === 0) return;
+		fetch(`/api/selections`)
+			.then((r) => r.ok ? r.json() : null)
+			.then((data: { board?: Record<string, Array<{ id: string; status: string; discovered_product_id?: string }>> } | null) => {
+				if (!data?.board) return;
+				const map = new Map<string, { id: string; status: string }>();
+				const allCards = Object.values(data.board).flat();
+				for (const card of allCards) {
+					if (card.discovered_product_id && ids.includes(card.discovered_product_id)) {
+						// Only track non-closed (board GET excludes closed by default)
+						map.set(card.discovered_product_id, { id: card.id, status: card.status });
+					}
+				}
+				setSelectionMap(map);
+			})
+			.catch(() => {});
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [products]);
 
 	if (!products || products.length === 0) return null;
 
@@ -507,12 +551,13 @@ export default function DiscoveredProductsHero({
 			<div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
 				{displayProducts.map((p, idx) => (
 					<ProductCard
-					key={`${p.source_url}-${idx}`}
-					p={p}
-					idx={idx}
-					onAnalyze={onAnalyze}
-					analyzing={!!rediscovering || (!!analyzingUrl && analyzingUrl === p.source_url)}
-				/>
+						key={`${p.source_url}-${idx}`}
+						p={p}
+						idx={idx}
+						onAnalyze={onAnalyze}
+						analyzing={!!rediscovering || (!!analyzingUrl && analyzingUrl === p.source_url)}
+						activeSelection={p.discovered_product_id ? (selectionMap.get(p.discovered_product_id) ?? null) : null}
+					/>
 				))}
 			</div>
 		</section>

@@ -13,9 +13,11 @@ import type { Role } from '@/lib/auth/route-permissions';
 interface Props {
   role: Role;
   locale: string;
+  /** href → count; renders a badge next to that member's label when count > 0 */
+  memberBadges?: Record<string, number>;
 }
 
-export default function MobileNavSheet({ role, locale }: Props) {
+export default function MobileNavSheet({ role, locale, memberBadges }: Props) {
   const [open, setOpen] = useState(false);
   const t = useTranslations();
   const pathname = usePathname();
@@ -93,16 +95,22 @@ export default function MobileNavSheet({ role, locale }: Props) {
                   <div className="pl-4 space-y-1 pb-2">
                     {g.members.map((m) => {
                       const isActiveMember = activeMemberHref === m.href;
+                      const badge = memberBadges?.[m.href] ?? 0;
                       return (
                         <Link
                           key={m.href}
                           href={localePath(locale, m.href)}
                           onClick={() => setOpen(false)}
-                          className={`block py-2 px-3 text-sm rounded-lg hover:bg-muted ${
+                          className={`flex items-center justify-between py-2 px-3 text-sm rounded-lg hover:bg-muted ${
                             isActiveMember ? 'text-blue-600 font-medium bg-blue-600/10' : 'text-foreground'
                           }`}
                         >
                           {t(m.labelKey)}
+                          {badge > 0 && (
+                            <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/15 text-indigo-700 dark:text-indigo-300">
+                              {badge}
+                            </span>
+                          )}
                         </Link>
                       );
                     })}

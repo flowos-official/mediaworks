@@ -15,6 +15,7 @@ import { getServiceClient } from "@/lib/supabase";
 import { buildTVShoppingProfile } from "@/lib/tv-shopping-profile";
 import { loadSeedContexts } from "@/lib/strategy/seed-context";
 import { invalidateStrategyList } from "@/lib/analytics/cached";
+import { persistStrategyFreshSearch } from "@/lib/strategy/fresh-search-persist";
 
 export interface MDWorkflowInput {
 	userGoal?: string;
@@ -223,6 +224,44 @@ async function saveStrategyStep(
 }
 
 // ---------------------------------------------------------------------------
+// Step: persist fresh_search / research recs into discovered_products and
+// back-fill discovered_product_id onto the items so the saved JSONB carries them.
+// ---------------------------------------------------------------------------
+async function persistFreshSearchStep(
+	discovered: DiscoveredProduct[],
+	strategyRunId: string,
+): Promise<DiscoveredProduct[]> {
+	"use step";
+	try {
+		const { idByUrl } = await persistStrategyFreshSearch(
+			discovered.map((p) => ({
+				name: p.name,
+				source: p.source,
+				source_url: p.source_url,
+				estimated_price_jpy: p.estimated_price_jpy,
+				tv_channel_source: p.tv_channel_source ?? null,
+				pool_source: p.pool_source,
+				discovered_product_id: p.discovered_product_id,
+			})),
+			{ strategyId: strategyRunId, context: "home_shopping" },
+		);
+		const enriched = discovered.map((p) => {
+			if (!p.discovered_product_id) {
+				const mapped = idByUrl.get(p.source_url);
+				if (mapped) return { ...p, discovered_product_id: mapped };
+			}
+			return p;
+		});
+		console.log(`[md-workflow] fresh-search persistence complete — enriched ${idByUrl.size} URLs`);
+		return enriched;
+	} catch (err) {
+		console.warn("[md-workflow] fresh-search persistence failed (non-fatal):", err);
+		return discovered;
+	}
+}
+persistFreshSearchStep.maxRetries = 0;
+
+// ---------------------------------------------------------------------------
 // Workflow entrypoint
 // ---------------------------------------------------------------------------
 export async function mdStrategyWorkflow(input: MDWorkflowInput) {
@@ -298,12 +337,22 @@ export async function mdStrategyWorkflow(input: MDWorkflowInput) {
 	const discovered = await runDiscoveryStep(input, context, outputs, parsedGoal);
 	const psExisting = outputs.product_selection as ProductSelectionOutput | undefined;
 	const psSucceeded = !!psExisting && Object.keys(psExisting).length > 0;
-	if (discovered && discovered.length > 0 && psSucceeded) {
+
+	// Persist fresh_search / research items into discovered_products before saving
+	// the strategy so the JSONB carries discovered_product_id for each rec.
+	// strategyRunId is a per-invocation UUID used only as a seed_keyword label.
+	const strategyRunId = crypto.randomUUID();
+	const enrichedDiscovered =
+		discovered && discovered.length > 0
+			? await persistFreshSearchStep(discovered, strategyRunId)
+			: discovered;
+
+	if (enrichedDiscovered && enrichedDiscovered.length > 0 && psSucceeded) {
 		// Inject into product_selection output so the frontend hero renders from the
 		// existing field path (no DB schema change).
 		const ps = (outputs.product_selection as ProductSelectionOutput | undefined) ?? {} as ProductSelectionOutput;
-		ps.discovered_new_products = discovered;
-		ps.discovery_history = [{ generatedAt: new Date().toISOString(), products: discovered }];
+		ps.discovered_new_products = enrichedDiscovered;
+		ps.discovery_history = [{ generatedAt: new Date().toISOString(), products: enrichedDiscovered }];
 		outputs.product_selection = ps;
 		await emitProgressStep({
 			skill: "product_selection",
@@ -318,7 +367,7 @@ export async function mdStrategyWorkflow(input: MDWorkflowInput) {
 		status: "complete",
 		index: MD_SKILL_NAMES.length,
 		total: MD_SKILL_NAMES.length + 1,
-		data: { count: discovered?.length ?? 0 },
+		data: { count: enrichedDiscovered?.length ?? 0 },
 	});
 
 	let strategyId: string | null = null;
