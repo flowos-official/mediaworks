@@ -32,7 +32,7 @@ export function SelectionCard({ card, canWrite }: { card: BoardCard; canWrite: b
       {card.status === "scheduled" && (
         <p className="text-[11px] mt-2 px-2 py-1 bg-blue-50 dark:bg-blue-950/40 rounded">
           {card.broadcast
-            ? `📺 ${card.broadcast.channel.toUpperCase()} · ${card.broadcast.air_date}${card.broadcast.start_time ? ` ${card.broadcast.start_time}` : ""}`
+            ? `📺 ${card.broadcast.channel.toUpperCase()} · ${card.broadcast.air_date} ${card.broadcast.start_time}`
             : `📝 ${card.scheduled_note ?? "수동 입력"}`}
         </p>
       )}
@@ -41,6 +41,7 @@ export function SelectionCard({ card, canWrite }: { card: BoardCard; canWrite: b
           {card.closed_reason === "aired" && `✅ 방송완료 ${card.closed_at?.slice(0, 10) ?? ""}`}
           {card.closed_reason === "dropped" && `🚫 드롭 ${card.closed_at?.slice(0, 10) ?? ""}`}
           {card.closed_reason === "postponed" && `⏸ 보류 ${card.closed_at?.slice(0, 10) ?? ""}`}
+          {!card.closed_reason && `종료 ${card.closed_at?.slice(0, 10) ?? ""}`}
         </p>
       )}
       {card.status === "sourcing" && card.sourcing_note && (

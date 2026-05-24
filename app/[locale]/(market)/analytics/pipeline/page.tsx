@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 // TODO(task-9): replace literal strings with getTranslations("pipeline") once the
 // "pipeline" namespace is added to messages/ja.json and messages/en.json.
 const TITLE = "商品選定パイプライン";
-const SUBTITLE = "선택 → 소싱 → 방송예정 → 종료 흐름을 확인합니다";
+const SUBTITLE = "選択 → 仕入れ → 放送予定 → 終了の流れを確認します";
 
 async function loadBoard(
   sb: Extract<Awaited<ReturnType<typeof requireUser>>, { sb: unknown }>["sb"]
@@ -28,6 +28,9 @@ async function loadBoard(
     (sb as any).from("product_selections").select(baseSelect).neq("status", "closed").order("updated_at", { ascending: false }),
     (sb as any).from("product_selections").select(baseSelect).eq("status", "closed").gte("closed_at", sevenDaysAgo).order("closed_at", { ascending: false }),
   ]);
+
+  if (activeRes.error) console.warn("[pipeline/loadBoard] active query failed:", activeRes.error.message);
+  if (closedRes.error) console.warn("[pipeline/loadBoard] closed query failed:", closedRes.error.message);
 
   const board: BoardData = { selected: [], sourcing: [], scheduled: [], closed: [] };
   const rows = [...((activeRes.data ?? []) as unknown as BoardCard[]), ...((closedRes.data ?? []) as unknown as BoardCard[])];
