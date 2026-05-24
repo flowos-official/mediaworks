@@ -4,11 +4,13 @@
 // (e.g. Rakuten, QVC). Using a plain <img> here to match the pattern in
 // components/discovery/ProductCard.tsx until image domains are whitelisted.
 import type { BoardCard } from "@/lib/selections/types";
+import { CardMenu } from "./CardMenu";
 
-export function SelectionCard({ card, canWrite }: { card: BoardCard; canWrite: boolean }) {
+export function SelectionCard({ card, canWrite, onChanged }: { card: BoardCard; canWrite: boolean; onChanged?: () => void }) {
   const p = card.product;
   return (
-    <article className="bg-card border border-border rounded-lg p-3 shadow-sm">
+    <article className="bg-card border border-border rounded-lg p-3 shadow-sm relative" data-selection-id={card.id}>
+      <div className="absolute top-2 right-2">{canWrite && <CardMenu card={card} onChanged={onChanged ?? (() => undefined)} />}</div>
       <div className="flex gap-2">
         {p.thumbnail_url && (
           <div className="w-12 h-12 relative shrink-0 rounded overflow-hidden">

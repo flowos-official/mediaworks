@@ -43,7 +43,7 @@ function DropColumn({ status, children, count, tone }: {
   );
 }
 
-function DragCard({ card, canWrite }: { card: BoardCard; canWrite: boolean }) {
+function DragCard({ card, canWrite, onChanged }: { card: BoardCard; canWrite: boolean; onChanged?: () => void }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: card.id, disabled: !canWrite,
   });
@@ -52,7 +52,7 @@ function DragCard({ card, canWrite }: { card: BoardCard; canWrite: boolean }) {
     : undefined;
   return (
     <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
-      <SelectionCard card={card} canWrite={canWrite} />
+      <SelectionCard card={card} canWrite={canWrite} onChanged={onChanged} />
     </div>
   );
 }
@@ -66,6 +66,16 @@ export function KanbanBoard({
   } | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
   const previousBoard = useRef<BoardData>(initialBoard);
+
+  async function refresh() {
+    try {
+      const res = await fetch("/api/selections");
+      if (res.ok) {
+        const data = await res.json();
+        setBoard(data.board);
+      }
+    } catch {}
+  }
 
   async function performMove(card: BoardCard, to: SelectionStatus, extras: Record<string, unknown> = {}) {
     previousBoard.current = board;
@@ -122,7 +132,7 @@ export function KanbanBoard({
           {COLUMNS.map((col) => (
             <DropColumn key={col.status} status={col.status} count={board[col.status].length} tone={col.tone}>
               {board[col.status].map((c) => (
-                <DragCard key={c.id} card={c} canWrite={canWrite} />
+                <DragCard key={c.id} card={c} canWrite={canWrite} onChanged={refresh} />
               ))}
               {board[col.status].length === 0 && (
                 <p className="text-xs text-muted-foreground italic py-4 text-center">비어 있음</p>
