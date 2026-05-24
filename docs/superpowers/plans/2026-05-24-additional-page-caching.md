@@ -1440,13 +1440,13 @@ const MUTATION_TAGS = [
  * safety net.
  */
 export function invalidateDiscoveryAfterMutation(source: string): void {
-	try {
-		for (const tag of MUTATION_TAGS) {
+	for (const tag of MUTATION_TAGS) {
+		try {
 			revalidateTag(tag, "max");
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : String(err);
+			console.warn("[cache] revalidateTag failed", { source, tag, error: msg });
 		}
-	} catch (err) {
-		const msg = err instanceof Error ? err.message : String(err);
-		console.warn("[cache] revalidateTag failed", { source, error: msg });
 	}
 }
 ```
