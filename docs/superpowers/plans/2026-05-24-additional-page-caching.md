@@ -1245,14 +1245,16 @@ Same pattern. After importing `revalidateTag` from `next/cache`, add this block 
 Import `revalidateTag` from `next/cache`. After the `for (const context of CONTEXTS)` loop, before the final `return NextResponse.json({ results, seasonal_categories: ... })`, add:
 
 ```ts
-	try {
-		revalidateTag("discovery:insights", "max");
-	} catch (err) {
-		const msg = err instanceof Error ? err.message : String(err);
-		console.warn("[cache] revalidateTag failed", {
-			route: "daily-learning",
-			error: msg,
-		});
+	if (results.some((r) => r.ok)) {
+		try {
+			revalidateTag("discovery:insights", "max");
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : String(err);
+			console.warn("[cache] revalidateTag failed", {
+				route: "daily-learning",
+				error: msg,
+			});
+		}
 	}
 ```
 
@@ -1261,14 +1263,16 @@ Import `revalidateTag` from `next/cache`. After the `for (const context of CONTE
 Import `revalidateTag` from `next/cache`. After the `for (const context of CONTEXTS)` loop, before the final `return NextResponse.json({ results })`, add:
 
 ```ts
-	try {
-		revalidateTag("discovery:insights", "max");
-	} catch (err) {
-		const msg = err instanceof Error ? err.message : String(err);
-		console.warn("[cache] revalidateTag failed", {
-			route: "weekly-insights",
-			error: msg,
-		});
+	if (results.some((r) => r.ok)) {
+		try {
+			revalidateTag("discovery:insights", "max");
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : String(err);
+			console.warn("[cache] revalidateTag failed", {
+				route: "weekly-insights",
+				error: msg,
+			});
+		}
 	}
 ```
 

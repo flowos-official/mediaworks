@@ -76,14 +76,16 @@ export async function GET(req: NextRequest) {
 		}
 	}
 
-	try {
-		revalidateTag("discovery:insights", "max");
-	} catch (err) {
-		const msg = err instanceof Error ? err.message : String(err);
-		console.warn("[cache] revalidateTag failed", {
-			route: "daily-learning",
-			error: msg,
-		});
+	if (results.some((r) => r.ok)) {
+		try {
+			revalidateTag("discovery:insights", "max");
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : String(err);
+			console.warn("[cache] revalidateTag failed", {
+				route: "daily-learning",
+				error: msg,
+			});
+		}
 	}
 
 	return NextResponse.json({
