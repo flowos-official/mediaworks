@@ -36,7 +36,8 @@
     "market": {
       "broadcasts": "番組カレンダー",
       "discovery": "新規発掘",
-      "strategy": "MD戦略"
+      "strategy": "MD戦略",
+      "pipeline": "パイプライン"
     },
     "strategyTabs": {
       "expansion": "拡大戦略",
@@ -266,6 +267,10 @@
     "financialProjection": "収益予測",
     "riskContingency": "リスク・対策",
     "downloadPdf": "PDF戦略書ダウンロード"
+  },
+  "pipeline": {
+    "title": "商品選定パイプライン",
+    "subtitle": "選択 → 仕入れ → 放送予定 → 終了の流れを確認します"
   },
   "language": {
     "ja": "日本語",

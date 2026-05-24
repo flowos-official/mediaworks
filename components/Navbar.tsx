@@ -10,6 +10,21 @@ import type { Role } from '@/lib/auth/route-permissions';
 import { localePath } from '@/lib/i18n/locale-path';
 import { NAV_GROUPS } from '@/lib/nav/groups';
 
+/** Fetch active (non-closed) pipeline count. Returns 0 on any failure. */
+async function fetchActivePipelineCount(): Promise<number> {
+  try {
+    const sb = await getServerClient();
+    const { count, error } = await sb
+      .from('product_selections')
+      .select('*', { count: 'exact', head: true })
+      .neq('status', 'closed');
+    if (error) return 0;
+    return count ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
 export default async function Navbar() {
   const locale = await getLocale();
 
@@ -24,6 +39,9 @@ export default async function Navbar() {
       .maybeSingle();
     role = (profile?.role ?? null) as Role | null;
   }
+
+  // Fetch active pipeline count only for authenticated users; parallel with auth above.
+  const activePipelineCount = role ? await fetchActivePipelineCount() : 0;
 
   // Logo landing: viewer → /analytics/products, others → /analytics/overview, no role → root.
   const logoHref =
@@ -48,7 +66,13 @@ export default async function Navbar() {
           {role && (
             <div className="hidden md:flex items-center gap-6">
               {NAV_GROUPS.map((g) => (
-                <GroupDropdown key={g.key} group={g} role={role!} locale={locale} />
+                <GroupDropdown
+                  key={g.key}
+                  group={g}
+                  role={role!}
+                  locale={locale}
+                  memberBadges={g.key === 'market' ? { '/analytics/pipeline': activePipelineCount } : undefined}
+                />
               ))}
               <UserMenu
                 email={user?.email ?? null}
@@ -68,7 +92,11 @@ export default async function Navbar() {
                 locale={locale}
                 triggerId="user-menu-trigger-mobile"
               />
-              <MobileNavSheet role={role} locale={locale} />
+              <MobileNavSheet
+                role={role}
+                locale={locale}
+                memberBadges={{ '/analytics/pipeline': activePipelineCount }}
+              />
             </div>
           )}
 

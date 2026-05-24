@@ -1,13 +1,9 @@
+import { getTranslations } from "next-intl/server";
 import { requireUser } from "@/lib/auth/require-user";
 import type { BoardData, BoardCard } from "@/lib/selections/types";
 import { KanbanBoard } from "@/components/pipeline/KanbanBoard";
 
 export const dynamic = "force-dynamic";
-
-// TODO(task-9): replace literal strings with getTranslations("pipeline") once the
-// "pipeline" namespace is added to messages/ja.json and messages/en.json.
-const TITLE = "商品選定パイプライン";
-const SUBTITLE = "選択 → 仕入れ → 放送予定 → 終了の流れを確認します";
 
 async function loadBoard(
   sb: Extract<Awaited<ReturnType<typeof requireUser>>, { sb: unknown }>["sb"]
@@ -41,7 +37,10 @@ async function loadBoard(
 }
 
 export default async function PipelinePage() {
-  const auth = await requireUser(["viewer", "member", "admin"]);
+  const [t, auth] = await Promise.all([
+    getTranslations("pipeline"),
+    requireUser(["viewer", "member", "admin"]),
+  ]);
   if ("error" in auth) return auth.error;
 
   const board = await loadBoard(auth.sb);
@@ -50,8 +49,8 @@ export default async function PipelinePage() {
   return (
     <main className="flex-1 p-6">
       <header className="mb-6">
-        <h1 className="text-2xl font-bold">{TITLE}</h1>
-        <p className="text-sm text-muted-foreground">{SUBTITLE}</p>
+        <h1 className="text-2xl font-bold">{t("title")}</h1>
+        <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
       </header>
       <KanbanBoard initialBoard={board} canWrite={canWrite} />
     </main>

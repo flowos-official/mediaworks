@@ -14,9 +14,11 @@ interface Props {
   group: NavGroup;
   role: Role;
   locale: string;
+  /** href → count; renders a badge next to that member's label when count > 0 */
+  memberBadges?: Record<string, number>;
 }
 
-export default function GroupDropdown({ group, role, locale }: Props) {
+export default function GroupDropdown({ group, role, locale, memberBadges }: Props) {
   const pathname = usePathname();
   const t = useTranslations();
   const isActive = findActiveGroup(pathname)?.key === group.key;
@@ -109,17 +111,25 @@ export default function GroupDropdown({ group, role, locale }: Props) {
             role="menu"
             className="min-w-[180px] bg-card border border-border rounded-lg shadow-lg py-1"
           >
-            {group.members.map((m) => (
-              <Link
-                key={m.href}
-                role="menuitem"
-                href={localePath(locale, m.href)}
-                className="block px-3 py-2 text-sm text-foreground hover:bg-muted"
-                onClick={() => setOpen(false)}
-              >
-                {t(m.labelKey)}
-              </Link>
-            ))}
+            {group.members.map((m) => {
+              const badge = memberBadges?.[m.href] ?? 0;
+              return (
+                <Link
+                  key={m.href}
+                  role="menuitem"
+                  href={localePath(locale, m.href)}
+                  className="flex items-center justify-between px-3 py-2 text-sm text-foreground hover:bg-muted"
+                  onClick={() => setOpen(false)}
+                >
+                  {t(m.labelKey)}
+                  {badge > 0 && (
+                    <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/15 text-indigo-700 dark:text-indigo-300">
+                      {badge}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
           </div>
         </div>
       )}

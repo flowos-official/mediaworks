@@ -42,11 +42,12 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     key: 'market',
     labelKey: 'nav.groups.market',
     landing: '/broadcasts',
-    pathPrefixes: ['/broadcasts', '/analytics/discovery', '/analytics/strategy'],
+    pathPrefixes: ['/broadcasts', '/analytics/discovery', '/analytics/strategy', '/analytics/pipeline'],
     members: [
       { labelKey: 'nav.market.broadcasts', href: '/broadcasts' },
       { labelKey: 'nav.market.discovery', href: '/analytics/discovery' },
       { labelKey: 'nav.market.strategy', href: '/analytics/strategy' },
+      { labelKey: 'nav.market.pipeline', href: '/analytics/pipeline' },
     ],
     visibility: { admin: 'full', member: 'full', viewer: 'hidden' },
   },
