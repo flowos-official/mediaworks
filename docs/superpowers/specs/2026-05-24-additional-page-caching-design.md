@@ -123,7 +123,7 @@ Mutations that change `discovered_products` or `product_feedback` invalidate the
 |---|---|
 | `POST /api/discovery/feedback` | `discovery:home_shopping`, `discovery:live_commerce`, `discovery:insights`, `discovery:history`, `discovery:selections` |
 | `POST /api/discovery/[productId]/promote-to-research` | same 5 tags |
-| `POST /api/discovery/enrich/[productId]` | same 5 tags |
+| `POST /api/discovery/enrich/[productId]/worker` | same 5 tags (the dispatch route only queues; the worker writes c_package) |
 
 Invalidation is best-effort: wrapped in try/catch, failure is logged but does not turn a successful mutation into an error response. The 24h `expire` is the safety net.
 
@@ -212,7 +212,7 @@ User clicks "sourced"
 ### Modified — mutation routes (revalidateTag additions)
 - `app/api/discovery/feedback/route.ts`
 - `app/api/discovery/[productId]/promote-to-research/route.ts`
-- `app/api/discovery/enrich/[productId]/route.ts`
+- `app/api/discovery/enrich/[productId]/worker/route.ts`
 
 ### Unchanged
 - All page components, all client-side components, all i18n files, `next.config.ts`.
