@@ -26,14 +26,14 @@ export interface BoardCard extends SelectionRow {
     thumbnail_url: string | null;
     price_jpy: number | null;
     category: string | null;
-    source: string | null;
+    source: string;
     tv_fit_score: number | null;
     product_url: string;
   };
   broadcast: {
     channel: string;
     air_date: string;
-    start_time: string | null;
+    start_time: string;
     program_title: string;
   } | null;
   owner: { display_name: string | null; email: string } | null;
