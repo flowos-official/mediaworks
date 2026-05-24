@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { applyRakutenRoomBoost } from "@/lib/discovery/rakuten-room-boost";
+import { applyRakutenLiveArchiveBoost } from "@/lib/discovery/rakuten-live-archive-boost";
+import { applyCreatorContentBoost } from "@/lib/discovery/creator-content-boost";
+import { applyHashtagMentionBoost } from "@/lib/discovery/hashtag-mention-boost";
+import { clampLiveBoosts } from "@/lib/discovery/live-boost-clamp";
 import { runStage1 } from "@/lib/discovery/orchestrator";
 import { runOptionalStage } from "@/lib/discovery/cron-budget";
 import {
@@ -23,6 +27,7 @@ const SAVE_FINALIZE_DEADLINE_MS = Number(
 const OPTIONAL_STAGE_MIN_SAVE_BUDGET_MS = Number(
 	process.env.DISCOVERY_OPTIONAL_STAGE_MIN_SAVE_BUDGET_MS ?? 20_000,
 );
+const LIVE_BOOST_TOTAL_CAP = Number(process.env.LIVE_BOOST_TOTAL_CAP ?? 15);
 
 async function loadLearningState(): Promise<LearningState> {
 	try {
@@ -88,27 +93,66 @@ export async function GET(req: NextRequest) {
 		const orchestrated = await runStage1(learning, TARGET_COUNT, CONTEXT);
 		await attachPlanToSession(sessionId, orchestrated.plan);
 
-		// Live-commerce post-processing is intentionally lean compared to
-		// home_shopping: TV-broadcast evidence/penalty/competitor-trend layers
-		// are skipped entirely because they reflect QVC/ShopCh signals that
-		// don't apply to live commerce. The pool itself already sourced from
-		// live-commerce platforms (Rakuten Live, ROOM, mercari_shops, 17.live,
-		// pinkoi) via the context-aware buildPool branch.
-		//
-		// What we DO apply: a small ROOM-mention boost — Rakuten ROOM is the
-		// closest analogue to "creator-curated commerce" we can query at
-		// runtime.
-		await runOptionalStage({
-			label: `${CONTEXT}:rakuten-room-boost`,
-			startedAtMs: startedAt,
-			deadlineMs: SAVE_FINALIZE_DEADLINE_MS,
-			minSaveBudgetMs: OPTIONAL_STAGE_MIN_SAVE_BUDGET_MS,
-			fallback: null,
-			task: async () => {
-				await applyRakutenRoomBoost(orchestrated.candidates);
-				return null;
-			},
-		});
+		// Snapshot the post-curate score for every candidate. The four boost
+		// layers each add up to +5; clampLiveBoosts enforces that the total
+		// delta from this baseline stays <= LIVE_BOOST_TOTAL_CAP.
+		const baselineByUrl = new Map<string, number>(
+			orchestrated.candidates.map((c) => [c.productUrl, c.tvFitScore]),
+		);
+
+		// L1-L4 are independent (each only adds to tvFitScore on a single
+		// candidate at a time, no cross-candidate state). Running them in
+		// parallel is safe under JS single-threaded execution + the final
+		// clamp.
+		await Promise.all([
+			runOptionalStage({
+				label: `${CONTEXT}:L1-room-mention`,
+				startedAtMs: startedAt,
+				deadlineMs: SAVE_FINALIZE_DEADLINE_MS,
+				minSaveBudgetMs: OPTIONAL_STAGE_MIN_SAVE_BUDGET_MS,
+				fallback: null,
+				task: async () => {
+					await applyRakutenRoomBoost(orchestrated.candidates);
+					return null;
+				},
+			}),
+			runOptionalStage({
+				label: `${CONTEXT}:L2-rakuten-live-archive`,
+				startedAtMs: startedAt,
+				deadlineMs: SAVE_FINALIZE_DEADLINE_MS,
+				minSaveBudgetMs: OPTIONAL_STAGE_MIN_SAVE_BUDGET_MS,
+				fallback: null,
+				task: async () => {
+					await applyRakutenLiveArchiveBoost(orchestrated.candidates);
+					return null;
+				},
+			}),
+			runOptionalStage({
+				label: `${CONTEXT}:L3-creator-content`,
+				startedAtMs: startedAt,
+				deadlineMs: SAVE_FINALIZE_DEADLINE_MS,
+				minSaveBudgetMs: OPTIONAL_STAGE_MIN_SAVE_BUDGET_MS,
+				fallback: null,
+				task: async () => {
+					await applyCreatorContentBoost(orchestrated.candidates);
+					return null;
+				},
+			}),
+			runOptionalStage({
+				label: `${CONTEXT}:L4-hashtag-mention`,
+				startedAtMs: startedAt,
+				deadlineMs: SAVE_FINALIZE_DEADLINE_MS,
+				minSaveBudgetMs: OPTIONAL_STAGE_MIN_SAVE_BUDGET_MS,
+				fallback: null,
+				task: async () => {
+					await applyHashtagMentionBoost(orchestrated.candidates);
+					return null;
+				},
+			}),
+		]);
+
+		clampLiveBoosts(orchestrated.candidates, baselineByUrl, LIVE_BOOST_TOTAL_CAP);
+		orchestrated.candidates.sort((a, b) => b.tvFitScore - a.tvFitScore);
 
 		const batch = orchestrated.candidates.map((c) => ({
 			candidate: c,
