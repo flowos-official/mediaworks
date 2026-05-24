@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth/require-user";
 import { NextRequest } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
+import { invalidateStrategyList } from "@/lib/analytics/cached";
 
 // GET: Fetch a single strategy with full skill results
 export async function GET(
@@ -46,5 +47,6 @@ export async function DELETE(
 	if (error) {
 		return Response.json({ error: error.message }, { status: 500 });
 	}
+	invalidateStrategyList("md-strategy-delete");
 	return Response.json({ ok: true });
 }

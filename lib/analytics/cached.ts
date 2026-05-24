@@ -1,5 +1,6 @@
 import "server-only";
 import {
+	revalidateTag,
 	unstable_cacheLife as cacheLife,
 	unstable_cacheTag as cacheTag,
 } from "next/cache";
@@ -9,6 +10,9 @@ const ONE_DAY = 60 * 60 * 24;
 const SEVEN_DAYS = ONE_DAY * 7;
 
 const SALES_LIFE = { revalidate: ONE_DAY, expire: SEVEN_DAYS };
+
+const STRATEGY_LIST_LIFE = { revalidate: 5 * 60, expire: 60 * 60 };
+const STRATEGY_LIST_TAG = "analytics:md-strategy-list";
 
 export interface CachedSalesOverview {
 	totalRevenue: number;
@@ -290,4 +294,58 @@ export async function getCachedSalesProducts(
 	products = products.slice(0, limit);
 
 	return { products, total: Object.keys(productMap).length };
+}
+
+export interface CachedStrategyListItem {
+	id: string;
+	user_goal: string | null;
+	category: string | null;
+	target_market: string | null;
+	price_range: string | null;
+	created_at: string;
+}
+
+export interface CachedStrategyList {
+	strategies: CachedStrategyListItem[];
+}
+
+/**
+ * Top-20 saved MD strategies, newest first. Selects only list-display fields
+ * (no skill results JSONB). Mirrors the original /api/analytics/md-strategy
+ * GET handler's query exactly.
+ */
+export async function getCachedStrategyList(): Promise<CachedStrategyList> {
+	"use cache";
+	cacheTag(STRATEGY_LIST_TAG);
+	cacheLife(STRATEGY_LIST_LIFE);
+
+	const supabase = getServiceClient();
+	const { data, error } = await supabase
+		.from("md_strategies")
+		.select("id, user_goal, category, target_market, price_range, created_at")
+		.order("created_at", { ascending: false })
+		.limit(20);
+
+	if (error) throw new Error(error.message);
+	return { strategies: (data ?? []) as CachedStrategyListItem[] };
+}
+
+/**
+ * Coarse invalidation called from md-strategy mutation sites:
+ *  - DELETE /api/analytics/md-strategy/[id]
+ *  - workflow saveStrategyStep (after final insert)
+ * Best-effort: failures are logged but do not propagate. The 1h expire
+ * cacheLife is the safety net.
+ */
+export function invalidateStrategyList(source: string): void {
+	try {
+		revalidateTag(STRATEGY_LIST_TAG, "max");
+	} catch (err) {
+		const msg = err instanceof Error ? err.message : String(err);
+		console.warn("[cache] revalidateTag failed", {
+			source,
+			tag: STRATEGY_LIST_TAG,
+			error: msg,
+		});
+	}
 }
