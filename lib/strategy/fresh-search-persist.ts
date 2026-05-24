@@ -104,38 +104,40 @@ export async function persistStrategyFreshSearch(
       context: opts.context,
     }));
 
-  const { data: inserted, error: insErr } = await sb
-    .from("discovered_products")
-    .insert(rows)
-    .select("id, product_url");
-
-  if (insErr) {
-    throw new Error(
-      `[fresh-search-persist] bulk insert failed: ${insErr.message}`,
-    );
-  }
-
-  for (const row of inserted ?? []) {
-    if (row.product_url) idByUrl.set(row.product_url as string, row.id as string);
-  }
-
-  // Recover IDs for URLs the duplicate-guard trigger silently skipped.
-  const submittedUrls = rows.map((r) => r.product_url);
-  const missingUrls = submittedUrls.filter((u) => !idByUrl.has(u));
-  if (missingUrls.length > 0) {
-    const { data: existing } = await sb
+  try {
+    const { data: inserted, error: insErr } = await sb
       .from("discovered_products")
-      .select("id, product_url")
-      .in("product_url", missingUrls);
-    for (const row of existing ?? []) {
+      .insert(rows)
+      .select("id, product_url");
+
+    if (insErr) {
+      throw new Error(
+        `[fresh-search-persist] bulk insert failed: ${insErr.message}`,
+      );
+    }
+
+    for (const row of inserted ?? []) {
       if (row.product_url) idByUrl.set(row.product_url as string, row.id as string);
     }
+
+    // Recover IDs for URLs the duplicate-guard trigger silently skipped.
+    const submittedUrls = rows.map((r) => r.product_url);
+    const missingUrls = submittedUrls.filter((u) => !idByUrl.has(u));
+    if (missingUrls.length > 0) {
+      const { data: existing } = await sb
+        .from("discovered_products")
+        .select("id, product_url")
+        .in("product_url", missingUrls);
+      for (const row of existing ?? []) {
+        if (row.product_url) idByUrl.set(row.product_url as string, row.id as string);
+      }
+    }
+
+    await sb.from("discovery_runs").update({ status: "completed" }).eq("id", session.id);
+    return { idByUrl, sessionId: session.id };
+  } catch (err) {
+    // Mark the synthetic session failed so reconcilers can see it.
+    await sb.from("discovery_runs").update({ status: "failed" }).eq("id", session.id);
+    throw err;
   }
-
-  await sb
-    .from("discovery_runs")
-    .update({ status: "completed" })
-    .eq("id", session.id);
-
-  return { idByUrl, sessionId: session.id };
 }

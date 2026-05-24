@@ -11,7 +11,10 @@ export function CardMenu({ card, onChanged }: { card: BoardCard; onChanged: () =
   async function reopen() {
     setOpen(false);
     const res = await fetch(`/api/selections/${card.id}/reopen`, { method: "POST" });
-    if (!res.ok) alert((await res.json()).error ?? "reopen failed");
+    if (!res.ok) {
+      alert((await res.json()).error ?? "reopen failed");
+      return;
+    }
     onChanged();
   }
 
@@ -24,7 +27,10 @@ export function CardMenu({ card, onChanged }: { card: BoardCard; onChanged: () =
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ to_status: "closed", closed_reason: reason }),
     });
-    if (!res.ok) alert((await res.json()).error ?? "close failed");
+    if (!res.ok) {
+      alert((await res.json()).error ?? "close failed");
+      return;
+    }
     onChanged();
   }
 

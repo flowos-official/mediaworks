@@ -12,12 +12,26 @@ export async function PATCH(
   const auth = await requireUser(["member", "admin"]);
   if ("error" in auth) return auth.error;
   const { id } = await params;
-  const { field, value } = (await req.json()) as { field: string; value: string | null };
+
+  let body: { field: string; value: string | null };
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "invalid JSON" }, { status: 400 });
+  }
+  const { field, value } = body;
 
   if (!VALID_FIELDS.has(field))
     return NextResponse.json({ error: "invalid field" }, { status: 400 });
 
   const sb = auth.sb;
+  const { data: existing } = await sb
+    .from("product_selections")
+    .select("id")
+    .eq("id", id)
+    .maybeSingle();
+  if (!existing) return NextResponse.json({ error: "not found" }, { status: 404 });
+
   const { error: updErr } = await sb
     .from("product_selections")
     .update({ [field]: value })

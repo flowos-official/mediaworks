@@ -135,6 +135,7 @@ SELECT
   'selected',
   (SELECT pf.user_id FROM product_feedback pf
      WHERE pf.discovered_product_id = dp.id AND pf.action = 'sourced'
+       AND pf.user_id IS NOT NULL
      ORDER BY pf.created_at DESC LIMIT 1),
   COALESCE(dp.action_at, dp.created_at),
   COALESCE(dp.action_at, dp.created_at)
@@ -143,6 +144,7 @@ WHERE dp.user_action = 'sourced'
   AND EXISTS (
     SELECT 1 FROM product_feedback pf
     WHERE pf.discovered_product_id = dp.id AND pf.action = 'sourced'
+      AND pf.user_id IS NOT NULL
   )
 ON CONFLICT DO NOTHING;
 
