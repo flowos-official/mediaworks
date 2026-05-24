@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/require-user";
+import { getCachedSalesProducts } from "@/lib/analytics/cached";
 
 export async function GET(request: NextRequest) {
 	const auth = await requireUser(["admin", "member", "viewer"]);
@@ -16,117 +17,35 @@ export async function GET(request: NextRequest) {
 		return NextResponse.json({ error: "Invalid year parameter" }, { status: 400 });
 	}
 
-	const supabase = auth.sb;
-
-	let query = supabase
-		.from("product_summaries")
-		.select("*")
-		.in("year", years);
-
-	if (categoryFilter) {
-		query = query.eq("category", categoryFilter);
-	}
-
-	// Fetch date ranges in parallel
-	const dateFilters = years.map((y) => ({
-		start: `${y}-01-01`,
-		end: `${y}-12-31`,
-	}));
-
-	const [summaryResult, dateResult] = await Promise.all([
-		query,
-		supabase
-			.from("sales_weekly")
-			.select("product_code, week_start")
-			.or(dateFilters.map((d) => `and(week_start.gte.${d.start},week_start.lte.${d.end})`).join(","))
-			.order("week_start", { ascending: true }),
-	]);
-
-	const { data, error } = summaryResult;
-
-	if (error) {
-		return NextResponse.json({ error: error.message }, { status: 500 });
-	}
-
-	// Build date range map per product
-	const dateMap: Record<string, { firstDate: string; lastDate: string }> = {};
-	for (const row of dateResult.data ?? []) {
-		const code = row.product_code;
-		const d = row.week_start;
-		if (!dateMap[code]) {
-			dateMap[code] = { firstDate: d, lastDate: d };
-		} else {
-			if (d < dateMap[code].firstDate) dateMap[code].firstDate = d;
-			if (d > dateMap[code].lastDate) dateMap[code].lastDate = d;
-		}
-	}
-
-	// Merge across years for same product
-	const productMap: Record<string, {
-		code: string; name: string; category: string | null;
-		totalRevenue: number; totalCost: number; totalProfit: number;
-		totalQuantity: number; weekCount: number;
-	}> = {};
-
-	for (const row of data ?? []) {
-		const key = row.product_code;
-		if (!productMap[key]) {
-			productMap[key] = {
-				code: row.product_code,
-				name: row.product_name,
-				category: row.category,
-				totalRevenue: 0, totalCost: 0, totalProfit: 0,
-				totalQuantity: 0, weekCount: 0,
-			};
-		}
-		productMap[key].totalRevenue += row.total_revenue ?? 0;
-		productMap[key].totalCost += row.total_cost ?? 0;
-		productMap[key].totalProfit += row.total_profit ?? 0;
-		productMap[key].totalQuantity += row.total_quantity ?? 0;
-		productMap[key].weekCount += row.week_count ?? 0;
+	if (isNaN(limitParam) || limitParam < 1 || limitParam > 500) {
+		return NextResponse.json({ error: "Invalid limit parameter" }, { status: 400 });
 	}
 
 	const isViewer = auth.role === "viewer";
+	// For viewer, "margin" sort would be incoherent (they can't see margin).
+	// Fall back to "revenue" before hitting the cache so we share its entry.
+	const effectiveSort = isViewer && sortBy === "margin" ? "revenue" : sortBy;
 
-	let products = Object.values(productMap).map((p) => ({
-		...p,
-		marginRate: p.totalRevenue > 0
-			? Math.round((p.totalProfit / p.totalRevenue) * 10000) / 100
-			: 0,
-		avgWeeklyQuantity: p.weekCount > 0 ? Math.round(p.totalQuantity / p.weekCount) : 0,
-		avgWeeklyRevenue: p.weekCount > 0 ? Math.round(p.totalRevenue / p.weekCount) : 0,
-		firstDate: dateMap[p.code]?.firstDate ?? null,
-		lastDate: dateMap[p.code]?.lastDate ?? null,
-	}));
+	try {
+		const { products: rawProducts, total } = await getCachedSalesProducts(
+			years,
+			effectiveSort,
+			limitParam,
+			categoryFilter,
+		);
 
-	switch (sortBy) {
-		case "quantity":
-			products.sort((a, b) => b.totalQuantity - a.totalQuantity);
-			break;
-		case "margin":
-			// viewer can't sort by a field they can't see — fall back to revenue
-			products.sort((a, b) =>
-				isViewer ? b.totalRevenue - a.totalRevenue : b.marginRate - a.marginRate,
-			);
-			break;
-		default:
-			products.sort((a, b) => b.totalRevenue - a.totalRevenue);
+		const products = isViewer
+			? rawProducts.map((p) => ({
+					...p,
+					totalCost: null as unknown as number,
+					totalProfit: null as unknown as number,
+					marginRate: null as unknown as number,
+				}))
+			: rawProducts;
+
+		return NextResponse.json({ products, total, viewer: isViewer });
+	} catch (err) {
+		const message = err instanceof Error ? err.message : String(err);
+		return NextResponse.json({ error: message }, { status: 500 });
 	}
-
-	products = products.slice(0, limitParam);
-
-	if (isViewer) {
-		products = products.map((p) => ({
-			...p,
-			totalCost: null as unknown as number,
-			totalProfit: null as unknown as number,
-			marginRate: null as unknown as number,
-		}));
-	}
-
-	return NextResponse.json({
-		products,
-		total: Object.keys(productMap).length,
-		viewer: isViewer,
-	});
 }
