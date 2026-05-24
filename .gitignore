@@ -47,8 +47,11 @@ next-env.d.ts
 /*.png
 .superpowers/
 
-# Claude Code harness metadata (worktrees, agent state, settings)
-.claude/
+# Claude Code harness — team-shared files (agents/skills/commands/hooks/settings.json/README)
+# are tracked. Worktree state and personal overrides stay local.
+.claude/worktrees/
+.claude/settings.local.json
+.claude/projects/
 
 # Supabase CLI working dir
 supabase/.temp/

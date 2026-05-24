@@ -1,0 +1,50 @@
+{
+  "$schema": "https://claude.com/code/settings.json",
+  "_comment": "Team-shared Claude Code settings for mediaworks. Personal overrides go in .claude/settings.local.json (gitignored). Adapted from SF 2026 templates.",
+
+  "permissions": {
+    "allow": [
+      "Bash(npm:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx tsx:*)",
+      "Bash(git:status,git:diff,git:log,git:branch,git:show,git:worktree:list)",
+      "Bash(gh:pr:list,gh:pr:view,gh:pr:diff,gh:issue:list,gh:issue:view,gh:run:view,gh:run:list)",
+      "Bash(supabase:migration:list,supabase:db:diff)",
+      "Read",
+      "Glob",
+      "Grep",
+      "WebFetch",
+      "mcp__plugin_context7_context7__*",
+      "mcp__plugin_chrome-devtools-mcp_chrome-devtools__*"
+    ],
+    "ask": [
+      "Edit",
+      "Write",
+      "Bash(git:commit:*)",
+      "Bash(git:push:*)",
+      "Bash(git:checkout:*)",
+      "Bash(git:rebase:*)",
+      "Bash(git:reset:*)",
+      "Bash(npm:install:*)",
+      "Bash(npm:uninstall:*)",
+      "Bash(supabase:db:push:*)",
+      "Bash(supabase:db:reset:*)",
+      "Bash(rm:*)"
+    ],
+    "deny": [
+      "Bash(git:push:--force*)",
+      "Bash(git:push:-f*)",
+      "Bash(git:reset:--hard:origin*)",
+      "Bash(git:clean:-fd:*)",
+      "Bash(rm:-rf:/*)",
+      "Read(.env)",
+      "Read(.env.local)",
+      "Read(.env.production)",
+      "Read(supabase/.env)"
+    ]
+  },
+
+  "_subagents_note": "Subagent isolation via git worktrees is already standard in this repo (see .claude/worktrees/). Spawn long-running explorations + prototypes there.",
+
+  "_model_note": "Inherit model from user-level setting. SF 2026 recommends Sonnet executor + Opus advisor (architect-advisor agent). Override per task with --model when needed."
+}
