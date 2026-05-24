@@ -5,6 +5,10 @@
  * Usage: npx tsx scripts/test-live-boost-layers.ts
  */
 import { clampLiveBoosts } from "@/lib/discovery/live-boost-clamp";
+import { applyRakutenRoomBoost } from "@/lib/discovery/rakuten-room-boost";
+import { applyRakutenLiveArchiveBoost } from "@/lib/discovery/rakuten-live-archive-boost";
+import { applyCreatorContentBoost } from "@/lib/discovery/creator-content-boost";
+import { applyHashtagMentionBoost } from "@/lib/discovery/hashtag-mention-boost";
 import type { Candidate } from "@/lib/discovery/types";
 
 function makeCandidate(url: string, score: number): Candidate {
@@ -62,5 +66,56 @@ function testClamp() {
 	assert(c.tvFitScore === 90, "C unaffected (no baseline entry)");
 }
 
+function testClampEdgeCase() {
+	console.log("\n## clampLiveBoosts (edge case: baseline + cap > 100)");
+	// Edge case: baseline 95, cap 15, score 111 (delta 16, exceeds cap)
+	// → should clamp to 100 via Math.min, not 110 (baseline + cap)
+	const d = makeCandidate("https://example.com/d", 111); // delta 16 (baseline 95), exceeds +15
+
+	const baseline = new Map<string, number>([["https://example.com/d", 95]]);
+
+	clampLiveBoosts([d], baseline, 15);
+
+	assert(d.tvFitScore === 100, "D clamped to 100 via Math.min (not 110)");
+	assert(d.tvFitReason.includes("[合算cap+15]"), "D annotated with clamp");
+}
+
+async function testBoostSmoke() {
+	console.log("\n## boost smoke (calls Brave — outputs are observational)");
+
+	// Two candidates: one well-known (likely to trigger several boosts),
+	// one obscure (likely to trigger none). Adjust names if Brave quota
+	// is exhausted or you want to retarget.
+	const seeded: Candidate[] = [
+		{
+			...makeCandidate("https://item.rakuten.co.jp/lululun/lululun01/", 70),
+			name: "ルルルン プレシャス フェイスマスク",
+			rakutenItemCode: "lululun:lululun01",
+		},
+		{
+			...makeCandidate("https://item.rakuten.co.jp/none/zzz_obscure_test_item_xyz/", 70),
+			name: "Z_obscure_test_item_xyz_あ",
+			rakutenItemCode: "none:zzz_obscure_test_item_xyz",
+		},
+	];
+
+	const print = (label: string) => {
+		for (const c of seeded) {
+			console.log(`  ${label}: "${c.name}" → ${c.tvFitScore} | ${c.tvFitReason}`);
+		}
+	};
+
+	print("baseline");
+	await applyRakutenRoomBoost(seeded);
+	print("after L1");
+	await applyRakutenLiveArchiveBoost(seeded);
+	print("after L2");
+	await applyCreatorContentBoost(seeded);
+	print("after L3");
+	await applyHashtagMentionBoost(seeded);
+	print("after L4");
+}
+
 testClamp();
-console.log("\nall passed");
+testClampEdgeCase();
+void testBoostSmoke().then(() => console.log("\nall passed"));
