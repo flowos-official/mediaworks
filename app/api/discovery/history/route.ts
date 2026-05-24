@@ -24,10 +24,11 @@ export async function GET(req: NextRequest) {
 			? contextFilter
 			: null;
 
-	const toDate = searchParams.get("to") ?? new Date().toISOString();
-	const fromDate =
+	const toDate = (searchParams.get("to") ?? new Date().toISOString()).slice(0, 10);
+	const fromDate = (
 		searchParams.get("from") ??
-		new Date(Date.now() - 60 * 24 * 3600 * 1000).toISOString();
+		new Date(Date.now() - 60 * 24 * 3600 * 1000).toISOString()
+	).slice(0, 10);
 
 	try {
 		const data = await getCachedDiscoveryHistory(context, fromDate, toDate);
