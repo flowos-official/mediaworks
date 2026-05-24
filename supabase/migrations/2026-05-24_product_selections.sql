@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS product_selections (
 
   closed_reason text CHECK (closed_reason IN ('aired','dropped','postponed')),
   closed_at     timestamptz,
-  closed_by     uuid REFERENCES profiles(id),
+  closed_by     uuid REFERENCES profiles(id) ON DELETE SET NULL,
 
   sourcing_note  text,
   scheduled_note text,
@@ -39,8 +39,9 @@ CREATE TABLE IF NOT EXISTS product_selections (
 CREATE UNIQUE INDEX IF NOT EXISTS uniq_active_selection_per_product
   ON product_selections(discovered_product_id) WHERE status != 'closed';
 
-CREATE INDEX IF NOT EXISTS idx_ps_status_active
-  ON product_selections(status, updated_at DESC) WHERE status != 'closed';
+DROP INDEX IF EXISTS idx_ps_status_active;
+CREATE INDEX IF NOT EXISTS idx_ps_active_updated
+  ON product_selections(updated_at DESC) WHERE status != 'closed';
 CREATE INDEX IF NOT EXISTS idx_ps_owner_active
   ON product_selections(owner_id) WHERE status != 'closed';
 CREATE INDEX IF NOT EXISTS idx_ps_assignee_active
@@ -97,14 +98,21 @@ ALTER TABLE product_selection_events ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS ps_select  ON product_selections;
 DROP POLICY IF EXISTS ps_write   ON product_selections;
+DROP POLICY IF EXISTS ps_insert  ON product_selections;
+DROP POLICY IF EXISTS ps_update  ON product_selections;
 DROP POLICY IF EXISTS pse_select ON product_selection_events;
 DROP POLICY IF EXISTS pse_insert ON product_selection_events;
 
 CREATE POLICY ps_select ON product_selections
   FOR SELECT TO authenticated USING (true);
 
-CREATE POLICY ps_write ON product_selections
-  FOR ALL TO authenticated
+CREATE POLICY ps_insert ON product_selections
+  FOR INSERT TO authenticated
+  WITH CHECK (EXISTS (SELECT 1 FROM profiles p
+                      WHERE p.id = auth.uid() AND p.role IN ('member','admin')));
+
+CREATE POLICY ps_update ON product_selections
+  FOR UPDATE TO authenticated
   USING (EXISTS (SELECT 1 FROM profiles p
                  WHERE p.id = auth.uid() AND p.role IN ('member','admin')))
   WITH CHECK (EXISTS (SELECT 1 FROM profiles p
