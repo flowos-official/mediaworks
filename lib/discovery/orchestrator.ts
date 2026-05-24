@@ -77,13 +77,16 @@ async function suggestMoreKeywords(
 /**
  * Fetch additional pool for extra keywords (tagged as tv_proven since origin is curation-driven).
  */
-async function buildAdditionalPool(keywords: string[]): Promise<PoolItem[]> {
+async function buildAdditionalPool(
+	keywords: string[],
+	context: Context,
+): Promise<PoolItem[]> {
 	if (keywords.length === 0) return [];
 	const partialPlan: CategoryPlan = {
 		tv_proven: keywords,
 		exploration: [],
 	};
-	return buildPool(partialPlan);
+	return buildPool(partialPlan, context);
 }
 
 /**
@@ -165,7 +168,7 @@ export async function runStage1(
 	const plan = await buildCategoryPlan(learning, topCategories, recentlyUsed, context);
 
 	// Step 2: initial pool + exclusion
-	let pool = await buildPool(plan);
+	let pool = await buildPool(plan, context);
 	const exclusionCtx = await loadExclusionContext(learning);
 	let filtered = applyExclusions(pool, exclusionCtx);
 
@@ -181,7 +184,7 @@ export async function runStage1(
 		const extraKeywords = await suggestMoreKeywords(plan, qualityCount);
 		if (extraKeywords.length === 0) break;
 
-		const extension = await buildAdditionalPool(extraKeywords);
+		const extension = await buildAdditionalPool(extraKeywords, context);
 		pool = mergePools(pool, extension);
 		filtered = applyExclusions(pool, exclusionCtx);
 		candidates = await curatePool(filtered, targetCount, learning, context);

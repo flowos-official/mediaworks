@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
-import { applyBroadcastBoost, tagBroadcastEvidence } from "@/lib/discovery/broadcast";
-import { applyRecentBroadcastPenalty } from "@/lib/discovery/recent-broadcast-penalty";
-import { applyCompetitorTrendBoost } from "@/lib/discovery/competitor-trend-boost";
-import { applyEvidenceBonus, computeTvEvidence } from "@/lib/discovery/tv-evidence";
+import { applyRakutenRoomBoost } from "@/lib/discovery/rakuten-room-boost";
 import { runStage1 } from "@/lib/discovery/orchestrator";
 import { runOptionalStage } from "@/lib/discovery/cron-budget";
 import {
@@ -22,12 +19,6 @@ const TARGET_COUNT = Number(process.env.DISCOVERY_TARGET_COUNT ?? 30);
 const CONTEXT = "live_commerce" as const;
 const SAVE_FINALIZE_DEADLINE_MS = Number(
 	process.env.DISCOVERY_SAVE_FINALIZE_DEADLINE_MS ?? 270_000,
-);
-const TV_EVIDENCE_MIN_BUDGET_MS = Number(
-	process.env.DISCOVERY_TV_EVIDENCE_MIN_BUDGET_MS ?? 45_000,
-);
-const CATEGORY_ENRICH_MIN_BUDGET_MS = Number(
-	process.env.DISCOVERY_CATEGORY_ENRICH_MIN_BUDGET_MS ?? 10_000,
 );
 const OPTIONAL_STAGE_MIN_SAVE_BUDGET_MS = Number(
 	process.env.DISCOVERY_OPTIONAL_STAGE_MIN_SAVE_BUDGET_MS ?? 20_000,
@@ -97,102 +88,36 @@ export async function GET(req: NextRequest) {
 		const orchestrated = await runStage1(learning, TARGET_COUNT, CONTEXT);
 		await attachPlanToSession(sessionId, orchestrated.plan);
 
-		const broadcasts = await runOptionalStage({
-			label: `${CONTEXT}:broadcast-evidence`,
-			startedAtMs: startedAt,
-			deadlineMs: SAVE_FINALIZE_DEADLINE_MS,
-			minSaveBudgetMs: OPTIONAL_STAGE_MIN_SAVE_BUDGET_MS,
-			fallback: [] as Awaited<ReturnType<typeof tagBroadcastEvidence>>,
-			task: () => tagBroadcastEvidence(orchestrated.candidates),
-		});
-		const broadcastMap = new Map(broadcasts.map((b) => [b.productUrl, b]));
-
-		applyBroadcastBoost(
-			orchestrated.candidates,
-			new Map(broadcasts.map((b) => [b.productUrl, b.tag])),
-		);
-
-		// Soft penalty for products MediaWorks just aired on QVC. Only
-		// candidates whose productUrl is a qvc.jp/product.{id}.html page
-		// are considered; others are unaffected.
+		// Live-commerce post-processing is intentionally lean compared to
+		// home_shopping: TV-broadcast evidence/penalty/competitor-trend layers
+		// are skipped entirely because they reflect QVC/ShopCh signals that
+		// don't apply to live commerce. The pool itself already sourced from
+		// live-commerce platforms (Rakuten Live, ROOM, mercari_shops, 17.live,
+		// pinkoi) via the context-aware buildPool branch.
+		//
+		// What we DO apply: a small ROOM-mention boost — Rakuten ROOM is the
+		// closest analogue to "creator-curated commerce" we can query at
+		// runtime.
 		await runOptionalStage({
-			label: `${CONTEXT}:recent-broadcast-penalty`,
+			label: `${CONTEXT}:rakuten-room-boost`,
 			startedAtMs: startedAt,
 			deadlineMs: SAVE_FINALIZE_DEADLINE_MS,
 			minSaveBudgetMs: OPTIONAL_STAGE_MIN_SAVE_BUDGET_MS,
 			fallback: null,
 			task: async () => {
-				await applyRecentBroadcastPenalty(orchestrated.candidates);
+				await applyRakutenRoomBoost(orchestrated.candidates);
 				return null;
 			},
 		});
 
-		// Phase 3-C: small boost when the candidate aligns with categories
-		// that are hot on competitor channels (QVC + ShopCh, last 30 days).
-		await runOptionalStage({
-			label: `${CONTEXT}:competitor-trend-boost`,
-			startedAtMs: startedAt,
-			deadlineMs: SAVE_FINALIZE_DEADLINE_MS,
-			minSaveBudgetMs: OPTIONAL_STAGE_MIN_SAVE_BUDGET_MS,
-			fallback: null,
-			task: async () => {
-				await applyCompetitorTrendBoost(orchestrated.candidates);
-				return null;
-			},
-		});
-
-		// TV evidence: per-candidate broadcast-history aggregate.
-		// Spec: docs/superpowers/specs/2026-05-17-tv-evidence-mining-design.md
-		const sb = getServiceClient();
-		const fallbackEvidenceEntries = orchestrated.candidates.map(
-			(c) => [c.productUrl, null] as const,
-		);
-		const evidenceEntries = await runOptionalStage({
-			label: `${CONTEXT}:tv-evidence`,
-			startedAtMs: startedAt,
-			deadlineMs: SAVE_FINALIZE_DEADLINE_MS,
-			minSaveBudgetMs: Math.max(
-				OPTIONAL_STAGE_MIN_SAVE_BUDGET_MS,
-				TV_EVIDENCE_MIN_BUDGET_MS,
-			),
-			fallback: fallbackEvidenceEntries,
-			task: async () =>
-				Promise.all(
-					orchestrated.candidates.map(async (c) => {
-						const tvChannels = c.tvChannelMatches?.length
-							? c.tvChannelMatches
-							: c.tvChannel
-								? [c.tvChannel]
-								: undefined;
-						const ev = await computeTvEvidence(sb, {
-							name: c.name,
-							category: c.category ?? null,
-							price_jpy: c.priceJpy ?? null,
-							tv_channels: tvChannels,
-						}).catch((err) => {
-							console.warn(`[tv-evidence] compute failed for ${c.productUrl}:`, err?.message ?? err);
-							return null;
-						});
-						return [c.productUrl, ev] as const;
-					}),
-				),
-		});
-		const evidenceMap = new Map(evidenceEntries);
-		applyEvidenceBonus(orchestrated.candidates, evidenceMap);
-
-		const batch = orchestrated.candidates.map((c) => {
-			const bc = broadcastMap.get(c.productUrl);
-			return {
-				candidate: c,
-				broadcastTag: bc?.tag ?? ("unknown" as const),
-				broadcastSources: bc?.sources ?? [],
-				tvEvidence: evidenceMap.get(c.productUrl) ?? null,
-			};
-		});
+		const batch = orchestrated.candidates.map((c) => ({
+			candidate: c,
+			broadcastTag: "unknown" as const,
+			broadcastSources: [],
+			tvEvidence: null,
+		}));
 		const savedCount = await saveDiscoveredProducts(sessionId, batch, {
-			categoryEnrichmentDeadlineMs:
-				startedAt + SAVE_FINALIZE_DEADLINE_MS,
-			minCategoryEnrichmentBudgetMs: CATEGORY_ENRICH_MIN_BUDGET_MS,
+			categoryEnrichmentDeadlineMs: startedAt + SAVE_FINALIZE_DEADLINE_MS,
 		});
 
 		const partial = savedCount < TARGET_COUNT;

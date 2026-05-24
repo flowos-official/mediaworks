@@ -14,8 +14,9 @@ import {
 } from "@/lib/rakuten";
 import { getServiceClient } from "@/lib/supabase";
 import { TV_CHANNELS, broadcastsChannelToSlug } from "./tv-channels";
+import { LIVE_CHANNELS } from "./live-channels";
 import { findRakutenCrossMatch } from "./rakuten-crossmatch";
-import type { CategoryPlan, PoolItem, Track } from "./types";
+import type { CategoryPlan, Context, PoolItem, Track } from "./types";
 
 const RAKUTEN_THROTTLE_MS = 1100;
 const RAKUTEN_PER_KEYWORD = 10;
@@ -196,6 +197,7 @@ async function fetchTvChannelFromBroadcasts(
 const TV_CHANNEL_BRAVE_BUDGET = Number(process.env.TV_CHANNEL_BRAVE_BUDGET ?? 200);
 const TV_CHANNEL_BRAVE_CONCURRENCY = 4;
 const TV_CHANNEL_BRAVE_PER_CALL = 5;
+const LIVE_CHANNEL_BRAVE_BUDGET = Number(process.env.LIVE_CHANNEL_BRAVE_BUDGET ?? 100);
 
 /**
  * Pass D: for each non-scraped channel, run budgeted Brave `site:<query>`
@@ -347,7 +349,14 @@ async function fetchBraveForKeyword(
 
 /**
  * Build the candidate pool for a category plan.
- * Returns unique items across Rakuten + Brave + TV channel sources.
+ * Returns unique items across Rakuten + Brave + channel sources.
+ *
+ * Channel sourcing branches by context:
+ * - home_shopping: Pass C (broadcasts table: shopch+qvc) + Pass D (Brave
+ *   site: search across TV_CHANNELS — japanet/dinos/ropping/...).
+ * - live_commerce: Pass D only, against LIVE_CHANNELS
+ *   (live.rakuten.co.jp / room.rakuten.co.jp / mercari-shops / 17.live / pinkoi).
+ *   The `broadcasts` table is TV-only, so Pass C is skipped.
  *
  * Dedup strategy:
  * - Rakuten + Brave + Pass D (Brave site:): all carry product URLs → URL dedup.
@@ -356,7 +365,10 @@ async function fetchBraveForKeyword(
  * - Pass C (broadcasts): no product URL exists; keyed by normalized description
  *   within Pass C only, NOT merged with Rakuten/Brave items.
  */
-export async function buildPool(plan: CategoryPlan): Promise<PoolItem[]> {
+export async function buildPool(
+	plan: CategoryPlan,
+	context: Context = "home_shopping",
+): Promise<PoolItem[]> {
 	const tvKws = plan.tv_proven.map((kw) => ({ kw, track: "tv_proven" as Track }));
 	const expKws = plan.exploration.map((kw) => ({ kw, track: "exploration" as Track }));
 	const allKws = [...tvKws, ...expKws];
@@ -405,17 +417,23 @@ export async function buildPool(plan: CategoryPlan): Promise<PoolItem[]> {
 		for (const it of batch.value) addUrlItem(it);
 	}
 
-	// Pass D — Brave site:-restricted (10 non-scraped channels)
+	// Pass D — Brave site:-restricted search.
+	// home_shopping: 13 non-scraped TV channels (japanet/dinos/ropping/...).
+	// live_commerce: live-commerce platforms (rakuten_live/room/mercari_shops/17live/pinkoi).
+	const passDChannels = context === "live_commerce" ? LIVE_CHANNELS : TV_CHANNELS;
+	const passDBudget =
+		context === "live_commerce" ? LIVE_CHANNEL_BRAVE_BUDGET : TV_CHANNEL_BRAVE_BUDGET;
 	const passD = await fetchTvChannelFromBraveSite(
 		plan,
-		TV_CHANNELS,
-		TV_CHANNEL_BRAVE_BUDGET,
+		passDChannels,
+		passDBudget,
 	);
 	for (const it of passD) addUrlItem(it);
 
 	// Pass C — broadcasts (shopch + qvc). Keyed by normalized name, separate
 	// accumulator (no shared URLs with Rakuten/Brave items).
-	const passC = await fetchTvChannelFromBroadcasts(plan);
+	// Skipped for live_commerce because the broadcasts table is TV-only.
+	const passC = context === "live_commerce" ? [] : await fetchTvChannelFromBroadcasts(plan);
 
 	// Round-robin merge so TV-channel-tagged items survive the downstream
 	// curatePool slice (POOL_SAMPLE_LIMIT=150). Plain concatenation put TV
