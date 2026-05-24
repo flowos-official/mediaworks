@@ -48,7 +48,7 @@ async function main() {
     .select("id").single();
   check(!!sel, "create selection in 'selected'");
   if (!sel) {
-    await cleanup(run.id);
+    await cleanup(run.id, null);
     return;
   }
 
@@ -86,14 +86,15 @@ async function main() {
     .insert({ discovered_product_id: dp.id, status: "selected", owner_id: profile.id });
   check(!reSel.error, "new selection after close accepted (re-selection)");
 
-  await cleanup(run.id);
+  await cleanup(run.id, dp.id);
 }
 
-async function cleanup(runId: string) {
+async function cleanup(runId: string, dpId: string | null) {
   // discovered_products has ON DELETE CASCADE for the session → product_selections cascades.
   // Delete in safe order anyway in case constraints differ.
-  await sb.from("product_selections").delete().eq("status", "selected").eq("discovered_product_id",
-    (await sb.from("discovered_products").select("id").eq("session_id", runId).maybeSingle()).data?.id ?? "");
+  if (dpId) {
+    await sb.from("product_selections").delete().eq("discovered_product_id", dpId);
+  }
   await sb.from("discovered_products").delete().eq("session_id", runId);
   await sb.from("discovery_runs").delete().eq("id", runId);
 }

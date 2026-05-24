@@ -118,7 +118,6 @@ export async function POST(req: NextRequest) {
 			return NextResponse.json({ error: updErr.message }, { status: 500 });
 		}
 		if (body.action === "sourced") {
-			const nowIso = new Date().toISOString();
 			const { data: stillSelected } = await sb
 				.from("product_selections")
 				.select("id")
@@ -132,7 +131,7 @@ export async function POST(req: NextRequest) {
 					.update({
 						status: "closed",
 						closed_reason: "dropped",
-						closed_at: nowIso,
+						closed_at: now,
 						closed_by: auth.user.id,
 						closed_note: "sourced toggle removed",
 					})
