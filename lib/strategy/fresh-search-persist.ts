@@ -1,4 +1,6 @@
-import "server-only";
+// Server-only by virtue of getServiceClient (uses SUPABASE_SERVICE_ROLE_KEY).
+// Not using `import "server-only"` so the file remains directly importable
+// from tsx smoke scripts (scripts/test-strategy-fresh-search-persist.ts).
 import { getServiceClient } from "@/lib/supabase";
 import { normalizeName } from "@/lib/discovery/exclusion";
 
