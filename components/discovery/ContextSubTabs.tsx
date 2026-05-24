@@ -21,7 +21,8 @@ export function ContextSubTabs() {
 
 	const activeTab = (() => {
 		const parts = pathname.split("/").filter(Boolean);
-		const sub = parts[3];
+		const idx = parts.indexOf("discovery");
+		const sub = idx >= 0 ? parts[idx + 1] : undefined;
 		if (sub === "home" || sub === "live" || sub === "history" || sub === "insights") return sub;
 		return "home";
 	})();
