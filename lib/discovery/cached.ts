@@ -367,6 +367,8 @@ const MUTATION_TAGS = [
 	"discovery:insights",
 	"discovery:history",
 	"discovery:selections",
+	"selections:board",
+	"selections:counts",
 ] as const;
 
 /**
