@@ -1,5 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { refreshQVCMonthlyRange } from "@/lib/broadcasts/qvc-monthly";
+import { getJSTYearMonth } from "@/lib/broadcasts/jst-date";
 
 export const maxDuration = 300;
 
@@ -35,6 +37,25 @@ export async function GET(req: NextRequest) {
 		droppedErrors: Math.max(0, summary.errors.length - 5),
 		durationMs: Date.now() - start,
 	};
+
+	// Invalidate cache for previous + current JST month. Both are
+	// rewritten by refreshQVCMonthlyRange's rolling window.
+	try {
+		const now = jstNow();
+		const currentYM = getJSTYearMonth(now);
+		// Pin day to 1 before decrementing month so setUTCMonth never overflows
+		// into the wrong month on the 29th/30th/31st.
+		const prevFirst = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+		prevFirst.setUTCMonth(prevFirst.getUTCMonth() - 1);
+		const prevYM = getJSTYearMonth(prevFirst);
+		revalidateTag(`broadcasts:calendar:${prevYM}`, "max");
+		revalidateTag(`broadcasts:calendar:${currentYM}`, "max");
+		revalidateTag("broadcasts:totals", "max");
+	} catch (err) {
+		const msg = err instanceof Error ? err.message : String(err);
+		console.warn("[cache] revalidateTag failed", { route: "qvc-monthly-refresh", error: msg });
+	}
+
 	console.log(JSON.stringify(log));
 
 	return NextResponse.json({ ok: true, ...log });

@@ -1,8 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { scrapeAllForDate } from "@/lib/broadcasts";
 import { enrichQvcProducts } from "@/lib/qvc-products/enrich";
 import { getServiceClient } from "@/lib/supabase";
 import { loadWhitelist, isAllowed } from "@/lib/broadcasts/category-filter";
+import { getYesterdayJST, getJSTYearMonth } from "@/lib/broadcasts/jst-date";
 import {
 	buildQvcSnapshotRows,
 	buildShopChSnapshotRows,
@@ -18,16 +20,6 @@ function verifyCronAuth(req: NextRequest): boolean {
 	if (!secret) return true; // dev mode
 	const header = req.headers.get("authorization");
 	return header === `Bearer ${secret}`;
-}
-
-function getYesterdayJST(nowUtc: Date): Date {
-	// JST = UTC + 9. Shift to JST clock, then go back 1 day.
-	const jstMs = nowUtc.getTime() + 9 * 3600 * 1000;
-	const jstNow = new Date(jstMs);
-	jstNow.setUTCDate(jstNow.getUTCDate() - 1);
-	return new Date(
-		Date.UTC(jstNow.getUTCFullYear(), jstNow.getUTCMonth(), jstNow.getUTCDate()),
-	);
 }
 
 /**
@@ -249,6 +241,19 @@ export async function GET(req: NextRequest) {
 		},
 		durationMs: Date.now() - start,
 	};
+
+	// Invalidate page cache for the month we just wrote to. revalidateTag
+	// failures are non-fatal — the cron's job is data ingest; stale cache
+	// recovers via cacheLife's 6h revalidate fallback.
+	try {
+		const ym = getJSTYearMonth(target);
+		revalidateTag(`broadcasts:calendar:${ym}`, "max");
+		revalidateTag("broadcasts:totals", "max");
+	} catch (err) {
+		const msg = err instanceof Error ? err.message : String(err);
+		console.warn("[cache] revalidateTag failed", { route: "daily-broadcasts", error: msg });
+	}
+
 	console.log(JSON.stringify(log));
 
 	return NextResponse.json({ ok: true, ...log });

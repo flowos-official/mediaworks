@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { crawlAll } from "@/lib/historical-crawl";
 import { jstToday } from "@/lib/historical-crawl/types";
 import {
@@ -77,6 +78,17 @@ export async function GET(req: NextRequest) {
 			},
 			durationMs: Date.now() - start,
 		};
+
+		// Invalidate /broadcasts page cache for the scraped JST month.
+		try {
+			const ym = date.slice(0, 7); // date is "YYYY-MM-DD" from jstToday()
+			revalidateTag(`broadcasts:calendar:${ym}`, "max");
+			revalidateTag("broadcasts:totals", "max");
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : String(err);
+			console.warn("[cache] revalidateTag failed", { route: "daily-historical-broadcasts", error: msg });
+		}
+
 		console.log(JSON.stringify(log));
 
 		return NextResponse.json({ ok: true, ...log });
