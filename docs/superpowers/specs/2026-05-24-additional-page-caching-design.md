@@ -53,7 +53,8 @@ All helpers:
 - Import `"server-only"`.
 - Use `unstable_cacheLife as cacheLife` and `unstable_cacheTag as cacheTag` from `next/cache`.
 - Use `getServiceClient()` (RLS bypass — safe because cache is shared across users; role-mask happens at route layer).
-- Set `cacheLife({ revalidate: 60 * 60 * 6, expire: 60 * 60 * 24 })` (same as broadcasts PoC).
+- Discovery helpers: `cacheLife({ revalidate: 60 * 60 * 6, expire: 60 * 60 * 24 })` (same as broadcasts PoC — cron-driven invalidation).
+- Sales helpers: `cacheLife({ revalidate: 60 * 60 * 24, expire: 60 * 60 * 24 * 7 })` (24h/7d — no cron source, see §6.1).
 
 ### 4.2 Cache tag taxonomy
 
@@ -65,13 +66,14 @@ All helpers:
 | `discovery:history` | `getCachedDiscoveryHistory(*)` | `daily-discovery-home`, `daily-discovery-live` cron + mutations |
 | `discovery:selections` | `getCachedDiscoverySelections(*)` | mutations only (no cron — fed by user actions) |
 | `discovery:category-distribution` | `getCachedCategoryDistribution()` | `daily-broadcasts`, `daily-historical-broadcasts` cron |
-| `analytics:sales` | `getCachedSalesOverview`, `getCachedSalesTrends`, `getCachedSalesProducts` | `daily-refresh` cron |
+| `analytics:sales` | `getCachedSalesOverview`, `getCachedSalesTrends`, `getCachedSalesProducts` | (none — see §6.1; relies on cacheLife) |
 
 The broadcasts PoC tags (`broadcasts:calendar:YYYY-MM`, `broadcasts:totals`) are unchanged.
 
 ### 4.3 Cache lifetime
 
-All helpers: `cacheLife({ revalidate: 60 * 60 * 6, expire: 60 * 60 * 24 })`. Explicit `revalidateTag` from crons/mutations is the primary freshness mechanism; lifetime is the safety net.
+- Discovery helpers: `cacheLife({ revalidate: 60 * 60 * 6, expire: 60 * 60 * 24 })`. Explicit `revalidateTag` from crons/mutations is the primary freshness mechanism; lifetime is the safety net.
+- Sales helpers: `cacheLife({ revalidate: 60 * 60 * 24, expire: 60 * 60 * 24 * 7 })`. No cron source; lifetime IS the primary mechanism (see §6.1).
 
 ## 5. Route handler changes
 
@@ -101,12 +103,17 @@ Each cron route adds, after its main work completes (best-effort, wrapped in try
 | `daily-discovery-live` (23:30 UTC) | `discovery:live_commerce`, `discovery:history` |
 | `daily-learning` (22:45 UTC) | `discovery:insights` |
 | `weekly-insights` (Mon 01:00 UTC) | `discovery:insights` |
-| `daily-refresh` (09:00 UTC) | `analytics:sales` |
 | `daily-broadcasts` (16:00 UTC) | (already invalidates calendar tags) + `discovery:category-distribution` |
 | `daily-historical-broadcasts` (16:30 UTC) | (already invalidates calendar tags) + `discovery:category-distribution` |
 | `qvc-monthly-refresh` (17:00 UTC) | (already invalidates calendar tags) — no new addition |
 
 All calls use `revalidateTag(tag, "max")` — the two-arg form required by Next.js 16.1.6.
+
+### 6.1 Sales analytics: no source cron
+
+The sales summary tables (`annual_summaries`, `category_summaries`, `sales_weekly_totals`, `product_summaries`) are populated by the manual `scripts/compute-summaries.ts` script after an `scripts/import-sales.ts` upload. The existing `daily-refresh` cron operates on `products`/`research_results` only — it is NOT a source of truth for sales analytics. There is no cron to hook into.
+
+Decision: rely on `cacheLife` alone for sales freshness. Use a longer lifetime: `cacheLife({ revalidate: 60 * 60 * 24, expire: 60 * 60 * 24 * 7 })` (24h revalidate, 7d expire). Updates from `compute-summaries.ts` appear at the next 24h boundary. Explicit invalidation (e.g., a `POST /api/admin/cache/invalidate-sales` endpoint that the script could call) is left as a follow-up — out of scope for this PoC.
 
 ## 7. Mutation invalidation
 
@@ -161,7 +168,7 @@ User clicks "sourced"
 
 **E3. Viewer role on sales analytics.** The cache is shared across roles. Cached helpers always return the unmasked rows (including cost, profit, margin). The route handler masks viewer-restricted fields to `null` before responding. This means **no viewer-restricted field may be derived from cached data alone** — must always be re-computed in the route handler if needed. Currently only `/api/analytics/products` has viewer-masked fields; they are top-level row fields, not derived elsewhere.
 
-**E4. Mid-day sales correction.** A manual edit of `sales_weekly_totals` outside the `daily-refresh` cron will not show until 24h `expire` or the next cron. Same trade-off as broadcasts PoC; explicit manual recovery endpoint is out of scope.
+**E4. Sales summary updates.** `scripts/compute-summaries.ts` writes the summary tables but does not invalidate the cache. New data appears at the next 24h `revalidate` boundary (or 7d `expire` worst case). See §6.1. Explicit manual recovery endpoint (admin POST that calls `revalidateTag("analytics:sales", "max")`) is a follow-up.
 
 **E5. Single coarse `analytics:sales` tag.** Each `(years, period, sort, limit, category)` combination produces a separate cache entry (hashed from helper args), but all share the `analytics:sales` tag. One `revalidateTag` call from `daily-refresh` flushes them all.
 
@@ -173,7 +180,7 @@ User clicks "sourced"
 
 **E9. `getServiceClient()` inside cached helpers.** Service client is constructed from env vars and has no per-request state — safe to invoke inside a cached function.
 
-**E10. `daily-refresh` cron currently has no `revalidateTag` calls.** It is a multi-step sales pipeline; the tag invalidation is added as a final best-effort step before the existing log emit.
+**E10. (Removed — `daily-refresh` does not feed sales analytics tables; see §6.1.)**
 
 **E11. `auth.sb` removal from sales routes.** Currently `/api/analytics/overview`, `/api/analytics/trends`, `/api/analytics/products` use `auth.sb` (cookie-RLS client). Since the cached helpers use `getServiceClient()`, the route handlers no longer need `auth.sb`. Auth still happens via `requireUser` — only the SQL client changes.
 
@@ -199,7 +206,6 @@ User clicks "sourced"
 - `app/api/cron/daily-discovery-live/route.ts`
 - `app/api/cron/daily-learning/route.ts`
 - `app/api/cron/weekly-insights/route.ts`
-- `app/api/cron/daily-refresh/route.ts`
 - `app/api/cron/daily-broadcasts/route.ts` (extend existing call)
 - `app/api/cron/daily-historical-broadcasts/route.ts` (extend existing call)
 
@@ -244,8 +250,8 @@ npm run build
 **D. Sales overview**
 1. `/ja/analytics/overview` → 3 APIs each hit DB.
 2. Refresh → all 3 → 0 DB reads.
-3. After next `daily-refresh` cron (09:00 UTC) → refresh → DB reads occur, then back to 0.
-4. With viewer account → call `/api/analytics/products?year=2026&limit=5` → confirm `totalCost`, `totalProfit`, `marginRate` are `null`.
+3. With viewer account → call `/api/analytics/products?year=2026&limit=5` → confirm `totalCost`, `totalProfit`, `marginRate` are `null`.
+4. (No cron-based invalidation to verify — see §6.1.)
 
 **E. Cron invalidation**
 - Inspect Vercel cron logs for each modified cron — confirm no errors from the `revalidateTag` additions.
@@ -262,6 +268,7 @@ npm run build
 
 ## 13. Out of scope (follow-ups)
 
+- Admin POST endpoint to invalidate `analytics:sales` (so `compute-summaries.ts` can call it after writing).
 - Server-Component conversion of Discovery pages (would eliminate the extra fetch round-trip).
 - Per-context mutation invalidation (requires resolving product → context cheaply).
 - Cache for `/api/analytics/products/[code]` detail endpoint (per-product key — explosion risk).
