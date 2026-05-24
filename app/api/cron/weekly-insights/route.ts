@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { aggregateWeek, generateWeeklyInsight } from "@/lib/discovery/weekly-insights";
 import { getServiceClient } from "@/lib/supabase";
 import type { Context } from "@/lib/discovery/types";
@@ -62,6 +63,16 @@ export async function GET(req: NextRequest) {
 			console.error(`[weekly-insights] ${context} failed:`, msg);
 			results.push({ context, ok: false, error: msg });
 		}
+	}
+
+	try {
+		revalidateTag("discovery:insights", "max");
+	} catch (err) {
+		const msg = err instanceof Error ? err.message : String(err);
+		console.warn("[cache] revalidateTag failed", {
+			route: "weekly-insights",
+			error: msg,
+		});
 	}
 
 	return NextResponse.json({ results });

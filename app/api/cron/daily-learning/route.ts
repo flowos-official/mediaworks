@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import {
 	computeCategorySeasonality,
 	computeContextLearning,
@@ -73,6 +74,16 @@ export async function GET(req: NextRequest) {
 			console.error(`[daily-learning] ${context} failed:`, msg);
 			results.push({ context, ok: false, error: msg });
 		}
+	}
+
+	try {
+		revalidateTag("discovery:insights", "max");
+	} catch (err) {
+		const msg = err instanceof Error ? err.message : String(err);
+		console.warn("[cache] revalidateTag failed", {
+			route: "daily-learning",
+			error: msg,
+		});
 	}
 
 	return NextResponse.json({
