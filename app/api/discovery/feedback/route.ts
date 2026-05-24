@@ -111,6 +111,7 @@ export async function POST(req: NextRequest) {
 				user_action: lastByAnyone?.action ?? null,
 				action_reason: lastByAnyone?.reason ?? null,
 				action_at: lastByAnyone?.created_at ?? null,
+				updated_at: now,
 			})
 			.eq("id", body.productId);
 		if (updErr) {
