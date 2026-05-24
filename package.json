@@ -33,6 +33,7 @@
     "test:discover-intent": "tsx scripts/test-discover-intent.ts",
     "test:source-attribution": "tsx scripts/test-source-attribution.ts",
     "test:strategy-pool": "npm run test:pool-query && npm run test:multi-seed && npm run test:discovery-pool-first && npm run test:pool-fallback && npm run test:discover-intent && npm run test:source-attribution",
+    "test:strategy-fresh-search": "tsx --env-file=.env.local scripts/test-strategy-fresh-search-persist.ts",
     "test:tv-evidence-unit": "tsx scripts/test-tv-evidence-unit.ts",
     "test:tv-evidence-integration": "tsx --env-file=.env.local scripts/test-tv-evidence-integration.ts",
     "test:tv-evidence": "npm run test:tv-evidence-unit && npm run test:tv-evidence-integration",
