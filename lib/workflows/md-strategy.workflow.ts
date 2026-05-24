@@ -14,6 +14,7 @@ import {
 import { getServiceClient } from "@/lib/supabase";
 import { buildTVShoppingProfile } from "@/lib/tv-shopping-profile";
 import { loadSeedContexts } from "@/lib/strategy/seed-context";
+import { invalidateStrategyList } from "@/lib/analytics/cached";
 
 export interface MDWorkflowInput {
 	userGoal?: string;
@@ -212,7 +213,9 @@ async function saveStrategyStep(
 			console.error("[md-workflow] save failed:", error.message);
 			return null;
 		}
-		return data?.id ?? null;
+		const id = data?.id ?? null;
+		if (id) invalidateStrategyList("md-strategy-workflow-save");
+		return id;
 	} catch (err) {
 		console.error("[md-workflow] save error:", err);
 		return null;

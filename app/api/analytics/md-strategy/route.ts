@@ -2,7 +2,7 @@ import { requireUser } from "@/lib/auth/require-user";
 import { NextRequest } from "next/server";
 import { start } from "workflow/api";
 import { mdStrategyWorkflow } from "@/lib/workflows/md-strategy.workflow";
-import { getServiceClient } from "@/lib/supabase";
+import { getCachedStrategyList } from "@/lib/analytics/cached";
 
 export const maxDuration = 60;
 
@@ -12,17 +12,13 @@ export async function GET() {
 	const auth = await requireUser(["member", "admin"]);
 	if ("error" in auth) return auth.error;
 
-	const supabase = getServiceClient();
-	const { data, error } = await supabase
-		.from("md_strategies")
-		.select("id, user_goal, category, target_market, price_range, created_at")
-		.order("created_at", { ascending: false })
-		.limit(20);
-
-	if (error) {
-		return Response.json({ error: error.message }, { status: 500 });
+	try {
+		const data = await getCachedStrategyList();
+		return Response.json(data);
+	} catch (err) {
+		const message = err instanceof Error ? err.message : String(err);
+		return Response.json({ error: message }, { status: 500 });
 	}
-	return Response.json({ strategies: data ?? [] });
 }
 
 // POST: Start a durable workflow run. Returns runId immediately;
