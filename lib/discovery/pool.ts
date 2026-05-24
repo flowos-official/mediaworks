@@ -197,7 +197,7 @@ async function fetchTvChannelFromBroadcasts(
 const TV_CHANNEL_BRAVE_BUDGET = Number(process.env.TV_CHANNEL_BRAVE_BUDGET ?? 200);
 const TV_CHANNEL_BRAVE_CONCURRENCY = 4;
 const TV_CHANNEL_BRAVE_PER_CALL = 5;
-const LIVE_CHANNEL_BRAVE_BUDGET = Number(process.env.LIVE_CHANNEL_BRAVE_BUDGET ?? 100);
+const LIVE_CHANNEL_BRAVE_BUDGET = Number(process.env.LIVE_CHANNEL_BRAVE_BUDGET ?? 80);
 
 /**
  * Pass D: for each non-scraped channel, run budgeted Brave `site:<query>`
