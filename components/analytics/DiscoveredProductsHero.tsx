@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import type { DiscoveredProduct, DiscoveryBatch } from '@/lib/md-strategy';
 import { getChannelBySlug, parseChannelSlugs } from "@/lib/discovery/tv-channels";
+import { FeedbackButtons, type FeedbackState } from "@/components/discovery/FeedbackButtons";
 
 interface Props {
 	products: DiscoveredProduct[];
@@ -33,6 +34,7 @@ function ProductCard({ p, idx, onAnalyze, analyzing }: {
 	analyzing?: boolean;
 }) {
 	const [expanded, setExpanded] = useState(false);
+	const [feedback, setFeedback] = useState<FeedbackState>(null);
 	const s = p.sales_strategy;
 	const channelSlugs = parseChannelSlugs(p.tv_channel_source ?? null);
 
@@ -378,6 +380,15 @@ function ProductCard({ p, idx, onAnalyze, analyzing }: {
 					</span>
 				)}
 			</div>
+			{p.discovered_product_id && (
+				<div className="mt-3">
+					<FeedbackButtons
+						productId={p.discovered_product_id}
+						current={feedback}
+						onUpdate={(next) => setFeedback(next)}
+					/>
+				</div>
+			)}
 		</article>
 	);
 }
