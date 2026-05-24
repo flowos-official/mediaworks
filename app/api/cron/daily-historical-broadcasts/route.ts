@@ -84,6 +84,7 @@ export async function GET(req: NextRequest) {
 			const ym = date.slice(0, 7); // date is "YYYY-MM-DD" from jstToday()
 			revalidateTag(`broadcasts:calendar:${ym}`, "max");
 			revalidateTag("broadcasts:totals", "max");
+			revalidateTag("discovery:category-distribution", "max");
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : String(err);
 			console.warn("[cache] revalidateTag failed", { route: "daily-historical-broadcasts", error: msg });
