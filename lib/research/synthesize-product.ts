@@ -89,11 +89,18 @@ export function buildResearchResultInsert(
 	searchResults: Record<string, string>,
 	research: ResearchOutput,
 ): ResearchResultInsert {
-	// korea_market_fit.fit_score が非数値だと generated column キャストが失敗するので整数に正規化
-	const koreaFit = research.korea_market_fit;
-	if (koreaFit && typeof koreaFit === "object") {
+	// korea_market_fit.fit_score 가 비숫자·소수·문자열이면 generated column 캐스팅이
+	// 실패하거나 NULL 이 된다. 정수 정제 후 shallow-copy 본을 저장해서 (1) 호출자의
+	// research.korea_market_fit 객체는 건드리지 않고 (2) DB 생성 컬럼이 항상 동기화되게 한다.
+	// parseInt 의 leading-digit 관용 (예: "85점" → 85) 은 LLM 출력 허용 범위로 의도.
+	const koreaFit = research.korea_market_fit
+		? { ...(research.korea_market_fit as object) } as typeof research.korea_market_fit
+		: null;
+	if (koreaFit) {
 		const raw = (koreaFit as { fit_score?: unknown }).fit_score;
-		const num = typeof raw === "number" ? raw : Number.parseInt(String(raw ?? ""), 10);
+		const num = typeof raw === "number"
+			? Math.trunc(raw)
+			: Number.parseInt(String(raw ?? ""), 10);
 		(koreaFit as { fit_score?: number | null }).fit_score = Number.isFinite(num) ? num : null;
 	}
 
