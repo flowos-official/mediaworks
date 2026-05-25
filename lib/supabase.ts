@@ -36,13 +36,26 @@ export const supabase = new Proxy({} as SupabaseClient, {
   },
 }) as SupabaseClient;
 
+export type ProductStatus =
+  | 'pending'
+  | 'analyzing'
+  | 'extracted' // deprecated — Task 8/9 에서 제거됨. 그 전까지 컴파일 유지.
+  | 'completed'
+  | 'failed';
+
 export type Product = {
   id: string;
   name: string;
   description: string | null;
   file_url: string;
   file_name: string;
-  status: 'pending' | 'extracted' | 'analyzing' | 'completed' | 'failed';
+  category: string | null;
+  features: string[] | null;
+  price_range: string | null;
+  target_market: string | null;
+  status: ProductStatus;
+  discovered_product_id: string | null;
+  ingest_source: 'file_upload' | 'discovery_promotion' | 'manual_url';
   created_at: string;
 };
 
@@ -59,37 +72,24 @@ export type ProductFile = {
 export type ResearchResult = {
   id: string;
   product_id: string;
-  marketability_score: number;
-  marketability_description: string;
-  demographics: {
-    age_group: string;
-    gender: string;
-    interests: string[];
-    income_level: string;
-  };
-  seasonality: Record<string, number>; // month -> score 0-100
-  cogs_estimate: {
-    items: Array<{
-      supplier: string;
-      estimated_cost: string;
-      moq: string;
-      link?: string;
-    }>;
-    summary: string;
-  };
-  influencers: Array<{
-    name: string;
-    platform: string;
-    followers: string;
-    match_reason: string;
-    profile_url?: string;
-  }>;
-  content_ideas: Array<{
-    title: string;
-    description: string;
-    format: string;
-  }>;
-  raw_json: Record<string, unknown>;
+  marketability_score: number | null;
+  marketability_description: string | null;
+  demographics: unknown | null;
+  seasonality: unknown | null;
+  cogs_estimate: unknown | null;
+  influencers: unknown | null;
+  content_ideas: unknown | null;
+  competitor_analysis: unknown | null;
+  recommended_price_range: unknown | null;
+  broadcast_scripts: unknown | null;
+  japan_export_fit_score: number | null;
+  distribution_channels: unknown | null;
+  pricing_strategy: unknown | null;
+  marketing_strategy: unknown | null;
+  korea_market_fit: unknown | null;
+  live_commerce: unknown | null;
+  korea_fit_score: number | null; // generated column, read-only
+  raw_json: { product_info?: unknown; search_results?: unknown; research?: unknown } | null;
   created_at: string;
 };
 
