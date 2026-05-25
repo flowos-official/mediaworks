@@ -793,7 +793,6 @@
     "notAvailable": "レポートはまだ利用できません",
     "status": {
       "pending": "処理待ち",
-      "extracted": "抽出済み",
       "analyzing": "分析中",
       "completed": "完了",
       "failed": "失敗"

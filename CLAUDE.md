@@ -127,7 +127,7 @@ File Upload → Supabase Storage → Gemini Vision (extract)
 
 ### Supabase Schema (key tables)
 
-- `products` — uploaded product metadata, status lifecycle: pending → extracted → analyzing → completed/failed
+- `products` — uploaded product metadata, status lifecycle: pending → analyzing → completed/failed
 - `research_results` — AI-generated research (marketability, demographics, seasonality, COGS, competitors, pricing, etc.)
 - `product_selections` — operator pipeline: 4-stage state machine (selected/sourcing/scheduled/closed) on top of `discovered_products`. See Product Selection Pipeline section.
 - `product_selection_events` — append-only audit log for `product_selections` transitions, assignments, notes.

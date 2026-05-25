@@ -48,7 +48,7 @@ assert.equal(insert.category, "家電");
 assert.equal(insert.price_range, "¥14,800");
 assert.equal(insert.file_url, "https://item.rakuten.co.jp/sample/product-1/");
 assert.equal(insert.file_name, "discovery-11111111-1111-4111-8111-111111111111.url");
-assert.equal(insert.status, "extracted");
+assert.equal(insert.status, "analyzing");
 assert.equal(insert.ingest_source, "discovery_promotion");
 assert.equal(insert.discovered_product_id, discoveredProduct.id);
 assert.deepEqual(insert.features, [

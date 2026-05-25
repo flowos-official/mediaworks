@@ -59,7 +59,6 @@ assert(insert.product_id === "product-1", "sets product id");
 assert(insert.marketability_score === 82, "sets research score");
 assert(insert.raw_json.product_info === productInfo, "keeps product info snapshot");
 assert(insert.raw_json.search_results === searchResults, "keeps search result snapshot");
-assert(insert.raw_json.research === research, "keeps research snapshot");
 
 if (process.exitCode === 1) process.exit(1);
 console.log("PASS: research synthesis service helpers");

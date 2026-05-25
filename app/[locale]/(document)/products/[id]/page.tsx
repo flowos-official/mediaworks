@@ -24,18 +24,17 @@ import { Badge } from '@/components/ui/badge';
 import { localePath } from '@/lib/i18n/locale-path';
 import { getServerClient } from '@/lib/supabase/server';
 
-type ProductStatus = 'pending' | 'extracted' | 'analyzing' | 'completed' | 'failed';
+type ProductStatus = 'pending' | 'analyzing' | 'completed' | 'failed';
 
 const STATUS_BADGE_CLASS: Record<ProductStatus, string> = {
   pending: 'bg-muted text-foreground border-0',
-  extracted: 'bg-blue-600/15 text-blue-700 dark:text-blue-300 border-0',
   analyzing: 'bg-amber-600/15 text-amber-700 dark:text-amber-300 border-0',
   completed: 'bg-green-600/15 text-green-700 dark:text-green-300 border-0',
   failed: 'bg-red-600/15 text-red-700 dark:text-red-300 border-0',
 };
 
 function normalizeStatus(s: string | null | undefined): ProductStatus {
-  if (s === 'pending' || s === 'extracted' || s === 'analyzing' || s === 'completed' || s === 'failed') {
+  if (s === 'pending' || s === 'analyzing' || s === 'completed' || s === 'failed') {
     return s;
   }
   return 'pending';
@@ -71,17 +70,7 @@ async function getProduct(id: string) {
     .eq('product_id', id)
     .maybeSingle();
 
-  // Merge extended fields from raw_json.research (distribution_channels,
-  // live_commerce, etc.) — they have no dedicated DB columns. Mirrors the
-  // merge logic in app/api/products/[id]/route.ts.
-  let mergedResearch = research;
-  if (research?.raw_json?.research) {
-    const { raw_json, ...dbFields } = research;
-    const rawResearch = raw_json.research as Record<string, unknown>;
-    mergedResearch = { ...rawResearch, ...dbFields, raw_json };
-  }
-
-  return { product, research: mergedResearch };
+  return { product, research };
 }
 
 export default async function ProductReportPage({
