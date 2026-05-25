@@ -16,6 +16,7 @@ import { buildTVShoppingProfile } from "@/lib/tv-shopping-profile";
 import { loadSeedContexts } from "@/lib/strategy/seed-context";
 import { invalidateStrategyList } from "@/lib/analytics/cached";
 import { persistStrategyFreshSearch } from "@/lib/strategy/fresh-search-persist";
+import { runPreliminaryDiscovery } from "@/lib/strategy/preliminary-discovery";
 
 export interface MDWorkflowInput {
 	userGoal?: string;
@@ -133,6 +134,40 @@ function buildMDAnalysisSummary(outputs: Record<string, unknown>): string {
 	}
 	return parts.join("\n\n");
 }
+
+// ---------------------------------------------------------------------------
+// Step: preliminary discovery — pool-only, runs right after fetchContext so
+// the user sees candidate cards within ~1-2s instead of waiting for all
+// skills + final curated discovery. Final discovery still runs at the end
+// and replaces these items with strategy-aligned curation.
+// ---------------------------------------------------------------------------
+async function runPreliminaryDiscoveryStep(
+	input: MDWorkflowInput,
+	context: StrategyContext,
+): Promise<DiscoveredProduct[]> {
+	"use step";
+	try {
+		const seedIds = (context.seedProducts ?? []).map((s) => s.id);
+		const seedCategories = (context.seedProducts ?? [])
+			.map((s) => s.category)
+			.filter((c): c is string => !!c);
+		const products = await runPreliminaryDiscovery({
+			context: "home_shopping",
+			uiCategory: input.category,
+			priceRange: input.priceRange,
+			excludeProductIds: seedIds.length > 0 ? seedIds : undefined,
+			supplementCategoriesFromSeeds: seedCategories.length > 0 ? seedCategories : undefined,
+		});
+		console.log(`[md-workflow] preliminary discovery: ${products.length} products`);
+		return products;
+	} catch (err) {
+		console.warn(
+			`[md-workflow] preliminary discovery failed (non-fatal): ${err instanceof Error ? err.message : String(err)}`,
+		);
+		return [];
+	}
+}
+runPreliminaryDiscoveryStep.maxRetries = 0;
 
 // ---------------------------------------------------------------------------
 // Step: run a single skill. Each invocation is its own function call,
@@ -270,6 +305,18 @@ export async function mdStrategyWorkflow(input: MDWorkflowInput) {
 	await emitProgressStep({ skill: "data_fetch", status: "running", index: -1, total: 7 });
 	const context = await fetchContextStep(input);
 	await emitProgressStep({ skill: "data_fetch", status: "complete", index: -1, total: 7 });
+
+	// Fast pool-only discovery so the hero gets real cards immediately while
+	// skills (and the final curated discovery) keep running in the background.
+	await emitProgressStep({ skill: "preliminary_discovery", status: "running", index: -1, total: 7 });
+	const preliminary = await runPreliminaryDiscoveryStep(input, context);
+	await emitProgressStep({
+		skill: "preliminary_discovery",
+		status: "complete",
+		index: -1,
+		total: 7,
+		data: { products: preliminary },
+	});
 
 	const outputs: Record<string, unknown> = {};
 	let parsedGoal: ParsedGoal | null = null;

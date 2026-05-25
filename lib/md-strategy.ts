@@ -1773,7 +1773,7 @@ export const SKILL_META: Record<SkillName, { label: string; labelJa: string }> =
 };
 
 export interface ProgressEvent {
-	skill: SkillName | "data_fetch" | "new_product_discovery";
+	skill: SkillName | "data_fetch" | "new_product_discovery" | "preliminary_discovery";
 	status: "running" | "complete" | "error";
 	index: number;
 	total: number;

@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Rocket, AlertTriangle, Target, Database, ArrowLeft } from 'lucide-react';
+import { Loader2, Rocket, AlertTriangle, Target, Database, ArrowLeft, Sparkles } from 'lucide-react';
 import {
 	BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from 'recharts';
@@ -23,6 +23,7 @@ import type {
 	MarketingExecutionOutput,
 	FinancialProjectionOutput,
 	RiskContingencyOutput,
+	DiscoveredProduct,
 } from '@/lib/md-strategy';
 
 import dynamic from 'next/dynamic';
@@ -475,7 +476,10 @@ function ListView({ locale, router }: { locale: string; router: ReturnType<typeo
 	const [dataFetchStatus, setDataFetchStatus] = useState<'pending' | 'running' | 'complete'>('pending');
 	const [skillStatuses, setSkillStatuses] = useState<Record<SkillName, SkillStatus>>({ ...INITIAL_STATUSES });
 	const [skillResults, setSkillResults] = useState<SkillResults>({});
+	const [preliminaryProducts, setPreliminaryProducts] = useState<DiscoveredProduct[] | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	const heroRef = useRef<HTMLDivElement | null>(null);
+	const hasScrolledRef = useRef(false);
 
 	// History refresh trigger
 	const [historyRefresh, setHistoryRefresh] = useState(0);
@@ -514,6 +518,15 @@ function ListView({ locale, router }: { locale: string; router: ReturnType<typeo
 			return;
 		}
 
+		if (skill === 'preliminary_discovery') {
+			if (eventStatus === 'complete') {
+				const data = event.data as { products?: DiscoveredProduct[] } | undefined;
+				const products = data?.products ?? [];
+				if (products.length > 0) setPreliminaryProducts(products);
+			}
+			return;
+		}
+
 		if (eventStatus === 'running') {
 			setSkillStatuses((prev) => ({ ...prev, [skill]: 'running' }));
 		} else if (eventStatus === 'complete') {
@@ -531,6 +544,8 @@ function ListView({ locale, router }: { locale: string; router: ReturnType<typeo
 		setSkillResults({});
 		setSkillStatuses({ ...INITIAL_STATUSES });
 		setDataFetchStatus('pending');
+		setPreliminaryProducts(null);
+		hasScrolledRef.current = false;
 
 		try {
 			const startRes = await fetch('/api/analytics/md-strategy', {
@@ -626,6 +641,24 @@ function ListView({ locale, router }: { locale: string; router: ReturnType<typeo
 		skillResults.risk_contingency
 	);
 
+	const curatedDiscovered = skillResults.product_selection?.discovered_new_products ?? null;
+	const heroProducts = (curatedDiscovered && curatedDiscovered.length > 0)
+		? curatedDiscovered
+		: preliminaryProducts;
+	const showingPreliminary = !curatedDiscovered && !!preliminaryProducts && preliminaryProducts.length > 0;
+
+	// Auto-scroll to hero the first time products appear (preliminary or curated).
+	useEffect(() => {
+		if (!isRunning) return;
+		if (hasScrolledRef.current) return;
+		if (!heroProducts || heroProducts.length === 0) return;
+		hasScrolledRef.current = true;
+		// Defer one frame so the node is mounted.
+		requestAnimationFrame(() => {
+			heroRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+		});
+	}, [isRunning, heroProducts]);
+
 	return (
 		<div className="space-y-6">
 			{/* Header */}
@@ -710,16 +743,27 @@ function ListView({ locale, router }: { locale: string; router: ReturnType<typeo
 				</>
 			)}
 
-			{/* In-progress partial results (before navigation to detail) */}
+			{/* Hero appears as soon as preliminary discovery returns; replaced by
+			    curated set when the final discovery step finishes. */}
+			{isRunning && heroProducts && heroProducts.length > 0 && (
+				<div ref={heroRef} className="space-y-3">
+					{showingPreliminary && (
+						<div className="flex items-center gap-2 p-3 bg-amber-600/10 border border-amber-600/30 rounded-lg text-xs text-amber-700 dark:text-amber-300">
+							<Sparkles size={12} />
+							候補プールから先行表示中・分析完了後に戦略に沿って絞り込みます
+						</div>
+					)}
+					<DiscoveredProductsHero
+						products={heroProducts}
+						contextLabel="ホームショッピング / EC"
+						history={skillResults.product_selection?.discovery_history}
+					/>
+				</div>
+			)}
+
+			{/* In-progress partial results (skill outputs below the hero) */}
 			{isRunning && hasGeneratedResults && (
 				<div id="md-strategy-content" className="space-y-8">
-					{(skillResults.product_selection?.discovered_new_products?.length ?? 0) > 0 && (
-						<DiscoveredProductsHero
-							products={skillResults.product_selection!.discovered_new_products!}
-							contextLabel="ホームショッピング / EC"
-							history={skillResults.product_selection?.discovery_history}
-						/>
-					)}
 					{skillResults.product_selection && <ProductSelectionSection data={skillResults.product_selection} />}
 					{skillResults.channel_strategy && <ChannelStrategySection data={skillResults.channel_strategy} />}
 					{skillResults.pricing_margin && <PricingMarginSection data={skillResults.pricing_margin} />}
