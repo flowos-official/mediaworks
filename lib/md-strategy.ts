@@ -1389,7 +1389,6 @@ export async function fetchStrategyContext(
 
 		let research: EnrichedProduct["research"] = null;
 		if (researchMatch) {
-			const raw = researchMatch.raw_json as Record<string, unknown>;
 			research = {
 				marketabilityScore: researchMatch.marketability_score ?? 0,
 				demographics: researchMatch.demographics ?? { age_group: "", gender: "", interests: [] },
