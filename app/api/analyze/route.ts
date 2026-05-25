@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
 		console.log(`[${productId}] Extracting product info...`);
 		const productInfo = await extractProductInfo(fileBase64, mimeType, fileName);
 
-		// Update product name, description, and metadata — status: extracted
+		// Update product name, description, and metadata — keep status: analyzing
 		await supabase
 			.from("products")
 			.update({
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
 				features: productInfo.features,
 				price_range: productInfo.price_range,
 				target_market: productInfo.target_market,
-				status: "extracted",
+				status: "analyzing",
 			})
 			.eq("id", productId);
 

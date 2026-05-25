@@ -22,7 +22,7 @@ interface ProductInsertPayload {
 	features: string[];
 	price_range: string | null;
 	target_market: string | null;
-	status: "extracted";
+	status: "analyzing";
 	ingest_source: "discovery_promotion";
 	discovered_product_id: string;
 }
@@ -117,7 +117,7 @@ export function buildDiscoveryPromotionInsert(
 		features: buildFeaturesFromCPackage(dp.c_package),
 		price_range: formatPriceRange(dp.price_jpy),
 		target_market: null,
-		status: "extracted",
+		status: "analyzing",
 		ingest_source: "discovery_promotion",
 		discovered_product_id: dp.id,
 	};
