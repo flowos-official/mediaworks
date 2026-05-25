@@ -24,11 +24,6 @@ const statusConfig = {
 		color: "bg-yellow-600/15 text-yellow-700 dark:text-yellow-300",
 		label: "pending",
 	},
-	extracted: {
-		icon: Loader2,
-		color: "bg-blue-600/15 text-blue-700 dark:text-blue-300",
-		label: "analyzing",
-	},
 	analyzing: {
 		icon: Loader2,
 		color: "bg-blue-600/15 text-blue-700 dark:text-blue-300",
@@ -93,7 +88,7 @@ export default function ProductCard({ product }: ProductCardProps) {
 				</div>
 
 				{/* Analyzing state — progress bar + message */}
-				{(product.status === "analyzing" || product.status === "extracted") && (
+				{product.status === "analyzing" && (
 					<div className="mt-4 pt-4 border-t border-border">
 						<div className="h-1.5 bg-muted rounded-full overflow-hidden">
 							<div className="h-full bg-blue-500 rounded-full animate-pulse w-2/3" />

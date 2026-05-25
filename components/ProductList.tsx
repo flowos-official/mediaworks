@@ -51,8 +51,7 @@ export default function ProductList({ refreshTrigger }: ProductListProps) {
         || p.name.toLowerCase().includes(q)
         || (p.description?.toLowerCase().includes(q));
       const matchesStatus = statusFilter === 'all'
-        || p.status === statusFilter
-        || (statusFilter === 'analyzing' && p.status === 'extracted');
+        || p.status === statusFilter;
       return matchesSearch && matchesStatus;
     });
   }, [products, searchQuery, statusFilter]);
