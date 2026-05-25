@@ -77,7 +77,8 @@
     "test:navbar-guide-theme-placement": "tsx scripts/test-navbar-guide-theme-placement.ts",
     "promote:discovery-research": "tsx --env-file=.env.local scripts/promote-discovered-to-research.ts",
     "complete:recommendation-flow": "tsx --env-file=.env.local scripts/complete-recommendation-flow.ts",
-    "test:selections": "tsx --env-file=.env.local scripts/test-selections-state-machine.ts"
+    "test:selections": "tsx --env-file=.env.local scripts/test-selections-state-machine.ts",
+    "test:research-data-model": "tsx --env-file=.env.local scripts/test-research-data-model.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1016.0",
