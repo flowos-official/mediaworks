@@ -39,7 +39,6 @@ export const supabase = new Proxy({} as SupabaseClient, {
 export type ProductStatus =
   | 'pending'
   | 'analyzing'
-  | 'extracted' // deprecated — Task 8/9 에서 제거됨. 그 전까지 컴파일 유지.
   | 'completed'
   | 'failed';
 

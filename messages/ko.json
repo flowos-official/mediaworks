@@ -793,7 +793,6 @@
     "notAvailable": "리포트는 아직 사용할 수 없습니다",
     "status": {
       "pending": "대기 중",
-      "extracted": "추출 완료",
       "analyzing": "분석 중",
       "completed": "완료",
       "failed": "실패"

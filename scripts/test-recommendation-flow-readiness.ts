@@ -85,7 +85,7 @@ assert.match(
 
 const missingResearch: RecommendationFlowEvidence = {
 	...ready,
-	promotedProduct: { id: "p-1", name: "昇格商品", status: "extracted", discovered_product_id: "dp-1" },
+	promotedProduct: { id: "p-1", name: "昇格商品", status: "analyzing", discovered_product_id: "dp-1" },
 	promotedResearchResult: null,
 	promotedLinkedScreenplay: null,
 };
