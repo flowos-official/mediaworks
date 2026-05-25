@@ -1336,6 +1336,9 @@ export async function fetchStrategyContext(
 		demographics: { age_group: string; gender: string; interests: string[] };
 		seasonality: Record<string, number>;
 		raw_json: Record<string, unknown>;
+		competitor_analysis: unknown | null;
+		distribution_channels: unknown | null;
+		marketing_strategy: unknown | null;
 	}>;
 
 	// Merge category summaries across years
@@ -1391,9 +1394,9 @@ export async function fetchStrategyContext(
 				marketabilityScore: researchMatch.marketability_score ?? 0,
 				demographics: researchMatch.demographics ?? { age_group: "", gender: "", interests: [] },
 				seasonality: researchMatch.seasonality ?? {},
-				competitors: (raw.competitor_analysis as Array<{ name: string; price: string; platform: string; key_difference: string }>) ?? [],
-				distributionChannels: (raw.distribution_channels as Array<{ channel_name: string; fit_score: number; reason: string }>) ?? [],
-				marketingStrategy: (raw.marketing_strategy as Array<{ strategy_name: string; type: string; efficiency_score: number }>) ?? [],
+				competitors: (researchMatch.competitor_analysis as Array<{ name: string; price: string; platform: string; key_difference: string }>) ?? [],
+				distributionChannels: (researchMatch.distribution_channels as Array<{ channel_name: string; fit_score: number; reason: string }>) ?? [],
+				marketingStrategy: (researchMatch.marketing_strategy as Array<{ strategy_name: string; type: string; efficiency_score: number }>) ?? [],
 			};
 		}
 
