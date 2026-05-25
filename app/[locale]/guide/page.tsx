@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import {
 	AlertCircle,
@@ -143,16 +142,12 @@ export default async function GuidePage({
 											) : null}
 											{item.image ? (
 												<figure className="overflow-hidden rounded-md border border-border bg-background">
-													<div className="relative aspect-[16/10] w-full">
-														<Image
-															src={item.image.src}
-															alt={item.image.alt}
-															fill
-															sizes="(max-width: 768px) 100vw, 800px"
-															className="object-cover object-top"
-															unoptimized
-														/>
-													</div>
+													{/* eslint-disable-next-line @next/next/no-img-element */}
+													<img
+														src={item.image.src}
+														alt={item.image.alt}
+														className="block h-auto w-full"
+													/>
 													{item.image.caption ? (
 														<figcaption className="border-t border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
 															{item.image.caption}
