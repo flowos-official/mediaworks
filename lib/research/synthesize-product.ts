@@ -31,10 +31,14 @@ export type ResearchResultInsert = {
 	recommended_price_range: string;
 	broadcast_scripts: ResearchOutput["broadcast_scripts"];
 	japan_export_fit_score: number;
+	distribution_channels: ResearchOutput["distribution_channels"];
+	pricing_strategy: ResearchOutput["pricing_strategy"];
+	marketing_strategy: ResearchOutput["marketing_strategy"];
+	korea_market_fit: ResearchOutput["korea_market_fit"] | null;
+	live_commerce: ResearchOutput["live_commerce"];
 	raw_json: {
 		product_info: ProductInfo;
 		search_results: Record<string, string>;
-		research: ResearchOutput;
 	};
 };
 
@@ -85,6 +89,14 @@ export function buildResearchResultInsert(
 	searchResults: Record<string, string>,
 	research: ResearchOutput,
 ): ResearchResultInsert {
+	// korea_market_fit.fit_score が非数値だと generated column キャストが失敗するので整数に正規化
+	const koreaFit = research.korea_market_fit;
+	if (koreaFit && typeof koreaFit === "object") {
+		const raw = (koreaFit as { fit_score?: unknown }).fit_score;
+		const num = typeof raw === "number" ? raw : Number.parseInt(String(raw ?? ""), 10);
+		(koreaFit as { fit_score?: number | null }).fit_score = Number.isFinite(num) ? num : null;
+	}
+
 	return {
 		product_id: productId,
 		marketability_score: research.marketability_score,
@@ -98,10 +110,15 @@ export function buildResearchResultInsert(
 		recommended_price_range: research.recommended_price_range,
 		broadcast_scripts: research.broadcast_scripts,
 		japan_export_fit_score: research.japan_export_fit_score,
+		distribution_channels: research.distribution_channels,
+		pricing_strategy: research.pricing_strategy,
+		marketing_strategy: research.marketing_strategy,
+		korea_market_fit: koreaFit ?? null,
+		live_commerce: research.live_commerce,
+		// raw_json はデバッグ用 — research 本体はカラムに移行済みのため重複保存しない
 		raw_json: {
 			product_info: productInfo,
 			search_results: searchResults,
-			research,
 		},
 	};
 }
@@ -156,12 +173,12 @@ export async function synthesizeProductResearch(
 			broadcastContextPrompt,
 		);
 
-		await sb.from("research_results").delete().eq("product_id", productId);
-		const { error: researchError } = await sb
+		const { error: upsertErr } = await sb
 			.from("research_results")
-			.insert(buildResearchResultInsert(productId, productInfo, searchResults, research));
-
-		if (researchError) throw researchError;
+			.upsert(buildResearchResultInsert(productId, productInfo, searchResults, research), {
+				onConflict: "product_id",
+			});
+		if (upsertErr) throw new ProductResearchSynthesisError(500, upsertErr.message);
 
 		await markProductStatus(sb, productId, "completed");
 		console.log(`[${productId}] Synthesis completed`);
