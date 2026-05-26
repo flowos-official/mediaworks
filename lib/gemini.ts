@@ -504,10 +504,29 @@ Return a JSON object (no markdown) with this structure:
   "summary": ""
 }`;
 
-	const result = await model.generateContent(prompt);
-	const text = result.response.text().trim();
-	const jsonMatch = text.match(/\{[\s\S]*\}/);
-	if (!jsonMatch) throw new Error("Failed to generate expansion analysis");
-
-	return JSON.parse(jsonMatch[0]) as ExpansionAnalysisResult;
+	return await callGeminiWithRetry(
+		async (_attempt, override) => {
+			const effective = override ? `${prompt}\n\n${override}` : prompt;
+			const result = await model.generateContent(effective);
+			const text = result.response.text().trim();
+			return {
+				result: parseJsonFromModelText<ExpansionAnalysisResult>(text, "expansion analysis"),
+				responseText: text,
+			};
+		},
+		{
+			maxAttempts: 3,
+			baseDelayMs: 1000,
+			promptForAttempt: (_attempt, kind) => {
+				if (!kind) return null;
+				if (kind === "parse_failed") {
+					return "前回の応答は不正なJSONでした。コードフェンスや前後の説明文を一切付けず、単一のJSONオブジェクトのみ返してください。";
+				}
+				if (kind === "extract_empty") {
+					return "前回の応答は空でした。すべてのフィールドを明示的に出力してください。";
+				}
+				return null;
+			},
+		},
+	);
 }
