@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI, type Part } from "@google/generative-ai";
 import { GEMINI_FLASH } from "@/lib/gemini-models";
 import { buildChannelReferencePrompt } from "@/lib/tv-channels";
 import { callGeminiWithRetry } from "@/lib/gemini/retry";
@@ -210,39 +210,73 @@ export function parseJsonFromModelText<T>(raw: string, context: string): T {
 	}
 }
 
+export interface ExtractFile {
+	base64: string;
+	mimeType: string;
+	fileName: string;
+}
+
 export async function extractProductInfo(
-	fileBase64: string,
-	mimeType: string,
-	fileName: string,
+	files: ExtractFile[],
 ): Promise<ProductInfo> {
+	if (files.length === 0) {
+		throw new Error("extractProductInfo called with empty files array");
+	}
 	const model = genAI.getGenerativeModel({ model: GEMINI_FLASH });
 
-	const prompt = `You are a product analyst for home shopping channels. Analyze this file and extract all product information.
+	const fileList = files.map((f, i) => `${i + 1}. ${f.fileName} (${f.mimeType})`).join("\n");
 
-Return a JSON object with these fields:
-- name: Product name (string)
-- description: Detailed product description (string)
-- features: Key product features (array of strings)
-- category: Product category (string)
-- price_range: Price range if mentioned (string, optional)
-- target_market: Target market if mentioned (string, optional)
+	const prompt = `あなたはホームショッピングチャネル向けの商品アナリストです。添付ファイルを解析し、商品情報をすべて抽出してください。
 
-File name: ${fileName}
+複数のファイルが添付されている場合、すべて同一商品の異なる面 (表面/裏面/パッケージ/詳細写真/カタログPDF 等) として総合的に判断してください。複数の異なる商品が混在する場合は、最も主要な1つに絞ってください。
 
-Return only valid JSON, no markdown.`;
+出力 JSON のすべての値は日本語で記述してください。商品名/カテゴリ/特徴/対象市場/価格帯すべて日本語のみ。
 
-	const result = await model.generateContent([
+JSONオブジェクトを返してください (フィールド):
+- name: 商品名 (string)
+- description: 詳細な商品説明 (string)
+- features: 主な商品特徴 (string の配列)
+- category: 商品カテゴリ (string)
+- price_range: 言及されていれば価格帯 (string, optional)
+- target_market: 言及されていればターゲット市場 (string, optional)
+
+添付ファイル一覧:
+${fileList}
+
+JSONオブジェクトのみ返してください。コードフェンス・前後の説明文は禁止。`;
+
+	const parts: Part[] = [{ text: prompt }];
+	for (const f of files) {
+		parts.push({ inlineData: { mimeType: f.mimeType, data: f.base64 } });
+	}
+
+	return await callGeminiWithRetry(
+		async (_attempt, override) => {
+			const effectiveParts: Part[] = override
+				? [{ text: `${prompt}\n\n${override}` }, ...parts.slice(1)]
+				: parts;
+			const result = await model.generateContent(effectiveParts);
+			const text = result.response.text().trim();
+			return {
+				result: parseJsonFromModelText<ProductInfo>(text, "product extraction"),
+				responseText: text,
+			};
+		},
 		{
-			inlineData: {
-				mimeType,
-				data: fileBase64,
+			maxAttempts: 3,
+			baseDelayMs: 1000,
+			promptForAttempt: (_attempt, kind) => {
+				if (!kind) return null;
+				if (kind === "parse_failed") {
+					return "前回の応答は不正なJSONでした。コードフェンスや前後の説明文を一切付けず、単一のJSONオブジェクトのみ返してください。";
+				}
+				if (kind === "extract_empty") {
+					return "前回の応答は空でした。必須キー (name, description, features, category) をすべて明示的に出力してください。";
+				}
+				return null;
 			},
 		},
-		prompt,
-	]);
-
-	const text = result.response.text().trim();
-	return parseJsonFromModelText<ProductInfo>(text, "product extraction");
+	);
 }
 
 export async function synthesizeResearch(

@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
 
 		// Step 1: Extract product info with Gemini (fast — typically <30s)
 		console.log(`[${productId}] Extracting product info...`);
-		const productInfo = await extractProductInfo(fileBase64, mimeType, fileName);
+		const productInfo = await extractProductInfo([{ base64: fileBase64, mimeType, fileName }]);
 
 		// Update product name, description, and metadata — keep status: analyzing
 		await supabase
