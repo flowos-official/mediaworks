@@ -516,7 +516,7 @@ Expected: FAIL — script not registered or module not found.
 
 - [ ] **Step 4: Implement `lib/storage/signed-url.ts`**
 
-NOTE: NO `import "server-only"` — the smoke imports this directly via tsx.
+NOTE: NO `import "server-only"` — the smoke imports this directly via tsx, and `server-only` throws at module load outside Next.js's bundler. The spec (§3.3) shows `import "server-only"` at the top; **the plan deliberately overrides the spec on this line** per the project's `server-only` + tsx-smoke convention documented in `CLAUDE.md`. If you copy from the spec, remove that import.
 
 ```ts
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -605,15 +605,23 @@ function assert(cond: unknown, msg: string): asserts cond {
 	if (!cond) throw new Error(`ASSERT FAIL: ${msg}`);
 }
 
+// Helper reads the same env vars as the helper itself so smoke matches
+// whatever the live process is configured for.
+const MAX_INFLIGHT = Number(process.env.ANALYZE_MAX_INFLIGHT_PER_USER ?? "3");
+const MAX_DAILY = Number(process.env.ANALYZE_MAX_DAILY_PER_USER ?? "20");
+
 async function main(): Promise<void> {
+	console.log(`[smoke] limits: inflight=${MAX_INFLIGHT}, daily=${MAX_DAILY}`);
+
 	// Grab any existing profile id to use as the test user
 	const { data: profile } = await sb.from("profiles").select("id").limit(1).maybeSingle();
 	if (!profile) throw new Error("profiles テーブルに最低 1 行必要");
 	const userId = profile.id as string;
 	const tag = `rate-limit-smoke-${Date.now()}`;
 
-	// Clean any leftover smoke rows for this user (safety: previous failed run)
-	await sb.from("products").delete().like("name", `${tag.split("-").slice(0, 3).join("-")}-%`);
+	// Clean any leftover rows tagged by THIS exact run (defensive — no stale match).
+	// We don't clear other smoke runs' rows; parallel runs are not expected.
+	await sb.from("products").delete().like("name", `${tag}-%`);
 
 	const tempIds: string[] = [];
 	try {
@@ -621,9 +629,8 @@ async function main(): Promise<void> {
 		const r1 = await checkAnalyzeRateLimit(sb, userId, "member");
 		assert(r1.kind === "ok", `inflight=0 should be ok, got ${JSON.stringify(r1)}`);
 
-		// Case 2: insert 3 inflight rows → next call should be inflight_exceeded
-		// (assumes MAX_INFLIGHT_PER_USER default = 3)
-		for (let i = 0; i < 3; i++) {
+		// Case 2: insert MAX_INFLIGHT rows in analyzing → next call exceeds
+		for (let i = 0; i < MAX_INFLIGHT; i++) {
 			const { data, error } = await sb
 				.from("products")
 				.insert({
@@ -640,17 +647,17 @@ async function main(): Promise<void> {
 		}
 		const r2 = await checkAnalyzeRateLimit(sb, userId, "member");
 		assert(r2.kind === "inflight_exceeded",
-			`inflight=3 should exceed, got ${JSON.stringify(r2)}`);
+			`inflight=${MAX_INFLIGHT} should exceed, got ${JSON.stringify(r2)}`);
 
 		// Case 3: admin always passes regardless of inflight
 		const r3 = await checkAnalyzeRateLimit(sb, userId, "admin");
 		assert(r3.kind === "ok",
 			`admin role should bypass, got ${JSON.stringify(r3)}`);
 
-		// Case 4: clean inflight, then insert 20 completed rows within 24h → daily_exceeded
+		// Case 4: clean inflight, then insert MAX_DAILY completed rows within 24h → daily_exceeded
 		await sb.from("products").delete().in("id", tempIds);
 		tempIds.length = 0;
-		for (let i = 0; i < 20; i++) {
+		for (let i = 0; i < MAX_DAILY; i++) {
 			const { data, error } = await sb
 				.from("products")
 				.insert({
@@ -667,7 +674,7 @@ async function main(): Promise<void> {
 		}
 		const r4 = await checkAnalyzeRateLimit(sb, userId, "member");
 		assert(r4.kind === "daily_exceeded",
-			`daily=20 should exceed, got ${JSON.stringify(r4)}`);
+			`daily=${MAX_DAILY} should exceed, got ${JSON.stringify(r4)}`);
 
 		console.log("[ok] analyze-rate-limit smoke 全4ケース通過");
 	} finally {
@@ -698,7 +705,7 @@ Expected: FAIL — module not found.
 
 - [ ] **Step 4: Implement `lib/research/analyze-rate-limit.ts`**
 
-NOTE: NO `import "server-only"`.
+NOTE: NO `import "server-only"` — the smoke imports this directly via tsx. The spec (§7.1) shows `import "server-only"` at the top; **the plan deliberately overrides the spec on this line** per the project's `server-only` + tsx-smoke convention documented in `CLAUDE.md`. If you copy from the spec, remove that import.
 
 ```ts
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -904,14 +911,44 @@ Replace with:
       })
 ```
 
-- [ ] **Step 6: TS check**
+Note: `primary.publicUrl` now carries the storage path (Step 4 changed the field semantics) — the column name stays `file_url` but the value is no longer a URL.
+
+- [ ] **Step 6: Drop public URL from `product_files` INSERT too**
+
+The per-file rows in `product_files` also write `file_url`. After Step 4 the local `f.publicUrl` already holds the storage path, so the existing INSERT is *almost* correct — but rename the source key for clarity. Find:
+
+```ts
+    const fileRecords = uploadedFiles.map((f, i) => ({
+      product_id: product.id,
+      file_url: f.publicUrl,
+      file_name: f.storageFileName,
+      mime_type: f.mimeType,
+      is_primary: i === 0,
+    }));
+```
+
+Replace with:
+```ts
+    // Phase 4: f.publicUrl actually holds the storage path now (private bucket).
+    const fileRecords = uploadedFiles.map((f, i) => ({
+      product_id: product.id,
+      file_url: f.storageFileName,
+      file_name: f.storageFileName,
+      mime_type: f.mimeType,
+      is_primary: i === 0,
+    }));
+```
+
+This makes the data flow explicit (`f.storageFileName` is the path) and matches the `products.file_url` write upstream which also uses the storage path. After this step BOTH `products.file_url` and `product_files.file_url` consistently hold storage paths post-Phase-4, not URLs.
+
+- [ ] **Step 7: TS check**
 
 ```bash
 npx tsc --noEmit
 ```
 Expected: 0 errors.
 
-- [ ] **Step 7: Run all 3 new smokes as a sanity baseline**
+- [ ] **Step 8: Run all 3 new smokes as a sanity baseline**
 
 ```bash
 npm run test:magic-bytes
@@ -920,7 +957,7 @@ npm run test:storage-signed-url
 ```
 Expected: all PASS.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
 git add app/api/upload/route.ts
