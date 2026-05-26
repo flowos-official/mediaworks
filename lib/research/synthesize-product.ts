@@ -3,6 +3,7 @@ import { runProductResearch } from "@/lib/brave";
 import { GEMINI_FLASH } from "@/lib/gemini-models";
 import { synthesizeResearch } from "@/lib/gemini";
 import type { ProductInfo, ResearchOutput } from "@/lib/gemini";
+import { GeminiCallError } from "@/lib/gemini/errors";
 import { getServiceClient } from "@/lib/supabase";
 import {
 	formatBroadcastContextPrompt,
@@ -211,9 +212,15 @@ export async function synthesizeProductResearch(
 		return { productId, success: true };
 	} catch (error) {
 		console.error(`[${productId}] Synthesis failed:`, error);
-		const reason = error instanceof Error
-			? `synthesis_failed: ${error.message.slice(0, 500)}`
-			: "synthesis_failed: unknown";
+		let reason: string;
+		if (error instanceof GeminiCallError) {
+			// "kind: summary after N attempts" 形式 (errors.ts の Error.message が直接適切)
+			reason = error.message.slice(0, 500);
+		} else if (error instanceof Error) {
+			reason = `synthesis_failed: ${error.message.slice(0, 500)}`;
+		} else {
+			reason = "synthesis_failed: unknown";
+		}
 		try {
 			await markProductStatus(sb, productId, "failed", reason);
 		} catch (statusError) {
