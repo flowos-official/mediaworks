@@ -2,6 +2,7 @@ import { hasInternalSecret, requireUser } from "@/lib/auth/require-user";
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
 import { extractProductInfo } from "@/lib/gemini";
+import { GeminiCallError } from "@/lib/gemini/errors";
 
 export const maxDuration = 120; // Extract only — fast, but buffer for large files
 
@@ -127,9 +128,14 @@ export async function POST(request: NextRequest) {
 	} catch (error) {
 		console.error(`[${productId}] Extraction failed:`, error);
 
-		const reason = error instanceof Error
-			? `extract_failed: ${error.message.slice(0, 500)}`
-			: "extract_failed: unknown";
+		let reason: string;
+		if (error instanceof GeminiCallError) {
+			reason = error.message.slice(0, 500);
+		} else if (error instanceof Error) {
+			reason = `extract_failed: ${error.message.slice(0, 500)}`;
+		} else {
+			reason = "extract_failed: unknown";
+		}
 		await supabase
 			.from("products")
 			.update({ status: "failed", error_reason: reason })
