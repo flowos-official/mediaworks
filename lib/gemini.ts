@@ -1,6 +1,10 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { GEMINI_FLASH } from "@/lib/gemini-models";
 import { buildChannelReferencePrompt } from "@/lib/tv-channels";
+import { callGeminiWithRetry } from "@/lib/gemini/retry";
+import { researchOutputSchema } from "@/lib/gemini/research-schema";
+import { parseResearchOutput } from "@/lib/gemini/parse-research-output";
+import type { GeminiErrorKind } from "@/lib/gemini/errors";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -246,241 +250,100 @@ export async function synthesizeResearch(
 	searchResults: Record<string, string>,
 	broadcastContextPrompt?: string,
 ): Promise<ResearchOutput> {
-	// Use gemini-3.5-flash (stable, fast)
 	const modelName = GEMINI_FLASH;
 	const model = genAI.getGenerativeModel({
 		model: modelName,
-		generationConfig: { maxOutputTokens: 32768, responseMimeType: "application/json" },
+		generationConfig: {
+			maxOutputTokens: 32768,
+			responseMimeType: "application/json",
+			responseSchema: researchOutputSchema,
+		},
 	});
 
-	const prompt = `You are a home shopping marketing research analyst specializing in Japan market expansion. Based on the product information and web search results, generate a comprehensive research report.
+	const contextSections: string[] = [];
+	contextSections.push("=== 入力商品情報 ===");
+	contextSections.push(JSON.stringify(productInfo, null, 2));
+	contextSections.push("");
+	contextSections.push("=== Web検索結果 (Brave + Rakuten) ===");
+	contextSections.push(
+		Object.entries(searchResults)
+			.map(([key, val]) => `## ${key}\n${val}`)
+			.join("\n\n"),
+	);
+	if (broadcastContextPrompt && broadcastContextPrompt.trim().length > 0) {
+		contextSections.push("");
+		contextSections.push("=== 競合放送コンテキスト ===");
+		contextSections.push(broadcastContextPrompt.trim());
+	}
+	contextSections.push("");
+	contextSections.push("=== TVチャネル参考 ===");
+	contextSections.push(buildChannelReferencePrompt());
 
-IMPORTANT: ALL text fields in the JSON response MUST be written in Japanese (日本語). This includes marketability_description, demographics fields, influencer match_reason, content_ideas titles and descriptions, competitor key_difference, broadcast_scripts, recommended_price_range descriptions, and any other text. Only product names, URLs, and numeric values may remain in their original language.
+	const businessGuide = `=== 出力ガイド ===
+あなたは日本市場参入を専門とするホームショッピング・マーケティングリサーチアナリストです。
+上記のコンテキストを根拠として、商品の市場性を多面的に分析してください。
 
-Product Information:
-${JSON.stringify(productInfo, null, 2)}
-
-Web Search Results:
-${Object.entries(searchResults)
-		.map(([key, val]) => `## ${key}\n${val}`)
-		.join("\n\n")}
-${broadcastContextPrompt ?? ""}
-
-${buildChannelReferencePrompt()}
+ALL text values MUST be Japanese. Product names, URLs, numeric values may keep original form.
 
 === TV通販チャネル適合度 評価基準 ===
-各チャネルのfit_scoreは以下4項目（各0-25点）の合計で算出してください：
-
-1. demographic_match (0-25): 商品のターゲット層とチャネル視聴者層の重なり度合い
-   - 検索結果から視聴者データを引用すること
-   - データなし = 最大15点
-
-2. category_track_record (0-25): このチャネルで類似カテゴリ商品が販売された実績
-   - similar_products_on_channelに実際の商品名を記載（検索結果から）
-   - 実績データなし = 最大10点
-
-3. price_point_fit (0-25): 商品価格帯とチャネルの平均販売価格帯の適合度
-   - 楽天/Amazon/競合データから根拠を示すこと
-   - データなし = 最大15点
-
-4. presentation_format_fit (0-25): TV実演向きかどうか（ビフォーアフター、触感、視覚的インパクト）
-   - 商品特性に基づく客観評価
-   - データなし = 最大15点
+各チャネルのfit_scoreは4項目 (各0-25点) の合計で算出:
+1. demographic_match (0-25): 商品ターゲット層とチャネル視聴者層の重なり (検索結果から視聴者データを引用 / データなし最大15点)
+2. category_track_record (0-25): 類似カテゴリ商品の販売実績 (similar_products_on_channelに実商品名 / 実績データなし最大10点)
+3. price_point_fit (0-25): 商品価格帯とチャネル平均価格帯の適合 (楽天/Amazon/競合データから根拠 / データなし最大15点)
+4. presentation_format_fit (0-25): TV実演向き度合い (商品特性に基づく客観評価 / データなし最大15点)
 
 CRITICAL RULES:
-- evidence_sourcesには上記Web Search Resultsに実際に含まれるURLのみ記載可
-- 検索結果にデータが全くないチャネルはfit_score合計を55点以下に設定（15+10+15+15=55が上限目安）
-- reasonフィールドは「〇〇によると...」の形式でソースを引用
-- similar_products_on_channelは検索で確認できた実在商品のみ記載（捏造厳禁）
+- evidence_sources は上記 Web Search Results に実在するURLのみ
+- 検索データが全くないチャネルは fit_score 合計を 55 点以下に
+- reason は「〇〇によると...」の形式でソースを引用
+- similar_products_on_channel は検索で確認できた実在商品のみ
 
-Generate a JSON response with these exact fields:
-{
-  "marketability_score": <number 0-100>,
-  "marketability_description": "<detailed explanation of market potential in 2-3 sentences>",
-  "demographics": {
-    "age_group": "<choose the bucket that best fits — e.g. '20-30代', '30-50代', '40-60代', '60代以上 (シニア層)', '全年齢'. シニア向け商品 (健康・介護・実演型家電・防災等) は迷わず '60代以上' を選んでよい>",
-    "gender": "<e.g., 'Primarily female (70%)'>",
-    "interests": ["<interest1>", "<interest2>", "<interest3>"],
-    "income_level": "<e.g., 'Middle to upper-middle class'>"
-  },
-  "seasonality": {
-    "jan": <0-100>, "feb": <0-100>, "mar": <0-100>, "apr": <0-100>,
-    "may": <0-100>, "jun": <0-100>, "jul": <0-100>, "aug": <0-100>,
-    "sep": <0-100>, "oct": <0-100>, "nov": <0-100>, "dec": <0-100>
-  },
-  "cogs_estimate": {
-    "items": [
-      {
-        "supplier": "<supplier name>",
-        "estimated_cost": "<e.g., '$5-8 USD'>",
-        "moq": "<minimum order quantity>",
-        "link": "<optional URL>"
-      }
-    ],
-    "summary": "<brief summary of COGS analysis>"
-  },
-  "influencers": [
-    {
-      "name": "<influencer name or type>",
-      "platform": "<YouTube/Instagram/TikTok>",
-      "followers": "<e.g., '500K-1M'>",
-      "match_reason": "<why this influencer fits the product>",
-      "profile_url": "<optional URL>"
-    }
-  ],
-  "content_ideas": [
-    {
-      "title": "<content title>",
-      "description": "<content description>",
-      "format": "<Video/Blog/Social Post/etc>"
-    }
-  ],
-  "competitor_analysis": [
-    {
-      "name": "<competitor product name>",
-      "price": "<price in USD or JPY>",
-      "platform": "<where it's sold — Amazon, Rakuten, etc>",
-      "key_difference": "<key difference from our product>"
-    }
-  ],
-  "recommended_price_range": "<recommended retail price range for Japan home shopping, e.g., '¥3,980-5,980'>",
-  "broadcast_scripts": {
-    "sec30": "<30-second home shopping broadcast script in Japanese>",
-    "sec60": "<60-second home shopping broadcast script in Japanese>",
-    "min5": "<5-minute detailed home shopping broadcast script in Japanese with host cues>"
-  },
-  "japan_export_fit_score": <number 0-100, how well this product fits Japan market>,
-  "distribution_channels": [
-    {
-      "channel_name": "<channel name>",
-      "channel_type": "<TV通販 | EC | SNSコマース | カタログ通販 | クラウドファンディング | メディア | オフライン | その他>",
-      "primary_age_group": "<チャネル視聴者層に合わせて選択。e.g. '20-30代女性', '40-60代女性', '60代以上女性', '40代以上男女'. ジャパネット高田・QVC・Shop Channel等のTV通販やシニア向けカタログ通販は '60代以上' を含めること>",
-      "fit_score": <MUST equal demographic_match + category_track_record + price_point_fit + presentation_format_fit, max 100>,
-      "reason": "<evidence-based explanation citing sources, in Japanese>",
-      "monthly_visitors": "<optional, e.g. 月間5,000万人>",
-      "commission_rate": "<optional, e.g. 10-15%>",
-      "url": "<channel URL>",
-      "broadcaster": "<TV broadcaster name, if applicable>",
-      "evidence_sources": [
-        { "title": "<source title from search results>", "url": "<URL from search results above>", "snippet": "<relevant excerpt>" }
-      ],
-      "similar_products_on_channel": [
-        { "product_name": "<actual product found in search>", "price": "<if available>", "source_url": "<URL>" }
-      ],
-      "scoring_breakdown": {
-        "demographic_match": <0-25>,
-        "category_track_record": <0-25>,
-        "price_point_fit": <0-25>,
-        "presentation_format_fit": <0-25>
-      }
-    }
-  ],
-  "pricing_strategy": {
-    "channel_pricing": [
-      {
-        "channel": "<channel name>",
-        "benchmark_price": "<competitor avg price, e.g. ¥3,980>",
-        "recommended_price": "<our recommended price, e.g. ¥4,980>",
-        "estimated_margin_pct": <margin percentage number>,
-        "reason": "<why this price makes sense>"
-      }
-    ],
-    "bep_analysis": {
-      "estimated_cogs_per_unit": "<e.g. ¥1,200>",
-      "fixed_cost_assumption": "<e.g. 初期固定費 ¥500,000>",
-      "bep_units_per_channel": [
-        {
-          "channel": "<channel name>",
-          "bep_units": <integer>,
-          "bep_revenue": "<e.g. ¥498,000>"
-        }
-      ],
-      "summary": "<BEP analysis summary in Japanese>"
-    }
-  },
-  "marketing_strategy": [
-    {
-      "strategy_name": "<strategy name>",
-      "type": "<SNS | インフルエンサー | PR | SEO | イベント>",
-      "estimated_cost": "<e.g. ¥50,000-200,000/月>",
-      "expected_reach": "<e.g. 50,000 impressions/月>",
-      "efficiency_score": <0-100>,
-      "steps": ["<step 1>", "<step 2>", "<step 3>"],
-      "best_for_channels": ["<channel1>", "<channel2>"]
-    }
-  ],
-  "korea_market_fit": {
-    "fit_score": <0-100>,
-    "target_products": ["<product variant 1>", "<product variant 2>"],
-    "recommended_channels": [
-      {
-        "channel_name": "<e.g. Coupang, Naver SmartStore, Olive Young, MUSINSA>",
-        "target_age": "<e.g. 20-30代女性>",
-        "strategy": "<entry strategy in Japanese>",
-        "estimated_entry_cost": "<e.g. 月100万ウォン>"
-      }
-    ],
-    "korean_consumer_insight": "<Korean consumer characteristics analysis in Japanese>"
-  },
-  "live_commerce": {
-    "platforms": [
-      {
-        "platform_name": "<e.g. Instagram Live, TikTok Live, YouTube Live, 楽天ROOM LIVE>",
-        "platform_type": "<SNS | EC連携 | 独自プラットフォーム>",
-        "target_audience": "<e.g. 20-30代女性、美容・ファッション関心層>",
-        "fit_score": <0-100>,
-        "reason": "<why this platform fits the product, in Japanese>"
-      }
-    ],
-    "scripts": {
-      "instagram_live": "<3-5 minute Instagram Live script in Japanese with host cues, product demo timing, CTA>",
-      "tiktok_live": "<3-5 minute TikTok Live script in Japanese, fast-paced, trend-aware, with engagement hooks>",
-      "youtube_live": "<5-10 minute YouTube Live script in Japanese, detailed product review style, with Q&A prompts>"
-    },
-    "talking_points": ["<key selling point 1>", "<key selling point 2>", "<key selling point 3>", "<key selling point 4>", "<key selling point 5>"],
-    "engagement_tips": ["<tip for boosting live viewer engagement 1>", "<tip 2>", "<tip 3>"],
-    "recommended_products_angle": "<the best angle/narrative for presenting this product in live commerce, in Japanese>"
-  }
+=== 件数ガイド ===
+- competitor_analysis: 3件 (exact)
+- distribution_channels: 6-10件 (TV通販の高 fit_score チャネル + 2-4 EC/その他)
+  - fit_score = scoring_breakdown 4 項目の合計 (max 100)
+  - evidence_sources: 各チャネル最大 2 件
+- pricing_strategy.channel_pricing: 2-4 件
+- marketing_strategy: 3-5 件 (efficiency_score 降順)
+- live_commerce: 3 platforms / talking_points 5 / engagement_tips 3
+- influencers: 3-5 件 / content_ideas: 3-5 件
+- broadcast_scripts は日本語、JSON 1 行に収まる長さに
+
+すべての必須フィールドを必ず明示生成してください。`;
+
+	const basePrompt = `${contextSections.join("\n")}\n\n${businessGuide}`;
+
+	return await callGeminiWithRetry(
+		async (_attempt, override) => {
+			const prompt = override ? `${basePrompt}\n\n${override}` : basePrompt;
+			const result = await model.generateContent(prompt);
+			const text = result.response.text().trim();
+			return { result: parseResearchOutput(text), responseText: text };
+		},
+		{
+			maxAttempts: 3,
+			baseDelayMs: 1000,
+			promptForAttempt: (_attempt, kind) => buildSynthesizeAttemptOverride(kind),
+		},
+	);
 }
 
-IMPORTANT:
-- Provide exactly 3 competitor products in competitor_analysis
-- Keep all prose concise so the JSON response is complete and syntactically valid.
-- Provide 8-12 distribution_channels. Include the highest-fit Japanese TV shopping channels from the channel reference plus 2-4 EC/other channels. fit_score MUST equal the sum of 4 scoring_breakdown values (each 0-25, total 0-100). Include at most 2 evidence_sources per channel, using URLs from search results only.
-- Provide 3-4 channel_pricing entries in pricing_strategy
-- Provide 3-5 marketing_strategy items sorted by efficiency_score desc
-- live_commerce should include 3 platform analyses, concise scripts for each major platform, and 5 talking points
-- korea_market_fit should analyze Korea-specific consumer patterns and channels
-- recommended_price_range should be based on Japan home shopping market pricing (in JPY)
-- broadcast_scripts should be written in Japanese (日本語) as these are for Japan home shopping broadcasts; keep each script concise enough for JSON output
-- japan_export_fit_score should consider: Japan consumer preferences, regulatory requirements, market demand, cultural fit
-- Provide 3-5 items for influencers and content_ideas
-- Return only valid JSON, no markdown.`;
-
-	let lastParseError: unknown;
-	for (let attempt = 0; attempt < 2; attempt += 1) {
-		const retrySuffix =
-			attempt === 0
-				? ""
-				: "\n\nYour previous response was invalid JSON or incomplete. Regenerate the full response as a single syntactically valid JSON object only. Override any earlier length guidance if needed: use terse strings, 6-8 distribution_channels, 2 channel_pricing entries, 3 marketing_strategy entries, and short scripts. Do not include markdown, comments, or trailing prose.";
-		const result = await model.generateContent(`${prompt}${retrySuffix}`);
-		const text = result.response.text().trim();
-		try {
-			return parseJsonFromModelText<ResearchOutput>(text, "research synthesis");
-		} catch (err) {
-			lastParseError = err;
-			console.warn(
-				`[synthesizeResearch] Gemini returned invalid JSON on attempt ${attempt + 1}/2: ${
-					err instanceof Error ? err.message : String(err)
-				}`,
-			);
-		}
+function buildSynthesizeAttemptOverride(kind: GeminiErrorKind | undefined): string | null {
+	if (!kind) return null;
+	switch (kind) {
+		case "parse_failed":
+			return "前回の応答は不正なJSONでした。コードフェンスや前後の説明文を一切付けず、単一のJSONオブジェクトのみ返してください。";
+		case "schema_validation_failed":
+			return "前回の応答はスキーマ違反でした。すべての required フィールドを明示的に出力し、列挙値や数値範囲を厳守してください。";
+		case "extract_empty":
+			return "前回の応答は空でした。すべての required フィールドを必ず明示的に生成してください。空文字列禁止。";
+		case "rate_limited":
+		case "server_error":
+		case "unknown":
+		default:
+			return null;
 	}
-	throw lastParseError instanceof Error
-		? lastParseError
-		: new Error("Failed to synthesize research");
 }
-
 // ---------------------------------------------------------------------------
 // Expansion Strategy Analysis
 // ---------------------------------------------------------------------------
