@@ -75,6 +75,11 @@
       "failed": "실패"
     },
     "analyzingMessage": "AI 분석 진행 중... 새로고침 후에도 계속됩니다",
+    "analyzingDefault": "분석 중...",
+    "analyzingWithElapsed": "분석 중... ({minutes}분 경과)",
+    "analyzingWarning": "보통 2-3분 안에 완료됩니다",
+    "analyzingStuck": "정체 감지 중",
+    "reuploadLink": "다시 업로드",
     "search": {
       "placeholder": "상품명·설명으로 검색...",
       "allStatuses": "전체",

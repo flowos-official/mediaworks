@@ -75,6 +75,11 @@
       "failed": "エラー"
     },
     "analyzingMessage": "AI分析中... リロードしても続行されます",
+    "analyzingDefault": "分析中...",
+    "analyzingWithElapsed": "分析中... ({minutes}分経過)",
+    "analyzingWarning": "通常2-3分で完了します",
+    "analyzingStuck": "停滞検出中",
+    "reuploadLink": "再アップロード",
     "search": {
       "placeholder": "商品名・説明で検索...",
       "allStatuses": "すべて",
