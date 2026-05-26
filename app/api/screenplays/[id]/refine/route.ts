@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { start } from "workflow/api";
+import { requireUser } from "@/lib/auth/require-user";
 import { getServiceClient } from "@/lib/supabase";
 import { screenplayWorkflow } from "@/lib/workflows/screenplay.workflow";
 import type { ProductBrief } from "@/lib/screenplay/types";
@@ -12,6 +13,8 @@ export async function POST(
 	request: NextRequest,
 	{ params }: { params: Promise<{ id: string }> },
 ) {
+	const auth = await requireUser(["member", "admin"]);
+	if ("error" in auth) return auth.error;
 	const { id } = await params;
 	if (!UUID_RE.test(id)) {
 		return Response.json({ error: "invalid id" }, { status: 404 });
