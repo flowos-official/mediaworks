@@ -1,5 +1,16 @@
 import { SchemaType, type Schema } from "@google/generative-ai";
 
+/**
+ * Gemini responseSchema for ResearchOutput.
+ *
+ * Note: distribution_channels / pricing_strategy / marketing_strategy /
+ * korea_market_fit / live_commerce are marked `?` (optional) on the
+ * `ResearchOutput` TS type in `lib/gemini.ts`, but `required` here on
+ * purpose. The schema forces fresh Gemini outputs to always include
+ * them; the TS optionality is preserved so consumers can null-coalesce
+ * pre-Phase-3 rows that may still have NULL in those columns.
+ */
+
 // The SDK's IntegerSchema/NumberSchema omit `minimum`/`maximum` from their TS
 // types (v0.24.1) even though the Gemini API accepts and enforces them at
 // runtime. We build the literal without explicit Schema annotations so TS infers
@@ -40,6 +51,7 @@ const distributionChannelItem = {
 		},
 		similar_products_on_channel: {
 			type: SchemaType.ARRAY,
+			maxItems: 3,
 			items: {
 				type: SchemaType.OBJECT,
 				properties: {
