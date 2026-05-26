@@ -3,6 +3,7 @@ import { runProductResearch } from "@/lib/brave";
 import { GEMINI_FLASH } from "@/lib/gemini-models";
 import { synthesizeResearch } from "@/lib/gemini";
 import type { ProductInfo, ResearchOutput } from "@/lib/gemini";
+import { GeminiCallError } from "@/lib/gemini/errors";
 import { getServiceClient } from "@/lib/supabase";
 import {
 	formatBroadcastContextPrompt,
@@ -178,7 +179,18 @@ export async function synthesizeProductResearch(
 		console.log(
 			`[${productId}] Loading broadcast context for category: ${productInfo.category}`,
 		);
-		const broadcastContext = await loadBroadcastContext(productInfo.category);
+		let broadcastContext: Awaited<ReturnType<typeof loadBroadcastContext>> = null;
+		try {
+			broadcastContext = await loadBroadcastContext(productInfo.category);
+		} catch (err) {
+			console.warn(`[${productId}] broadcast context load failed:`, err);
+			const msg = err instanceof Error ? err.message.slice(0, 300) : "unknown";
+			// soft-mark; status stays 'analyzing'. markProductStatus("completed", null) later clears it.
+			await sb.from("products")
+				.update({ error_reason: `context_load_failed: ${msg}` })
+				.eq("id", productId);
+			broadcastContext = null;
+		}
 		const broadcastContextPrompt = formatBroadcastContextPrompt(broadcastContext);
 
 		console.log(`[${productId}] Synthesizing research with ${GEMINI_FLASH}...`);
@@ -200,9 +212,15 @@ export async function synthesizeProductResearch(
 		return { productId, success: true };
 	} catch (error) {
 		console.error(`[${productId}] Synthesis failed:`, error);
-		const reason = error instanceof Error
-			? `synthesis_failed: ${error.message.slice(0, 500)}`
-			: "synthesis_failed: unknown";
+		let reason: string;
+		if (error instanceof GeminiCallError) {
+			// "kind: summary after N attempts" 形式 (errors.ts の Error.message が直接適切)
+			reason = error.message.slice(0, 500);
+		} else if (error instanceof Error) {
+			reason = `synthesis_failed: ${error.message.slice(0, 500)}`;
+		} else {
+			reason = "synthesis_failed: unknown";
+		}
 		try {
 			await markProductStatus(sb, productId, "failed", reason);
 		} catch (statusError) {

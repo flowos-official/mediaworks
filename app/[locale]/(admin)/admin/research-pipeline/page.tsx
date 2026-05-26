@@ -6,6 +6,30 @@ import TriggerDetectionButton from "./TriggerDetectionButton";
 
 export const dynamic = "force-dynamic";
 
+const ERROR_REASON_LABELS: Record<string, string> = {
+	safety_blocked: "セーフティブロック",
+	rate_limited: "レート制限",
+	server_error: "サーバーエラー",
+	parse_failed: "JSON解析失敗",
+	schema_validation_failed: "スキーマ検証失敗",
+	extract_empty: "空応答",
+	context_load_failed: "コンテキスト読込失敗",
+	cron_secret_missing: "CRON_SECRET未設定",
+	trigger_not_invoked: "トリガー未起動",
+	analysis_timeout: "分析タイムアウト",
+	extract_failed: "抽出失敗",
+	synthesis_failed: "合成失敗",
+	file_too_large: "ファイルサイズ超過",
+	no_files: "ファイル未添付",
+	unknown: "原因不明",
+};
+
+function labelOf(reason: string | null): string {
+	if (!reason) return "理由不明";
+	const kind = reason.split(":")[0].trim();
+	return ERROR_REASON_LABELS[kind] ?? kind;
+}
+
 interface PageProps {
   params: Promise<{ locale: string }>;
 }
@@ -91,7 +115,7 @@ export default async function ResearchPipelinePage({ params }: PageProps) {
                 <div className="min-w-0">
                   <div className="font-medium truncate">{p.name}</div>
                   <div className="text-xs text-muted-foreground">
-                    {p.error_reason ?? "理由不明"} · 失敗時刻: {p.updated_at.slice(11, 16)}
+                    {labelOf(p.error_reason)} · {p.error_reason ?? "理由不明"} · 失敗時刻: {p.updated_at.slice(11, 16)}
                     {p.description == null ? " · description 未抽出 (要再アップロード)" : ""}
                   </div>
                 </div>

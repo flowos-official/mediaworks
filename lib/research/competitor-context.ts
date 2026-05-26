@@ -2,6 +2,13 @@
 import { normalizeCategory } from "@/lib/discovery/category-normalize";
 import { getServiceClient } from "@/lib/supabase";
 
+export class BroadcastContextLoadError extends Error {
+	constructor(message: string, public readonly cause?: unknown) {
+		super(message);
+		this.name = "BroadcastContextLoadError";
+	}
+}
+
 export interface RecentAiring {
 	channel: string;
 	program_title: string | null;
@@ -159,8 +166,10 @@ export async function loadBroadcastContext(
 			operatorFit: { avg, count: nonNullFitRows.length, top3 },
 		};
 	} catch (err) {
-		console.warn("[competitor-context] query failed:", err);
-		return null;
+		throw new BroadcastContextLoadError(
+			err instanceof Error ? err.message : String(err),
+			err,
+		);
 	}
 }
 
