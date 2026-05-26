@@ -78,7 +78,8 @@
     "promote:discovery-research": "tsx --env-file=.env.local scripts/promote-discovered-to-research.ts",
     "complete:recommendation-flow": "tsx --env-file=.env.local scripts/complete-recommendation-flow.ts",
     "test:selections": "tsx --env-file=.env.local scripts/test-selections-state-machine.ts",
-    "test:research-data-model": "tsx --env-file=.env.local scripts/test-research-data-model.ts"
+    "test:research-data-model": "tsx --env-file=.env.local scripts/test-research-data-model.ts",
+    "test:research-retry-stage": "tsx scripts/test-research-retry-stage.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1016.0",
