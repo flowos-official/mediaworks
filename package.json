@@ -80,7 +80,8 @@
     "test:selections": "tsx --env-file=.env.local scripts/test-selections-state-machine.ts",
     "test:research-data-model": "tsx --env-file=.env.local scripts/test-research-data-model.ts",
     "test:research-retry-stage": "tsx scripts/test-research-retry-stage.ts",
-    "test:research-stuck-detector": "tsx --env-file=.env.local scripts/test-research-stuck-detector.ts"
+    "test:research-stuck-detector": "tsx --env-file=.env.local scripts/test-research-stuck-detector.ts",
+    "test:gemini-classify-error": "tsx scripts/test-gemini-classify-error.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1016.0",
