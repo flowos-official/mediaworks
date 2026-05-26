@@ -178,7 +178,18 @@ export async function synthesizeProductResearch(
 		console.log(
 			`[${productId}] Loading broadcast context for category: ${productInfo.category}`,
 		);
-		const broadcastContext = await loadBroadcastContext(productInfo.category);
+		let broadcastContext: Awaited<ReturnType<typeof loadBroadcastContext>> = null;
+		try {
+			broadcastContext = await loadBroadcastContext(productInfo.category);
+		} catch (err) {
+			console.warn(`[${productId}] broadcast context load failed:`, err);
+			const msg = err instanceof Error ? err.message.slice(0, 300) : "unknown";
+			// soft-mark; status stays 'analyzing'. markProductStatus("completed", null) later clears it.
+			await sb.from("products")
+				.update({ error_reason: `context_load_failed: ${msg}` })
+				.eq("id", productId);
+			broadcastContext = null;
+		}
 		const broadcastContextPrompt = formatBroadcastContextPrompt(broadcastContext);
 
 		console.log(`[${productId}] Synthesizing research with ${GEMINI_FLASH}...`);
