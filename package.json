@@ -86,7 +86,8 @@
     "test:research-schema-shape": "tsx scripts/test-research-schema-shape.ts",
     "test:error-reason-explain": "tsx scripts/test-error-reason-explain.ts",
     "test:magic-bytes": "tsx scripts/test-magic-bytes.ts",
-    "test:storage-signed-url": "tsx --env-file=.env.local scripts/test-storage-signed-url.ts"
+    "test:storage-signed-url": "tsx --env-file=.env.local scripts/test-storage-signed-url.ts",
+    "test:analyze-rate-limit": "tsx --env-file=.env.local scripts/test-analyze-rate-limit.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1016.0",
