@@ -134,8 +134,16 @@ async function markProductStatus(
 	sb: SupabaseClient,
 	productId: string,
 	status: "analyzing" | "completed" | "failed",
+	errorReason: string | null = null,
 ): Promise<void> {
-	const { error } = await sb.from("products").update({ status }).eq("id", productId);
+	const update: { status: typeof status; error_reason?: string | null } = { status };
+	if (status === "failed") {
+		update.error_reason = errorReason;
+	} else {
+		// 成功 / 進行中に戻すときは error_reason をクリア (再試行後の状態整合)
+		update.error_reason = null;
+	}
+	const { error } = await sb.from("products").update(update).eq("id", productId);
 	if (error) throw error;
 }
 
@@ -192,8 +200,11 @@ export async function synthesizeProductResearch(
 		return { productId, success: true };
 	} catch (error) {
 		console.error(`[${productId}] Synthesis failed:`, error);
+		const reason = error instanceof Error
+			? `synthesis_failed: ${error.message.slice(0, 500)}`
+			: "synthesis_failed: unknown";
 		try {
-			await markProductStatus(sb, productId, "failed");
+			await markProductStatus(sb, productId, "failed", reason);
 		} catch (statusError) {
 			console.error(`[${productId}] Failed to mark synthesis failure:`, statusError);
 		}

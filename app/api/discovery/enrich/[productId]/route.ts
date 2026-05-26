@@ -68,17 +68,29 @@ export async function POST(
 	}
 
 	// Trigger worker via after() — keeps the function alive post-response
+	const cronSecret = process.env.CRON_SECRET;
+	if (!cronSecret) {
+		console.error(`[enrich trigger] CRON_SECRET missing — worker trigger blocked for ${productId}`);
+		await sb
+			.from("discovered_products")
+			.update({ enrichment_status: "failed", enrichment_error: "cron_secret_missing" })
+			.eq("id", productId);
+		return NextResponse.json(
+			{ error: "CRON_SECRET not configured" },
+			{ status: 500 },
+		);
+	}
+
 	const workerUrl = new URL(
 		`/api/discovery/enrich/${productId}/worker`,
 		req.nextUrl.origin,
 	);
-	const secret = process.env.CRON_SECRET ?? "";
 
 	after(async () => {
 		try {
 			await fetch(workerUrl, {
 				method: "POST",
-				headers: secret ? { Authorization: `Bearer ${secret}` } : {},
+				headers: { Authorization: `Bearer ${cronSecret}` },
 				signal: AbortSignal.timeout(62_000),
 			});
 		} catch (err) {

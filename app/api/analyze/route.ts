@@ -43,13 +43,25 @@ export async function POST(request: NextRequest) {
 
 		// Step 2: Trigger synthesize in a separate request (non-blocking)
 		// This runs as a separate serverless function with its own 5-min timeout
+		const cronSecret = process.env.CRON_SECRET;
+		if (!cronSecret) {
+			console.error(`[${productId}] CRON_SECRET missing — synthesize trigger blocked`);
+			await supabase
+				.from("products")
+				.update({ status: "failed", error_reason: "cron_secret_missing" })
+				.eq("id", productId);
+			return NextResponse.json(
+				{ error: "CRON_SECRET not configured" },
+				{ status: 500 },
+			);
+		}
 		const baseUrl =
 			process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 		fetch(`${baseUrl}/api/analyze/synthesize`, {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
-				Authorization: `Bearer ${process.env.CRON_SECRET ?? ""}`,
+				Authorization: `Bearer ${cronSecret}`,
 			},
 			body: JSON.stringify({ productId }),
 		}).catch((err) => {
@@ -65,9 +77,12 @@ export async function POST(request: NextRequest) {
 	} catch (error) {
 		console.error(`[${productId}] Extraction failed:`, error);
 
+		const reason = error instanceof Error
+			? `extract_failed: ${error.message.slice(0, 500)}`
+			: "extract_failed: unknown";
 		await supabase
 			.from("products")
-			.update({ status: "failed" })
+			.update({ status: "failed", error_reason: reason })
 			.eq("id", productId);
 
 		return NextResponse.json(

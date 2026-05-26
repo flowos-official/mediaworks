@@ -71,6 +71,7 @@ export async function GET(request: NextRequest) {
 							pricing_strategy: research.pricing_strategy,
 							marketing_strategy: research.marketing_strategy,
 							korea_market_fit: research.korea_market_fit,
+							live_commerce: research.live_commerce,
 							raw_json: {
 								product_info: productInfo,
 								search_results: searchResults,

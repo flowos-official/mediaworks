@@ -45,31 +45,12 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   const stage = determineRetryStage({ description: product.description });
 
-  // Reset row to analyzing + clear error_reason BEFORE firing the request,
-  // so the operator sees the new in-flight state immediately.
-  const { error: resetErr } = await sb
-    .from("products")
-    .update({ status: "analyzing", error_reason: null })
-    .eq("id", productId);
-  if (resetErr) return NextResponse.json({ error: resetErr.message }, { status: 500 });
-
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-
-  if (stage === "synthesize") {
-    fetch(`${baseUrl}/api/analyze/synthesize`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${cronSecret}`,
-      },
-      body: JSON.stringify({ productId }),
-    }).catch((err) => {
-      console.error(`[admin/retry][${productId}] synthesize trigger failed:`, err);
-    });
-  } else {
+  if (stage === "extract") {
     // extract stage requires fileBase64 + mimeType + fileName, which the admin route
     // doesn't have. For Phase 2 we explicitly tell the operator that extract-stage
     // retries must re-upload the file. (Auto re-extract from storage URL is Phase 3+.)
+    // Row is intentionally NOT touched — leaving status='failed' so the operator
+    // can clearly see the row needs re-upload instead of waiting on a phantom retry.
     return NextResponse.json(
       {
         error:
@@ -80,6 +61,26 @@ export async function POST(request: Request): Promise<NextResponse> {
       { status: 422 },
     );
   }
+
+  // Reset row to analyzing + clear error_reason BEFORE firing the synthesize trigger,
+  // so the operator sees the new in-flight state immediately.
+  const { error: resetErr } = await sb
+    .from("products")
+    .update({ status: "analyzing", error_reason: null })
+    .eq("id", productId);
+  if (resetErr) return NextResponse.json({ error: resetErr.message }, { status: 500 });
+
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  fetch(`${baseUrl}/api/analyze/synthesize`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${cronSecret}`,
+    },
+    body: JSON.stringify({ productId }),
+  }).catch((err) => {
+    console.error(`[admin/retry][${productId}] synthesize trigger failed:`, err);
+  });
 
   return NextResponse.json({ ok: true, retriedStage: stage });
 }
