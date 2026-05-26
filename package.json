@@ -82,7 +82,8 @@
     "test:research-retry-stage": "tsx scripts/test-research-retry-stage.ts",
     "test:research-stuck-detector": "tsx --env-file=.env.local scripts/test-research-stuck-detector.ts",
     "test:gemini-classify-error": "tsx scripts/test-gemini-classify-error.ts",
-    "test:gemini-retry": "tsx scripts/test-gemini-retry.ts"
+    "test:gemini-retry": "tsx scripts/test-gemini-retry.ts",
+    "test:research-schema-shape": "tsx scripts/test-research-schema-shape.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1016.0",
