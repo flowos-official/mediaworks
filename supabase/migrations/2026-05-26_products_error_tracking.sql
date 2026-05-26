@@ -2,6 +2,8 @@
 -- stuck detection cron が最終状態変化時刻で stuck 判定する。
 -- error_reason は detection (trigger_not_invoked / analysis_timeout) と
 -- analyze ルートの CRON_SECRET 欠落など、明示的失敗で埋められる。
+-- 既存 row の updated_at はマイグレーション実行時刻で一括初期化される。
+-- 最初の stuck 検出サイクル (15 分以内) は全行が新鮮に見えるため、効果が出るのは 2 サイクル目以降。
 
 BEGIN;
 
