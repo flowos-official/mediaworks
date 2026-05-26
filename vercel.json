@@ -71,6 +71,9 @@
     },
     "app/api/cron/pipeline-auto-advance/route.ts": {
       "maxDuration": 60
+    },
+    "app/api/cron/research-stuck-detector/route.ts": {
+      "maxDuration": 30
     }
   },
   "crons": [
@@ -121,6 +124,10 @@
     {
       "path": "/api/cron/pipeline-auto-advance",
       "schedule": "0 18 * * *"
+    },
+    {
+      "path": "/api/cron/research-stuck-detector",
+      "schedule": "*/15 * * * *"
     }
   ]
 }
