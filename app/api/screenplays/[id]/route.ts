@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { requireUser } from "@/lib/auth/require-user";
 import { getServiceClient } from "@/lib/supabase";
 
 export const maxDuration = 30;
@@ -9,6 +10,8 @@ export async function GET(
 	_request: NextRequest,
 	{ params }: { params: Promise<{ id: string }> },
 ) {
+	const auth = await requireUser(["member", "admin"]);
+	if ("error" in auth) return auth.error;
 	const { id } = await params;
 	if (!UUID_RE.test(id)) {
 		return Response.json({ error: "invalid id" }, { status: 404 });
@@ -43,6 +46,8 @@ export async function DELETE(
 	_request: NextRequest,
 	{ params }: { params: Promise<{ id: string }> },
 ) {
+	const auth = await requireUser(["member", "admin"]);
+	if ("error" in auth) return auth.error;
 	const { id } = await params;
 	if (!UUID_RE.test(id)) {
 		// Idempotent: deleting an invalid id is a no-op success.
