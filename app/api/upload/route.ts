@@ -1,6 +1,8 @@
 import { requireUser } from "@/lib/auth/require-user";
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase';
+import { checkAnalyzeRateLimit } from "@/lib/research/analyze-rate-limit";
+import { checkMagicBytes } from "@/lib/upload/magic-bytes";
 
 const SUPPORTED_MIME_TYPES = new Set([
   'application/pdf',
@@ -54,6 +56,15 @@ export async function POST(request: NextRequest) {
 	const auth = await requireUser(["member", "admin"]);
 	if ("error" in auth) return auth.error;
 
+	const rateCheck = await checkAnalyzeRateLimit(auth.sb, auth.user.id, auth.role as "member" | "admin");
+	if (rateCheck.kind !== "ok") {
+		console.warn(`[upload] rate limit ${rateCheck.kind} for user=${auth.user.id}: ${rateCheck.current}/${rateCheck.max}`);
+		const msg = rateCheck.kind === "inflight_exceeded"
+			? `現在分析中の商品が ${rateCheck.current} 件あります (上限 ${rateCheck.max} 件)。完了後に再度お試しください。`
+			: `本日のアップロード上限 (${rateCheck.max} 件/24h) に達しました。明日以降お試しください。`;
+		return NextResponse.json({ error: msg, code: rateCheck.kind }, { status: 429 });
+	}
+
   try {
     const formData = await request.formData();
     const locale = (formData.get('locale') as string) || 'ja';
@@ -88,6 +99,22 @@ export async function POST(request: NextRequest) {
 
       const fileBuffer = await file.arrayBuffer();
       const fileBytes = new Uint8Array(fileBuffer);
+      const headBuffer = Buffer.from(fileBytes.slice(0, 16));
+      const magic = checkMagicBytes(headBuffer, mimeType);
+      if (magic.kind === "unsupported") {
+        console.warn(`[upload] rejected ${file.name}: unsupported magic bytes (declared ${mimeType})`);
+        return NextResponse.json(
+          { error: `Unsupported file content: ${file.name}` },
+          { status: 400 },
+        );
+      }
+      if (magic.kind === "mismatch") {
+        console.warn(`[upload] rejected ${file.name}: declared ${mimeType} but bytes look like ${magic.detectedMime}`);
+        return NextResponse.json(
+          { error: `File content does not match declared type for ${file.name}` },
+          { status: 400 },
+        );
+      }
       const ext = file.name.match(/\.[^.]+$/)?.[0] ?? '';
       const safeName = file.name
         .replace(/\.[^.]+$/, '')
@@ -107,14 +134,11 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      const { data: urlData } = supabase.storage
-        .from('product-files')
-        .getPublicUrl(storageFileName);
-
+      // Phase 4: bucket is private — no public URL. Store path only.
       uploadedFiles.push({
         fileName: file.name,
         storageFileName,
-        publicUrl: urlData.publicUrl,
+        publicUrl: storageFileName,
         mimeType,
         fileBytes,
       });
@@ -139,6 +163,7 @@ export async function POST(request: NextRequest) {
         file_url: primary.publicUrl,
         file_name: primary.storageFileName,
         status: 'pending',
+        created_by: auth.user.id,
       })
       .select()
       .single();
@@ -149,9 +174,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Insert product_files records
+    // Phase 4: f.publicUrl actually holds the storage path now (private bucket).
     const fileRecords = uploadedFiles.map((f, i) => ({
       product_id: product.id,
-      file_url: f.publicUrl,
+      file_url: f.storageFileName,
       file_name: f.storageFileName,
       mime_type: f.mimeType,
       is_primary: i === 0,
