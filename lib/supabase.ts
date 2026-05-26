@@ -55,6 +55,8 @@ export type Product = {
   status: ProductStatus;
   discovered_product_id: string | null;
   ingest_source: 'file_upload' | 'discovery_promotion' | 'manual_url';
+  error_reason: string | null;
+  updated_at: string;
   created_at: string;
 };
 
