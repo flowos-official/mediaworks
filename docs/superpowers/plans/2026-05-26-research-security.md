@@ -43,6 +43,17 @@
 
 ---
 
+## Prerequisites
+
+Before running any live-DB smoke (Tasks 1, 6, 7, 9, 11), confirm `.env.local` exists in the worktree root (`.claude/worktrees/research-security/.env.local`) and contains:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+
+The worktree controller copies this from the main repo's `.env.local` at worktree setup time. If absent (e.g., fresh-cloned worktree on a new machine), copy from `E:/Github/mediaworks/.env.local` before starting Task 1. Pure-unit smokes (Tasks 5 only) work without `.env.local`.
+
+---
+
 ## Task 1: Migration — storage lock for `product-files`
 
 **Files:**
@@ -860,6 +871,8 @@ import { checkMagicBytes } from "@/lib/upload/magic-bytes";
 
 - [ ] **Step 2: Add rate-limit check right after `requireUser`**
 
+Note on indentation: the `requireUser` and `if ("error"` lines are tab-indented (matching the rest of the route's POST body), but the `try {` line uses 2-space indentation (the original file mixes both — preserved as-is). The Edit tool requires byte-exact matching, so copy the find string verbatim including the indentation switch.
+
 Find:
 ```ts
 	const auth = await requireUser(["member", "admin"]);
@@ -1301,7 +1314,10 @@ Expected: all 11 PASS.
 ```bash
 git log --oneline 52fe670..HEAD
 ```
-Expected: ~14 commits since `52fe670` (plan + 2 plan review fixes + 11 implementation commits + 1 Task 3a screenplay auth-gate commit).
+Expected: ~15 commits since `52fe670`:
+- 4 docs commits (spec + plan + 2 plan-review-fix commits, all already on the branch before Task 1 starts)
+- 11 implementation commits (Tasks 1, 2, 3, 3a, 4, 5, 6, 7, 8, 9, 10 — each ends with one commit)
+- Task 11 itself adds no commit (verification only)
 
 - [ ] **Step 4: Inspect uncommitted state**
 
@@ -1345,6 +1361,7 @@ Expected: `nothing to commit, working tree clean`.
 - **Rate limit applies only to `/api/upload`. An authenticated member can call `/api/analyze` directly with their own productId rapidly to bypass inflight counting (inflight count drops back to 0 between sequential calls). Acceptable for single-tenant ops; consider per-`/api/analyze`-call limit in a future phase if needed.**
 - **`hasInternalSecret` bypasses ownership check. A leaked `CRON_SECRET` lets the holder mutate any product. `CRON_SECRET` is stored only in Vercel env + `.env.local`; treat it as an admin-equivalent credential.**
 - **Smoke test cleanup uses `LIKE 'rate-limit-smoke-{ts}-%'` (where `{ts}` is the current run's Date.now()), narrowed in the review fix. If the smoke is killed by SIGKILL between insertions and finally-cleanup, the next run will have stale rows with `created_by = <shared profile>` that inflate daily count — manual cleanup via SQL editor required if this happens.**
+- **Multi-file upload partial-success leaves orphans in storage.** After Task 8, the `for (const file of files)` loop checks magic bytes per file. A request with `[valid.pdf, exploit.pdf]` uploads `valid.pdf` to storage first, then rejects on `exploit.pdf` with HTTP 400 (the request returns mid-loop). `valid.pdf` is now in storage with no `products` row referencing it. Not a security issue, but an ops-hygiene concern. Acceptable for v1 (manual cleanup if it ever matters); a future cron `cleanup-orphan-product-files` could resolve, out of Phase 4 scope.
 
 ## Self-review
 
