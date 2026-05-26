@@ -8,9 +8,13 @@ export const maxDuration = 120; // Extract only — fast, but buffer for large f
 
 export async function POST(request: NextRequest) {
 	const isInternal = hasInternalSecret(request);
+	let authUserId: string | null = null;
+	let authRole: "member" | "admin" | null = null;
 	if (!isInternal) {
 		const auth = await requireUser(["member", "admin"]);
 		if ("error" in auth) return auth.error;
+		authUserId = auth.user.id;
+		authRole = auth.role as "member" | "admin";
 	}
 
 	type AnalyzeFile = { base64: string; mimeType: string; fileName: string };
@@ -24,6 +28,28 @@ export async function POST(request: NextRequest) {
 	const { productId } = body;
 
 	const supabase = getServiceClient();
+
+	// Phase 4 IDOR check — only when called via user-auth (internal-secret path bypasses).
+	if (!isInternal) {
+		const { data: prod, error: prodErr } = await supabase
+			.from("products")
+			.select("id, created_by")
+			.eq("id", productId)
+			.maybeSingle();
+		if (prodErr) {
+			console.error(`[${productId}] ownership lookup failed:`, prodErr);
+			return NextResponse.json({ error: "product lookup failed" }, { status: 500 });
+		}
+		if (!prod) {
+			return NextResponse.json({ error: "product not found" }, { status: 404 });
+		}
+		const isOwner = (prod as { created_by: string | null }).created_by === authUserId;
+		const isAdmin = authRole === "admin";
+		if (!isOwner && !isAdmin) {
+			console.warn(`[${productId}] analyze IDOR blocked: user=${authUserId} owner=${(prod as { created_by: string | null }).created_by}`);
+			return NextResponse.json({ error: "forbidden" }, { status: 403 });
+		}
+	}
 
 	// Normalize body shape: prefer `files[]`, fall back to legacy single-file fields.
 	let files: AnalyzeFile[];
