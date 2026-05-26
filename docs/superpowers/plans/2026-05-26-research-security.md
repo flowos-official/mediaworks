@@ -32,6 +32,8 @@
 - `lib/supabase.ts::Product` — `created_by: string | null`
 - `app/api/upload/route.ts` — rate limit + magic-byte + `created_by` + storage path-only
 - `app/api/analyze/route.ts` — ownership check after auth
+- `app/api/screenplays/[id]/route.ts` — add `requireUser(['member','admin'])` to GET + DELETE (Task 3a; Migration 3 RLS alone doesn't gate this route because it uses `getServiceClient` which bypasses RLS)
+- `app/api/screenplays/[id]/refine/route.ts` — add `requireUser(['member','admin'])` to POST (same reason as above)
 - `package.json` — 4 new test scripts
 
 ### Boundary notes
@@ -194,6 +196,62 @@ COMMIT;
 ```bash
 git add supabase/migrations/2026-05-26_screenplays_rls.sql
 git commit -m "feat(security): RLS for screenplays + screenplay_versions"
+```
+
+---
+
+## Task 3a: Auth gates for screenplay routes
+
+**Why this is a companion to Task 3 (not its own numbered task):** Migration 3 enables RLS on `screenplays` and `screenplay_versions`, but two existing HTTP routes (`/api/screenplays/[id]/route.ts` GET/DELETE, and `/api/screenplays/[id]/refine/route.ts` POST) call `getServiceClient()` directly with NO `requireUser` gate. Service-role bypasses RLS, so these routes remain open to anyone who can guess a screenplay UUID. Migration 3 alone does NOT close the spec §5 risk — the application-layer auth gate must also be added.
+
+The pre-execution review caught this; the spec §5.2 ("既存 cron / screenplay 生成 ルートは getServiceClient() → service-role bypass — 影響なし") was incorrect because these routes are user-facing, not cron-only.
+
+**Files:**
+- Modify: `app/api/screenplays/[id]/route.ts` (GET + DELETE handlers)
+- Modify: `app/api/screenplays/[id]/refine/route.ts` (POST handler)
+
+- [ ] **Step 1: Read both files**
+
+Confirm the current shape via Read tool. Each file currently starts with `import { NextRequest } from "next/server";` + `import { getServiceClient } from "@/lib/supabase";` and has handler signatures that go straight to `const supabase = getServiceClient();` with no auth check.
+
+- [ ] **Step 2: Edit `app/api/screenplays/[id]/route.ts`**
+
+Add at the top of the imports:
+```ts
+import { requireUser } from "@/lib/auth/require-user";
+```
+
+In the `GET` handler, immediately after the function opening, add:
+```ts
+	const auth = await requireUser(["member", "admin"]);
+	if ("error" in auth) return auth.error;
+```
+
+In the `DELETE` handler, same pattern at the top.
+
+Keep `const supabase = getServiceClient();` as-is — the auth gate is now in front of it.
+
+- [ ] **Step 3: Edit `app/api/screenplays/[id]/refine/route.ts`**
+
+Same pattern — add `requireUser` import + gate in the `POST` handler.
+
+- [ ] **Step 4: TS check**
+
+```bash
+npx tsc --noEmit
+```
+Expected: 0 errors.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add app/api/screenplays/[id]/route.ts app/api/screenplays/[id]/refine/route.ts
+git commit -m "fix(security): require member/admin auth on screenplay [id] routes
+
+Migration 3 enables RLS on screenplays / screenplay_versions, but
+these two HTTP routes use getServiceClient() which bypasses RLS.
+Without an app-level requireUser gate, RLS alone does not close
+the unauthenticated-read / unauthenticated-delete surface."
 ```
 
 ---
@@ -1243,7 +1301,7 @@ Expected: all 11 PASS.
 ```bash
 git log --oneline 52fe670..HEAD
 ```
-Expected: ~12 commits since `52fe670`, one `docs(research)` (plan) + 10-11 implementation commits.
+Expected: ~14 commits since `52fe670` (plan + 2 plan review fixes + 11 implementation commits + 1 Task 3a screenplay auth-gate commit).
 
 - [ ] **Step 4: Inspect uncommitted state**
 
@@ -1259,6 +1317,7 @@ Expected: `nothing to commit, working tree clean`.
 2. Upload a file renamed to `exploit.pdf` but containing HTML — should reject with 400 "File content does not match declared type".
 3. Upload 4 files in quick succession to put yourself at 3 in-flight — 4th should 429 with "現在分析中の商品が 3 件あります...".
 4. Browser-paste the previously-public storage URL (from any old completed product) — should now 403/404.
+5. Sign out, then `curl http://localhost:3000/api/screenplays/<any-uuid>` — should now 401 (was returning 200 with screenplay data before Task 3a). Same for `curl -X DELETE` and `curl -X POST .../refine`.
 
 (Cannot automate without dev-server + UI testing infra — manual verification only.)
 
@@ -1276,25 +1335,28 @@ Expected: `nothing to commit, working tree clean`.
 - KV / Upstash rate-limit upgrade (Postgres count is sufficient for current scale)
 - Storage path migration for existing rows (UI doesn't read, no immediate need)
 
-## Risks (carried over from spec §10)
+## Risks (carried over from spec §10 + pre-execution review)
 
 - `created_by IS NULL` on legacy rows means members cannot re-analyze them via the user-auth path; only admin can. Acceptable (mostly already completed).
-- Already-issued public URLs of `product-files` may exist in browser caches / logs / backups. They immediately stop working after Migration 1; UI doesn't reference them.
+- Already-issued public URLs of `product-files` may exist in browser caches / CDN edges / logs / backups. Supabase Storage's CDN cache TTL is short (no-cache default), but already-cached responses live until natural expiry — typically minutes. UI doesn't reference these URLs so cache hit is very unlikely in practice; exposure window post-migration is realistically near-zero.
 - Magic-byte check defeats casual fake-extension uploads but not a payload that genuinely starts with `%PDF`. Not a sandboxing replacement.
 - Rate limit is per-user and Postgres-based; a single user with multiple accounts can multiply quotas. Single-tenant tradeoff.
 - `screenplays` RLS may break a future read path. Grep verified no current viewer-readable consumer exists.
+- **Rate limit applies only to `/api/upload`. An authenticated member can call `/api/analyze` directly with their own productId rapidly to bypass inflight counting (inflight count drops back to 0 between sequential calls). Acceptable for single-tenant ops; consider per-`/api/analyze`-call limit in a future phase if needed.**
+- **`hasInternalSecret` bypasses ownership check. A leaked `CRON_SECRET` lets the holder mutate any product. `CRON_SECRET` is stored only in Vercel env + `.env.local`; treat it as an admin-equivalent credential.**
+- **Smoke test cleanup uses `LIKE 'rate-limit-smoke-{ts}-%'` (where `{ts}` is the current run's Date.now()), narrowed in the review fix. If the smoke is killed by SIGKILL between insertions and finally-cleanup, the next run will have stale rows with `created_by = <shared profile>` that inflate daily count — manual cleanup via SQL editor required if this happens.**
 
 ## Self-review
 
 **Spec coverage walk** (against `2026-05-26-research-security-design.md`):
 - §3 (storage lock) → Tasks 1, 6, 8 ✓
 - §4 (IDOR) → Tasks 2, 4, 8, 9 ✓
-- §5 (screenplays RLS) → Task 3 ✓
+- §5 (screenplays RLS) → Task 3 + **Task 3a** ✓ (spec §5.2 assumed RLS alone is enough; pre-execution review caught that `getServiceClient` callers bypass RLS, so Task 3a closes the actual surface)
 - §6 (magic-byte) → Tasks 5, 8 ✓
 - §7 (rate limit) → Tasks 7, 8, 10 ✓
 - §8 (smokes) → Tasks 5, 6, 7, 9 + Task 11 final run ✓
 - §9 (deploy order) → Tasks 1-3 are the migrations applied first; code tasks follow; Task 11 covers manual end-to-end ✓
-- §10 (risks) → carried into the "Risks" section above ✓
+- §10 (risks) → carried into the "Risks" section above + 3 additions from pre-execution review (analyze direct-call gap, CRON_SECRET admin equivalence, smoke SIGKILL cleanup) ✓
 - §11 (non-changes) → respected (no edits in discovery/strategy/broadcasts/pipeline) ✓
 
 **Placeholder scan:** no TBD / TODO / "similar to" / hand-wavy steps. Each step has exact code or exact command.
