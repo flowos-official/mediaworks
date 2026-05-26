@@ -166,22 +166,25 @@ export async function POST(request: NextRequest) {
       // Non-fatal — product was already created
     }
 
-    // Trigger async analysis with primary file
-    const base64 = Buffer.from(primary.fileBytes).toString('base64');
+    // Trigger async analysis with all uploaded files
     const baseUrl = request.nextUrl.origin;
     const cronSecret = process.env.CRON_SECRET;
     if (!cronSecret) {
       console.warn('[upload] CRON_SECRET not set; async analyze trigger may be rejected');
     }
 
+    const filesBody = uploadedFiles.map((f) => ({
+      base64: Buffer.from(f.fileBytes).toString('base64'),
+      mimeType: f.mimeType,
+      fileName: f.fileName,
+    }));
+
     fetch(`${baseUrl}/api/analyze`, {
       method: 'POST',
       headers: buildAnalyzeTriggerHeaders(cronSecret),
       body: JSON.stringify({
         productId: product.id,
-        fileBase64: base64,
-        mimeType: primary.mimeType,
-        fileName: primary.fileName,
+        files: filesBody,
         locale,
       }),
     }).catch(console.error);
