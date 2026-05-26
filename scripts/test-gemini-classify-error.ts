@@ -1,5 +1,5 @@
 /**
- * 単位テスト: classifyGeminiError の 7 分岐検証。
+ * 単位テスト: classifyGeminiError の 9 ケース / 7 分岐検証。
  * 実行: npm run test:gemini-classify-error
  */
 import { classifyGeminiError } from "../lib/gemini/errors";
@@ -42,7 +42,7 @@ function main(): void {
   assert(classifyGeminiError(schemaErr) === "schema_validation_failed", "schema mention → schema_validation_failed");
 
   // 9) unknown: fallback
-  const random = new Error("network reset");
+  const random = new Error("unexpected condition encountered");
   assert(classifyGeminiError(random) === "unknown", "unknown fallback");
 
   console.log("[ok] classifyGeminiError 全9ケース通過");

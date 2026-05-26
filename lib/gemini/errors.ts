@@ -58,9 +58,9 @@ export function classifyGeminiError(err: unknown): GeminiErrorKind {
   if (/empty model response/i.test(message)) return "extract_empty";
   if (err instanceof SyntaxError) return "parse_failed";
   if (/failed to parse json|invalid json|unexpected token/i.test(message)) return "parse_failed";
-  if (/schema|missing required field/i.test(message)) return "schema_validation_failed";
+  if (/response did not match schema|missing required field|schema validation/i.test(message)) return "schema_validation_failed";
   if (/rate limit|quota/i.test(message)) return "rate_limited";
-  if (/timeout|fetch failed/i.test(message)) return "server_error";
+  if (/network|timeout|fetch failed/i.test(message)) return "server_error";
 
   return "unknown";
 }
