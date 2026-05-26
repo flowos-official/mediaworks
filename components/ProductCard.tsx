@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import {
@@ -13,6 +14,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import type { Product } from "@/lib/supabase";
 import { localePath } from "@/lib/i18n/locale-path";
+import { explainErrorReason } from "@/lib/research/error-reason-explain";
 
 interface ProductCardProps {
 	product: Product;
@@ -41,6 +43,10 @@ const statusConfig = {
 	},
 };
 
+function elapsedMinutes(createdAt: string): number {
+	return Math.max(0, Math.floor((Date.now() - new Date(createdAt).getTime()) / 60000));
+}
+
 export default function ProductCard({ product }: ProductCardProps) {
 	const locale = useLocale();
 	const t = useTranslations("home");
@@ -48,6 +54,16 @@ export default function ProductCard({ product }: ProductCardProps) {
 		statusConfig[product.status as keyof typeof statusConfig] ||
 		statusConfig.pending;
 	const Icon = config.icon;
+
+	const [elapsed, setElapsed] = useState(() => elapsedMinutes(product.created_at));
+	useEffect(() => {
+		if (product.status !== "analyzing" && product.status !== "pending") return;
+		const id = setInterval(() => setElapsed(elapsedMinutes(product.created_at)), 30000);
+		return () => clearInterval(id);
+	}, [product.status, product.created_at]);
+
+	const isStale = elapsed >= 5 && elapsed < 12;
+	const stuckHinted = elapsed >= 12;
 
 	return (
 		<Card className="hover:shadow-md transition-shadow duration-200 border border-border">
@@ -87,15 +103,42 @@ export default function ProductCard({ product }: ProductCardProps) {
 					</div>
 				</div>
 
-				{/* Analyzing state — progress bar + message */}
+				{/* Analyzing state — progress bar + elapsed message */}
 				{product.status === "analyzing" && (
 					<div className="mt-4 pt-4 border-t border-border">
 						<div className="h-1.5 bg-muted rounded-full overflow-hidden">
-							<div className="h-full bg-blue-500 rounded-full animate-pulse w-2/3" />
+							<div className={`h-full rounded-full animate-pulse w-2/3 ${stuckHinted ? "bg-amber-500" : isStale ? "bg-amber-400" : "bg-blue-500"}`} />
 						</div>
-						<p className="text-xs text-muted-foreground mt-2 text-center">
-							{t("analyzingMessage")}
+						<p className={`text-xs mt-2 text-center ${isStale ? "text-amber-700 dark:text-amber-300" : "text-muted-foreground"}`}>
+							{elapsed < 1
+								? t("analyzingDefault")
+								: t("analyzingWithElapsed", { minutes: elapsed })}
 						</p>
+						{isStale && (
+							<p className="text-[10px] text-muted-foreground text-center mt-1">
+								{t("analyzingWarning")}
+							</p>
+						)}
+						{stuckHinted && (
+							<p className="text-[10px] text-amber-700 dark:text-amber-300 text-center mt-1">
+								{t("analyzingStuck")}
+							</p>
+						)}
+					</div>
+				)}
+
+				{product.status === "failed" && (
+					<div className="mt-4 pt-4 border-t border-border">
+						<p className="text-xs text-red-700 dark:text-red-300">
+							{explainErrorReason(product.error_reason, locale === "ko" ? "ko" : "ja")}
+						</p>
+						<Link
+							href={localePath(locale, "/")}
+							className="mt-2 inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
+						>
+							{t("reuploadLink")}
+							<ArrowRight size={12} />
+						</Link>
 					</div>
 				)}
 
