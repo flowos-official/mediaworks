@@ -33,12 +33,16 @@ export default function ProductList({ refreshTrigger }: ProductListProps) {
     fetchProducts();
   }, [fetchProducts, refreshTrigger]);
 
-  // Auto-refresh if any products are analyzing
+  // Auto-refresh while any product is still in pending/analyzing within the 12-min cap.
+  // 12 min = stuck-detector 10-min threshold + 2-min clock-drift buffer.
+  const POLL_CAP_MIN = 12;
   useEffect(() => {
-    const hasAnalyzing = products.some(
-      (p) => p.status === 'pending' || p.status === 'analyzing'
-    );
-    if (!hasAnalyzing) return;
+    const stillPollable = products.some((p) => {
+      if (p.status !== 'pending' && p.status !== 'analyzing') return false;
+      const ageMin = (Date.now() - new Date(p.created_at).getTime()) / 60000;
+      return ageMin < POLL_CAP_MIN;
+    });
+    if (!stillPollable) return;
 
     const interval = setInterval(fetchProducts, 5000);
     return () => clearInterval(interval);
