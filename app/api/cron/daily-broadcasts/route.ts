@@ -12,6 +12,7 @@ import {
 	type QvcProductLike,
 } from "@/lib/broadcasts/snapshot-enrichment";
 import { buildProgramId } from "@/lib/broadcasts/shopch-json";
+import { recoverQvcPending } from "@/lib/broadcasts/qvc-pending-recovery";
 
 export const maxDuration = 120;
 
@@ -208,6 +209,19 @@ export async function GET(req: NextRequest) {
 			)
 		: { snapshotRows: 0, brandUpdates: 0, videoQueued: 0, videoDeferred: 0 };
 
+	// Safety net: any QVC slot still 'pending' after enrichment (e.g. from a
+	// partial-failure run) is flipped to queued/deferred here so the archive
+	// cron picks it up. CAS-guarded — never overwrites archived/queued/etc.
+	let qvcRecovery: Awaited<ReturnType<typeof recoverQvcPending>> = {
+		scanned: 0, queued: 0, deferred: 0, skippedOutOfWhitelist: 0, skippedNoProduct: 0,
+	};
+	try {
+		qvcRecovery = await recoverQvcPending();
+	} catch (err) {
+		const msg = err instanceof Error ? err.message : String(err);
+		console.warn("[qvc-recover] failed:", msg);
+	}
+
 	const log = {
 		event: "broadcasts.scrape.summary",
 		date: targetIso,
@@ -246,6 +260,7 @@ export async function GET(req: NextRequest) {
 				videoDeferred: shopchSnapshot.videoDeferred,
 			},
 		},
+		qvcPendingRecovery: qvcRecovery,
 		durationMs: Date.now() - start,
 	};
 
