@@ -66,6 +66,7 @@
     "smoke:archive-one": "tsx --env-file=.env.local scripts/smoke-archive-one.ts",
     "smoke:archive-one-shopch": "tsx --env-file=.env.local scripts/smoke-archive-one-shopch.ts",
     "reset:shopch-video-status": "tsx --env-file=.env.local scripts/reset-shopch-video-status.ts",
+    "recover:qvc-pending": "tsx --env-file=.env.local scripts/recover-qvc-pending.ts",
     "smoke:recommendation-flow": "tsx --env-file=.env.local scripts/smoke-recommendation-flow.ts",
     "smoke:recommendation-flow:strict": "tsx --env-file=.env.local scripts/smoke-recommendation-flow.ts --strict",
     "test:recharts-responsive-container": "tsx scripts/test-recharts-responsive-container.ts",

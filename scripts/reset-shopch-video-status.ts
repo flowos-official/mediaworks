@@ -48,7 +48,7 @@ async function main(): Promise<void> {
 			.from("broadcasts")
 			.select("id, air_date, start_time")
 			.eq("channel", "shopch")
-			.eq("video_status", "failed_unsupported")
+			.in("video_status", ["failed_unsupported", "pending"])
 			.order("air_date", { ascending: true })
 			.range(offset, offset + PAGE_SIZE - 1);
 
