@@ -240,10 +240,12 @@ async function backfillShopCh(
 					console.warn(`[shopch] broadcast update ${row.id} failed:`, updateErr.message);
 				}
 
-				// Seed video_status — requires migration 2026-05-19_broadcasts_video_status_full_enum.sql
+				// Seed video_status — requires migration 2026-05-19_broadcasts_video_status_full_enum.sql.
+				// pgmMovie (meta.videoPath) presence ⇒ aired-program video exists on shopch.jp.
+				const shVideoStatus = meta.videoPath ? "queued" : "deferred";
 				const { error: vsErr } = await sb
 					.from("broadcasts")
-					.update({ video_status: "failed_unsupported" })
+					.update({ video_status: shVideoStatus })
 					.eq("id", row.id);
 				if (vsErr) {
 					if (vsErr.message.includes("broadcasts_video_status_check")) {

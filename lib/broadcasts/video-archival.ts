@@ -12,6 +12,7 @@ import { spawn } from "node:child_process";
 import { Readable } from "node:stream";
 import ffmpegInstaller from "@ffmpeg-installer/ffmpeg";
 import { getServiceClient } from "@/lib/supabase";
+import { buildProgramId } from "./shopch-json";
 import { broadcastVideoKey, uploadStreamToS3 } from "./video-storage";
 
 const MAX_ATTEMPTS = 5;
@@ -32,20 +33,30 @@ export interface ArchiveResult {
 	error?: string;
 }
 
-/** Look up the m3u8 URL for the slot's lead product. ShopCh is deferred. */
+/** Look up the m3u8 URL for the slot.
+ *  QVC: per-product video_url stored on qvc_products by the enrichment cron.
+ *  ShopCh: per-program video derived from programId (= air_date + start_time).
+ *    Pattern confirmed against shop.jp on 2026-05-27 — public CloudFront,
+ *    no auth/cookies/Referer required. */
 async function resolveVideoUrl(slot: QueuedSlot): Promise<string | null> {
-	if (slot.channel !== "qvc") return null;
-	const firstPid = slot.product_ids?.[0];
-	if (!firstPid) return null;
-	const sb = getServiceClient();
-	const { data } = await sb
-		.from("qvc_products")
-		.select("video_url")
-		.eq("id", firstPid)
-		.maybeSingle();
-	const url = (data as { video_url: string | null } | null)?.video_url ?? null;
-	if (!url) return null;
-	return url.startsWith("http") ? url : `https:${url}`;
+	if (slot.channel === "qvc") {
+		const firstPid = slot.product_ids?.[0];
+		if (!firstPid) return null;
+		const sb = getServiceClient();
+		const { data } = await sb
+			.from("qvc_products")
+			.select("video_url")
+			.eq("id", firstPid)
+			.maybeSingle();
+		const url = (data as { video_url: string | null } | null)?.video_url ?? null;
+		if (!url) return null;
+		return url.startsWith("http") ? url : `https:${url}`;
+	}
+	if (slot.channel === "shopch") {
+		const programId = buildProgramId(slot.air_date, slot.start_time);
+		return `https://www.shopch.jp/m3u8/prog/${programId}/${programId}_jwplayer.m3u8`;
+	}
+	return null;
 }
 
 /** Spawn ffmpeg to copy-mux the m3u8 into a fragmented MP4 on stdout.
@@ -96,12 +107,10 @@ export async function archiveOne(slot: QueuedSlot): Promise<ArchiveResult> {
 	const videoUrl = await resolveVideoUrl(slot);
 	if (!videoUrl) {
 		await sb.from("broadcasts").update({
-			video_status: slot.channel === "shopch" ? "failed_unsupported" : "deferred",
-			video_error: slot.channel === "shopch"
-				? "shopch video archival not yet supported"
-				: "no video_url for lead product",
+			video_status: "deferred",
+			video_error: "no video_url for lead product",
 		}).eq("id", broadcastId);
-		return { broadcastId, status: slot.channel === "shopch" ? "failed_unsupported" : "deferred" };
+		return { broadcastId, status: "deferred" };
 	}
 
 	const key = broadcastVideoKey(slot.channel, slot.air_date, slot.start_time, broadcastId);

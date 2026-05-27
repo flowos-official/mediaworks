@@ -110,11 +110,12 @@ async function enrichShopChSlotSnapshots(
 	shopchMetadataByProgramId: Map<string, import("@/lib/broadcasts/shopch-json").ShopChSlotMetadata>,
 	broadcastIdMap: Map<string, string>,
 	whitelist: Map<string, Set<string>>,
-): Promise<{ snapshotRows: number; brandUpdates: number; videoFailedUnsupported: number }> {
+): Promise<{ snapshotRows: number; brandUpdates: number; videoQueued: number; videoDeferred: number }> {
 	const sb = getServiceClient();
 	let snapshotRows = 0;
 	let brandUpdates = 0;
-	let videoFailedUnsupported = 0;
+	let videoQueued = 0;
+	let videoDeferred = 0;
 
 	for (const slot of shopchSlots) {
 		if (!isAllowed(whitelist, "shopch", slot.category)) continue;
@@ -141,7 +142,11 @@ async function enrichShopChSlotSnapshots(
 		}
 
 		// Update brand_name + brand_code + video_status in a single broadcasts UPDATE.
-		const shopchUpdate: Record<string, string | null> = { video_status: "failed_unsupported" };
+		// pgmMovie (meta.videoPath) signals an aired-program video on shopch.jp;
+		// the archive cron derives the m3u8 URL from programId at run time.
+		const hasVideo = !!meta.videoPath;
+		const videoStatus = hasVideo ? "queued" : "deferred";
+		const shopchUpdate: Record<string, string | null> = { video_status: videoStatus };
 		if (meta.brandName) shopchUpdate.brand_name = meta.brandName;
 		if (meta.brandCode) shopchUpdate.brand_code = meta.brandCode;
 		const { error: broadcastErr } = await sb
@@ -152,11 +157,12 @@ async function enrichShopChSlotSnapshots(
 			console.warn(`[snapshot] shopch broadcasts update failed for ${broadcastId}:`, broadcastErr.message);
 		} else {
 			if (meta.brandName || meta.brandCode) brandUpdates++;
-			videoFailedUnsupported++;
+			if (hasVideo) videoQueued++;
+			else videoDeferred++;
 		}
 	}
 
-	return { snapshotRows, brandUpdates, videoFailedUnsupported };
+	return { snapshotRows, brandUpdates, videoQueued, videoDeferred };
 }
 
 export async function GET(req: NextRequest) {
@@ -200,7 +206,7 @@ export async function GET(req: NextRequest) {
 				summary.broadcastIds,
 				whitelist,
 			)
-		: { snapshotRows: 0, brandUpdates: 0, videoFailedUnsupported: 0 };
+		: { snapshotRows: 0, brandUpdates: 0, videoQueued: 0, videoDeferred: 0 };
 
 	const log = {
 		event: "broadcasts.scrape.summary",
@@ -236,7 +242,8 @@ export async function GET(req: NextRequest) {
 			shopch: {
 				snapshotRows: shopchSnapshot.snapshotRows,
 				brandUpdates: shopchSnapshot.brandUpdates,
-				videoFailedUnsupported: shopchSnapshot.videoFailedUnsupported,
+				videoQueued: shopchSnapshot.videoQueued,
+				videoDeferred: shopchSnapshot.videoDeferred,
 			},
 		},
 		durationMs: Date.now() - start,
