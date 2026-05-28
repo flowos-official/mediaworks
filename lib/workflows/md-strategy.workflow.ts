@@ -17,6 +17,7 @@ import { loadSeedContexts } from "@/lib/strategy/seed-context";
 import { invalidateStrategyList } from "@/lib/analytics/cached";
 import { persistStrategyFreshSearch } from "@/lib/strategy/fresh-search-persist";
 import { runPreliminaryDiscovery } from "@/lib/strategy/preliminary-discovery";
+import { analyzeGoalToIntent, projectParsedGoalToIntent } from "@/lib/strategy/intent-projection";
 
 export interface MDWorkflowInput {
 	userGoal?: string;
@@ -136,6 +137,27 @@ function buildMDAnalysisSummary(outputs: Record<string, unknown>): string {
 }
 
 // ---------------------------------------------------------------------------
+// Step: Phase 0.5 pre-run goal_analysis. Runs once before preliminary
+// discovery so the intent flows into the pool query, AND the in-loop
+// runMDSkill('goal_analysis') short-circuits to the cached value (no
+// double Gemini call, no classification drift between runs).
+// Failure is non-fatal — pipeline continues without intent.
+// ---------------------------------------------------------------------------
+async function preRunGoalAnalysisStep(userGoal: string): Promise<ParsedGoal | null> {
+	"use step";
+	try {
+		const { parsedGoal } = await analyzeGoalToIntent(userGoal);
+		return parsedGoal;
+	} catch (err) {
+		console.warn(
+			`[md-workflow] pre-run goal_analysis failed, continuing without intent: ${err instanceof Error ? err.message : String(err)}`,
+		);
+		return null;
+	}
+}
+preRunGoalAnalysisStep.maxRetries = 0;
+
+// ---------------------------------------------------------------------------
 // Step: preliminary discovery — pool-only, runs right after fetchContext so
 // the user sees candidate cards within ~1-2s instead of waiting for all
 // skills + final curated discovery. Final discovery still runs at the end
@@ -144,6 +166,7 @@ function buildMDAnalysisSummary(outputs: Record<string, unknown>): string {
 async function runPreliminaryDiscoveryStep(
 	input: MDWorkflowInput,
 	context: StrategyContext,
+	parsedGoal: ParsedGoal | null,
 ): Promise<DiscoveredProduct[]> {
 	"use step";
 	try {
@@ -151,12 +174,14 @@ async function runPreliminaryDiscoveryStep(
 		const seedCategories = (context.seedProducts ?? [])
 			.map((s) => s.category)
 			.filter((c): c is string => !!c);
+		const intent = parsedGoal ? projectParsedGoalToIntent(parsedGoal) : undefined;
 		const products = await runPreliminaryDiscovery({
 			context: "home_shopping",
 			uiCategory: input.category,
 			priceRange: input.priceRange,
 			excludeProductIds: seedIds.length > 0 ? seedIds : undefined,
 			supplementCategoriesFromSeeds: seedCategories.length > 0 ? seedCategories : undefined,
+			intent,
 		});
 		console.log(`[md-workflow] preliminary discovery: ${products.length} products`);
 		return products;
@@ -306,10 +331,21 @@ export async function mdStrategyWorkflow(input: MDWorkflowInput) {
 	const context = await fetchContextStep(input);
 	await emitProgressStep({ skill: "data_fetch", status: "complete", index: -1, total: 7 });
 
+	// Phase 0.5: pre-run goal_analysis so preliminary discovery has intent
+	// and the skill-loop runMDSkill('goal_analysis') short-circuits to the
+	// cached ParsedGoal (no double Gemini call, no classification drift).
+	let preRunParsedGoal: ParsedGoal | null = null;
+	if (input.userGoal) {
+		preRunParsedGoal = await preRunGoalAnalysisStep(input.userGoal);
+		if (preRunParsedGoal) {
+			context.parsedGoal = preRunParsedGoal;
+		}
+	}
+
 	// Fast pool-only discovery so the hero gets real cards immediately while
 	// skills (and the final curated discovery) keep running in the background.
 	await emitProgressStep({ skill: "preliminary_discovery", status: "running", index: -1, total: 7 });
-	const preliminary = await runPreliminaryDiscoveryStep(input, context);
+	const preliminary = await runPreliminaryDiscoveryStep(input, context, preRunParsedGoal);
 	await emitProgressStep({
 		skill: "preliminary_discovery",
 		status: "complete",
@@ -319,7 +355,9 @@ export async function mdStrategyWorkflow(input: MDWorkflowInput) {
 	});
 
 	const outputs: Record<string, unknown> = {};
-	let parsedGoal: ParsedGoal | null = null;
+	// Seed parsedGoal with the pre-run value so the skill loop's goal_analysis
+	// step short-circuits via context.parsedGoal (Phase 0.5).
+	let parsedGoal: ParsedGoal | null = preRunParsedGoal;
 	let aborted = false;
 	let abortReason: string | null = null;
 

@@ -12,6 +12,7 @@ import type {
 	SalesWeeklyTotal,
 } from "@/lib/supabase";
 import type { SeedContext } from "@/lib/strategy/seed-context";
+import type { IntentTier, ChannelScope, SpecificKeyword } from "@/lib/strategy/discover-intent";
 import { formatSeedPromptSection, formatMultiSeedPromptSection } from "@/lib/strategy/seed-context";
 import { mapUiCategoryToSalesCategories } from "@/lib/strategy/category-mapping";
 import { queryDiscoveredPool } from "@/lib/strategy/pool-query";
@@ -26,6 +27,12 @@ import {
 import { attributeSource } from "@/lib/strategy/source-attribution";
 import { TV_CHANNELS } from "@/lib/discovery/tv-channels";
 import { findRakutenCrossMatch } from "@/lib/discovery/rakuten-crossmatch";
+import { loadChannelTasteProfiles } from "@/lib/discovery/channel-taste";
+// IMPORTANT: import isPhase05Enabled from feature-flags.ts (NOT intent-projection.ts)
+// to avoid circular import — intent-projection.ts already imports from this file.
+import { isPhase05Enabled } from "@/lib/strategy/feature-flags";
+import { filterAliases } from "@/lib/strategy/alias-blocklist";
+import { resolveChannelSlug } from "@/lib/strategy/channel-aliases";
 
 // ---------------------------------------------------------------------------
 // Gemini client
@@ -269,6 +276,10 @@ export interface ParsedGoal {
 	theme_keywords: string[];
 	category_hints: string[];
 	excluded_themes: string[];
+	// Phase 0.5 SearchIntent fields — optional for backward compat with existing inline literal usage sites.
+	intent_tier?: IntentTier;
+	channel_scope?: ChannelScope[];
+	specific_keyword?: SpecificKeyword | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -539,6 +550,7 @@ type DiscoveryPoolItem = {
 	tv_fit_score?: number;
 	tv_fit_reason?: string;
 	tv_channel_source?: string | null;
+	category?: string | null;
 	c_package?: Record<string, unknown> | null;
 	tv_evidence?: import("@/lib/discovery/types").TvEvidence | null;
 	rakuten_cross_match?: {
@@ -625,6 +637,7 @@ export async function discoverNewProducts(
 			tv_fit_score: r.tv_fit_score,
 			tv_fit_reason: r.tv_fit_reason ?? undefined,
 			tv_channel_source: r.tv_channel_source,
+			category: r.category ?? null,
 			c_package: r.c_package,
 			tv_evidence: r.tv_evidence,
 		}));
@@ -685,8 +698,10 @@ export async function discoverNewProducts(
 		// Intent-derived queries (e.g. "冬 暖房家電") take priority over generic
 		// TV category names because they're more specific and align with goal.
 		const intentQueries = buildIntentSearchQueries(input.intent, 4);
-		const tvKeywords = [input.explicitCategory, ...input.topCategoryNames]
-			.filter((s): s is string => !!s && s.trim().length > 0);
+		const tvKeywords = input.intent?.intent_tier === "specific_keyword"
+			? [] // Tier 4: no broad TV category keywords
+			: [input.explicitCategory, ...input.topCategoryNames]
+				.filter((s): s is string => !!s && s.trim().length > 0);
 		const keywords = Array.from(
 			new Set([...intentQueries, ...tvKeywords]),
 		).slice(0, intentQueries.length > 0 ? 6 : 4);
@@ -929,34 +944,39 @@ export async function discoverNewProducts(
 			console.log(`[discover] fresh pool built: total=${pool.length} capped=${freshCapped.length} (rakuten=${pool.filter(p => p.source === 'rakuten').length} web=${pool.filter(p => p.source === 'web').length} tv_channel=${pool.filter(p => p.source === 'tv_channel').length})`);
 
 			if (freshCapped.length === 0 && cappedPool.length === 0) {
-				console.warn(`[discover] pool empty — retrying with broadened keywords`);
-				const fallbackKeywords = ["人気商品", "売れ筋", "おすすめ"];
-				const fallbackResults = await Promise.all(
-					fallbackKeywords.map(async (kw) => {
-						const search = await rakutenItemSearch(kw, "-reviewCount", 10).catch(() => ({ items: [] }));
-						return search;
-					}),
-				);
-				for (const r of fallbackResults) {
-					for (const item of r.items.slice(0, 8)) {
-						if (!item.itemUrl || seenUrls.has(item.itemUrl)) continue;
-						if (isTvLike(item.itemName)) continue;
-						seenUrls.add(item.itemUrl);
-						pool.push({
-							name: item.itemName.slice(0, 80),
-							price: item.itemPrice,
-							source: "rakuten",
-							source_url: item.itemUrl,
-							snippet: item.itemCaption.slice(0, 140),
-							keyword: "fallback",
-							reviewCount: item.reviewCount,
-							reviewAverage: item.reviewAverage,
-							pool_source: "fresh_search" as const,
-						});
+				// Tier-4 suppression: returning fewer-but-correct > diluting with broad keywords
+				if (input.intent?.intent_tier === "specific_keyword") {
+					console.warn(`[discover] pool empty under tier=specific_keyword — NOT broadening; returning empty fresh set`);
+				} else {
+					console.warn(`[discover] pool empty — retrying with broadened keywords`);
+					const fallbackKeywords = ["人気商品", "売れ筋", "おすすめ"];
+					const fallbackResults = await Promise.all(
+						fallbackKeywords.map(async (kw) => {
+							const search = await rakutenItemSearch(kw, "-reviewCount", 10).catch(() => ({ items: [] }));
+							return search;
+						}),
+					);
+					for (const r of fallbackResults) {
+						for (const item of r.items.slice(0, 8)) {
+							if (!item.itemUrl || seenUrls.has(item.itemUrl)) continue;
+							if (isTvLike(item.itemName)) continue;
+							seenUrls.add(item.itemUrl);
+							pool.push({
+								name: item.itemName.slice(0, 80),
+								price: item.itemPrice,
+								source: "rakuten",
+								source_url: item.itemUrl,
+								snippet: item.itemCaption.slice(0, 140),
+								keyword: "fallback",
+								reviewCount: item.reviewCount,
+								reviewAverage: item.reviewAverage,
+								pool_source: "fresh_search" as const,
+							});
+						}
 					}
+					freshCapped = pool.slice(0, POOL_CAP);
+					console.log(`[discover] fallback pool: ${freshCapped.length} items`);
 				}
-				freshCapped = pool.slice(0, POOL_CAP);
-				console.log(`[discover] fallback pool: ${freshCapped.length} items`);
 			}
 
 			cappedPool = [...cappedPool, ...freshCapped];
@@ -966,6 +986,41 @@ export async function discoverNewProducts(
 	if (cappedPool.length === 0) {
 		console.warn(`[discover] both pool and fresh search empty — returning undefined`);
 		return undefined;
+	}
+
+	// Phase 6 — channel-taste boost: if the user's intent named specific channels,
+	// reshape the pool by how well each candidate's category matches the channel's
+	// recent broadcast taste. Soft signal — annotates tv_fit_reason and adds to
+	// tv_fit_score; never excludes.
+	if (input.intent?.channel_scope && input.intent.channel_scope.length > 0) {
+		try {
+			const slugs = input.intent.channel_scope.map((c) => c.channel_slug);
+			const profiles = await loadChannelTasteProfiles(slugs, 30);
+			for (const item of cappedPool) {
+				const cat = item.category ?? null;
+				if (!cat) continue;
+				let boost = 0;
+				let strongest: string | null = null;
+				for (const profile of profiles.values()) {
+					const w = profile.category_weights.get(cat);
+					if (!w) continue;
+					const scale = profile.source_tier === 3 ? 0.5 : 1.0;
+					const contribution = w.final_weight * 30 * scale;
+					if (contribution > boost) {
+						boost = contribution;
+						strongest = profile.channel_slug;
+					}
+				}
+				if (boost > 0 && strongest) {
+					item.tv_fit_score = Math.min(100, (item.tv_fit_score ?? 50) + Math.round(boost));
+					const annotation = ` [${strongest} taste fit: ${cat}]`;
+					item.tv_fit_reason = (item.tv_fit_reason ?? "") + annotation;
+				}
+			}
+			console.log(`[discover] channel-taste applied across ${profiles.size} profiles`);
+		} catch (err) {
+			console.warn(`[discover] channel-taste failed (continuing without boost): ${err instanceof Error ? err.message : String(err)}`);
+		}
 	}
 
 	// Curate via Gemini — must pick from REAL pool only
@@ -1119,7 +1174,9 @@ ${poolText}
 - source_url: 必ず上記プールの URL を**一字一句そのままコピー**すること。プロトコル変更・パラメータ削除・末尾スラッシュ追加削除・www サブドメイン追加削除など、いかなる変更も禁止。推測・補完・別ページへの差し替えも禁止 (これがあると下流の出典トラッキングが壊れる)。
 - ranking_info はランキング順位情報 (例: "楽天デイリーランキング1位"、"価格.com人気売れ筋3位" 等)。ランキング情報がない場合は省略。
 - name は商品プールの **「名称:」行の値だけ** をそのまま使用する。"[発掘プール...]" や "[新検索 ...]" などの角括弧付き出典タグは絶対に name に含めないこと。価格 "¥..." や "★..." も name に含めない。
-- カテゴリが偏らないように${itemCount}商品を選定。
+- ${input.intent?.intent_tier === "specific_keyword"
+		? "ユーザー指定品目に一致する商品を最優先で選定。多様性より一致が優先。"
+		: `カテゴリが偏らないように${itemCount}商品を選定。`}
 - **出典バランス**: 楽天/TV放送局/発掘プールが混在している。それぞれを公平に評価し、商品自体の TV/EC 適性で選定すること。強制的な比率は設けない — 質次第で結果分布は自然に決まる。レビュー非公開を理由に TV 放送局サイトの候補を機械的に減点しないこと (上記スコアリング哲学を参照)。
 - 各商品ごとに japan_market_fit を必ず記入する。${salesStrategyRules}
 ${suitabilityBlock}
@@ -1842,8 +1899,8 @@ function buildChannelReferenceTable(): string {
 // Skill 0: Goal Analysis
 // ---------------------------------------------------------------------------
 
-export async function runGoalAnalysis(userGoal: string): Promise<ParsedGoal> {
-	const prompt = `You are a business strategy analyst for a Japanese TV-shopping / EC merchandising team. Parse the following user goal into structured components AND extract discovery signals (season, theme, category hints) that drive product search downstream.
+function buildGoalPromptLegacy(userGoal: string): string {
+	return `You are a business strategy analyst for a Japanese TV-shopping / EC merchandising team. Parse the following user goal into structured components AND extract discovery signals (season, theme, category hints) that drive product search downstream.
 
 User Goal: ${userGoal}
 
@@ -1893,9 +1950,83 @@ IMPORTANT:
 - target_channels は必ず配列で返してください。具体的なチャネルが目標から読み取れない場合は [] を返してください。null は使わないでください。
 - target_revenue / target_audience / budget_constraint / timeline は言及されていなければ null を返してください。
 - seasonal_keywords / theme_keywords / category_hints / excluded_themes は必ず配列 (空でも []) を返してください。`;
+}
+
+function buildGoalPromptExtended(userGoal: string): string {
+	return `You are a business strategy analyst for a Japanese TV-shopping / EC merchandising team.
+Parse the following user goal into structured components AND extract discovery signals (season,
+theme, category hints) AND classify search granularity (tier, channel scope, specific keyword).
+
+User Goal: ${userGoal}
+
+Return a JSON object (no markdown) with this exact structure:
+{
+  "primary_objective": "主要な目的を1文で（日本語）",
+  "target_channels": ["対象チャネル名のリスト"],
+  "target_revenue": "目標売上 (なければ null)",
+  "target_audience": "ターゲット層 (なければ null)",
+  "budget_constraint": "予算制約 (なければ null)",
+  "timeline": "タイムライン (なければ null)",
+  "seasonal_keywords": ["季節/タイミングを表す短い日本語キーワード"],
+  "theme_keywords": ["商品テーマを表す短い日本語キーワード"],
+  "category_hints": ["想定される具体的な商品カテゴリ"],
+  "excluded_themes": ["目標と矛盾するため除外すべきテーマ"],
+  "intent_tier": "broad" | "seasonal" | "genre" | "specific_keyword",
+  "channel_scope": [{"channel_slug": "...", "raw_mention": "...", "confidence": 0.0-1.0}],
+  "specific_keyword": {"raw": "...", "normalized": "...", "aliases": ["...(max 6)"], "confidence": 0.0-1.0} | null
+}
+
+EXTRACTION RULES:
+- seasonal_keywords: 「冬/夏/春/秋/年末/年始/クリスマス/ハロウィン/バレンタイン/お歳暮/お中元/梅雨/花粉/新生活/防災」など。
+- theme_keywords: 「暖かい/防寒/時短/ギフト/健康/美容」など。
+- category_hints: 楽天/Amazonで検索した時にヒットする粒度のカテゴリ語 (3〜6個推奨)。
+- excluded_themes: ユーザー目標と明らかに矛盾するもの。
+- intent_tier:
+  * "specific_keyword": 特定の単一品目名が明示された場合 (包丁/ホットカーペット/EMS 等)。
+  * "genre": 広域カテゴリのみ指定 (フィットネス/美容家電 等)。
+  * "seasonal": 季節/イベントのみ指定 (冬の商品/お歳暮 等)。
+  * "broad": 上記いずれにも該当しない (「잘 팔리는 상품」「人気の商品」等)。
+  複合シグナルは最も narrow な tier を選ぶ。他の軸 (季節 + チャネル等) は同時に他フィールドへ抽出する。
+- channel_scope.confidence: 正確なチャネル名一致→1.0、表記揺れ→0.8、曖昧→<0.5 (<0.5 は出力しない)。
+- specific_keyword.confidence: 単一の narrow な品目名→≥0.9、広いカテゴリを品目と誤認した場合→<0.7。
+- specific_keyword.aliases:
+  * 最大6個まで、カタカナ/ひらがな/英語/中国漢字の同義語を含める。
+  * 広いカテゴリ語 (キッチン用品/家電/服 等) は絶対に含めない。
+  * 例: 包丁 → ["ナイフ","knife","キッチンナイフ","三徳包丁","菜切り","ペティナイフ"]
+
+EXAMPLES:
+- 「テレ東マートで売れる包丁」 →
+  intent_tier: "specific_keyword"
+  channel_scope: [{"channel_slug":"txd","raw_mention":"テレ東マート","confidence":0.9}]
+  specific_keyword: {"raw":"包丁","normalized":"包丁","aliases":["ナイフ","knife","キッチンナイフ","三徳包丁","菜切り","ペティナイフ"],"confidence":0.95}
+  category_hints: ["キッチン用品","包丁"]
+
+- 「QVCで冬に売れる暖房家電」 →
+  intent_tier: "genre"
+  channel_scope: [{"channel_slug":"qvc","raw_mention":"QVC","confidence":1.0}]
+  specific_keyword: null
+  seasonal_keywords: ["冬"]
+  category_hints: ["暖房家電","ヒーター","電気ストーブ"]
+
+- 「冬に売れる商品」 →
+  intent_tier: "seasonal"
+  channel_scope: []
+  specific_keyword: null
+  seasonal_keywords: ["冬"]
+
+IMPORTANT:
+- すべてのテキストは日本語。
+- 配列は null ではなく [] を返す。
+- target_revenue / target_audience / budget_constraint / timeline は未言及なら null。`;
+}
+
+export async function runGoalAnalysis(userGoal: string): Promise<ParsedGoal> {
+	const useExtended = isPhase05Enabled();
+	const prompt = useExtended ? buildGoalPromptExtended(userGoal) : buildGoalPromptLegacy(userGoal);
 
 	const raw = await callGemini(prompt);
 	const parsed = parseJSON<Partial<ParsedGoal>>(raw);
+
 	const intent = ensureDiscoverIntent(
 		{
 			seasonal_keywords: Array.isArray(parsed.seasonal_keywords) ? parsed.seasonal_keywords : [],
@@ -1905,10 +2036,58 @@ IMPORTANT:
 		},
 		userGoal,
 	);
-	return {
+
+	// Phase 0.5 extraction (only when flag on AND gemini returned the new fields)
+	let intent_tier: ParsedGoal["intent_tier"] = "broad";
+	let channel_scope: ParsedGoal["channel_scope"] = [];
+	let specific_keyword: ParsedGoal["specific_keyword"] = null;
+
+	if (useExtended) {
+		const tier = parsed.intent_tier;
+		if (tier === "broad" || tier === "seasonal" || tier === "genre" || tier === "specific_keyword") {
+			intent_tier = tier;
+		}
+
+		if (Array.isArray(parsed.channel_scope)) {
+			channel_scope = parsed.channel_scope
+				.map((c: any) => {
+					const slug = resolveChannelSlug(c?.raw_mention ?? c?.channel_slug ?? "");
+					if (!slug) return null;
+					const conf = typeof c?.confidence === "number" ? c.confidence : 0;
+					if (conf < 0.5) return null;
+					return { channel_slug: slug, raw_mention: c.raw_mention ?? slug, confidence: conf };
+				})
+				.filter((x: any): x is NonNullable<typeof x> => x !== null)
+				.slice(0, 5);
+		}
+
+		if (parsed.specific_keyword && parsed.specific_keyword.normalized) {
+			const rawSk = parsed.specific_keyword.raw ?? parsed.specific_keyword.normalized;
+			const normalized = parsed.specific_keyword.normalized;
+			const rawAliases = Array.isArray(parsed.specific_keyword.aliases)
+				? parsed.specific_keyword.aliases.filter((s: any): s is string => typeof s === "string")
+				: [];
+			const conf = typeof parsed.specific_keyword.confidence === "number" ? parsed.specific_keyword.confidence : 0;
+
+			const { kept, dropped } = filterAliases(rawAliases, intent.category_hints);
+			if (dropped.length > 0) {
+				console.warn(`[goal-analysis] alias guard dropped ${dropped.length}: ${dropped.join(", ")}`);
+			}
+
+			if (conf >= 0.7) {
+				specific_keyword = { raw: rawSk, normalized, aliases: kept.slice(0, 6), confidence: conf };
+			} else {
+				console.warn(`[goal-analysis] specific_keyword confidence ${conf} < 0.7, downgrading tier to 'genre'`);
+				if (intent_tier === "specific_keyword") intent_tier = "genre";
+				specific_keyword = null;
+			}
+		}
+	}
+
+	const result: ParsedGoal = {
 		primary_objective: typeof parsed.primary_objective === "string" ? parsed.primary_objective : "",
 		target_channels: Array.isArray(parsed.target_channels)
-			? parsed.target_channels.filter((c): c is string => typeof c === "string")
+			? parsed.target_channels.filter((c: any): c is string => typeof c === "string")
 			: [],
 		target_revenue: typeof parsed.target_revenue === "string" ? parsed.target_revenue : undefined,
 		target_audience: typeof parsed.target_audience === "string" ? parsed.target_audience : undefined,
@@ -1918,7 +2097,14 @@ IMPORTANT:
 		theme_keywords: intent.theme_keywords,
 		category_hints: intent.category_hints,
 		excluded_themes: intent.excluded_themes,
+		intent_tier,
+		channel_scope,
+		specific_keyword,
 	};
+
+	console.log(`[goal-analysis] userGoal="${userGoal.slice(0, 60)}" tier=${intent_tier} channels=[${channel_scope.map((c) => c.channel_slug).join(",")}] specific="${specific_keyword?.normalized ?? "—"}" confidence=${specific_keyword?.confidence ?? "—"}`);
+
+	return result;
 }
 
 // ---------------------------------------------------------------------------
@@ -2599,6 +2785,11 @@ export async function runMDSkill(
 	priorOutputs: Record<string, unknown>,
 ): Promise<unknown> {
 	if (skillName === "goal_analysis") {
+		// Short-circuit: if pre-run already populated ctx.parsedGoal, reuse it
+		// to avoid double Gemini call + classification drift between runs.
+		if (context.parsedGoal) {
+			return context.parsedGoal;
+		}
 		return context.userGoal ? await runGoalAnalysis(context.userGoal) : null;
 	}
 	const skill = SKILL_PIPELINE.find((s) => s.name === skillName);

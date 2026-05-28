@@ -11,6 +11,7 @@ import { discoverNewProducts, type DiscoveredProduct } from "@/lib/md-strategy";
 import { getServiceClient } from "@/lib/supabase";
 import { buildTVShoppingProfile } from "@/lib/tv-shopping-profile";
 import { loadSeedContext } from "@/lib/strategy/seed-context";
+import { projectParsedGoalToIntent } from "@/lib/strategy/intent-projection";
 
 export interface LCWorkflowInput {
 	userGoal?: string;
@@ -51,14 +52,7 @@ async function runDiscoveryStep(
 		]);
 		const tvProfile = buildTVShoppingProfile(prodResult.data ?? [], catResult.data ?? []);
 
-		const intent = parsedGoal
-			? {
-					seasonal_keywords: parsedGoal.seasonal_keywords ?? [],
-					theme_keywords: parsedGoal.theme_keywords ?? [],
-					category_hints: parsedGoal.category_hints ?? [],
-					excluded_themes: parsedGoal.excluded_themes ?? [],
-				}
-			: undefined;
+		const intent = parsedGoal ? projectParsedGoalToIntent(parsedGoal) : undefined;
 
 		const products = await discoverNewProducts({
 			context: "live_commerce",

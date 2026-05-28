@@ -3,10 +3,11 @@ import { NextRequest } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
 import {
 	discoverNewProducts,
-	runGoalAnalysis,
 	type DiscoveryBatch,
 } from "@/lib/md-strategy";
 import type { PlatformAnalysisOutput } from "@/lib/live-commerce-strategy";
+import { analyzeLCGoalToIntent } from "@/lib/strategy/intent-projection";
+import type { DiscoverIntent } from "@/lib/strategy/discover-intent";
 import { buildTVShoppingProfile } from "@/lib/tv-shopping-profile";
 
 export const maxDuration = 120;
@@ -84,23 +85,11 @@ export async function POST(
 	const effectiveUserGoal = focus
 		? `${strategy.user_goal ?? ""}\n追加フォーカス: ${focus}`.trim()
 		: strategy.user_goal || undefined;
-	let intent:
-		| {
-				seasonal_keywords: string[];
-				theme_keywords: string[];
-				category_hints: string[];
-				excluded_themes: string[];
-			}
-		| undefined;
+	let intent: DiscoverIntent | undefined;
 	if (effectiveUserGoal) {
 		try {
-			const parsed = await runGoalAnalysis(effectiveUserGoal);
-			intent = {
-				seasonal_keywords: parsed.seasonal_keywords ?? [],
-				theme_keywords: parsed.theme_keywords ?? [],
-				category_hints: parsed.category_hints ?? [],
-				excluded_themes: parsed.excluded_themes ?? [],
-			};
+			const { intent: projected } = await analyzeLCGoalToIntent(effectiveUserGoal);
+			intent = projected;
 		} catch (err) {
 			console.warn(
 				`[lc-rediscover] goal analysis failed, falling back to no-intent discovery: ${err instanceof Error ? err.message : String(err)}`,

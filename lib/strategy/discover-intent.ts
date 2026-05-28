@@ -12,6 +12,21 @@
  * live-commerce-strategy (avoid circular deps).
  */
 
+export type IntentTier = "broad" | "seasonal" | "genre" | "specific_keyword";
+
+export interface ChannelScope {
+  channel_slug: string;
+  raw_mention: string;
+  confidence: number;
+}
+
+export interface SpecificKeyword {
+  raw: string;
+  normalized: string;
+  aliases: string[];
+  confidence: number;
+}
+
 export interface DiscoverIntent {
 	/** 季節キーワード — 冬 / 夏 / 春 / 秋 / 年末 / 梅雨 / 花粉 etc. */
 	seasonal_keywords: string[];
@@ -21,6 +36,12 @@ export interface DiscoverIntent {
 	category_hints: string[];
 	/** 除外したいテーマ — ユーザー目標と矛盾するもの (夏物, クーラー etc.) */
 	excluded_themes: string[];
+	/** Granularity tier — how specific the user's intent is */
+	intent_tier?: IntentTier;
+	/** TV channel scope constraints extracted from the user's goal */
+	channel_scope?: ChannelScope[];
+	/** Specific product keyword when the user names a concrete item */
+	specific_keyword?: SpecificKeyword | null;
 }
 
 export function emptyDiscoverIntent(): DiscoverIntent {
@@ -29,6 +50,9 @@ export function emptyDiscoverIntent(): DiscoverIntent {
 		theme_keywords: [],
 		category_hints: [],
 		excluded_themes: [],
+		intent_tier: "broad",
+		channel_scope: [],
+		specific_keyword: null,
 	};
 }
 
@@ -58,6 +82,42 @@ export function normalizeDiscoverIntent(input: unknown): DiscoverIntent {
 		).slice(0, 10);
 		out[key] = cleaned;
 	}
+
+	// New fields — tier defaults to "broad"; channel_scope + specific_keyword normalize defensively
+	const tierRaw = obj["intent_tier"];
+	if (tierRaw === "broad" || tierRaw === "seasonal" || tierRaw === "genre" || tierRaw === "specific_keyword") {
+		out.intent_tier = tierRaw;
+	}
+
+	const scopeRaw = obj["channel_scope"];
+	if (Array.isArray(scopeRaw)) {
+		out.channel_scope = scopeRaw
+			.filter((x): x is Record<string, unknown> => !!x && typeof x === "object")
+			.map((x) => ({
+				channel_slug: typeof x.channel_slug === "string" ? x.channel_slug.trim() : "",
+				raw_mention: typeof x.raw_mention === "string" ? x.raw_mention.trim() : "",
+				confidence: typeof x.confidence === "number" && x.confidence >= 0 && x.confidence <= 1 ? x.confidence : 0,
+			}))
+			.filter((c) => c.channel_slug.length > 0)
+			.slice(0, 5);
+	}
+
+	const skRaw = obj["specific_keyword"];
+	if (skRaw && typeof skRaw === "object") {
+		const sk = skRaw as Record<string, unknown>;
+		const normalized = typeof sk.normalized === "string" ? sk.normalized.trim() : "";
+		if (normalized.length > 0) {
+			out.specific_keyword = {
+				raw: typeof sk.raw === "string" ? sk.raw.trim() : normalized,
+				normalized,
+				aliases: Array.isArray(sk.aliases)
+					? sk.aliases.filter((s): s is string => typeof s === "string" && s.trim().length >= 2).map((s) => s.trim()).slice(0, 6)
+					: [],
+				confidence: typeof sk.confidence === "number" && sk.confidence >= 0 && sk.confidence <= 1 ? sk.confidence : 0,
+			};
+		}
+	}
+
 	return out;
 }
 
@@ -140,6 +200,11 @@ export function buildIntentSearchQueries(
 	maxQueries = 4,
 ): string[] {
 	if (!intent) return [];
+	// Tier 4 — specific_keyword takes precedence; aliases as 2nd query only
+	if (intent.intent_tier === "specific_keyword" && intent.specific_keyword) {
+		const sk = intent.specific_keyword;
+		return [sk.normalized, ...sk.aliases.slice(0, Math.max(0, maxQueries - 1))].slice(0, maxQueries);
+	}
 	const seasons = intent.seasonal_keywords.slice(0, 2);
 	const cats = intent.category_hints.slice(0, 3);
 	const themes = intent.theme_keywords.slice(0, 2);
@@ -191,6 +256,20 @@ export function formatIntentPromptSection(
 	}
 	if (intent.excluded_themes.length > 0) {
 		parts.push(`除外テーマ (選定禁止): ${intent.excluded_themes.join(", ")}`);
+	}
+	if (intent.intent_tier === "specific_keyword" && intent.specific_keyword) {
+		const sk = intent.specific_keyword;
+		parts.push(
+			`特定品目指定: ${sk.normalized} (別名: ${sk.aliases.join("、") || "なし"})`,
+		);
+		parts.push(
+			`[TIER 4 INSTRUCTION] ユーザーは特定品目を指定。該当商品のみ選定し、カテゴリ多様化は禁止。商品名に「${sk.normalized}」または別名のいずれかを含まない候補は除外すること。`,
+		);
+	}
+	if (intent.channel_scope && intent.channel_scope.length > 0) {
+		parts.push(
+			`チャネル適合: ${intent.channel_scope.map((c) => c.raw_mention).join("、")} (これらのチャネルで売れそうな商品を優先)`,
+		);
 	}
 	if (parts.length === 0) return "";
 	const goalLine = rawGoal ? `ユーザー原文: ${rawGoal}\n` : "";

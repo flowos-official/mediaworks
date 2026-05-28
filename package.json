@@ -27,6 +27,8 @@
     "test:discovery-partition": "tsx --env-file=.env.local scripts/test-discovery-partition.ts",
     "test:user-guide": "tsx --env-file=.env.local scripts/test-user-guide.ts",
     "test:pool-query": "tsx --env-file=.env.local scripts/test-pool-query-filters.ts",
+    "test:pool-query-tier4": "tsx scripts/test-pool-query-tier4.ts",
+    "test:tier4-fallback-suppression": "tsx --env-file=.env.local scripts/test-tier4-fallback-suppression.ts",
     "test:pool-fallback": "tsx --env-file=.env.local scripts/test-pool-query-fallback.ts",
     "test:multi-seed": "tsx --env-file=.env.local scripts/test-multi-seed-context.ts",
     "test:discovery-pool-first": "tsx --env-file=.env.local scripts/test-discover-pool-first.ts",
@@ -91,7 +93,15 @@
     "test:magic-bytes": "tsx scripts/test-magic-bytes.ts",
     "test:storage-signed-url": "tsx --env-file=.env.local scripts/test-storage-signed-url.ts",
     "test:analyze-rate-limit": "tsx --env-file=.env.local scripts/test-analyze-rate-limit.ts",
-    "test:analyze-ownership": "tsx --env-file=.env.local scripts/test-analyze-ownership.ts"
+    "test:analyze-ownership": "tsx --env-file=.env.local scripts/test-analyze-ownership.ts",
+    "test:intent-projection-flag": "tsx scripts/test-intent-projection-flag.ts",
+    "test:alias-blocklist": "tsx scripts/test-alias-blocklist.ts",
+    "test:prompt-flag-gating": "tsx --env-file=.env.local scripts/test-prompt-flag-gating.ts",
+    "test:runMDSkill-cache": "tsx --env-file=.env.local scripts/test-runMDSkill-cache.ts",
+    "test:channel-taste": "tsx --env-file=.env.local scripts/test-channel-taste.ts",
+    "test:competitor-boost-channel-scope": "tsx --env-file=.env.local scripts/test-competitor-boost-channel-scope.ts",
+    "test:backward-compat-parsed-goal": "tsx scripts/test-backward-compat-parsed-goal.ts",
+    "check:chokepoint": "bash scripts/check-runGoalAnalysis-callers.sh"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1016.0",
