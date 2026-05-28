@@ -108,6 +108,23 @@ function applyFilters(rows: PoolRow[], opts: FilterOptions): PoolRow[] {
 		}
 	}
 
+	// Tier 4 — specific_keyword: hard substring match, fail-open OFF
+	if (opts.intentTier === "specific_keyword" && opts.specificKeyword) {
+		const needles = [opts.specificKeyword, ...(opts.specificAliases ?? [])]
+			.map((s) => s.toLowerCase().trim())
+			.filter((s) => s.length >= 2);
+		if (needles.length > 0) {
+			const matched = afterCategory.filter((r) => {
+				const hay = `${r.name ?? ""} ${r.category ?? ""}`.toLowerCase();
+				return needles.some((n) => hay.includes(n));
+			});
+			console.log(
+				`[pool-query] tier=specific_keyword fail_open=off match_count=${matched.length}`,
+			);
+			return applyPriceFilter(matched, opts);
+		}
+	}
+
 	// R4.5 — intent keyword fuzzy match with fail-open
 	let afterIntent = afterCategory;
 	const intentTerms = (opts.intentKeywords ?? [])
@@ -124,16 +141,15 @@ function applyFilters(rows: PoolRow[], opts: FilterOptions): PoolRow[] {
 	}
 
 	// R5 — price filter with NULL pass-through + fail-open (same pool-size gate)
-	let afterPrice = afterIntent;
-	if (opts.priceRange && afterIntent.length >= FAIL_OPEN_THRESHOLD) {
-		const { min, max } = opts.priceRange;
-		afterPrice = afterIntent.filter(
-			(r) =>
-				r.price_jpy === null || (r.price_jpy >= min && r.price_jpy <= max),
-		);
-	}
+	return applyPriceFilter(afterIntent, opts);
+}
 
-	return afterPrice;
+function applyPriceFilter(rows: PoolRow[], opts: FilterOptions): PoolRow[] {
+	if (!opts.priceRange || rows.length < FAIL_OPEN_THRESHOLD) return rows;
+	const { min, max } = opts.priceRange;
+	return rows.filter(
+		(r) => r.price_jpy === null || (r.price_jpy >= min && r.price_jpy <= max),
+	);
 }
 
 /**
