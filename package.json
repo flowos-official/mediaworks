@@ -97,7 +97,8 @@
     "test:intent-projection-flag": "tsx scripts/test-intent-projection-flag.ts",
     "test:alias-blocklist": "tsx scripts/test-alias-blocklist.ts",
     "test:prompt-flag-gating": "tsx --env-file=.env.local scripts/test-prompt-flag-gating.ts",
-    "test:runMDSkill-cache": "tsx --env-file=.env.local scripts/test-runMDSkill-cache.ts"
+    "test:runMDSkill-cache": "tsx --env-file=.env.local scripts/test-runMDSkill-cache.ts",
+    "test:channel-taste": "tsx --env-file=.env.local scripts/test-channel-taste.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1016.0",
