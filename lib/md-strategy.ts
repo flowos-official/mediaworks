@@ -939,34 +939,39 @@ export async function discoverNewProducts(
 			console.log(`[discover] fresh pool built: total=${pool.length} capped=${freshCapped.length} (rakuten=${pool.filter(p => p.source === 'rakuten').length} web=${pool.filter(p => p.source === 'web').length} tv_channel=${pool.filter(p => p.source === 'tv_channel').length})`);
 
 			if (freshCapped.length === 0 && cappedPool.length === 0) {
-				console.warn(`[discover] pool empty — retrying with broadened keywords`);
-				const fallbackKeywords = ["人気商品", "売れ筋", "おすすめ"];
-				const fallbackResults = await Promise.all(
-					fallbackKeywords.map(async (kw) => {
-						const search = await rakutenItemSearch(kw, "-reviewCount", 10).catch(() => ({ items: [] }));
-						return search;
-					}),
-				);
-				for (const r of fallbackResults) {
-					for (const item of r.items.slice(0, 8)) {
-						if (!item.itemUrl || seenUrls.has(item.itemUrl)) continue;
-						if (isTvLike(item.itemName)) continue;
-						seenUrls.add(item.itemUrl);
-						pool.push({
-							name: item.itemName.slice(0, 80),
-							price: item.itemPrice,
-							source: "rakuten",
-							source_url: item.itemUrl,
-							snippet: item.itemCaption.slice(0, 140),
-							keyword: "fallback",
-							reviewCount: item.reviewCount,
-							reviewAverage: item.reviewAverage,
-							pool_source: "fresh_search" as const,
-						});
+				// Tier-4 suppression: returning fewer-but-correct > diluting with broad keywords
+				if (input.intent?.intent_tier === "specific_keyword") {
+					console.warn(`[discover] pool empty under tier=specific_keyword — NOT broadening; returning empty fresh set`);
+				} else {
+					console.warn(`[discover] pool empty — retrying with broadened keywords`);
+					const fallbackKeywords = ["人気商品", "売れ筋", "おすすめ"];
+					const fallbackResults = await Promise.all(
+						fallbackKeywords.map(async (kw) => {
+							const search = await rakutenItemSearch(kw, "-reviewCount", 10).catch(() => ({ items: [] }));
+							return search;
+						}),
+					);
+					for (const r of fallbackResults) {
+						for (const item of r.items.slice(0, 8)) {
+							if (!item.itemUrl || seenUrls.has(item.itemUrl)) continue;
+							if (isTvLike(item.itemName)) continue;
+							seenUrls.add(item.itemUrl);
+							pool.push({
+								name: item.itemName.slice(0, 80),
+								price: item.itemPrice,
+								source: "rakuten",
+								source_url: item.itemUrl,
+								snippet: item.itemCaption.slice(0, 140),
+								keyword: "fallback",
+								reviewCount: item.reviewCount,
+								reviewAverage: item.reviewAverage,
+								pool_source: "fresh_search" as const,
+							});
+						}
 					}
+					freshCapped = pool.slice(0, POOL_CAP);
+					console.log(`[discover] fallback pool: ${freshCapped.length} items`);
 				}
-				freshCapped = pool.slice(0, POOL_CAP);
-				console.log(`[discover] fallback pool: ${freshCapped.length} items`);
 			}
 
 			cappedPool = [...cappedPool, ...freshCapped];
