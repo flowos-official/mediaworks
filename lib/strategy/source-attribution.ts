@@ -43,6 +43,13 @@ export interface AttributablePoolItem {
 		priceJpy: number;
 		similarityScore: number;
 	} | null;
+	// DB-side rule-based TV fit signal — Gemini emits a separate japan_fit_score,
+	// so we overlay these from the pool row to expose both on the strategy card.
+	tv_fit_score?: number;
+	tv_fit_reason?: string;
+	tv_evidence?: import("@/lib/discovery/types").TvEvidence | null;
+	broadcast_tag?: "broadcast_confirmed" | "broadcast_likely" | "unknown" | null;
+	c_package?: Record<string, unknown> | null;
 }
 
 export interface AttributableGeminiItem {
@@ -64,6 +71,11 @@ export interface AttributionResult<T extends AttributableGeminiItem> {
 		T & {
 			pool_source: "discovery_pool" | "fresh_search" | "research";
 			discovered_product_id?: string;
+			tv_fit_score?: number;
+			tv_fit_reason?: string;
+			tv_evidence?: import("@/lib/discovery/types").TvEvidence | null;
+			broadcast_tag?: "broadcast_confirmed" | "broadcast_likely" | "unknown" | null;
+			c_package?: Record<string, unknown> | null;
 		}
 	>;
 	stats: AttributionStats;
@@ -151,6 +163,11 @@ export function attributeSource<T extends AttributableGeminiItem>(
 		} as T & {
 			pool_source: "discovery_pool" | "fresh_search" | "research";
 			discovered_product_id?: string;
+			tv_fit_score?: number;
+			tv_fit_reason?: string;
+			tv_evidence?: import("@/lib/discovery/types").TvEvidence | null;
+			broadcast_tag?: "broadcast_confirmed" | "broadcast_likely" | "unknown" | null;
+			c_package?: Record<string, unknown> | null;
 		};
 		if (hit.source !== undefined) {
 			(merged as { source?: string }).source = hit.source;
@@ -160,6 +177,26 @@ export function attributeSource<T extends AttributableGeminiItem>(
 		if (hit.rakuten_cross_match !== undefined) {
 			(merged as { rakuten_cross_match?: unknown }).rakuten_cross_match =
 				hit.rakuten_cross_match;
+		}
+		// Propagate DB-side TV signal fields. These are safe to overlay only when
+		// we have a real ID-link (URL / itemCode match). Name-only fallback omits
+		// them via includeId=false — same false-positive guard as discovered_product_id.
+		if (includeId) {
+			if (hit.tv_fit_score !== undefined) {
+				merged.tv_fit_score = hit.tv_fit_score;
+			}
+			if (hit.tv_fit_reason !== undefined) {
+				merged.tv_fit_reason = hit.tv_fit_reason;
+			}
+			if (hit.tv_evidence !== undefined) {
+				merged.tv_evidence = hit.tv_evidence;
+			}
+			if (hit.broadcast_tag !== undefined) {
+				merged.broadcast_tag = hit.broadcast_tag;
+			}
+			if (hit.c_package !== undefined) {
+				merged.c_package = hit.c_package;
+			}
 		}
 		return merged;
 	}
