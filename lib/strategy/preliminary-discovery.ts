@@ -10,6 +10,8 @@
  */
 
 import { queryDiscoveredPool, type PoolRow } from "@/lib/strategy/pool-query";
+import { deriveIntentKeywords } from "@/lib/strategy/discover-intent";
+import type { DiscoverIntent } from "@/lib/strategy/discover-intent";
 import type { DiscoveredProduct } from "@/lib/md-strategy";
 
 const PRELIMINARY_TARGET = 15;
@@ -20,6 +22,7 @@ export interface PreliminaryDiscoveryInput {
 	priceRange?: string;
 	excludeProductIds?: string[];
 	supplementCategoriesFromSeeds?: string[];
+	intent?: DiscoverIntent;
 }
 
 function parsePriceRangeLocal(priceRange: string): { min: number; max: number } | null {
@@ -73,6 +76,10 @@ export async function runPreliminaryDiscovery(
 		limit: PRELIMINARY_TARGET,
 		excludeProductIds: input.excludeProductIds,
 		supplementCategoriesFromSeeds: input.supplementCategoriesFromSeeds,
+		intentKeywords: input.intent ? deriveIntentKeywords(input.intent) : undefined,
+		specificKeyword: input.intent?.specific_keyword?.normalized,
+		specificAliases: input.intent?.specific_keyword?.aliases ?? [],
+		intentTier: input.intent?.intent_tier ?? "broad",
 	});
 	return rows.map(rowToDiscoveredProduct);
 }

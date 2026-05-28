@@ -33,6 +33,16 @@ export interface PoolQueryInput {
 	 * A row passes if ANY term matches. Fail-open at <5 results.
 	 */
 	intentKeywords?: string[];
+	/**
+	 * Phase 0.5 SearchIntent — granularity tier of the user's goal.
+	 * Defaults to "broad" downstream when omitted. Threaded through but
+	 * NOT yet consumed by applyFilters (Task 15 wires it up).
+	 */
+	intentTier?: "broad" | "seasonal" | "genre" | "specific_keyword";
+	/** Phase 0.5 — normalized specific keyword (when intent_tier === "specific_keyword"). */
+	specificKeyword?: string;
+	/** Phase 0.5 — alias variants for the specific keyword. */
+	specificAliases?: string[];
 }
 
 export interface PoolRow {
@@ -66,6 +76,10 @@ interface FilterOptions {
 	priceRange?: { min: number; max: number };
 	supplementCategories?: string[];
 	intentKeywords?: string[];
+	// Phase 0.5 SearchIntent — threaded through but not yet consumed by applyFilters (Task 15).
+	intentTier?: "broad" | "seasonal" | "genre" | "specific_keyword";
+	specificKeyword?: string;
+	specificAliases?: string[];
 }
 
 function applyFilters(rows: PoolRow[], opts: FilterOptions): PoolRow[] {
@@ -176,6 +190,9 @@ export async function queryDiscoveredPool(
 		priceRange: input.priceRange,
 		supplementCategories: input.supplementCategoriesFromSeeds,
 		intentKeywords: input.intentKeywords,
+		intentTier: input.intentTier,
+		specificKeyword: input.specificKeyword,
+		specificAliases: input.specificAliases,
 	});
 
 	return filtered.slice(0, limit);
