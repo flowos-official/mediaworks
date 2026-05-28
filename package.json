@@ -92,7 +92,8 @@
     "test:storage-signed-url": "tsx --env-file=.env.local scripts/test-storage-signed-url.ts",
     "test:analyze-rate-limit": "tsx --env-file=.env.local scripts/test-analyze-rate-limit.ts",
     "test:analyze-ownership": "tsx --env-file=.env.local scripts/test-analyze-ownership.ts",
-    "test:intent-projection-flag": "tsx scripts/test-intent-projection-flag.ts"
+    "test:intent-projection-flag": "tsx scripts/test-intent-projection-flag.ts",
+    "test:alias-blocklist": "tsx scripts/test-alias-blocklist.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1016.0",
