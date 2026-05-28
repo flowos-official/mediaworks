@@ -46,9 +46,9 @@ const FIT_MIN_SAMPLES = envInt("FIT_MIN_SAMPLES", 3);
  * by row count in the lookback window. Fail-open: any DB error yields
  * an empty array.
  */
-export async function loadHotCompetitorCategories(): Promise<
-	Array<{ category: string; count: number }>
-> {
+export async function loadHotCompetitorCategories(
+	channelScope?: string[],
+): Promise<Array<{ category: string; count: number }>> {
 	const sb = getServiceClient();
 	const cutoff = new Date(
 		Date.now() - HISTORICAL_LOOKBACK_DAYS * 24 * 60 * 60 * 1000,
@@ -56,11 +56,15 @@ export async function loadHotCompetitorCategories(): Promise<
 		.toISOString()
 		.slice(0, 10);
 
-	const { data, error } = await sb
+	let q = sb
 		.from("broadcasts")
 		.select("category")
 		.gte("air_date", cutoff)
 		.not("category", "is", null);
+	if (channelScope && channelScope.length > 0) {
+		q = q.in("channel", channelScope);
+	}
+	const { data, error } = await q;
 
 	if (error) {
 		console.warn(
@@ -89,19 +93,23 @@ export async function loadHotCompetitorCategories(): Promise<
  * low avg fit_score dampens it (down to 0), no analyses leaves it
  * unchanged. Fail-open.
  */
-export async function loadCategoryFitWeights(): Promise<
-	Map<string, { avg: number; n: number }>
-> {
+export async function loadCategoryFitWeights(
+	channelScope?: string[],
+): Promise<Map<string, { avg: number; n: number }>> {
 	const sb = getServiceClient();
 	const cutoff = new Date(
 		Date.now() - HISTORICAL_LOOKBACK_DAYS * 24 * 60 * 60 * 1000,
 	).toISOString();
 
-	const { data, error } = await sb
+	let q = sb
 		.from("competitor_fit_analyses")
 		.select("category, fit_score")
 		.gte("created_at", cutoff)
 		.not("category", "is", null);
+	if (channelScope && channelScope.length > 0) {
+		q = q.in("channel", channelScope);
+	}
+	const { data, error } = await q;
 
 	if (error) {
 		console.warn(
@@ -167,12 +175,13 @@ function splitCategoryToKeywords(category: string): string[] {
  */
 export async function applyCompetitorTrendBoost(
 	candidates: Candidate[],
+	channelScope?: string[],
 ): Promise<number> {
 	if (candidates.length === 0) return 0;
 
 	const [hot, fitWeights] = await Promise.all([
-		loadHotCompetitorCategories(),
-		loadCategoryFitWeights(),
+		loadHotCompetitorCategories(channelScope),
+		loadCategoryFitWeights(channelScope),
 	]);
 	if (hot.length === 0) return 0;
 
