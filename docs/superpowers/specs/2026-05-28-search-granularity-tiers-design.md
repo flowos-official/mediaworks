@@ -122,7 +122,7 @@ Example: "テレ東マートで冬に売れる包丁" → tier=specific_keyword,
 
 channel_scope.confidence:
 - exact match in tv-channels.ts registry → 1.0
-- alias-table match (テレビ東京マート → teleto_mart) → 0.8
+- alias-table match (テレビ東京マート → txd) → 0.8
 - ambiguous mention → < 0.5 → ignored at runtime
 
 specific_keyword.confidence:
@@ -140,7 +140,7 @@ EXAMPLES block adds three cases (verbatim in prompt):
 ```
 - 「テレ東マートで売れる包丁」 →
   intent_tier: "specific_keyword"
-  channel_scope: [{channel_slug:"teleto_mart", raw_mention:"テレ東マート", confidence:0.9}]
+  channel_scope: [{channel_slug:"txd", raw_mention:"テレ東マート", confidence:0.9}]
   specific_keyword: {raw:"包丁", normalized:"包丁",
                      aliases:["ナイフ","knife","キッチンナイフ","三徳包丁","菜切り","ペティナイフ"],
                      confidence:0.95}
@@ -229,7 +229,7 @@ All three are extended to accept `channelScope?: string[]`. When set, each loade
 
 ## 6. Touchpoints
 
-**20 files modified + 4 new files** (revised after two Codex review rounds). Initial pass added: 3 additional caller sites, cache-short-circuit, fallback-suppression, LC prompt/parser/schema chain. Second pass added: prompt-level flag gating, deterministic alias guard, `applyCompetitorTrendBoost` signature, `alias-blocklist.ts` new file.
+**20 files modified + 5 new files** (revised after three Codex review rounds). Round 1 added: 3 additional caller sites, cache-short-circuit, fallback-suppression, LC prompt/parser/schema chain. Round 2 added: prompt-level flag gating, deterministic alias guard, `applyCompetitorTrendBoost` signature, `alias-blocklist.ts` new file. Round 3 added: `feature-flags.ts` new file to break the `intent-projection ↔ md-strategy` import cycle, defining-file exemption clarified in §9-1.
 
 ### 6-1. Core (MD pipeline + shared types)
 
@@ -239,7 +239,7 @@ All three are extended to accept `channelScope?: string[]`. When set, each loade
 | 2 | `lib/md-strategy.ts:259 ParsedGoal` | Add 3 new fields (mirrors DiscoverIntent) |
 | 3 | `lib/md-strategy.ts:1845 runGoalAnalysis` | Extend prompt with classification rules + examples (incl. alias extraction). Parse 3 new fields from JSON response |
 | 4 | `lib/registry/skills/goal_analysis/v1/schema.ts` | Sync stale schema to runtime (currently missing the 4 existing intent arrays). Add new 3 fields. Use Zod `.optional()` + ensure schema is additive-safe (no `.strict()`) |
-| 5 | `lib/workflows/md-strategy.workflow.ts:312` | Pre-run `runGoalAnalysis` once before `runPreliminaryDiscoveryStep`. Store result on `ctx.parsedGoal` |
+| 5 | `lib/workflows/md-strategy.workflow.ts:312` | Pre-run via `analyzeGoalToIntent` (chokepoint helper — see §9-1 caller #1) once before `runPreliminaryDiscoveryStep`. Store result on `ctx.parsedGoal` |
 | 6 | `lib/md-strategy.ts:2601-2602 runMDSkill` | **Short-circuit**: when `context.parsedGoal` is already set, return it without calling `runGoalAnalysis` again. Today line 2602 unconditionally re-invokes Gemini (would cause double-billing + classification drift). |
 | 7 | `lib/strategy/preliminary-discovery.ts:65` | Add `intentKeywords?`, `specificKeyword?`, `specificAliases?`, `intentTier?` to `PreliminaryDiscoveryInput`. Pass to `queryDiscoveredPool` |
 | 8 | `lib/strategy/pool-query.ts:71 applyFilters` | When `intent_tier === 'specific_keyword'`: turn off R4.5 fail-open. Substring match accepts ANY of `(normalized, ...aliases)` against `name + category` |
@@ -276,9 +276,10 @@ These call `runGoalAnalysis` outside the workflow. The 3 new fields must be thre
 
 | Path | Purpose |
 |---|---|
+| `lib/strategy/feature-flags.ts` | Dependency-free `isPhase05Enabled()` reader. Separated from `intent-projection.ts` to avoid circular import with `md-strategy.ts` (which needs the flag for prompt-level gating per §9-3 while `intent-projection.ts` needs to import `runGoalAnalysis` from `md-strategy.ts`) |
 | `lib/discovery/channel-taste.ts` | `loadChannelTasteProfile`, `loadChannelTasteProfiles` (Section 5) |
-| `lib/strategy/channel-aliases.ts` | Maps free-text channel mentions ("テレビ東京マート") to registry slugs ("teleto_mart"). Used by `runGoalAnalysis` to normalize `channel_scope.channel_slug`. Distinct from `specific_keyword.aliases` (which is per-query, Gemini-supplied) |
-| `lib/strategy/intent-projection.ts` | Single helper consumed by both workflow and the 3 API routes (#17-19) AND by `runMDSkill` (#6) AND by `lib/live-commerce-strategy.ts:798`. Takes `ParsedGoal` → returns extended `DiscoverIntent`. Reads `PHASE_0_5_SEARCH_INTENT_ENABLED` once. Single chokepoint per §9-1 |
+| `lib/strategy/channel-aliases.ts` | Maps free-text channel mentions ("テレビ東京マート") to registry slugs ("txd"). Used by `runGoalAnalysis` to normalize `channel_scope.channel_slug`. Distinct from `specific_keyword.aliases` (which is per-query, Gemini-supplied) |
+| `lib/strategy/intent-projection.ts` | Single helper consumed by the 3 API routes (#17-19) AND used by both workflow and LC workflow (#5, #14). Defines `projectParsedGoalToIntent(parsedGoal)` and `analyzeGoalToIntent(userGoal)`. Imports flag reader from `feature-flags.ts`. The 2 defining files (`md-strategy.ts`, `live-commerce-strategy.ts`) may call their own `runGoalAnalysis`/`runLCGoalAnalysis` internally without routing through the helper — see §9-1 |
 | `lib/strategy/alias-blocklist.ts` | ~30 broad Japanese category terms that must never appear in `specific_keyword.aliases` (e.g. キッチン用品, 家電, 服, 食品, 美容). Consumed by the deterministic alias guard in `runGoalAnalysis` (§4-2) |
 
 ### 6-6. UI
@@ -318,9 +319,30 @@ PHASE_0_5_SEARCH_INTENT_ENABLED  (default: false)
 
 ### 9-1. Target chokepoint (to be created by this design)
 
-After this design ships, the flag is read in exactly ONE place: `lib/strategy/intent-projection.ts` (new file, touchpoint #5-5). Today, the same logic is duplicated across five caller sites — `lib/md-strategy.ts:2602`, `lib/live-commerce-strategy.ts:798`, and three API routes (`app/api/analytics/discovery/route.ts:110`, `md-strategy/[id]/rediscover/route.ts:104`, `live-commerce/[id]/rediscover/route.ts:97`). The implementation plan must reroute all five through the helper. If any caller is missed, the flag leaks for that path — Codex review explicitly flagged this risk.
+**Flag READ in exactly one place**: `lib/strategy/feature-flags.ts` (new) exposes `isPhase05Enabled()`. `process.env.PHASE_0_5_SEARCH_INTENT_ENABLED` is referenced ONLY inside this module.
 
-**Implementation guard**: a grep gate in CI/PR — `runGoalAnalysis` may only be called from `lib/strategy/intent-projection.ts`. Any other usage fails the check.
+**Function CONSUMED by three modules** — all import `isPhase05Enabled()` from `feature-flags.ts`:
+1. `lib/strategy/intent-projection.ts` (new — wraps `runGoalAnalysis` + projects to `DiscoverIntent`; gates flag-on vs flag-off projection)
+2. `lib/md-strategy.ts` (existing — needs the flag for prompt-level gating per §9-3, swaps between legacy and extended Gemini prompts)
+3. `lib/live-commerce-strategy.ts` (existing — same prompt-level gating for the LC variant)
+
+This split avoids a circular import: if `intent-projection.ts` owned the flag reader and `md-strategy.ts` needed to read the flag, `md-strategy.ts` would have to import from `intent-projection.ts` which already imports `runGoalAnalysis` from `md-strategy.ts`. Putting the reader in its own dependency-free module breaks the cycle.
+
+**Caller-side rule** — every caller that previously called `runGoalAnalysis` directly must route through `intent-projection.ts::analyzeGoalToIntent(userGoal)` instead. Today the direct call appears at six caller sites:
+
+| # | File / location | Treatment |
+|---|---|---|
+| 1 | `lib/workflows/md-strategy.workflow.ts` (new pre-run step, touchpoint #5) | **must use `analyzeGoalToIntent`** |
+| 2 | `lib/workflows/live-commerce.workflow.ts` (intent projection, touchpoint #14) | **must use `analyzeGoalToIntent` (or `analyzeLCGoalToIntent`)** |
+| 3 | `lib/md-strategy.ts:2602` (inside `runMDSkill`, touchpoint #6) | **exempt** — defining file, may keep private `runGoalAnalysis` call as a fallback when `ctx.parsedGoal` is missing |
+| 4 | `lib/live-commerce-strategy.ts` (LC equivalent of #3) | **exempt** — LC defining file, same reason |
+| 5 | `app/api/analytics/discovery/route.ts:110` | **must reroute** (touchpoint #17) |
+| 6 | `app/api/analytics/md-strategy/[id]/rediscover/route.ts:104` | **must reroute** (touchpoint #18) |
+| 7 | `app/api/analytics/live-commerce/[id]/rediscover/route.ts:97` | **must reroute** (touchpoint #19) |
+
+If a non-exempt caller is missed, the flag leaks for that path.
+
+**Implementation guard**: a grep gate in CI/PR — `runGoalAnalysis(` and `runLCGoalAnalysis(` may only appear in `lib/strategy/intent-projection.ts`, `lib/md-strategy.ts`, and `lib/live-commerce-strategy.ts` (the helper + the two defining files). Any other usage fails the check.
 
 ### 9-2. Off behavior
 
@@ -348,7 +370,7 @@ The JSON parser tolerates either output. This is the only way to guarantee byte-
 `runGoalAnalysis` logs structured intent on each call:
 
 ```
-[goal-analysis] userGoal="テレ東マートで売れる包丁..." tier=specific_keyword channels=[teleto_mart] specific="包丁" confidence=0.95
+[goal-analysis] userGoal="テレ東マートで売れる包丁..." tier=specific_keyword channels=[txd] specific="包丁" confidence=0.95
 ```
 
 `channel-taste.loadChannelTasteProfile` logs source_tier + sample_size per call.
