@@ -90,6 +90,14 @@ export async function analyzeGoalToIntent(
 export async function analyzeLCGoalToIntent(
   userGoal: string,
 ): Promise<{ parsedGoal: import("@/lib/live-commerce-strategy").ParsedGoal; intent: DiscoverIntent }> {
+  // Dynamic import is INTENTIONAL — not a code-splitting optimization. It
+  // breaks an import cycle: live-commerce-strategy.ts imports from
+  // md-strategy.ts (for the shared discoverNewProducts/DiscoveredProduct
+  // types), and this file already statically imports runGoalAnalysis from
+  // md-strategy.ts. A static import of runLCGoalAnalysis would create
+  // intent-projection → live-commerce-strategy → md-strategy → intent-projection.
+  // Lazy import defers evaluation past the cycle. First call pays a one-time
+  // ~10ms module-load cost; subsequent calls hit the module cache.
   const { runLCGoalAnalysis } = await import("@/lib/live-commerce-strategy");
   const parsedGoal = await runLCGoalAnalysis(userGoal);
   const intent = projectParsedGoalToIntent(parsedGoal);

@@ -945,6 +945,54 @@ export async function discoverNewProducts(
 			let freshCapped = pool.slice(0, POOL_CAP);
 			console.log(`[discover] fresh pool built: total=${pool.length} capped=${freshCapped.length} (rakuten=${pool.filter(p => p.source === 'rakuten').length} web=${pool.filter(p => p.source === 'web').length} tv_channel=${pool.filter(p => p.source === 'tv_channel').length})`);
 
+			// Tier-4 retry padding (spec §13 open question): when specific_keyword
+			// has no aliases (Gemini didn't surface synonyms) AND first fresh
+			// search returned < 3 hits, run a second Rakuten pass with the
+			// canonical term + " 通販" / " おすすめ" padding. The padding still
+			// includes the canonical term so name-level filtering still catches
+			// the right products — we widen the QUERY without widening the
+			// MATCH criteria.
+			const skForRetry = input.intent?.specific_keyword;
+			const tier4NeedsRetry =
+				input.intent?.intent_tier === "specific_keyword" &&
+				skForRetry &&
+				skForRetry.aliases.length === 0 &&
+				freshCapped.length < 3;
+			if (tier4NeedsRetry && skForRetry) {
+				console.warn(
+					`[discover] tier-4 retry: aliases empty and pool=${freshCapped.length} (<3) — padding "${skForRetry.normalized}" with 通販/おすすめ`,
+				);
+				const paddedKws = [`${skForRetry.normalized} 通販`, `${skForRetry.normalized} おすすめ`];
+				for (const kw of paddedKws) {
+					try {
+						const r = await rakutenItemSearch(kw, "-reviewCount", 10);
+						for (const item of r.items.slice(0, 8)) {
+							if (!item.itemUrl || seenUrls.has(item.itemUrl)) continue;
+							if (isTvLike(item.itemName)) continue;
+							// Defensive name-level check: must still contain the canonical keyword
+							if (!item.itemName.toLowerCase().includes(skForRetry.normalized.toLowerCase())) continue;
+							seenUrls.add(item.itemUrl);
+							pool.push({
+								name: item.itemName.slice(0, 80),
+								price: item.itemPrice,
+								source: "rakuten",
+								source_url: item.itemUrl,
+								snippet: item.itemCaption.slice(0, 140),
+								keyword: kw,
+								reviewCount: item.reviewCount,
+								reviewAverage: item.reviewAverage,
+								pool_source: "fresh_search" as const,
+							});
+						}
+					} catch (err) {
+						console.warn(`[discover] tier-4 retry "${kw}" failed: ${err instanceof Error ? err.message : err}`);
+					}
+					await new Promise((res) => setTimeout(res, 1000));
+				}
+				freshCapped = pool.slice(0, POOL_CAP);
+				console.log(`[discover] tier-4 retry result: ${freshCapped.length} items`);
+			}
+
 			if (freshCapped.length === 0 && cappedPool.length === 0) {
 				// Tier-4 suppression: returning fewer-but-correct > diluting with broad keywords
 				if (input.intent?.intent_tier === "specific_keyword") {
