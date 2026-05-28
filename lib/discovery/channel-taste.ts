@@ -77,11 +77,16 @@ export async function loadChannelTasteProfile(
 		}
 	}
 
-	// Tier 3 — discovered_products fallback
+	// Tier 3 — discovered_products fallback.
+	// tv_channel_source is a comma-joined alphabetical slug string (e.g. "japanet,qvc").
+	// Use a POSIX regex match anchored at start/comma boundaries so we don't
+	// substring-collide with future slugs that share a prefix (e.g. "qvc" vs
+	// "qvc_archive"). slug chars are [a-z0-9_], no regex escaping needed.
+	const slugBoundary = `(^|,)${channelSlug}(,|$)`;
 	const { data: discRows, error: discErr } = await sb
 		.from("discovered_products")
 		.select("category")
-		.ilike("tv_channel_source", `%${channelSlug}%`)
+		.filter("tv_channel_source", "match", slugBoundary)
 		.not("category", "is", null)
 		.gte(
 			"created_at",
