@@ -236,9 +236,11 @@ export interface ParsedGoal {
 	category_hints: string[];
 	excluded_themes: string[];
 	// SearchIntent classifier fields (Phase 0.5) — mirrors MD ParsedGoal.
-	intent_tier?: IntentTier;
-	channel_scope?: ChannelScope[];
-	specific_keyword?: SpecificKeyword | null;
+	// Required at the type level (legacy/partial inputs flow through the
+	// `projectParsedGoalToIntent` projector which fills defaults).
+	intent_tier: IntentTier;
+	channel_scope: ChannelScope[];
+	specific_keyword: SpecificKeyword | null;
 }
 
 export interface MarketResearchOutput {
@@ -930,6 +932,9 @@ export async function runLCSkill(
 				theme_keywords: [],
 				category_hints: [],
 				excluded_themes: [],
+				intent_tier: "broad",
+				channel_scope: [],
+				specific_keyword: null,
 			};
 			return fallback;
 		}
@@ -997,6 +1002,9 @@ export async function runLCOrchestrator(
 						theme_keywords: [],
 						category_hints: [],
 						excluded_themes: [],
+						intent_tier: "broad",
+						channel_scope: [],
+						specific_keyword: null,
 					};
 					context.parsedGoal = defaultGoal;
 					outputs.goal_analysis = defaultGoal;
