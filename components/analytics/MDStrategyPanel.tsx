@@ -213,6 +213,31 @@ function SkillResultsView({ results, generatedAt, backHref, strategyId, onRedisc
 				一覧に戻る
 			</Link>
 
+			{/* Read-only search intent chip */}
+			{results?.goal_analysis &&
+				(results.goal_analysis.intent_tier !== "broad" ||
+					(results.goal_analysis.channel_scope?.length ?? 0) > 0) && (
+				<div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+					<span className="font-medium text-foreground">検索意図:</span>
+					{results.goal_analysis.intent_tier !== "broad" && (
+						<span className="rounded bg-blue-500/10 px-2 py-0.5 text-blue-700">
+							tier: {results.goal_analysis.intent_tier}
+						</span>
+					)}
+					{results.goal_analysis.channel_scope?.map((c) => (
+						<span key={c.channel_slug} className="rounded bg-purple-500/10 px-2 py-0.5 text-purple-700">
+							ch: {c.raw_mention}{c.confidence < 0.8 && " (弱)"}
+						</span>
+					))}
+					{results.goal_analysis.specific_keyword && (
+						<span className="rounded bg-green-500/10 px-2 py-0.5 text-green-700">
+							keyword: {results.goal_analysis.specific_keyword.normalized}
+							{results.goal_analysis.specific_keyword.aliases.length > 0 && ` (+${results.goal_analysis.specific_keyword.aliases.length})`}
+						</span>
+					)}
+				</div>
+			)}
+
 			<div id="md-strategy-content" className="space-y-8">
 				{evidence && (
 					<div className="rounded-xl border border-blue-600/25 bg-blue-600/5 px-4 py-3">
