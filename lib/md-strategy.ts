@@ -2738,6 +2738,11 @@ export async function runMDSkill(
 	priorOutputs: Record<string, unknown>,
 ): Promise<unknown> {
 	if (skillName === "goal_analysis") {
+		// Short-circuit: if pre-run already populated ctx.parsedGoal, reuse it
+		// to avoid double Gemini call + classification drift between runs.
+		if (context.parsedGoal) {
+			return context.parsedGoal;
+		}
 		return context.userGoal ? await runGoalAnalysis(context.userGoal) : null;
 	}
 	const skill = SKILL_PIPELINE.find((s) => s.name === skillName);
