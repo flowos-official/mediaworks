@@ -1,4 +1,5 @@
 import { getServiceClient } from "@/lib/supabase";
+import { loadCategoryFitWeights } from "@/lib/discovery/competitor-trend-boost";
 
 export interface ChannelTasteProfile {
 	channel_slug: string;
@@ -22,6 +23,9 @@ export async function loadChannelTasteProfile(
 		.toISOString()
 		.slice(0, 10);
 
+	// Load fit weights once for this channel scope — passed to all buildProfile call sites.
+	const fitWeights = await loadCategoryFitWeights([channelSlug]);
+
 	// Tier 1 — QVC/ShopCh: broadcasts.category direct query
 	if (QVC_SHOPCH.has(channelSlug)) {
 		const { data, error } = await sb
@@ -41,6 +45,7 @@ export async function loadChannelTasteProfile(
 			channelSlug,
 			1,
 			data.map((r) => r.category as string),
+			fitWeights,
 			`Tier 1 (broadcasts.category) — ${data.length} rows`,
 		);
 	}
@@ -66,6 +71,7 @@ export async function loadChannelTasteProfile(
 				channelSlug,
 				2,
 				populated.map((r) => r.category as string),
+				fitWeights,
 				`Tier 2 (historical_broadcasts.category) — ${populated.length}/${histRows.length} rows populated`,
 			);
 		}
@@ -88,6 +94,7 @@ export async function loadChannelTasteProfile(
 		channelSlug,
 		3,
 		discRows.map((r) => r.category as string),
+		fitWeights,
 		`Tier 3 (discovered_products fallback) — ${discRows.length} rows`,
 	);
 }
@@ -106,6 +113,7 @@ function buildProfile(
 	channelSlug: string,
 	sourceTier: 1 | 2 | 3,
 	categories: string[],
+	fitWeights: Map<string, { avg: number; n: number }>,
 	reasoning: string,
 ): ChannelTasteProfile {
 	const counts = new Map<string, number>();
@@ -119,7 +127,12 @@ function buildProfile(
 	>();
 	for (const [cat, count] of counts) {
 		const raw_share = count / total;
-		weights.set(cat, { raw_share, fit_score: null, final_weight: raw_share });
+		const fit = fitWeights.get(cat) ?? null;
+		const fit_score = fit?.avg ?? null;
+		// Per spec §5-2: final_weight = raw_share × (fit_score/50, default 1.0)
+		const multiplier = fit_score !== null ? fit_score / 50 : 1.0;
+		const final_weight = raw_share * multiplier;
+		weights.set(cat, { raw_share, fit_score, final_weight });
 	}
 	return {
 		channel_slug: channelSlug,

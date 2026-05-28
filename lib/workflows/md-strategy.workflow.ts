@@ -84,15 +84,9 @@ async function runDiscoveryStep(
 		// Project parsedGoal into the DiscoverIntent shape consumed by discovery.
 		// Done here (not inside discoverNewProducts) to keep the discovery API
 		// pipeline-agnostic — LC workflow does the same projection from its
-		// own ParsedGoal shape.
-		const intent = parsedGoal
-			? {
-					seasonal_keywords: parsedGoal.seasonal_keywords ?? [],
-					theme_keywords: parsedGoal.theme_keywords ?? [],
-					category_hints: parsedGoal.category_hints ?? [],
-					excluded_themes: parsedGoal.excluded_themes ?? [],
-				}
-			: undefined;
+		// own ParsedGoal shape. Routes through the projector so the Phase 0.5
+		// SearchIntent fields propagate correctly when the flag is on.
+		const intent = parsedGoal ? projectParsedGoalToIntent(parsedGoal) : undefined;
 
 		const products = await discoverNewProducts({
 			context: "home_shopping",

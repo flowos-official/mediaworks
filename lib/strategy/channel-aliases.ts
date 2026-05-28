@@ -41,6 +41,31 @@ const ALIAS_MAP: Record<string, string> = {
   // TBS (グッとライフ)
   "tbs": "tbs",
   "グッとライフ": "tbs",
+  // Ichiban Honpo (いちばん本舗 — 東海テレビ)
+  "ichiban": "ichiban",
+  "いちばん本舗": "ichiban",
+  "いちばん": "ichiban",
+  "東海テレビショップ": "ichiban",
+  // Kachimo (カチモ)
+  "kachimo": "kachimo",
+  "カチモ": "kachimo",
+  // Kaidoki Market (買いドキ！マーケット — SATV)
+  "kaidoki": "kaidoki",
+  "買いドキ": "kaidoki",
+  "買いドキ！マーケット": "kaidoki",
+  "satvショップ": "kaidoki",
+  // Kantv (関テレ)
+  "kantv": "kantv",
+  "関テレ": "kantv",
+  "関西テレビショップ": "kantv",
+  // Junsanpo (テレ朝じゅん散歩)
+  "junsanpo": "junsanpo",
+  "じゅん散歩": "junsanpo",
+  "テレ朝じゅん散歩": "junsanpo",
+  // Uranoura (ABCウラのウラまで)
+  "uranoura": "uranoura",
+  "ウラのウラまで": "uranoura",
+  "abcウラのウラまで": "uranoura",
 };
 
 const VALID_SLUGS = new Set(TV_CHANNELS.map((c) => c.slug));

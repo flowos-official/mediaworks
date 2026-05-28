@@ -37,11 +37,11 @@ export interface DiscoverIntent {
 	/** 除外したいテーマ — ユーザー目標と矛盾するもの (夏物, クーラー etc.) */
 	excluded_themes: string[];
 	/** Granularity tier — how specific the user's intent is */
-	intent_tier?: IntentTier;
+	intent_tier: IntentTier;
 	/** TV channel scope constraints extracted from the user's goal */
-	channel_scope?: ChannelScope[];
+	channel_scope: ChannelScope[];
 	/** Specific product keyword when the user names a concrete item */
-	specific_keyword?: SpecificKeyword | null;
+	specific_keyword: SpecificKeyword | null;
 }
 
 export function emptyDiscoverIntent(): DiscoverIntent {
@@ -151,7 +151,7 @@ const FALLBACK_SEASONAL = [
 ];
 
 export function ensureDiscoverIntent(
-	intent: DiscoverIntent | null | undefined,
+	intent: Partial<DiscoverIntent> | null | undefined,
 	rawGoal: string | null | undefined,
 ): DiscoverIntent {
 	const base = intent ? normalizeDiscoverIntent(intent) : emptyDiscoverIntent();

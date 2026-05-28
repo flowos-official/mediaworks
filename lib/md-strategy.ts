@@ -276,10 +276,12 @@ export interface ParsedGoal {
 	theme_keywords: string[];
 	category_hints: string[];
 	excluded_themes: string[];
-	// Phase 0.5 SearchIntent fields — optional for backward compat with existing inline literal usage sites.
-	intent_tier?: IntentTier;
-	channel_scope?: ChannelScope[];
-	specific_keyword?: SpecificKeyword | null;
+	// Phase 0.5 SearchIntent fields — required at the type level. Legacy/partial
+	// inputs (older saved strategies) flow through `projectParsedGoalToIntent`'s
+	// `Partial<ProjectableParsedGoal>` parameter, which fills defaults.
+	intent_tier: IntentTier;
+	channel_scope: ChannelScope[];
+	specific_keyword: SpecificKeyword | null;
 }
 
 // ---------------------------------------------------------------------------

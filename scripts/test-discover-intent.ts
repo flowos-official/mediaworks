@@ -44,6 +44,9 @@ import {
 			theme_keywords: [],
 			category_hints: [],
 			excluded_themes: [],
+			intent_tier: "broad",
+			channel_scope: [],
+			specific_keyword: null,
 		},
 		"冬の商品",
 	);
@@ -63,6 +66,9 @@ import {
 		theme_keywords: ["暖かい", "ギフト"],
 		category_hints: ["暖房家電", "加湿器"],
 		excluded_themes: ["扇風機"], // should NOT appear in pool keywords
+		intent_tier: "broad",
+		channel_scope: [],
+		specific_keyword: null,
 	});
 	assert.ok(kws.includes("冬"));
 	assert.ok(kws.includes("暖房家電"));
@@ -82,6 +88,9 @@ import {
 		theme_keywords: ["暖かい"],
 		category_hints: ["暖房家電", "加湿器"],
 		excluded_themes: [],
+		intent_tier: "broad",
+		channel_scope: [],
+		specific_keyword: null,
 	});
 	assert.ok(queries.includes("冬 暖房家電"), "season × category combo");
 	assert.ok(queries.includes("冬 加湿器"));
@@ -95,6 +104,9 @@ import {
 		theme_keywords: [],
 		category_hints: ["美容家電"],
 		excluded_themes: [],
+		intent_tier: "broad",
+		channel_scope: [],
+		specific_keyword: null,
 	});
 	assert.deepEqual(queries, ["美容家電"]);
 }
@@ -107,6 +119,9 @@ import {
 			theme_keywords: [],
 			category_hints: [],
 			excluded_themes: [],
+			intent_tier: "broad",
+			channel_scope: [],
+			specific_keyword: null,
 		}),
 		[],
 	);
@@ -120,6 +135,9 @@ import {
 		theme_keywords: [],
 		category_hints: [],
 		excluded_themes: [],
+		intent_tier: "broad",
+		channel_scope: [],
+		specific_keyword: null,
 	});
 	assert.equal(out, "");
 }
@@ -132,6 +150,9 @@ import {
 			theme_keywords: ["暖かい"],
 			category_hints: ["暖房家電"],
 			excluded_themes: ["扇風機"],
+			intent_tier: "broad",
+			channel_scope: [],
+			specific_keyword: null,
 		},
 		"冬に売れる商品を探して",
 	);
