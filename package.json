@@ -27,6 +27,7 @@
     "test:discovery-partition": "tsx --env-file=.env.local scripts/test-discovery-partition.ts",
     "test:user-guide": "tsx --env-file=.env.local scripts/test-user-guide.ts",
     "test:pool-query": "tsx --env-file=.env.local scripts/test-pool-query-filters.ts",
+    "test:pool-query-tier4": "tsx scripts/test-pool-query-tier4.ts",
     "test:pool-fallback": "tsx --env-file=.env.local scripts/test-pool-query-fallback.ts",
     "test:multi-seed": "tsx --env-file=.env.local scripts/test-multi-seed-context.ts",
     "test:discovery-pool-first": "tsx --env-file=.env.local scripts/test-discover-pool-first.ts",
