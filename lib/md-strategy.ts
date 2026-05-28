@@ -695,8 +695,10 @@ export async function discoverNewProducts(
 		// Intent-derived queries (e.g. "冬 暖房家電") take priority over generic
 		// TV category names because they're more specific and align with goal.
 		const intentQueries = buildIntentSearchQueries(input.intent, 4);
-		const tvKeywords = [input.explicitCategory, ...input.topCategoryNames]
-			.filter((s): s is string => !!s && s.trim().length > 0);
+		const tvKeywords = input.intent?.intent_tier === "specific_keyword"
+			? [] // Tier 4: no broad TV category keywords
+			: [input.explicitCategory, ...input.topCategoryNames]
+				.filter((s): s is string => !!s && s.trim().length > 0);
 		const keywords = Array.from(
 			new Set([...intentQueries, ...tvKeywords]),
 		).slice(0, intentQueries.length > 0 ? 6 : 4);
@@ -1134,7 +1136,9 @@ ${poolText}
 - source_url: 必ず上記プールの URL を**一字一句そのままコピー**すること。プロトコル変更・パラメータ削除・末尾スラッシュ追加削除・www サブドメイン追加削除など、いかなる変更も禁止。推測・補完・別ページへの差し替えも禁止 (これがあると下流の出典トラッキングが壊れる)。
 - ranking_info はランキング順位情報 (例: "楽天デイリーランキング1位"、"価格.com人気売れ筋3位" 等)。ランキング情報がない場合は省略。
 - name は商品プールの **「名称:」行の値だけ** をそのまま使用する。"[発掘プール...]" や "[新検索 ...]" などの角括弧付き出典タグは絶対に name に含めないこと。価格 "¥..." や "★..." も name に含めない。
-- カテゴリが偏らないように${itemCount}商品を選定。
+- ${input.intent?.intent_tier === "specific_keyword"
+		? "ユーザー指定品目に一致する商品を最優先で選定。多様性より一致が優先。"
+		: `カテゴリが偏らないように${itemCount}商品を選定。`}
 - **出典バランス**: 楽天/TV放送局/発掘プールが混在している。それぞれを公平に評価し、商品自体の TV/EC 適性で選定すること。強制的な比率は設けない — 質次第で結果分布は自然に決まる。レビュー非公開を理由に TV 放送局サイトの候補を機械的に減点しないこと (上記スコアリング哲学を参照)。
 - 各商品ごとに japan_market_fit を必ず記入する。${salesStrategyRules}
 ${suitabilityBlock}
