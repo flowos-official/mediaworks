@@ -27,6 +27,11 @@ import {
 import { attributeSource } from "@/lib/strategy/source-attribution";
 import { TV_CHANNELS } from "@/lib/discovery/tv-channels";
 import { findRakutenCrossMatch } from "@/lib/discovery/rakuten-crossmatch";
+// IMPORTANT: import isPhase05Enabled from feature-flags.ts (NOT intent-projection.ts)
+// to avoid circular import — intent-projection.ts already imports from this file.
+import { isPhase05Enabled } from "@/lib/strategy/feature-flags";
+import { filterAliases } from "@/lib/strategy/alias-blocklist";
+import { resolveChannelSlug } from "@/lib/strategy/channel-aliases";
 
 // ---------------------------------------------------------------------------
 // Gemini client
@@ -1847,8 +1852,8 @@ function buildChannelReferenceTable(): string {
 // Skill 0: Goal Analysis
 // ---------------------------------------------------------------------------
 
-export async function runGoalAnalysis(userGoal: string): Promise<ParsedGoal> {
-	const prompt = `You are a business strategy analyst for a Japanese TV-shopping / EC merchandising team. Parse the following user goal into structured components AND extract discovery signals (season, theme, category hints) that drive product search downstream.
+function buildGoalPromptLegacy(userGoal: string): string {
+	return `You are a business strategy analyst for a Japanese TV-shopping / EC merchandising team. Parse the following user goal into structured components AND extract discovery signals (season, theme, category hints) that drive product search downstream.
 
 User Goal: ${userGoal}
 
@@ -1898,9 +1903,83 @@ IMPORTANT:
 - target_channels は必ず配列で返してください。具体的なチャネルが目標から読み取れない場合は [] を返してください。null は使わないでください。
 - target_revenue / target_audience / budget_constraint / timeline は言及されていなければ null を返してください。
 - seasonal_keywords / theme_keywords / category_hints / excluded_themes は必ず配列 (空でも []) を返してください。`;
+}
+
+function buildGoalPromptExtended(userGoal: string): string {
+	return `You are a business strategy analyst for a Japanese TV-shopping / EC merchandising team.
+Parse the following user goal into structured components AND extract discovery signals (season,
+theme, category hints) AND classify search granularity (tier, channel scope, specific keyword).
+
+User Goal: ${userGoal}
+
+Return a JSON object (no markdown) with this exact structure:
+{
+  "primary_objective": "主要な目的を1文で（日本語）",
+  "target_channels": ["対象チャネル名のリスト"],
+  "target_revenue": "目標売上 (なければ null)",
+  "target_audience": "ターゲット層 (なければ null)",
+  "budget_constraint": "予算制約 (なければ null)",
+  "timeline": "タイムライン (なければ null)",
+  "seasonal_keywords": ["季節/タイミングを表す短い日本語キーワード"],
+  "theme_keywords": ["商品テーマを表す短い日本語キーワード"],
+  "category_hints": ["想定される具体的な商品カテゴリ"],
+  "excluded_themes": ["目標と矛盾するため除外すべきテーマ"],
+  "intent_tier": "broad" | "seasonal" | "genre" | "specific_keyword",
+  "channel_scope": [{"channel_slug": "...", "raw_mention": "...", "confidence": 0.0-1.0}],
+  "specific_keyword": {"raw": "...", "normalized": "...", "aliases": ["...(max 6)"], "confidence": 0.0-1.0} | null
+}
+
+EXTRACTION RULES:
+- seasonal_keywords: 「冬/夏/春/秋/年末/年始/クリスマス/ハロウィン/バレンタイン/お歳暮/お中元/梅雨/花粉/新生活/防災」など。
+- theme_keywords: 「暖かい/防寒/時短/ギフト/健康/美容」など。
+- category_hints: 楽天/Amazonで検索した時にヒットする粒度のカテゴリ語 (3〜6個推奨)。
+- excluded_themes: ユーザー目標と明らかに矛盾するもの。
+- intent_tier:
+  * "specific_keyword": 特定の単一品目名が明示された場合 (包丁/ホットカーペット/EMS 等)。
+  * "genre": 広域カテゴリのみ指定 (フィットネス/美容家電 等)。
+  * "seasonal": 季節/イベントのみ指定 (冬の商品/お歳暮 等)。
+  * "broad": 上記いずれにも該当しない (「잘 팔리는 상품」「人気の商品」等)。
+  複合シグナルは最も narrow な tier を選ぶ。他の軸 (季節 + チャネル等) は同時に他フィールドへ抽出する。
+- channel_scope.confidence: 正確なチャネル名一致→1.0、表記揺れ→0.8、曖昧→<0.5 (<0.5 は出力しない)。
+- specific_keyword.confidence: 単一の narrow な品目名→≥0.9、広いカテゴリを品目と誤認した場合→<0.7。
+- specific_keyword.aliases:
+  * 最大6個まで、カタカナ/ひらがな/英語/中国漢字の同義語を含める。
+  * 広いカテゴリ語 (キッチン用品/家電/服 等) は絶対に含めない。
+  * 例: 包丁 → ["ナイフ","knife","キッチンナイフ","三徳包丁","菜切り","ペティナイフ"]
+
+EXAMPLES:
+- 「テレ東マートで売れる包丁」 →
+  intent_tier: "specific_keyword"
+  channel_scope: [{"channel_slug":"txd","raw_mention":"テレ東マート","confidence":0.9}]
+  specific_keyword: {"raw":"包丁","normalized":"包丁","aliases":["ナイフ","knife","キッチンナイフ","三徳包丁","菜切り","ペティナイフ"],"confidence":0.95}
+  category_hints: ["キッチン用品","包丁"]
+
+- 「QVCで冬に売れる暖房家電」 →
+  intent_tier: "genre"
+  channel_scope: [{"channel_slug":"qvc","raw_mention":"QVC","confidence":1.0}]
+  specific_keyword: null
+  seasonal_keywords: ["冬"]
+  category_hints: ["暖房家電","ヒーター","電気ストーブ"]
+
+- 「冬に売れる商品」 →
+  intent_tier: "seasonal"
+  channel_scope: []
+  specific_keyword: null
+  seasonal_keywords: ["冬"]
+
+IMPORTANT:
+- すべてのテキストは日本語。
+- 配列は null ではなく [] を返す。
+- target_revenue / target_audience / budget_constraint / timeline は未言及なら null。`;
+}
+
+export async function runGoalAnalysis(userGoal: string): Promise<ParsedGoal> {
+	const useExtended = isPhase05Enabled();
+	const prompt = useExtended ? buildGoalPromptExtended(userGoal) : buildGoalPromptLegacy(userGoal);
 
 	const raw = await callGemini(prompt);
 	const parsed = parseJSON<Partial<ParsedGoal>>(raw);
+
 	const intent = ensureDiscoverIntent(
 		{
 			seasonal_keywords: Array.isArray(parsed.seasonal_keywords) ? parsed.seasonal_keywords : [],
@@ -1910,10 +1989,58 @@ IMPORTANT:
 		},
 		userGoal,
 	);
-	return {
+
+	// Phase 0.5 extraction (only when flag on AND gemini returned the new fields)
+	let intent_tier: ParsedGoal["intent_tier"] = "broad";
+	let channel_scope: ParsedGoal["channel_scope"] = [];
+	let specific_keyword: ParsedGoal["specific_keyword"] = null;
+
+	if (useExtended) {
+		const tier = parsed.intent_tier;
+		if (tier === "broad" || tier === "seasonal" || tier === "genre" || tier === "specific_keyword") {
+			intent_tier = tier;
+		}
+
+		if (Array.isArray(parsed.channel_scope)) {
+			channel_scope = parsed.channel_scope
+				.map((c: any) => {
+					const slug = resolveChannelSlug(c?.raw_mention ?? c?.channel_slug ?? "");
+					if (!slug) return null;
+					const conf = typeof c?.confidence === "number" ? c.confidence : 0;
+					if (conf < 0.5) return null;
+					return { channel_slug: slug, raw_mention: c.raw_mention ?? slug, confidence: conf };
+				})
+				.filter((x: any): x is NonNullable<typeof x> => x !== null)
+				.slice(0, 5);
+		}
+
+		if (parsed.specific_keyword && parsed.specific_keyword.normalized) {
+			const rawSk = parsed.specific_keyword.raw ?? parsed.specific_keyword.normalized;
+			const normalized = parsed.specific_keyword.normalized;
+			const rawAliases = Array.isArray(parsed.specific_keyword.aliases)
+				? parsed.specific_keyword.aliases.filter((s: any): s is string => typeof s === "string")
+				: [];
+			const conf = typeof parsed.specific_keyword.confidence === "number" ? parsed.specific_keyword.confidence : 0;
+
+			const { kept, dropped } = filterAliases(rawAliases, intent.category_hints);
+			if (dropped.length > 0) {
+				console.warn(`[goal-analysis] alias guard dropped ${dropped.length}: ${dropped.join(", ")}`);
+			}
+
+			if (conf >= 0.7) {
+				specific_keyword = { raw: rawSk, normalized, aliases: kept.slice(0, 6), confidence: conf };
+			} else {
+				console.warn(`[goal-analysis] specific_keyword confidence ${conf} < 0.7, downgrading tier to 'genre'`);
+				if (intent_tier === "specific_keyword") intent_tier = "genre";
+				specific_keyword = null;
+			}
+		}
+	}
+
+	const result: ParsedGoal = {
 		primary_objective: typeof parsed.primary_objective === "string" ? parsed.primary_objective : "",
 		target_channels: Array.isArray(parsed.target_channels)
-			? parsed.target_channels.filter((c): c is string => typeof c === "string")
+			? parsed.target_channels.filter((c: any): c is string => typeof c === "string")
 			: [],
 		target_revenue: typeof parsed.target_revenue === "string" ? parsed.target_revenue : undefined,
 		target_audience: typeof parsed.target_audience === "string" ? parsed.target_audience : undefined,
@@ -1923,7 +2050,14 @@ IMPORTANT:
 		theme_keywords: intent.theme_keywords,
 		category_hints: intent.category_hints,
 		excluded_themes: intent.excluded_themes,
+		intent_tier,
+		channel_scope,
+		specific_keyword,
 	};
+
+	console.log(`[goal-analysis] userGoal="${userGoal.slice(0, 60)}" tier=${intent_tier} channels=[${channel_scope.map((c) => c.channel_slug).join(",")}] specific="${specific_keyword?.normalized ?? "—"}" confidence=${specific_keyword?.confidence ?? "—"}`);
+
+	return result;
 }
 
 // ---------------------------------------------------------------------------
