@@ -12,6 +12,21 @@
  * live-commerce-strategy (avoid circular deps).
  */
 
+export type IntentTier = "broad" | "seasonal" | "genre" | "specific_keyword";
+
+export interface ChannelScope {
+  channel_slug: string;
+  raw_mention: string;
+  confidence: number;
+}
+
+export interface SpecificKeyword {
+  raw: string;
+  normalized: string;
+  aliases: string[];
+  confidence: number;
+}
+
 export interface DiscoverIntent {
 	/** 季節キーワード — 冬 / 夏 / 春 / 秋 / 年末 / 梅雨 / 花粉 etc. */
 	seasonal_keywords: string[];
@@ -21,6 +36,12 @@ export interface DiscoverIntent {
 	category_hints: string[];
 	/** 除外したいテーマ — ユーザー目標と矛盾するもの (夏物, クーラー etc.) */
 	excluded_themes: string[];
+	/** Granularity tier — how specific the user's intent is */
+	intent_tier?: IntentTier;
+	/** TV channel scope constraints extracted from the user's goal */
+	channel_scope?: ChannelScope[];
+	/** Specific product keyword when the user names a concrete item */
+	specific_keyword?: SpecificKeyword | null;
 }
 
 export function emptyDiscoverIntent(): DiscoverIntent {
@@ -29,6 +50,9 @@ export function emptyDiscoverIntent(): DiscoverIntent {
 		theme_keywords: [],
 		category_hints: [],
 		excluded_themes: [],
+		intent_tier: "broad",
+		channel_scope: [],
+		specific_keyword: null,
 	};
 }
 
@@ -58,6 +82,42 @@ export function normalizeDiscoverIntent(input: unknown): DiscoverIntent {
 		).slice(0, 10);
 		out[key] = cleaned;
 	}
+
+	// New fields — tier defaults to "broad"; channel_scope + specific_keyword normalize defensively
+	const tierRaw = obj["intent_tier"];
+	if (tierRaw === "broad" || tierRaw === "seasonal" || tierRaw === "genre" || tierRaw === "specific_keyword") {
+		out.intent_tier = tierRaw;
+	}
+
+	const scopeRaw = obj["channel_scope"];
+	if (Array.isArray(scopeRaw)) {
+		out.channel_scope = scopeRaw
+			.filter((x): x is Record<string, unknown> => !!x && typeof x === "object")
+			.map((x) => ({
+				channel_slug: typeof x.channel_slug === "string" ? x.channel_slug.trim() : "",
+				raw_mention: typeof x.raw_mention === "string" ? x.raw_mention.trim() : "",
+				confidence: typeof x.confidence === "number" && x.confidence >= 0 && x.confidence <= 1 ? x.confidence : 0,
+			}))
+			.filter((c) => c.channel_slug.length > 0)
+			.slice(0, 5);
+	}
+
+	const skRaw = obj["specific_keyword"];
+	if (skRaw && typeof skRaw === "object") {
+		const sk = skRaw as Record<string, unknown>;
+		const normalized = typeof sk.normalized === "string" ? sk.normalized.trim() : "";
+		if (normalized.length > 0) {
+			out.specific_keyword = {
+				raw: typeof sk.raw === "string" ? sk.raw.trim() : normalized,
+				normalized,
+				aliases: Array.isArray(sk.aliases)
+					? sk.aliases.filter((s): s is string => typeof s === "string" && s.trim().length >= 2).map((s) => s.trim()).slice(0, 6)
+					: [],
+				confidence: typeof sk.confidence === "number" && sk.confidence >= 0 && sk.confidence <= 1 ? sk.confidence : 0,
+			};
+		}
+	}
+
 	return out;
 }
 
