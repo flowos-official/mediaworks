@@ -768,6 +768,34 @@ function ListView({ locale, router }: { locale: string; router: ReturnType<typeo
 				</>
 			)}
 
+			{/* Read-only search intent chip — visible during in-progress analysis as
+			    soon as goal_analysis (Skill 0) completes. Mirrors the chip in
+			    SkillResultsView (detail view) so operators can spot a
+			    mis-classification before the full pipeline finishes. */}
+			{skillResults.goal_analysis &&
+				(skillResults.goal_analysis.intent_tier !== "broad" ||
+					(skillResults.goal_analysis.channel_scope?.length ?? 0) > 0) && (
+				<div className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+					<span className="font-medium text-foreground">検索意図:</span>
+					{skillResults.goal_analysis.intent_tier !== "broad" && (
+						<span className="rounded bg-blue-500/10 px-2 py-0.5 text-blue-700">
+							tier: {skillResults.goal_analysis.intent_tier}
+						</span>
+					)}
+					{skillResults.goal_analysis.channel_scope?.map((c) => (
+						<span key={c.channel_slug} className="rounded bg-purple-500/10 px-2 py-0.5 text-purple-700">
+							ch: {c.raw_mention}{c.confidence < 0.8 && " (弱)"}
+						</span>
+					))}
+					{skillResults.goal_analysis.specific_keyword && (
+						<span className="rounded bg-green-500/10 px-2 py-0.5 text-green-700">
+							keyword: {skillResults.goal_analysis.specific_keyword.normalized}
+							{skillResults.goal_analysis.specific_keyword.aliases.length > 0 && ` (+${skillResults.goal_analysis.specific_keyword.aliases.length})`}
+						</span>
+					)}
+				</div>
+			)}
+
 			{/* Hero appears as soon as preliminary discovery returns; replaced by
 			    curated set when the final discovery step finishes. */}
 			{isRunning && heroProducts && heroProducts.length > 0 && (
