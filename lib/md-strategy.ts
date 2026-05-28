@@ -27,6 +27,7 @@ import {
 import { attributeSource } from "@/lib/strategy/source-attribution";
 import { TV_CHANNELS } from "@/lib/discovery/tv-channels";
 import { findRakutenCrossMatch } from "@/lib/discovery/rakuten-crossmatch";
+import { loadChannelTasteProfiles } from "@/lib/discovery/channel-taste";
 // IMPORTANT: import isPhase05Enabled from feature-flags.ts (NOT intent-projection.ts)
 // to avoid circular import — intent-projection.ts already imports from this file.
 import { isPhase05Enabled } from "@/lib/strategy/feature-flags";
@@ -549,6 +550,7 @@ type DiscoveryPoolItem = {
 	tv_fit_score?: number;
 	tv_fit_reason?: string;
 	tv_channel_source?: string | null;
+	category?: string | null;
 	c_package?: Record<string, unknown> | null;
 	tv_evidence?: import("@/lib/discovery/types").TvEvidence | null;
 	rakuten_cross_match?: {
@@ -635,6 +637,7 @@ export async function discoverNewProducts(
 			tv_fit_score: r.tv_fit_score,
 			tv_fit_reason: r.tv_fit_reason ?? undefined,
 			tv_channel_source: r.tv_channel_source,
+			category: r.category ?? null,
 			c_package: r.c_package,
 			tv_evidence: r.tv_evidence,
 		}));
@@ -983,6 +986,41 @@ export async function discoverNewProducts(
 	if (cappedPool.length === 0) {
 		console.warn(`[discover] both pool and fresh search empty — returning undefined`);
 		return undefined;
+	}
+
+	// Phase 6 — channel-taste boost: if the user's intent named specific channels,
+	// reshape the pool by how well each candidate's category matches the channel's
+	// recent broadcast taste. Soft signal — annotates tv_fit_reason and adds to
+	// tv_fit_score; never excludes.
+	if (input.intent?.channel_scope && input.intent.channel_scope.length > 0) {
+		try {
+			const slugs = input.intent.channel_scope.map((c) => c.channel_slug);
+			const profiles = await loadChannelTasteProfiles(slugs, 30);
+			for (const item of cappedPool) {
+				const cat = item.category ?? null;
+				if (!cat) continue;
+				let boost = 0;
+				let strongest: string | null = null;
+				for (const profile of profiles.values()) {
+					const w = profile.category_weights.get(cat);
+					if (!w) continue;
+					const scale = profile.source_tier === 3 ? 0.5 : 1.0;
+					const contribution = w.final_weight * 30 * scale;
+					if (contribution > boost) {
+						boost = contribution;
+						strongest = profile.channel_slug;
+					}
+				}
+				if (boost > 0 && strongest) {
+					item.tv_fit_score = Math.min(100, (item.tv_fit_score ?? 50) + Math.round(boost));
+					const annotation = ` [${strongest} taste fit: ${cat}]`;
+					item.tv_fit_reason = (item.tv_fit_reason ?? "") + annotation;
+				}
+			}
+			console.log(`[discover] channel-taste applied across ${profiles.size} profiles`);
+		} catch (err) {
+			console.warn(`[discover] channel-taste failed (continuing without boost): ${err instanceof Error ? err.message : String(err)}`);
+		}
 	}
 
 	// Curate via Gemini — must pick from REAL pool only
