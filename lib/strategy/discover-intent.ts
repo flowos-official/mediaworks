@@ -200,6 +200,11 @@ export function buildIntentSearchQueries(
 	maxQueries = 4,
 ): string[] {
 	if (!intent) return [];
+	// Tier 4 — specific_keyword takes precedence; aliases as 2nd query only
+	if (intent.intent_tier === "specific_keyword" && intent.specific_keyword) {
+		const sk = intent.specific_keyword;
+		return [sk.normalized, ...sk.aliases.slice(0, Math.max(0, maxQueries - 1))].slice(0, maxQueries);
+	}
 	const seasons = intent.seasonal_keywords.slice(0, 2);
 	const cats = intent.category_hints.slice(0, 3);
 	const themes = intent.theme_keywords.slice(0, 2);
