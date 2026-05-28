@@ -6,6 +6,9 @@ import type { SeedContext } from "@/lib/strategy/seed-context";
 import { formatSeedPromptSection } from "@/lib/strategy/seed-context";
 import type { IntentTier, ChannelScope, SpecificKeyword } from "@/lib/strategy/discover-intent";
 import { ensureDiscoverIntent } from "@/lib/strategy/discover-intent";
+import { isPhase05Enabled } from "@/lib/strategy/feature-flags";
+import { filterAliases } from "@/lib/strategy/alias-blocklist";
+import { resolveChannelSlug } from "@/lib/strategy/channel-aliases";
 
 // ---------------------------------------------------------------------------
 // Gemini client
@@ -477,7 +480,7 @@ async function fetchTopProducts(): Promise<LCProduct[]> {
 // Skill 0: Goal Analysis
 // ---------------------------------------------------------------------------
 
-export function buildLCGoalAnalysisPrompt(userGoal: string): string {
+export function buildLCGoalPromptLegacy(userGoal: string): string {
 	return `あなたはライブコマース戦略コンサルタントです。以下のユーザー目標を構造化し、商品発掘の方向性 (季節/テーマ/カテゴリ) も抽出してください。
 
 ユーザー入力: "${userGoal}"
@@ -509,8 +512,75 @@ EXTRACTION RULES:
 - 全てのテキストは日本語で出力`;
 }
 
-async function runGoalAnalysis(userGoal: string): Promise<ParsedGoal> {
-	const prompt = buildLCGoalAnalysisPrompt(userGoal);
+export function buildLCGoalPromptExtended(userGoal: string): string {
+	return `あなたはライブコマース戦略コンサルタントです。以下のユーザー目標を構造化し、商品発掘の方向性 (季節/テーマ/カテゴリ) と検索の粒度 (tier/channel scope/specific keyword) も抽出してください。
+
+ユーザー入力: "${userGoal}"
+
+以下のJSON形式で出力:
+{
+  "primary_objective": "<主な目的を1-2文で>",
+  "target_platforms": ["<プラットフォーム名>"],
+  "budget_range": "<予算範囲（言及がなければnull）>",
+  "timeline": "<タイムライン（言及がなければnull）>",
+  "target_audience": "<ターゲット層（言及がなければnull）>",
+  "seasonal_keywords": ["季節/タイミングを表す短い日本語キーワード"],
+  "theme_keywords": ["商品テーマを表す短い日本語キーワード"],
+  "category_hints": ["想定される具体的な商品カテゴリ (日本語)"],
+  "excluded_themes": ["目標と矛盾するため除外すべきテーマ"],
+  "intent_tier": "broad" | "seasonal" | "genre" | "specific_keyword",
+  "channel_scope": [{"channel_slug": "...", "raw_mention": "...", "confidence": 0.0-1.0}],
+  "specific_keyword": {"raw": "...", "normalized": "...", "aliases": ["...(max 6)"], "confidence": 0.0-1.0} | null
+}
+
+EXTRACTION RULES:
+- seasonal_keywords: 「冬/夏/春/秋/年末/年始/クリスマス/ハロウィン/バレンタイン/お歳暮/お中元/梅雨/花粉/新生活/防災」など。
+- theme_keywords: 「暖かい/防寒/時短/ギフト/健康/美容/節約」など、商品の訴求軸を表す短語。
+- category_hints: 楽天やAmazonで検索した時にヒットする粒度のカテゴリ語 (3〜6個推奨)。
+- excluded_themes: ユーザー目標と明らかに矛盾するもの。
+- intent_tier:
+  * "specific_keyword": 特定の単一品目名が明示された場合 (包丁/ホットカーペット/EMS 等)。
+  * "genre": 広域カテゴリのみ指定 (フィットネス/美容家電 等)。
+  * "seasonal": 季節/イベントのみ指定 (冬の商品/お歳暮 等)。
+  * "broad": 上記いずれにも該当しない (「人気の商品」「売れている商品」等)。
+  複合シグナルは最も narrow な tier を選ぶ。他の軸 (季節 + チャネル等) は同時に他フィールドへ抽出する。
+- channel_scope.confidence: ライブコマースプラットフォーム名 (TikTok Live / Instagram Live / YouTube Live 等) の正確な一致→1.0、表記揺れ→0.8、曖昧→<0.5 (<0.5 は出力しない)。
+- specific_keyword.confidence: 単一の narrow な品目名→≥0.9、広いカテゴリを品目と誤認した場合→<0.7。
+- specific_keyword.aliases:
+  * 最大6個まで、カタカナ/ひらがな/英語/中国漢字の同義語を含める。
+  * 広いカテゴリ語 (キッチン用品/家電/服 等) は絶対に含めない。
+  * 例: 包丁 → ["ナイフ","knife","キッチンナイフ","三徳包丁","菜切り","ペティナイフ"]
+
+EXAMPLES:
+- 「TikTok Liveで売れる包丁」 →
+  intent_tier: "specific_keyword"
+  channel_scope: [{"channel_slug":"tiktok_live","raw_mention":"TikTok Live","confidence":0.9}]
+  specific_keyword: {"raw":"包丁","normalized":"包丁","aliases":["ナイフ","knife","キッチンナイフ","三徳包丁","菜切り","ペティナイフ"],"confidence":0.95}
+
+- 「冬に売れる暖房家電のライブ配信」 →
+  intent_tier: "genre"
+  channel_scope: []
+  specific_keyword: null
+  seasonal_keywords: ["冬"]
+  category_hints: ["暖房家電","ヒーター","電気ストーブ"]
+
+注意:
+- primary_objective は必ず文字列で返してください。
+- target_platforms は必ず配列で返してください（null は使わない）。明示されていない場合は ["TikTok Live", "Instagram Live", "YouTube Live"] をデフォルトとして返してください。
+- budget_range / timeline / target_audience は言及がなければ null を返してください。
+- 配列は null ではなく [] を返す。
+- 全てのテキストは日本語で出力。`;
+}
+
+// Backward-compatible re-export so existing callers (tests, etc.) keep working.
+export function buildLCGoalAnalysisPrompt(userGoal: string): string {
+	return isPhase05Enabled() ? buildLCGoalPromptExtended(userGoal) : buildLCGoalPromptLegacy(userGoal);
+}
+
+export async function runLCGoalAnalysis(userGoal: string): Promise<ParsedGoal> {
+	const useExtended = isPhase05Enabled();
+	const prompt = useExtended ? buildLCGoalPromptExtended(userGoal) : buildLCGoalPromptLegacy(userGoal);
+
 	const raw = await callGemini(prompt);
 	const parsed = parseJSON<Partial<ParsedGoal>>(raw);
 	const platforms = Array.isArray(parsed.target_platforms)
@@ -525,7 +595,55 @@ async function runGoalAnalysis(userGoal: string): Promise<ParsedGoal> {
 		},
 		userGoal,
 	);
-	return {
+
+	// Phase 0.5 extraction (only when flag on AND gemini returned the new fields)
+	let intent_tier: ParsedGoal["intent_tier"] = "broad";
+	let channel_scope: ParsedGoal["channel_scope"] = [];
+	let specific_keyword: ParsedGoal["specific_keyword"] = null;
+
+	if (useExtended) {
+		const tier = parsed.intent_tier;
+		if (tier === "broad" || tier === "seasonal" || tier === "genre" || tier === "specific_keyword") {
+			intent_tier = tier;
+		}
+
+		if (Array.isArray(parsed.channel_scope)) {
+			channel_scope = parsed.channel_scope
+				.map((c: any) => {
+					const slug = resolveChannelSlug(c?.raw_mention ?? c?.channel_slug ?? "");
+					if (!slug) return null;
+					const conf = typeof c?.confidence === "number" ? c.confidence : 0;
+					if (conf < 0.5) return null;
+					return { channel_slug: slug, raw_mention: c.raw_mention ?? slug, confidence: conf };
+				})
+				.filter((x: any): x is NonNullable<typeof x> => x !== null)
+				.slice(0, 5);
+		}
+
+		if (parsed.specific_keyword && parsed.specific_keyword.normalized) {
+			const rawSk = parsed.specific_keyword.raw ?? parsed.specific_keyword.normalized;
+			const normalized = parsed.specific_keyword.normalized;
+			const rawAliases = Array.isArray(parsed.specific_keyword.aliases)
+				? parsed.specific_keyword.aliases.filter((s: any): s is string => typeof s === "string")
+				: [];
+			const conf = typeof parsed.specific_keyword.confidence === "number" ? parsed.specific_keyword.confidence : 0;
+
+			const { kept, dropped } = filterAliases(rawAliases, intent.category_hints);
+			if (dropped.length > 0) {
+				console.warn(`[lc-goal-analysis] alias guard dropped ${dropped.length}: ${dropped.join(", ")}`);
+			}
+
+			if (conf >= 0.7) {
+				specific_keyword = { raw: rawSk, normalized, aliases: kept.slice(0, 6), confidence: conf };
+			} else {
+				console.warn(`[lc-goal-analysis] specific_keyword confidence ${conf} < 0.7, downgrading tier to 'genre'`);
+				if (intent_tier === "specific_keyword") intent_tier = "genre";
+				specific_keyword = null;
+			}
+		}
+	}
+
+	const result: ParsedGoal = {
 		primary_objective: typeof parsed.primary_objective === "string" ? parsed.primary_objective : "",
 		target_platforms: platforms.length > 0 ? platforms : ["TikTok Live", "Instagram Live", "YouTube Live"],
 		budget_range: typeof parsed.budget_range === "string" ? parsed.budget_range : undefined,
@@ -535,8 +653,19 @@ async function runGoalAnalysis(userGoal: string): Promise<ParsedGoal> {
 		theme_keywords: intent.theme_keywords,
 		category_hints: intent.category_hints,
 		excluded_themes: intent.excluded_themes,
+		intent_tier,
+		channel_scope,
+		specific_keyword,
 	};
+
+	console.log(`[lc-goal-analysis] userGoal="${userGoal.slice(0, 60)}" tier=${intent_tier} channels=[${channel_scope.map((c) => c.channel_slug).join(",")}] specific="${specific_keyword?.normalized ?? "—"}" confidence=${specific_keyword?.confidence ?? "—"}`);
+
+	return result;
 }
+
+// Internal alias preserved to minimize churn at the two existing call sites
+// (runLCSkill, runLCOrchestrator) below.
+const runGoalAnalysis = runLCGoalAnalysis;
 
 // ---------------------------------------------------------------------------
 // Skill pipeline definition
