@@ -4,6 +4,7 @@ import { getServiceClient } from "@/lib/supabase";
 import { discoverNewProducts, type DiscoveredProduct, type DiscoveryBatch } from "@/lib/md-strategy";
 import type { SeedContext } from "@/lib/strategy/seed-context";
 import { formatSeedPromptSection } from "@/lib/strategy/seed-context";
+import type { IntentTier, ChannelScope, SpecificKeyword } from "@/lib/strategy/discover-intent";
 import { ensureDiscoverIntent } from "@/lib/strategy/discover-intent";
 
 // ---------------------------------------------------------------------------
@@ -231,6 +232,10 @@ export interface ParsedGoal {
 	theme_keywords: string[];
 	category_hints: string[];
 	excluded_themes: string[];
+	// SearchIntent classifier fields (Phase 0.5) — mirrors MD ParsedGoal.
+	intent_tier?: IntentTier;
+	channel_scope?: ChannelScope[];
+	specific_keyword?: SpecificKeyword | null;
 }
 
 export interface MarketResearchOutput {
