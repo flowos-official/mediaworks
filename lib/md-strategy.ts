@@ -466,6 +466,14 @@ export interface StrategyContext {
 			similarityScore: number;
 		} | null;
 		active_selection?: { id: string; status: string } | null;
+		// DB-side rule-based TV signals — distinct from Gemini's japan_fit_score.
+		// Propagated from discovered_products via the pool query so the strategy
+		// expansion card can render the same chips as /analytics/discovery/home.
+		tv_fit_score?: number;
+		tv_fit_reason?: string;
+		tv_evidence?: import("@/lib/discovery/types").TvEvidence | null;
+		broadcast_tag?: "broadcast_confirmed" | "broadcast_likely" | "unknown" | null;
+		c_package?: Record<string, unknown> | null;
 	}>;
 	recommendCategory?: string;
 	recommendTargetMarket?: string;
@@ -555,6 +563,7 @@ type DiscoveryPoolItem = {
 	category?: string | null;
 	c_package?: Record<string, unknown> | null;
 	tv_evidence?: import("@/lib/discovery/types").TvEvidence | null;
+	broadcast_tag?: "broadcast_confirmed" | "broadcast_likely" | "unknown" | null;
 	rakuten_cross_match?: {
 		itemUrl: string;
 		itemName: string;
@@ -642,6 +651,7 @@ export async function discoverNewProducts(
 			category: r.category ?? null,
 			c_package: r.c_package,
 			tv_evidence: r.tv_evidence,
+			broadcast_tag: r.broadcast_tag,
 		}));
 	} catch (err) {
 		console.warn(
@@ -1334,6 +1344,14 @@ ${salesStrategyFooter}`;
 				source: p.source,
 				tv_channel_source: p.tv_channel_source,
 				rakuten_cross_match: p.rakuten_cross_match ?? null,
+				// DB-side TV signal fields — propagate so the strategy card can
+				// render both Gemini's japan_fit_score AND the rule-based
+				// tv_fit_score / evidence / broadcast_tag alongside it.
+				tv_fit_score: p.tv_fit_score,
+				tv_fit_reason: p.tv_fit_reason,
+				tv_evidence: p.tv_evidence,
+				broadcast_tag: p.broadcast_tag,
+				c_package: p.c_package,
 			})),
 		);
 		console.log(

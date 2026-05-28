@@ -76,6 +76,31 @@ function ProductCard({ p, idx, onAnalyze, analyzing, activeSelection }: {
 							リサーチ
 						</span>
 					)}
+					{/* DB-side rule-based TV fit score — separate from Gemini's japan_fit_score */}
+					{p.tv_fit_score !== undefined && p.tv_fit_score !== null && (
+						<span
+							className="text-[10px] px-2 py-0.5 rounded-full bg-blue-600/15 text-blue-700 dark:text-blue-300"
+							title="DB側ルールベースのTV適合スコア (Geminiの japan_fit_score とは別軸)"
+						>
+							TV適合 {p.tv_fit_score}
+						</span>
+					)}
+					{p.broadcast_tag === 'broadcast_confirmed' && (
+						<span
+							className="text-[10px] px-2 py-0.5 rounded-full bg-green-600/15 text-green-700 dark:text-green-300"
+							title="QVC/ShopCh で実放送が確認された商品"
+						>
+							放送実績
+						</span>
+					)}
+					{p.broadcast_tag === 'broadcast_likely' && (
+						<span
+							className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300"
+							title="同カテゴリ/価格帯で放送実績が濃厚"
+						>
+							放送濃厚
+						</span>
+					)}
 					{channelSlugs.map((slug) => {
 						const ch = getChannelBySlug(slug);
 						return (
@@ -139,6 +164,17 @@ function ProductCard({ p, idx, onAnalyze, analyzing, activeSelection }: {
 			</div>
 
 			<p className="text-xs text-foreground leading-relaxed mb-2">{p.reason}</p>
+			{p.tv_fit_reason && p.tv_fit_reason !== p.reason && (
+				<p className="text-[11px] text-blue-700 dark:text-blue-300 bg-blue-600/10 border border-blue-600/20 rounded px-2 py-1 mb-2">
+					<span className="font-semibold">TV適合根拠:</span> {p.tv_fit_reason}
+				</p>
+			)}
+			{p.tv_evidence && (
+				<div className="text-[11px] text-muted-foreground mb-2">
+					実測放送: {p.tv_evidence.airing_count}回 (直近30日 {p.tv_evidence.recent_30d_count}回)
+					{p.tv_evidence.price_jpy?.median != null && `, 中央値 ¥${p.tv_evidence.price_jpy.median.toLocaleString()}`}
+				</div>
+			)}
 			<p className="text-[11px] text-amber-800 dark:text-amber-200 bg-amber-600/10 border border-amber-600/20 rounded px-2 py-1 mb-2">
 				<span className="font-semibold">TVシグナル根拠:</span> {p.signal_basis}
 			</p>
