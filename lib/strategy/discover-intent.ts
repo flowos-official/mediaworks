@@ -257,6 +257,20 @@ export function formatIntentPromptSection(
 	if (intent.excluded_themes.length > 0) {
 		parts.push(`除外テーマ (選定禁止): ${intent.excluded_themes.join(", ")}`);
 	}
+	if (intent.intent_tier === "specific_keyword" && intent.specific_keyword) {
+		const sk = intent.specific_keyword;
+		parts.push(
+			`特定品目指定: ${sk.normalized} (別名: ${sk.aliases.join("、") || "なし"})`,
+		);
+		parts.push(
+			`[TIER 4 INSTRUCTION] ユーザーは特定品目を指定。該当商品のみ選定し、カテゴリ多様化は禁止。商品名に「${sk.normalized}」または別名のいずれかを含まない候補は除外すること。`,
+		);
+	}
+	if (intent.channel_scope && intent.channel_scope.length > 0) {
+		parts.push(
+			`チャネル適合: ${intent.channel_scope.map((c) => c.raw_mention).join("、")} (これらのチャネルで売れそうな商品を優先)`,
+		);
+	}
 	if (parts.length === 0) return "";
 	const goalLine = rawGoal ? `ユーザー原文: ${rawGoal}\n` : "";
 	return `\n=== ユーザー意図 (USER INTENT — STRICTLY HONOR) ===\n${goalLine}${parts.join("\n")}\n\nIMPORTANT:\n- 上記の季節/テーマと明確に矛盾する商品 (例: 「冬」目標で扇風機、「夏」目標でヒーター) は選定から除外すること。\n- 「除外テーマ」に該当する商品は recommended_products から外すこと。\n- 上記意図と整合する商品を優先し、recommendation_reason に該当意図 (季節/テーマ) への適合根拠を明記すること。\n`;
