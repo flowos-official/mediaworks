@@ -918,6 +918,10 @@ export async function runLCSkill(
 	priorOutputs: Record<string, unknown>,
 ): Promise<unknown> {
 	if (skillName === "goal_analysis") {
+		// Short-circuit: if pre-run already populated ctx.parsedGoal, reuse it
+		if (context.parsedGoal) {
+			return context.parsedGoal;
+		}
 		if (!context.userGoal) {
 			const fallback: ParsedGoal = {
 				primary_objective: "日本市場でのライブコマース事業参入の全体戦略策定",
