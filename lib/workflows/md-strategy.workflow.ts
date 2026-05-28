@@ -255,6 +255,7 @@ async function saveStrategyStep(
 				category: input.category || null,
 				target_market: input.targetMarket || null,
 				price_range: input.priceRange || null,
+				goal_analysis: (outputs.goal_analysis ?? context.parsedGoal ?? null) as Record<string, unknown> | null,
 				product_selection: outputs.product_selection as Record<string, unknown>,
 				channel_strategy: outputs.channel_strategy as Record<string, unknown>,
 				pricing_margin: outputs.pricing_margin as Record<string, unknown>,
