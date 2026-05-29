@@ -1,6 +1,17 @@
 {
   "version": "1.0.0",
   "steps": {
+    "node_modules/workflow/dist/internal/builtins.js": {
+      "__builtin_response_array_buffer": {
+        "stepId": "__builtin_response_array_buffer"
+      },
+      "__builtin_response_json": {
+        "stepId": "__builtin_response_json"
+      },
+      "__builtin_response_text": {
+        "stepId": "__builtin_response_text"
+      }
+    },
     "node_modules/workflow/dist/stdlib.js": {
       "fetch": {
         "stepId": "step//workflow@4.2.0-beta.76//fetch"
@@ -43,17 +54,6 @@
         "stepId": "step//./lib/workflows/live-commerce.workflow//saveStrategyStep"
       }
     },
-    "node_modules/workflow/dist/internal/builtins.js": {
-      "__builtin_response_array_buffer": {
-        "stepId": "__builtin_response_array_buffer"
-      },
-      "__builtin_response_json": {
-        "stepId": "__builtin_response_json"
-      },
-      "__builtin_response_text": {
-        "stepId": "__builtin_response_text"
-      }
-    },
     "lib/workflows/md-strategy.workflow.ts": {
       "closeProgressStep": {
         "stepId": "step//./lib/workflows/md-strategy.workflow//closeProgressStep"
@@ -67,8 +67,14 @@
       "persistFreshSearchStep": {
         "stepId": "step//./lib/workflows/md-strategy.workflow//persistFreshSearchStep"
       },
+      "preRunGoalAnalysisStep": {
+        "stepId": "step//./lib/workflows/md-strategy.workflow//preRunGoalAnalysisStep"
+      },
       "runDiscoveryStep": {
         "stepId": "step//./lib/workflows/md-strategy.workflow//runDiscoveryStep"
+      },
+      "runFastPreviewSearchStep": {
+        "stepId": "step//./lib/workflows/md-strategy.workflow//runFastPreviewSearchStep"
       },
       "runPreliminaryDiscoveryStep": {
         "stepId": "step//./lib/workflows/md-strategy.workflow//runPreliminaryDiscoveryStep"
