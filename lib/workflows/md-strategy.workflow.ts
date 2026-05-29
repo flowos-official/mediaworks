@@ -17,6 +17,7 @@ import { loadSeedContexts } from "@/lib/strategy/seed-context";
 import { invalidateStrategyList } from "@/lib/analytics/cached";
 import { persistStrategyFreshSearch } from "@/lib/strategy/fresh-search-persist";
 import { runPreliminaryDiscovery } from "@/lib/strategy/preliminary-discovery";
+import { runFastPreviewSearch, derivePreviewKeyword, mergePreviewByKeyword } from "@/lib/strategy/fast-preview-search";
 import { analyzeGoalToIntent, projectParsedGoalToIntent } from "@/lib/strategy/intent-projection";
 
 export interface MDWorkflowInput {
@@ -189,6 +190,35 @@ async function runPreliminaryDiscoveryStep(
 runPreliminaryDiscoveryStep.maxRetries = 0;
 
 // ---------------------------------------------------------------------------
+// Step: fast preview search — ONE Rakuten keyword search so the hero shows the
+// actually-searched product (~1s) instead of the generic pool top. Runs right
+// after the pool preview; emits a second preliminary_discovery event the client
+// replaces the preview with. Display-only (not persisted). Independent of the
+// Phase 0.5 flag (keyword falls back to category_hints[0]).
+// ---------------------------------------------------------------------------
+async function runFastPreviewSearchStep(
+	input: MDWorkflowInput,
+	preliminary: DiscoveredProduct[],
+	parsedGoal: ParsedGoal | null,
+): Promise<DiscoveredProduct[]> {
+	"use step";
+	try {
+		const intent = parsedGoal ? projectParsedGoalToIntent(parsedGoal) : undefined;
+		const fresh = await runFastPreviewSearch({ intent, priceRange: input.priceRange });
+		if (fresh.length === 0) return [];
+		const merged = mergePreviewByKeyword(preliminary, fresh, derivePreviewKeyword(intent));
+		console.log(`[md-workflow] fast preview: ${merged.length} products (fresh=${fresh.length})`);
+		return merged;
+	} catch (err) {
+		console.warn(
+			`[md-workflow] fast preview failed (non-fatal): ${err instanceof Error ? err.message : String(err)}`,
+		);
+		return [];
+	}
+}
+runFastPreviewSearchStep.maxRetries = 0;
+
+// ---------------------------------------------------------------------------
 // Step: run a single skill. Each invocation is its own function call,
 // so the 300s Vercel ceiling no longer applies to the aggregate pipeline.
 // ---------------------------------------------------------------------------
@@ -348,6 +378,19 @@ export async function mdStrategyWorkflow(input: MDWorkflowInput) {
 		total: 7,
 		data: { products: preliminary },
 	});
+
+	// Replace the pool preview with a fast keyword search (~1s) so the hero
+	// shows the actually-searched product. Non-fatal; pool preview stands on miss.
+	const fastPreview = await runFastPreviewSearchStep(input, preliminary, preRunParsedGoal);
+	if (fastPreview.length > 0) {
+		await emitProgressStep({
+			skill: "preliminary_discovery",
+			status: "complete",
+			index: -1,
+			total: 7,
+			data: { products: fastPreview },
+		});
+	}
 
 	const outputs: Record<string, unknown> = {};
 	// Seed parsedGoal with the pre-run value so the skill loop's goal_analysis
