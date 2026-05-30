@@ -279,9 +279,10 @@ async function enrichMissingCategories(
 					if (!entry.candidate.thumbnailUrl && meta.thumbnail_url) {
 						entry.candidate.thumbnailUrl = meta.thumbnail_url;
 					}
-					if (!entry.candidate.category && meta.category) {
-						entry.candidate.category = meta.category;
-					}
+					// Category is intentionally NOT taken from JSON-LD: channels emit
+					// channel-vocabulary values (e.g. "アイメイク") that the pool filter's
+					// UI-label vocabulary cannot substring-match. The classifier below
+					// assigns a filter-matchable UI label uniformly instead.
 				}
 			}
 		}
