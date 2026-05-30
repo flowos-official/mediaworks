@@ -29,15 +29,26 @@ export interface ShopChSlotMetadata {
 	/** Site's m3u8 stem path (e.g. "m3u8/prog/20260518000000/20260518000000").
 	 *  Stored for future ShopCh video archival; null when absent. */
 	videoPath: string | null;
+	/** Program title (pgmname). Sourced from JSON so it survives the programlist
+	 *  page's client-side rendering, which leaves past-day article markup empty. */
+	programTitle: string | null;
+	/** Lead thumbnail (pgmImg) as an absolute URL; null for placeholders. */
+	thumbnailUrl: string | null;
+	/** First cast/guest name (navigator/presenter). */
+	presenter: string | null;
 }
 
 interface RawSlotJSON {
+	pgmname?: unknown;
+	pgmImg?: unknown;
 	pgmcategory?: unknown;
 	pgmcategorycode?: unknown;
 	prodList1?: unknown;
 	brandname?: unknown;
 	brandcode?: unknown;
 	pgmMovie?: unknown;
+	castList?: unknown;
+	guestList?: unknown;
 }
 
 const EMPTY: ShopChSlotMetadata = {
@@ -48,12 +59,38 @@ const EMPTY: ShopChSlotMetadata = {
 	brandName: null,
 	brandCode: null,
 	videoPath: null,
+	programTitle: null,
+	thumbnailUrl: null,
+	presenter: null,
 };
 
 function trimOrNull(v: unknown): string | null {
 	if (typeof v !== "string") return null;
 	const t = v.trim();
 	return t.length > 0 ? t : null;
+}
+
+/** ShopCh image paths are site-relative (e.g. "/img/prod/836/313/83631301L.jpg").
+ *  Returns an absolute URL, or null for empty / placeholder paths. */
+function shopChImageUrl(path: string | null): string | null {
+	if (!path) return null;
+	if (path.includes("/navigator/")) return null;
+	return path.startsWith("http")
+		? path
+		: `https://www.shopch.jp/${path.replace(/^\/+/, "")}`;
+}
+
+/** First non-empty castName from a cast/guest list array. */
+function firstCastName(v: unknown): string | null {
+	if (!Array.isArray(v)) return null;
+	for (const c of v) {
+		if (c && typeof c === "object") {
+			const name = (c as Record<string, unknown>).castName;
+			const t = trimOrNull(name);
+			if (t) return t;
+		}
+	}
+	return null;
 }
 
 /**
@@ -104,12 +141,7 @@ export function parseShopChSlotJSON(body: string): ShopChSlotMetadata {
 				const n = parseInt(v, 10);
 				return n >= 0 && n <= 100 ? n : null;
 			};
-			const prodImg = trimOrNull(item.prodImg);
-			const imageUrl = prodImg
-				? prodImg.startsWith("http")
-					? prodImg
-					: `https://www.shopch.jp/${prodImg.replace(/^\/+/, "")}`
-				: null;
+			const imageUrl = shopChImageUrl(trimOrNull(item.prodImg));
 			const nostock = trimOrNull(item.nostockName);
 			const taxStr = trimOrNull(item.texStr);
 
@@ -138,6 +170,9 @@ export function parseShopChSlotJSON(body: string): ShopChSlotMetadata {
 		brandName: trimOrNull(parsed.brandname),
 		brandCode: trimOrNull(parsed.brandcode),
 		videoPath,
+		programTitle: trimOrNull(parsed.pgmname),
+		thumbnailUrl: shopChImageUrl(trimOrNull(parsed.pgmImg)),
+		presenter: firstCastName(parsed.castList) ?? firstCastName(parsed.guestList),
 	};
 }
 

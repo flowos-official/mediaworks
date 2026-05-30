@@ -1,9 +1,6 @@
 import * as cheerio from "cheerio";
 import { politeFetch } from "./fetch";
-import {
-	buildProgramId,
-	fetchShopChSlotMetadataBatch,
-} from "./shopch-json";
+import { fetchShopChSlotMetadataBatch } from "./shopch-json";
 import { computeHealth, type ScrapeResult, type ScrapedSlot } from "./types";
 
 const BASE_URL = "https://www.shopch.jp/pc/tv/programlist";
@@ -65,8 +62,32 @@ export function deriveShopChProductUrl(imgSrc: string | undefined | null): strin
 }
 
 /**
- * Pure HTML parser — takes the raw HTML of shopch.jp/pc/tv/programlist?onAirDay=YYYYMMDD
- * and returns scraped slots for the given airDate only.
+ * Extract the day's program IDs (YYYYMMDDHHMMSS) from the programlist HTML.
+ *
+ * Why this over `scrapeShopChannelFromHTML`: as of ~2026-05-28 the programlist
+ * page renders article *inner* markup (title/product/cast) only for the current
+ * JST day — past/future days arrive as empty client-side template placeholders,
+ * so the cheerio parser yields ~0 slots for any non-today request (which the
+ * "scrape yesterday" cron always hits). The `data-program-id` attributes,
+ * however, are present in the static HTML for the whole served window, and the
+ * per-slot JSON endpoint (`/json/programprodlist2/{id}.json`) returns complete
+ * data for those IDs on any day — so we enumerate IDs here and hydrate via JSON.
+ */
+export function extractShopChProgramIds(html: string, airDate: string): string[] {
+	const yyyymmdd = airDate.replace(/-/g, "");
+	const ids = new Set<string>();
+	for (const m of html.matchAll(/data-program-id="(\d{14})"/g)) {
+		if (m[1].startsWith(yyyymmdd)) ids.add(m[1]);
+	}
+	return [...ids].sort();
+}
+
+/**
+ * Legacy pure HTML parser — takes the raw HTML of
+ * shopch.jp/pc/tv/programlist?onAirDay=YYYYMMDD and returns scraped slots for
+ * the given airDate only. Retained for the fixture-based parser test; the live
+ * path (`scrapeShopChannelForDate`) is JSON-driven (see `extractShopChProgramIds`)
+ * because this parser only works for the current-day request.
  *
  * Structure observed in fixture:
  *   article.pg-program-item[data-program-id="YYYYMMDDHHMMSS"]
@@ -163,25 +184,62 @@ export async function scrapeShopChannelForDate(date: Date): Promise<ScrapeResult
 		};
 	}
 
-	const slots = scrapeShopChannelFromHTML(fetched.body, iso);
+	// Under load the site returns a 200 "アクセスが集中" busy page instead of the
+	// real programlist. Treat it as a retryable error rather than a genuine empty
+	// schedule — otherwise the cron would persist 0 slots and trip the
+	// markup-change warning on a transient rate limit.
+	if (fetched.body.includes("アクセスが集中")) {
+		return {
+			channel: "shopch",
+			date: iso,
+			slots: [],
+			ok: false,
+			error: "shopch busy page (rate limited)",
+			health: computeHealth([], true),
+		};
+	}
 
-	// Fetch per-slot JSON metadata. `pgmcategory` becomes the slot category
-	// (replaces the previous Gemini batch classifier as of 2026-05-19); the
-	// same map also powers broadcast_products snapshot enrichment downstream
-	// via shopchMetadataByProgramId.
-	const programIds = slots.map((s) => buildProgramId(s.air_date, s.start_time));
+	// Enumerate the day's program IDs from the static HTML, then hydrate each
+	// from the per-slot JSON endpoint (title/category/brand/products/video). The
+	// JSON is the single source of truth — it returns complete data for past,
+	// current, and future days alike, unlike the page's article inner-markup.
+	const programIds = extractShopChProgramIds(fetched.body, iso);
 	const shopchMetadataByProgramId = await fetchShopChSlotMetadataBatch(programIds, 3);
-	const enriched = slots.map((s) => {
-		const meta = shopchMetadataByProgramId.get(buildProgramId(s.air_date, s.start_time));
-		return { ...s, category: meta?.category ?? null };
-	});
+
+	const slots: ScrapedSlot[] = [];
+	for (const programId of programIds) {
+		const meta = shopchMetadataByProgramId.get(programId);
+		if (!meta) continue;
+		const startTime = timeFromProgramId(programId);
+		if (!startTime) continue;
+		// Skip empty placeholders (no title ⇒ no real program data).
+		if (!meta.programTitle) continue;
+
+		const leadProductId = meta.productIds[0] ?? null;
+		slots.push({
+			channel: "shopch",
+			air_date: iso,
+			start_time: startTime,
+			program_title: meta.programTitle,
+			presenter: meta.presenter,
+			description: meta.products[0]?.name ?? null,
+			thumbnail_url: meta.thumbnailUrl,
+			source_url: leadProductId
+				? `https://www.shopch.jp/pc/product/proddetail?reqprno=${leadProductId}`
+				: url,
+			product_ids: null,
+			category: meta.category,
+		});
+	}
+
+	slots.sort((a, b) => a.start_time.localeCompare(b.start_time));
 
 	return {
 		channel: "shopch",
 		date: iso,
-		slots: enriched,
+		slots,
 		ok: true,
-		health: computeHealth(enriched, true),
+		health: computeHealth(slots, true),
 		shopchMetadataByProgramId,
 	};
 }
