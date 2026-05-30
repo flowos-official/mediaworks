@@ -104,6 +104,7 @@ async function runDiscoveryStep(
 			seedCategories: (context.seedProducts ?? [])
 				.map((s) => s.category)
 				.filter((c): c is string => !!c),
+			seedContexts: context.seedProducts ?? [],
 			intent,
 			lightweight: true,
 		});

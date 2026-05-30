@@ -16,6 +16,8 @@ import type { IntentTier, ChannelScope, SpecificKeyword } from "@/lib/strategy/d
 import { formatSeedPromptSection, formatMultiSeedPromptSection } from "@/lib/strategy/seed-context";
 import { mapUiCategoryToSalesCategories } from "@/lib/strategy/category-mapping";
 import { queryDiscoveredPool } from "@/lib/strategy/pool-query";
+import { isNonProductPage } from "@/lib/discovery/non-product-filter";
+import { parsePriceRange } from "@/lib/strategy/parse-price-range";
 import { queryResearchPool } from "@/lib/strategy/research-seed";
 import {
 	type DiscoverIntent,
@@ -424,6 +426,10 @@ export interface StrategyContext {
 		estimated_demand: string;
 		supply_source: string;
 		estimated_price_jpy: string;
+		// Real numeric price from the matched pool/Rakuten row (propagated by
+		// attributeSource on an ID-link). Source of truth for the price band —
+		// the estimated_price_jpy string above is a Gemini guess.
+		price_jpy?: number;
 		source: "rakuten" | "web" | "brave" | "tv_channel" | "other";
 		source_url: string;
 		ranking_info?: string;
@@ -497,13 +503,9 @@ export interface RecommendInput {
 	priceRange?: string;
 }
 
-function parsePriceRange(priceRange: string): { min: number; max: number } | null {
-	// Parse strings like "¥3,000-8,000" or "¥3000〜8000"
-	const cleaned = priceRange.replace(/[¥,、]/g, "").replace(/〜/g, "-");
-	const match = cleaned.match(/(\d+)\s*[-–]\s*(\d+)/);
-	if (!match) return null;
-	return { min: parseInt(match[1], 10), max: parseInt(match[2], 10) };
-}
+// parsePriceRange now lives in lib/strategy/parse-price-range.ts (imported above)
+// so the preview paths (preliminary-discovery, fast-preview-search) share one
+// parser and agree with the final discovery on the price band.
 
 // ---------------------------------------------------------------------------
 // New Product Discovery (Rakuten + Brave → Gemini curation)
@@ -530,6 +532,9 @@ export interface DiscoverInput {
 	// NEW (this plan: pool-first integration)
 	seedProductIds?: string[];          // 다중 시드 ID — pool 에서 제외
 	seedCategories?: string[];          // 시드 상품 카테고리 union (보조 필터)
+	// Resolved seed contexts — injected into the curation prompt so recommendations
+	// are adjacent to the seeds' actual attributes (c_package), not just category.
+	seedContexts?: import("@/lib/strategy/seed-context").SeedContext[];
 	/**
 	 * Structured user intent extracted by Skill 0 (goal_analysis).
 	 * Drives pool filtering (R4.5), extra Rakuten/Brave search queries,
@@ -609,6 +614,9 @@ export async function discoverNewProducts(
 	const RAKUTEN_PER_KW = lw ? 12 : 8;
 	const TARGET = poolTargetSize(lw);
 	const POOL_CAP = lw ? 60 : 40;
+	// Parsed once so BOTH the pool query and the fresh-search price gate honor it.
+	const reqPriceRange = input.priceRange ? parsePriceRange(input.priceRange) : null;
+	const hasExplicitCategory = !!(input.explicitCategory && input.explicitCategory.trim().length > 0);
 
 	// --- Pool-first attempt (plan 2026-05-13) ---
 	const intentKeywords = deriveIntentKeywords(input.intent);
@@ -619,17 +627,22 @@ export async function discoverNewProducts(
 	}
 	let poolItems: DiscoveryPoolItem[] = [];
 	try {
-		const priceRange = input.priceRange ? parsePriceRange(input.priceRange) : null;
 		const rows = await queryDiscoveredPool({
 			context: input.context,
 			uiCategory: input.explicitCategory,
-			priceRange: priceRange ?? undefined,
+			priceRange: reqPriceRange ?? undefined,
 			limit: TARGET,
 			excludeProductIds: input.seedProductIds,
 			supplementCategoriesFromSeeds: input.seedCategories,
 			intentKeywords,
+			// Mirror the preview (runPreliminaryDiscovery) so the FINAL discovery
+			// applies the same Tier-4 specific_keyword hard match — without these
+			// three the final set drifts from the matching preview cards.
+			specificKeyword: input.intent?.specific_keyword?.normalized,
+			specificAliases: input.intent?.specific_keyword?.aliases ?? [],
+			intentTier: input.intent?.intent_tier ?? "broad",
 		});
-		poolItems = rows.map((r) => ({
+		poolItems = rows.filter((r) => !isNonProductPage(r.name, r.product_url)).map((r) => ({
 			name: r.name,
 			price: r.price_jpy ?? undefined,
 			// Preserve real candidate source from discovered_products. Was hardcoded
@@ -710,10 +723,18 @@ export async function discoverNewProducts(
 		// Intent-derived queries (e.g. "冬 暖房家電") take priority over generic
 		// TV category names because they're more specific and align with goal.
 		const intentQueries = buildIntentSearchQueries(input.intent, 4);
+		// When the operator chose an explicit category, keep fresh search ON that
+		// category — do NOT blend in the company-wide TV top categories
+		// (topCategoryNames), which pulled off-category Rakuten/Brave hits (e.g.
+		// kitchen/food for a 美容 request). topCategoryNames only widens the
+		// no-category case.
 		const tvKeywords = input.intent?.intent_tier === "specific_keyword"
 			? [] // Tier 4: no broad TV category keywords
-			: [input.explicitCategory, ...input.topCategoryNames]
-				.filter((s): s is string => !!s && s.trim().length > 0);
+			: hasExplicitCategory
+				? [input.explicitCategory as string]
+				: input.topCategoryNames.filter(
+						(s): s is string => !!s && s.trim().length > 0,
+					);
 		const keywords = Array.from(
 			new Set([...intentQueries, ...tvKeywords]),
 		).slice(0, intentQueries.length > 0 ? 6 : 4);
@@ -846,6 +867,9 @@ export async function discoverNewProducts(
 					if (!item.itemUrl || seenUrls.has(item.itemUrl)) continue;
 					if (isTvLike(item.itemName)) continue;
 					if (isAlreadyDiscovered(item.itemName)) continue;
+					// Honor the operator's price band on fresh Rakuten items (they carry a
+					// real itemPrice). Brave/tv_channel hits have no price → cannot gate.
+					if (reqPriceRange && item.itemPrice && (item.itemPrice < reqPriceRange.min || item.itemPrice > reqPriceRange.max)) continue;
 					seenUrls.add(item.itemUrl);
 					rakutenSub.push({
 						name: item.itemName.slice(0, 80),
@@ -865,6 +889,7 @@ export async function discoverNewProducts(
 					if (!s.url || seenUrls.has(s.url)) continue;
 					if (isTvLike(s.title)) continue;
 					if (isAlreadyDiscovered(s.title)) continue;
+					if (isNonProductPage(s.title, s.url)) continue;
 					seenUrls.add(s.url);
 					webSub.push({
 						name: s.title.slice(0, 80),
@@ -886,6 +911,7 @@ export async function discoverNewProducts(
 					if (!s.url || seenUrls.has(s.url)) continue;
 					if (isTvLike(s.title)) continue;
 					if (isAlreadyDiscovered(s.title)) continue;
+					if (isNonProductPage(s.title, s.url)) continue;
 					seenUrls.add(s.url);
 					tvSub.push({
 						name: s.title.slice(0, 80),
@@ -1134,6 +1160,12 @@ export async function discoverNewProducts(
 	// Structured user intent — strict honoring instruction for the LLM.
 	// When present, this overrides the loose `ユーザー目標` line above.
 	const intentBlock = formatIntentPromptSection(input.intent, input.userGoal);
+	// Seed products (if any) — inject the seeds' real attributes so the curation
+	// selects products adjacent to them, not merely sharing a category label.
+	const seedBlock =
+		input.seedContexts && input.seedContexts.length > 0
+			? `\n${formatMultiSeedPromptSection(input.seedContexts)}\n`
+			: "";
 
 	const isLC = input.context === "live_commerce";
 	const channelGuidance = isLC
@@ -1218,7 +1250,7 @@ export async function discoverNewProducts(
 	const salesStrategyFooter = lw ? "" : "\nAll text in Japanese. すべての sales_strategy フィールドを必ず埋めること。";
 
 	const prompt = `あなたは日本の${roleLabel}です。下記の (1) TV自社販売シグナル と (2) 日本市場トレンド情報 の両方を根拠に、楽天/Webから検索された実在商品プールから「日本の消費者に今売れる/関心が高い」${taskDescription}
-${intentBlock}${analysisBlock}${profileBlock}
+${intentBlock}${seedBlock}${analysisBlock}${profileBlock}
 === (1) TV自社販売シグナル ===
 ${signalText}
 
@@ -1236,7 +1268,9 @@ ${poolText}
 - name は商品プールの **「名称:」行の値だけ** をそのまま使用する。"[発掘プール...]" や "[新検索 ...]" などの角括弧付き出典タグは絶対に name に含めないこと。価格 "¥..." や "★..." も name に含めない。
 - ${input.intent?.intent_tier === "specific_keyword"
 		? "ユーザー指定品目に一致する商品を最優先で選定。多様性より一致が優先。"
-		: `カテゴリが偏らないように${itemCount}商品を選定。`}
+		: hasExplicitCategory
+			? `指定カテゴリ「${input.explicitCategory}」に該当する商品のみを${itemCount}個選定すること。カテゴリ多様性より指定カテゴリとの一致を最優先し、該当しない商品は選ばないこと。`
+			: `カテゴリが偏らないように${itemCount}商品を選定。`}
 - **出典バランス**: 楽天/TV放送局/発掘プールが混在している。それぞれを公平に評価し、商品自体の TV/EC 適性で選定すること。強制的な比率は設けない — 質次第で結果分布は自然に決まる。レビュー非公開を理由に TV 放送局サイトの候補を機械的に減点しないこと (上記スコアリング哲学を参照)。
 - 各商品ごとに japan_market_fit を必ず記入する。${salesStrategyRules}
 ${suitabilityBlock}
@@ -1341,6 +1375,7 @@ ${salesStrategyFooter}`;
 				source_url: p.source_url,
 				pool_source: p.pool_source,
 				discovered_product_id: p.discovered_product_id,
+				price_jpy: p.price,
 				source: p.source,
 				tv_channel_source: p.tv_channel_source,
 				rakuten_cross_match: p.rakuten_cross_match ?? null,

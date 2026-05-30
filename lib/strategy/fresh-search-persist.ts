@@ -31,13 +31,17 @@ const SOURCE_TO_DP_SOURCE: Record<string, string> = {
 
 function parsePriceJpy(input: string | undefined | null): number | null {
   if (!input) return null;
-  const digits = String(input).replace(/[^\d]/g, "");
-  if (!digits) {
+  // Match the FIRST number group only. The Gemini schema emits a RANGE string
+  // ("¥X-Y"); the old impl stripped ALL non-digits and concatenated, turning
+  // "¥3,000-8,000" into 30008000 — a garbage value persisted into the pool that
+  // a future price filter would trust. First-group → the range minimum.
+  const m = String(input).match(/(\d{1,3}(?:,\d{3})+|\d+)/);
+  if (!m) {
     console.warn(`[fresh-search-persist] parsePriceJpy: could not extract digits from "${input}"`);
     return null;
   }
-  const n = Number(digits);
-  return Number.isFinite(n) ? n : null;
+  const n = Number(m[1].replace(/,/g, ""));
+  return Number.isFinite(n) && n > 0 && n < 10_000_000 ? n : null;
 }
 
 export async function persistStrategyFreshSearch(

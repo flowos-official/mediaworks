@@ -12,10 +12,14 @@ const UA =
 
 function parseJpyFromText(s: string | null | undefined): number | null {
 	if (!s) return null;
-	const m = s.match(/([0-9][0-9,]{2,})\s*円?/);
+	// Match the FIRST well-formed number (comma-grouped or a plain run), so a
+	// glued price range like "9,000〜15,000" / "9,00015,000" yields 9000 — not the
+	// concatenation 900015000 the old greedy [0-9,]{2,} produced. Upper bound
+	// rejects any residual concatenation artifact.
+	const m = s.match(/(\d{1,3}(?:,\d{3})+|\d{3,})\s*円?/);
 	if (!m) return null;
 	const n = parseInt(m[1].replace(/,/g, ""), 10);
-	return Number.isFinite(n) && n > 0 ? n : null;
+	return Number.isFinite(n) && n > 0 && n < 10_000_000 ? n : null;
 }
 
 function pickAbsoluteUrl(
