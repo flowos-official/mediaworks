@@ -7,6 +7,7 @@
 import { getServiceClient } from "@/lib/supabase";
 import { normalizeName } from "./exclusion";
 import { fetchRakutenPage } from "./tools/rakuten-page";
+import { fetchAndParseMetadata } from "./tv-channel-enrich";
 import type {
 	BroadcastTag,
 	Candidate,
@@ -202,7 +203,8 @@ async function enrichMissingCategories(
 		...entry,
 		candidate: { ...entry.candidate },
 	}));
-	const targetIndexes = next
+	// Rakuten rows missing a category → fetchRakutenPage (existing behavior).
+	const rakutenTargets = next
 		.map((entry, index) =>
 			!entry.candidate.category &&
 			entry.candidate.source === "rakuten" &&
@@ -211,14 +213,33 @@ async function enrichMissingCategories(
 				: -1,
 		)
 		.filter((index) => index >= 0);
+	// tv_channel (Brave-sourced) rows are created from a search-result title only —
+	// no price/category/thumbnail. Fetch the product page to recover them AND
+	// validate product-page-ness so listing/landing pages get dropped at ingest.
+	const tvTargets = next
+		.map((entry, index) =>
+			entry.candidate.source === "tv_channel" &&
+			!entry.candidate.productUrl.includes("rakuten.co.jp") &&
+			(!entry.candidate.category || entry.candidate.priceJpy == null)
+				? index
+				: -1,
+		)
+		.filter((index) => index >= 0);
 
-	if (targetIndexes.length === 0) {
+	if (rakutenTargets.length === 0 && tvTargets.length === 0) {
 		return next;
 	}
 
+	// Rakuten first (cheap, category-only) so a tight budget preserves existing
+	// behavior before spending it on the heavier tv_channel page fetches.
+	const targets: Array<{ index: number; kind: "rakuten" | "tv_channel" }> = [
+		...rakutenTargets.map((index) => ({ index, kind: "rakuten" as const })),
+		...tvTargets.map((index) => ({ index, kind: "tv_channel" as const })),
+	];
+
 	let cursor = 0;
 	const worker = async () => {
-		while (cursor < targetIndexes.length) {
+		while (cursor < targets.length) {
 			if (
 				!hasCategoryEnrichmentBudget({
 					deadlineMs: options.categoryEnrichmentDeadlineMs,
@@ -229,22 +250,45 @@ async function enrichMissingCategories(
 			) {
 				break;
 			}
-			const target = targetIndexes[cursor];
+			const { index, kind } = targets[cursor];
 			cursor += 1;
-			const entry = next[target];
-			const info = await fetchRakutenPage(entry.candidate.productUrl);
-			const category =
-				info.categoryPath.length > 0 ? info.categoryPath.join(" > ") : null;
-			if (category) {
-				entry.candidate.category = category;
+			const entry = next[index];
+			if (kind === "rakuten") {
+				const info = await fetchRakutenPage(entry.candidate.productUrl);
+				const category =
+					info.categoryPath.length > 0 ? info.categoryPath.join(" > ") : null;
+				if (category) {
+					entry.candidate.category = category;
+				}
+			} else {
+				const meta = await fetchAndParseMetadata(entry.candidate.productUrl);
+				// Enrich ONLY when the page validates as a product (JSON-LD Product /
+				// og:type=product / a real price extracted). Non-product or unscrapeable
+				// pages (SPA/JS-rendered channels, listing/landing) are LEFT as-is (null),
+				// NOT dropped: a static fetch cannot distinguish a SPA product page from a
+				// listing page, so dropping would false-remove real products. The
+				// conservative isNonProductPage prefilter at pool.ts ingest handles the
+				// clear listing pages. Raw scraped category (channel vocabulary) is a
+				// display/price win now; normalizing it into the sales taxonomy the pool
+				// filter matches is a follow-up slice (see 2026-05-30 enrichment spec).
+				if (meta && meta.is_product_page) {
+					if (entry.candidate.priceJpy == null && meta.price_jpy != null) {
+						entry.candidate.priceJpy = meta.price_jpy;
+					}
+					if (!entry.candidate.thumbnailUrl && meta.thumbnail_url) {
+						entry.candidate.thumbnailUrl = meta.thumbnail_url;
+					}
+					if (!entry.candidate.category && meta.category) {
+						entry.candidate.category = meta.category;
+					}
+				}
 			}
 		}
 	};
 
 	await Promise.all(
-		Array.from(
-			{ length: Math.min(CATEGORY_ENRICH_CONCURRENCY, targetIndexes.length) },
-			() => worker(),
+		Array.from({ length: Math.min(CATEGORY_ENRICH_CONCURRENCY, targets.length) }, () =>
+			worker(),
 		),
 	);
 

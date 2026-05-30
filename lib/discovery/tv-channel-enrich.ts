@@ -5,6 +5,10 @@ export interface EnrichedMetadata {
 	price_jpy: number | null;
 	category: string | null;
 	description: string | null;
+	// Tiered product-page signal: JSON-LD @type=Product OR og:type=product OR a
+	// real price was extractable. Absence ⇒ likely a listing/landing/corporate
+	// page (the leak isNonProductPage's title/URL prefilter cannot catch).
+	is_product_page: boolean;
 }
 
 const UA =
@@ -97,6 +101,7 @@ export function parseMetadata(html: string, baseUrl: string): EnrichedMetadata {
 		category: string | null;
 		description: string | null;
 	} = { thumb: null, price: null, category: null, description: null };
+	let sawProduct = false;
 
 	$("script[type='application/ld+json']").each((_, el) => {
 		const text = $(el).contents().text();
@@ -105,6 +110,7 @@ export function parseMetadata(html: string, baseUrl: string): EnrichedMetadata {
 			const parsed: unknown = JSON.parse(text);
 			for (const obj of unwrap(parsed)) {
 				if (!isProduct(obj["@type"])) continue;
+				sawProduct = true;
 				if (!acc.thumb) acc.thumb = pickImage(obj.image);
 				if (!acc.price) acc.price = pickPrice(obj.offers);
 				if (!acc.category && obj.category) acc.category = obj.category;
@@ -117,6 +123,10 @@ export function parseMetadata(html: string, baseUrl: string): EnrichedMetadata {
 
 	let thumb = acc.thumb;
 	let price = acc.price;
+	// JSON-LD Product.category only — breadcrumb fallback on these heterogeneous
+	// channels yields channel/program names ("テレビ朝日公式通販TOP", program titles),
+	// not product categories. Name-based Gemini classification is the real
+	// category fix (follow-up slice); here we keep category clean (low-recall).
 	const category = acc.category;
 	let description = acc.description;
 
@@ -156,12 +166,33 @@ export function parseMetadata(html: string, baseUrl: string): EnrichedMetadata {
 			null;
 	}
 
+	const ogType = ($("meta[property='og:type']").attr("content") ?? "").toLowerCase();
+	const is_product_page = sawProduct || ogType === "product" || price != null;
+
 	return {
 		thumbnail_url: pickAbsoluteUrl(thumb, baseUrl),
 		price_jpy: price,
 		category: category ? category.slice(0, 200) : null,
 		description: description ? description.slice(0, 500) : null,
+		is_product_page,
 	};
+}
+
+// Decode a fetched body honoring its charset (Shift_JIS/EUC-JP channels like
+// japanet return mojibake under a bare res.text() UTF-8 assumption).
+function decodeHtml(buf: ArrayBuffer, contentType: string): string {
+	const bytes = Buffer.from(buf);
+	let charset = (contentType.match(/charset=([^;]+)/i)?.[1] ?? "").trim().toLowerCase();
+	if (!charset) {
+		const head = bytes.toString("latin1", 0, 2048);
+		charset = head.match(/charset=["']?([\w-]+)/i)?.[1]?.toLowerCase() ?? "utf-8";
+	}
+	if (charset === "utf8" || charset === "utf-8") return bytes.toString("utf-8");
+	try {
+		return new TextDecoder(charset).decode(bytes);
+	} catch {
+		return bytes.toString("utf-8");
+	}
 }
 
 export async function fetchAndParseMetadata(
@@ -182,7 +213,7 @@ export async function fetchAndParseMetadata(
 		if (!res.ok) return null;
 		const ct = res.headers.get("content-type") ?? "";
 		if (!ct.includes("html")) return null;
-		const html = await res.text();
+		const html = decodeHtml(await res.arrayBuffer(), ct);
 		return parseMetadata(html, url);
 	} catch {
 		return null;
