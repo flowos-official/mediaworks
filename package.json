@@ -70,6 +70,7 @@
     "backfill:broadcast-products": "tsx --env-file=.env.local scripts/backfill-broadcast-products.ts",
     "drain:archive-queue": "tsx --env-file=.env.local scripts/drain-archive-queue.ts",
     "daily:archive": "npm run backfill:broadcast-products && npm run drain:archive-queue",
+    "test:stale-downloading": "tsx --env-file=.env.local scripts/test-stale-downloading-recovery.ts",
     "smoke:archive-one": "tsx --env-file=.env.local scripts/smoke-archive-one.ts",
     "smoke:archive-one-shopch": "tsx --env-file=.env.local scripts/smoke-archive-one-shopch.ts",
     "reset:shopch-video-status": "tsx --env-file=.env.local scripts/reset-shopch-video-status.ts",

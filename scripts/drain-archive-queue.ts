@@ -5,6 +5,7 @@
  * Run: tsx --env-file=.env.local scripts/drain-archive-queue.ts
  */
 import { archiveOne, type QueuedSlot } from "../lib/broadcasts/video-archival";
+import { recoverStaleDownloading } from "../lib/broadcasts/stale-downloading-recovery";
 import { getServiceClient } from "../lib/supabase";
 
 const BATCH_SIZE = 8;
@@ -31,6 +32,16 @@ async function pBoundedAll<T, R>(
 
 async function main() {
 	const sb = getServiceClient();
+
+	// Requeue any slots orphaned in 'downloading' by a previously-killed drain
+	// before reading the queue, so they get picked up this run.
+	const stale = await recoverStaleDownloading();
+	if (stale.requeued > 0 || stale.abandoned > 0) {
+		console.log(
+			`[drain] stale-downloading recovery: requeued=${stale.requeued} abandoned=${stale.abandoned} (scanned ${stale.scanned})`,
+		);
+	}
+
 	let totalArchived = 0;
 	let totalQueued = 0;
 	let totalDeferred = 0;
