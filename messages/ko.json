@@ -51,6 +51,7 @@
     "admin": {
       "users": "사용자 관리",
       "historicalCrawl": "OA 수집 상태",
+      "discoveryCalibration": "스코어 보정",
       "registry": "스킬 레지스트리",
       "preferences": "환경 설정"
     }

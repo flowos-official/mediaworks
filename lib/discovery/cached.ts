@@ -196,6 +196,15 @@ export async function getCachedDiscoveryInsights(
 			}
 		}
 	}
+	// Since the selection-outcome loop, learning_state.category_weights is a graded
+	// outcome weight in [0, cap] (cap=3 default), not the old [0,1] success-rate.
+	// This insights value feeds the dashboard chart (a [0,1] %-axis) only — the
+	// keyword-planning prompt reads the raw [0,cap] value via loadLearningState —
+	// so normalize to fraction-of-cap here to keep the chart bounded.
+	const WEIGHT_CAP = Number(process.env.LEARNING_CATEGORY_WEIGHT_CAP ?? 3) || 3;
+	for (const cat of Object.keys(categoryWeights)) {
+		categoryWeights[cat] = Math.min(1, categoryWeights[cat] / WEIGHT_CAP);
+	}
 
 	let trendRunsQuery = sb
 		.from("discovery_runs")

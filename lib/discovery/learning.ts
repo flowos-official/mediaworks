@@ -10,8 +10,13 @@
 
 import { getServiceClient } from "@/lib/supabase";
 import type { Context } from "./types";
+import {
+	aggregateCategoryWeights,
+	type CohortRow,
+} from "./outcome-weight";
 
 const WINDOW_DAYS = 30;
+const COHORT_DAYS = Number(process.env.LEARNING_OUTCOME_COHORT_DAYS ?? 60);
 const COLD_START_THRESHOLD = 10;
 const EXPLORATION_ADJUST_STEP = 0.05;
 const EXPLORATION_MIN = 0.2;
@@ -62,41 +67,76 @@ export async function computeContextLearning(
 ): Promise<ContextLearningStats> {
 	const sb = getServiceClient();
 	const since = new Date(Date.now() - WINDOW_DAYS * 24 * 3600 * 1000).toISOString();
+	const cohortSince = new Date(Date.now() - COHORT_DAYS * 24 * 3600 * 1000).toISOString();
 
+	// Explicit user_action (30d) — drives rejection seeds + track success.
 	const { data: explicitData, error: exErr } = await sb
 		.from("discovered_products")
 		.select("category, seller_name, product_url, track, user_action, action_reason")
 		.eq("context", context)
 		.not("user_action", "is", null)
 		.gte("action_at", since);
-
-	if (exErr) {
-		console.warn(`[learning] explicit query failed (${context}):`, exErr.message);
-	}
+	if (exErr) console.warn(`[learning] explicit query failed (${context}):`, exErr.message);
 	const explicit = (explicitData ?? []) as ExplicitRow[];
 
+	// Shown (30d) — denominator for track stats / exploration ratio.
 	const { data: shownData, error: shErr } = await sb
 		.from("discovered_products")
 		.select("category, track")
 		.eq("context", context)
 		.gte("created_at", since);
-
-	if (shErr) {
-		console.warn(`[learning] shown query failed (${context}):`, shErr.message);
-	}
+	if (shErr) console.warn(`[learning] shown query failed (${context}):`, shErr.message);
 	const shown = (shownData ?? []) as ShownRow[];
 
+	// Deep dives (30d) — weak click signal for track success + cold-start sample.
+	// Kept on the 30d window so it matches the 30d `shown` denominator and the
+	// exploration logic stays unchanged (spec §3).
 	const { data: ddData, error: ddErr } = await sb
 		.from("product_feedback")
 		.select("discovered_products!inner(category, track, context)")
 		.eq("action", "deep_dive")
 		.eq("discovered_products.context", context)
 		.gte("created_at", since);
-
-	if (ddErr) {
-		console.warn(`[learning] deep_dive query failed (${context}):`, ddErr.message);
-	}
+	if (ddErr) console.warn(`[learning] deep_dive query failed (${context}):`, ddErr.message);
 	const deepDives = (ddData ?? []) as unknown as DeepDiveRow[];
+
+	// Deep dives (60d cohort) — folded ONLY into category_weights, aligned with the
+	// 60d selection-outcome cohort below (not used for track stats / cold-start).
+	const { data: ddCohortData, error: ddCohortErr } = await sb
+		.from("product_feedback")
+		.select("discovered_products!inner(category, track, context)")
+		.eq("action", "deep_dive")
+		.eq("discovered_products.context", context)
+		.gte("created_at", cohortSince);
+	if (ddCohortErr)
+		console.warn(`[learning] deep_dive cohort query failed (${context}):`, ddCohortErr.message);
+	const deepDivesCohort = (ddCohortData ?? []) as unknown as DeepDiveRow[];
+
+	// Outcome cohort (60d) — drives category_weights regardless of cold-start.
+	// Fail-soft if the migration is not yet applied (Postgres 42703 undefined_column).
+	const { data: cohortData, error: cohortErr } = await sb
+		.from("discovered_products")
+		.select("category, selection_outcome, user_action")
+		.eq("context", context)
+		.gte("created_at", cohortSince);
+	if (cohortErr) {
+		console.warn(`[learning] outcome cohort query failed (${context}):`, cohortErr.message);
+	}
+	const cohort = (cohortData ?? []) as CohortRow[];
+
+	// deep-dive counts by category (60d cohort — folded into category_weights only)
+	const deepDiveByCategory: Record<string, number> = {};
+	for (const d of deepDivesCohort) {
+		const cat = d.discovered_products?.category;
+		if (!cat) continue;
+		deepDiveByCategory[cat] = (deepDiveByCategory[cat] ?? 0) + 1;
+	}
+
+	// Category weights from the 60d cohort — returned even on cold-start so a
+	// lagged sourced→aired (older than the 30d feedback window) still counts.
+	const categoryWeights = aggregateCategoryWeights(cohort, deepDiveByCategory, {
+		minSamples: CATEGORY_MIN_SAMPLES,
+	});
 
 	const feedbackSampleSize = explicit.length + deepDives.length;
 	const isColdStart = feedbackSampleSize < COLD_START_THRESHOLD;
@@ -104,45 +144,12 @@ export async function computeContextLearning(
 	if (isColdStart) {
 		return {
 			exploration_ratio: currentExplorationRatio,
-			category_weights: {},
+			category_weights: categoryWeights,
 			rejected_seeds: { urls: [], brands: [], terms: [] },
 			recent_rejection_reasons: [],
 			feedback_sample_size: feedbackSampleSize,
 			is_cold_start: true,
 		};
-	}
-
-	const categoryStats = new Map<string, { success: number; shown: number }>();
-	for (const s of shown) {
-		const cat = s.category;
-		if (!cat) continue;
-		const stat = categoryStats.get(cat) ?? { success: 0, shown: 0 };
-		stat.shown += 1;
-		categoryStats.set(cat, stat);
-	}
-	for (const e of explicit) {
-		if (!e.category) continue;
-		if (e.user_action === "sourced" || e.user_action === "interested") {
-			const stat = categoryStats.get(e.category) ?? { success: 0, shown: 0 };
-			stat.success += 1;
-			categoryStats.set(e.category, stat);
-		}
-	}
-	for (const d of deepDives) {
-		const cat = d.discovered_products?.category;
-		if (!cat) continue;
-		const stat = categoryStats.get(cat) ?? { success: 0, shown: 0 };
-		stat.success += 1;
-		categoryStats.set(cat, stat);
-	}
-
-	const categoryWeights: Record<string, number> = {};
-	for (const [cat, { success, shown: total }] of categoryStats) {
-		if (total < CATEGORY_MIN_SAMPLES) {
-			categoryWeights[cat] = 0.5;
-		} else {
-			categoryWeights[cat] = Number((success / total).toFixed(3));
-		}
 	}
 
 	const rejected = explicit.filter((e) => e.user_action === "rejected");
