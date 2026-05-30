@@ -13,6 +13,7 @@ import { queryDiscoveredPool, type PoolRow } from "@/lib/strategy/pool-query";
 import { deriveIntentKeywords } from "@/lib/strategy/discover-intent";
 import type { DiscoverIntent } from "@/lib/strategy/discover-intent";
 import type { DiscoveredProduct } from "@/lib/md-strategy";
+import { parsePriceRange } from "@/lib/strategy/parse-price-range";
 
 const PRELIMINARY_TARGET = 15;
 
@@ -25,12 +26,7 @@ export interface PreliminaryDiscoveryInput {
 	intent?: DiscoverIntent;
 }
 
-function parsePriceRangeLocal(priceRange: string): { min: number; max: number } | null {
-	const cleaned = priceRange.replace(/[¥,、]/g, "").replace(/〜/g, "-");
-	const match = cleaned.match(/(\d+)\s*[-–]\s*(\d+)/);
-	if (!match) return null;
-	return { min: parseInt(match[1], 10), max: parseInt(match[2], 10) };
-}
+// price parsing shared with the final discovery via parse-price-range.ts
 
 function formatPriceJpy(price: number | null): string {
 	if (price === null || !Number.isFinite(price) || price <= 0) return "価格未取得";
@@ -68,7 +64,7 @@ function rowToDiscoveredProduct(r: PoolRow): DiscoveredProduct {
 export async function runPreliminaryDiscovery(
 	input: PreliminaryDiscoveryInput,
 ): Promise<DiscoveredProduct[]> {
-	const priceRange = input.priceRange ? parsePriceRangeLocal(input.priceRange) : null;
+	const priceRange = input.priceRange ? parsePriceRange(input.priceRange) : null;
 	const rows = await queryDiscoveredPool({
 		context: input.context,
 		uiCategory: input.uiCategory,

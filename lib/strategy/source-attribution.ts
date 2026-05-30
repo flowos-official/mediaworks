@@ -31,6 +31,9 @@ export interface AttributablePoolItem {
 	source_url: string;
 	pool_source: "discovery_pool" | "fresh_search" | "research";
 	discovered_product_id?: string;
+	// Real numeric price from the pool row — propagated to the output on an
+	// ID-link match (same false-positive guard as tv_fit_score).
+	price_jpy?: number;
 	// Real candidate source from the underlying pool row (used to overwrite
 	// any "rakuten|web" guess Gemini makes when it copies an item).
 	source?: "rakuten" | "web" | "brave" | "tv_channel" | "other";
@@ -71,6 +74,7 @@ export interface AttributionResult<T extends AttributableGeminiItem> {
 		T & {
 			pool_source: "discovery_pool" | "fresh_search" | "research";
 			discovered_product_id?: string;
+			price_jpy?: number;
 			tv_fit_score?: number;
 			tv_fit_reason?: string;
 			tv_evidence?: import("@/lib/discovery/types").TvEvidence | null;
@@ -163,6 +167,7 @@ export function attributeSource<T extends AttributableGeminiItem>(
 		} as T & {
 			pool_source: "discovery_pool" | "fresh_search" | "research";
 			discovered_product_id?: string;
+			price_jpy?: number;
 			tv_fit_score?: number;
 			tv_fit_reason?: string;
 			tv_evidence?: import("@/lib/discovery/types").TvEvidence | null;
@@ -182,6 +187,9 @@ export function attributeSource<T extends AttributableGeminiItem>(
 		// we have a real ID-link (URL / itemCode match). Name-only fallback omits
 		// them via includeId=false — same false-positive guard as discovered_product_id.
 		if (includeId) {
+			if (hit.price_jpy !== undefined) {
+				merged.price_jpy = hit.price_jpy;
+			}
 			if (hit.tv_fit_score !== undefined) {
 				merged.tv_fit_score = hit.tv_fit_score;
 			}

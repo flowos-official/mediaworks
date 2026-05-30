@@ -12,6 +12,7 @@
 import { rakutenItemSearch, rakutenRankingSearch, type RakutenItem } from "@/lib/rakuten";
 import type { DiscoverIntent } from "@/lib/strategy/discover-intent";
 import type { DiscoveredProduct } from "@/lib/md-strategy";
+import { parsePriceRange } from "@/lib/strategy/parse-price-range";
 
 const PREVIEW_TARGET = 15;
 const PREVIEW_FETCH = 12;
@@ -25,12 +26,7 @@ export function derivePreviewKeyword(intent: DiscoverIntent | null | undefined):
 	return cat && cat.length > 0 ? cat : null;
 }
 
-function parsePriceRangeLocal(priceRange: string): { min: number; max: number } | null {
-	const cleaned = priceRange.replace(/[¥,、]/g, "").replace(/〜/g, "-");
-	const match = cleaned.match(/(\d+)\s*[-–]\s*(\d+)/);
-	if (!match) return null;
-	return { min: parseInt(match[1], 10), max: parseInt(match[2], 10) };
-}
+// price parsing shared with the final discovery via parse-price-range.ts
 
 function formatPriceJpy(price: number): string {
 	if (!Number.isFinite(price) || price <= 0) return "価格未取得";
@@ -77,7 +73,7 @@ export async function runFastPreviewSearch(
 	try {
 		let res = await rakutenItemSearch(keyword, "-reviewCount", PREVIEW_FETCH);
 		if (res.items.length === 0) res = await rakutenRankingSearch(keyword);
-		const priceRange = input.priceRange ? parsePriceRangeLocal(input.priceRange) : null;
+		const priceRange = input.priceRange ? parsePriceRange(input.priceRange) : null;
 		const seen = new Set<string>();
 		const products: DiscoveredProduct[] = [];
 		for (const item of res.items) {
