@@ -8,6 +8,7 @@ import { getServiceClient } from "@/lib/supabase";
 import { normalizeName } from "./exclusion";
 import { fetchRakutenPage } from "./tools/rakuten-page";
 import { fetchAndParseMetadata } from "./tv-channel-enrich";
+import { classifyProductCategories } from "./tv-channel-category-classify";
 import type {
 	BroadcastTag,
 	Candidate,
@@ -291,6 +292,36 @@ async function enrichMissingCategories(
 			worker(),
 		),
 	);
+
+	// Category classifier fallback: tv_channel rows still without a category after
+	// the page fetch (most channels expose no JSON-LD Product.category). One
+	// batched Gemini call → operator UI category labels, which the pool filter's
+	// buildCategoryMatchTerms matches directly (no channel-whitelist bridge needed).
+	const classifyTargets = next
+		.map((entry, index) =>
+			entry.candidate.source === "tv_channel" &&
+			!entry.candidate.category &&
+			!!entry.candidate.name
+				? index
+				: -1,
+		)
+		.filter((index) => index >= 0);
+	if (
+		classifyTargets.length > 0 &&
+		hasCategoryEnrichmentBudget({
+			deadlineMs: options.categoryEnrichmentDeadlineMs,
+			minBudgetMs:
+				options.minCategoryEnrichmentBudgetMs ?? CATEGORY_ENRICH_MIN_BUDGET_MS,
+		})
+	) {
+		const labels = await classifyProductCategories(
+			classifyTargets.map((index) => ({ name: next[index].candidate.name })),
+		);
+		classifyTargets.forEach((index, k) => {
+			const label = labels[k];
+			if (label) next[index].candidate.category = label;
+		});
+	}
 
 	return next;
 }
