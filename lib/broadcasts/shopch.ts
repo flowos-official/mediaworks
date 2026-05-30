@@ -184,6 +184,21 @@ export async function scrapeShopChannelForDate(date: Date): Promise<ScrapeResult
 		};
 	}
 
+	// Under load the site returns a 200 "アクセスが集中" busy page instead of the
+	// real programlist. Treat it as a retryable error rather than a genuine empty
+	// schedule — otherwise the cron would persist 0 slots and trip the
+	// markup-change warning on a transient rate limit.
+	if (fetched.body.includes("アクセスが集中")) {
+		return {
+			channel: "shopch",
+			date: iso,
+			slots: [],
+			ok: false,
+			error: "shopch busy page (rate limited)",
+			health: computeHealth([], true),
+		};
+	}
+
 	// Enumerate the day's program IDs from the static HTML, then hydrate each
 	// from the per-slot JSON endpoint (title/category/brand/products/video). The
 	// JSON is the single source of truth — it returns complete data for past,
