@@ -51,6 +51,7 @@
     "admin": {
       "users": "ユーザー管理",
       "historicalCrawl": "OA収集状況",
+      "discoveryCalibration": "スコア較正",
       "registry": "スキル登録",
       "preferences": "環境設定"
     }

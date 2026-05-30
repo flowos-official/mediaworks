@@ -66,10 +66,11 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     key: 'admin',
     labelKey: 'nav.groups.admin',
     landing: '/admin/users',
-    pathPrefixes: ['/admin/users', '/admin/historical-crawl', '/admin/registry', '/admin/preferences'],
+    pathPrefixes: ['/admin/users', '/admin/historical-crawl', '/admin/registry', '/admin/preferences', '/admin/discovery-calibration'],
     members: [
       { labelKey: 'nav.admin.users', href: '/admin/users' },
       { labelKey: 'nav.admin.historicalCrawl', href: '/admin/historical-crawl' },
+      { labelKey: 'nav.admin.discoveryCalibration', href: '/admin/discovery-calibration' },
       { labelKey: 'nav.admin.registry', href: '/admin/registry' },
       { labelKey: 'nav.admin.preferences', href: '/admin/preferences' },
     ],
