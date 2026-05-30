@@ -38,6 +38,7 @@
     "test:strategy-fresh-search": "tsx --env-file=.env.local scripts/test-strategy-fresh-search-persist.ts",
     "test:learning-outcome-weighting": "tsx scripts/test-learning-outcome-weighting.ts",
     "test:learning-outcome-integration": "tsx --env-file=.env.local scripts/test-learning-outcome-integration.ts",
+    "test:learning-coldstart": "tsx --env-file=.env.local scripts/test-learning-coldstart.ts",
     "test:selection-outcome": "tsx --env-file=.env.local scripts/test-selection-outcome-trigger.ts",
     "test:fast-preview": "tsx --env-file=.env.local scripts/test-fast-preview.ts",
     "test:tv-evidence-unit": "tsx scripts/test-tv-evidence-unit.ts",

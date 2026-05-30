@@ -62,6 +62,49 @@ async function move(selId: string, patch: Record<string, unknown>): Promise<void
 	if (error) throw new Error(`move failed: ${error.message}`);
 }
 
+// Insert a discovered_products row with arbitrary field overrides (e.g. a
+// specific tv_fit_score / tv_fit_reason) for the calibration-view filter test.
+async function newDpWith(fields: Record<string, unknown>): Promise<string> {
+	const { data: run, error: runErr } = await sb
+		.from("discovery_runs")
+		.insert({ status: "completed", target_count: 1, context: "home_shopping" })
+		.select("id")
+		.single();
+	if (runErr || !run) throw new Error(`run insert failed: ${runErr?.message}`);
+	const url = `https://example.com/test-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+	const { data: dp, error: dpErr } = await sb
+		.from("discovered_products")
+		.insert({
+			session_id: run.id,
+			name: "sentinel test product",
+			name_normalized: "sentinel test product",
+			product_url: url,
+			source: "other",
+			track: "exploration",
+			context: "home_shopping",
+			...fields,
+		})
+		.select("id")
+		.single();
+	if (dpErr || !dp) throw new Error(`dp insert failed: ${dpErr?.message}`);
+	cleanup.push(async () => {
+		await sb.from("discovered_products").delete().eq("id", dp.id);
+		await sb.from("discovery_runs").delete().eq("id", run.id);
+	});
+	return dp.id as string;
+}
+
+// Total `shown` in the <40 score band for a context (band 0 may be absent → 0).
+async function band0Shown(context: string): Promise<number> {
+	const { data, error } = await sb
+		.from("discovery_score_calibration")
+		.select("shown")
+		.eq("context", context)
+		.eq("score_band", 0);
+	if (error) throw new Error(`view query failed: ${error.message}`);
+	return (data ?? []).reduce((s, r) => s + ((r.shown as number) ?? 0), 0);
+}
+
 async function main() {
 	const { data: profile } = await sb.from("profiles").select("id").limit(1).single();
 	if (!profile) throw new Error("need at least one profiles row");
@@ -102,13 +145,39 @@ async function main() {
 	await move(sel4b, { status: "sourcing" });
 	assert.equal(await outcomeOf(dp4), "sourcing");
 
-	// 5. calibration view shape + stub exclusion
+	// 5. calibration view shape
 	const { data: viewRows, error: viewErr } = await sb
 		.from("discovery_score_calibration")
 		.select("context, score_band, shown, selected_plus, sourced_plus, scheduled_plus, aired, dropped")
 		.limit(1);
 	if (viewErr) throw new Error(`view query failed: ${viewErr.message}`);
 	assert.ok(Array.isArray(viewRows), "view must be queryable");
+
+	// 6. sentinel exclusion: a fresh_search stub (tv_fit_score=0 + the EXACT
+	//    sentinel reason) must NOT count toward the <40 band, while a non-stub
+	//    tv_fit_score=0 row MUST — proving the view filter is specific to the
+	//    sentinel string. A drift in that string (vs lib/strategy/fresh-search-persist.ts)
+	//    would silently let stubs pollute the <40 band and defeat falsifiability.
+	//    (If the em-dash here ever mismatches the view's, the stub would NOT be
+	//    excluded and the first assert below fails — so this is self-checking.)
+	const SENTINEL = "Strategy fresh_search rec — score not computed";
+	const baseBand0 = await band0Shown("home_shopping");
+	await newDpWith({ category: "cat-stub", tv_fit_score: 0, tv_fit_reason: SENTINEL });
+	assert.equal(
+		await band0Shown("home_shopping"),
+		baseBand0,
+		"fresh_search stub must be excluded from the <40 band",
+	);
+	await newDpWith({
+		category: "cat-nonstub",
+		tv_fit_score: 0,
+		tv_fit_reason: "__test non-stub low score",
+	});
+	assert.equal(
+		await band0Shown("home_shopping"),
+		baseBand0 + 1,
+		"non-stub tv_fit_score=0 row must count in the <40 band",
+	);
 
 	console.log("PASS: selection outcome trigger");
 }
