@@ -88,15 +88,29 @@ export async function computeContextLearning(
 	if (shErr) console.warn(`[learning] shown query failed (${context}):`, shErr.message);
 	const shown = (shownData ?? []) as ShownRow[];
 
-	// Deep dives (cohort window) — weak click signal folded into category weights.
+	// Deep dives (30d) — weak click signal for track success + cold-start sample.
+	// Kept on the 30d window so it matches the 30d `shown` denominator and the
+	// exploration logic stays unchanged (spec §3).
 	const { data: ddData, error: ddErr } = await sb
 		.from("product_feedback")
 		.select("discovered_products!inner(category, track, context)")
 		.eq("action", "deep_dive")
 		.eq("discovered_products.context", context)
-		.gte("created_at", cohortSince);
+		.gte("created_at", since);
 	if (ddErr) console.warn(`[learning] deep_dive query failed (${context}):`, ddErr.message);
 	const deepDives = (ddData ?? []) as unknown as DeepDiveRow[];
+
+	// Deep dives (60d cohort) — folded ONLY into category_weights, aligned with the
+	// 60d selection-outcome cohort below (not used for track stats / cold-start).
+	const { data: ddCohortData, error: ddCohortErr } = await sb
+		.from("product_feedback")
+		.select("discovered_products!inner(category, track, context)")
+		.eq("action", "deep_dive")
+		.eq("discovered_products.context", context)
+		.gte("created_at", cohortSince);
+	if (ddCohortErr)
+		console.warn(`[learning] deep_dive cohort query failed (${context}):`, ddCohortErr.message);
+	const deepDivesCohort = (ddCohortData ?? []) as unknown as DeepDiveRow[];
 
 	// Outcome cohort (60d) — drives category_weights regardless of cold-start.
 	// Fail-soft if the migration is not yet applied (Postgres 42703 undefined_column).
@@ -110,9 +124,9 @@ export async function computeContextLearning(
 	}
 	const cohort = (cohortData ?? []) as CohortRow[];
 
-	// deep-dive counts by category
+	// deep-dive counts by category (60d cohort — folded into category_weights only)
 	const deepDiveByCategory: Record<string, number> = {};
-	for (const d of deepDives) {
+	for (const d of deepDivesCohort) {
 		const cat = d.discovered_products?.category;
 		if (!cat) continue;
 		deepDiveByCategory[cat] = (deepDiveByCategory[cat] ?? 0) + 1;
