@@ -7,6 +7,7 @@
  */
 
 import { braveSearchItems } from "@/lib/brave";
+import { isNonProductPage } from "@/lib/discovery/non-product-filter";
 import {
 	rakutenItemSearch,
 	rakutenRankingSearch,
@@ -245,6 +246,7 @@ async function fetchTvChannelFromBraveSite(
 				const results = await braveSearchItems(query, TV_CHANNEL_BRAVE_PER_CALL);
 				for (const r of results) {
 					if (!r.url) continue;
+					if (isNonProductPage(r.title ?? "", r.url)) continue;
 					items.push({
 						name: r.title || r.url,
 						productUrl: r.url,
