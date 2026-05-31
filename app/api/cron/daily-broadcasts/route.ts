@@ -80,20 +80,36 @@ async function enrichQvcSlotSnapshots(
 			}
 		}
 
-		// Update brand_name + video_status in a single broadcasts UPDATE.
+		// Update brand_name unconditionally, but only set video_status for slots
+		// still in the initial 'pending' state. A re-run (manual backfill or
+		// re-scrape) must NOT reset an already-queued/downloading/archived slot
+		// back to 'queued' — that forces needless re-downloads and, since the
+		// archive cron processes newest-first, starves older days. CAS guard
+		// mirrors recoverQvcPending.
 		const brand = pickBrandFromQvcProducts(productIds, slotProducts);
 		const hasVideo = slotProducts.some((p) => p.video_url);
 		const videoStatus = hasVideo ? "queued" : "deferred";
-		const broadcastUpdate: Record<string, string | null> = { video_status: videoStatus };
-		if (brand) broadcastUpdate.brand_name = brand;
+
+		if (brand) {
+			const { error: brandErr } = await sb
+				.from("broadcasts")
+				.update({ brand_name: brand })
+				.eq("id", broadcastId);
+			if (brandErr) {
+				console.warn(`[snapshot] qvc brand update failed for ${broadcastId}:`, brandErr.message);
+			} else {
+				brandUpdates++;
+			}
+		}
+
 		const { error: broadcastErr } = await sb
 			.from("broadcasts")
-			.update(broadcastUpdate)
-			.eq("id", broadcastId);
+			.update({ video_status: videoStatus })
+			.eq("id", broadcastId)
+			.eq("video_status", "pending");
 		if (broadcastErr) {
-			console.warn(`[snapshot] broadcasts update failed for ${broadcastId}:`, broadcastErr.message);
+			console.warn(`[snapshot] qvc video_status update failed for ${broadcastId}:`, broadcastErr.message);
 		} else {
-			if (brand) brandUpdates++;
 			if (hasVideo) videoQueued++;
 			else videoDeferred++;
 		}
@@ -142,22 +158,36 @@ async function enrichShopChSlotSnapshots(
 			}
 		}
 
-		// Update brand_name + brand_code + video_status in a single broadcasts UPDATE.
+		// Update brand unconditionally; guard video_status to 'pending'-only so a
+		// re-run never resets an in-progress/archived slot (see QVC note above).
 		// pgmMovie (meta.videoPath) signals an aired-program video on shopch.jp;
 		// the archive cron derives the m3u8 URL from programId at run time.
 		const hasVideo = !!meta.videoPath;
 		const videoStatus = hasVideo ? "queued" : "deferred";
-		const shopchUpdate: Record<string, string | null> = { video_status: videoStatus };
-		if (meta.brandName) shopchUpdate.brand_name = meta.brandName;
-		if (meta.brandCode) shopchUpdate.brand_code = meta.brandCode;
+
+		const brandUpdate: Record<string, string | null> = {};
+		if (meta.brandName) brandUpdate.brand_name = meta.brandName;
+		if (meta.brandCode) brandUpdate.brand_code = meta.brandCode;
+		if (Object.keys(brandUpdate).length > 0) {
+			const { error: brandErr } = await sb
+				.from("broadcasts")
+				.update(brandUpdate)
+				.eq("id", broadcastId);
+			if (brandErr) {
+				console.warn(`[snapshot] shopch brand update failed for ${broadcastId}:`, brandErr.message);
+			} else {
+				brandUpdates++;
+			}
+		}
+
 		const { error: broadcastErr } = await sb
 			.from("broadcasts")
-			.update(shopchUpdate)
-			.eq("id", broadcastId);
+			.update({ video_status: videoStatus })
+			.eq("id", broadcastId)
+			.eq("video_status", "pending");
 		if (broadcastErr) {
-			console.warn(`[snapshot] shopch broadcasts update failed for ${broadcastId}:`, broadcastErr.message);
+			console.warn(`[snapshot] shopch video_status update failed for ${broadcastId}:`, broadcastErr.message);
 		} else {
-			if (meta.brandName || meta.brandCode) brandUpdates++;
 			if (hasVideo) videoQueued++;
 			else videoDeferred++;
 		}
