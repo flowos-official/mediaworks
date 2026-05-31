@@ -57,42 +57,61 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const { data: slots, error } = await sb
-    .from("broadcasts")
-    .select("id, channel, air_date, start_time, product_ids, video_download_attempts")
-    .eq("video_status", "queued")
-    .lt("video_download_attempts", 5)
-    .order("air_date", { ascending: false })
-    .limit(8);
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  const queued = (slots ?? []) as QueuedSlot[];
-
-  const results: ArchiveResult[] = await pBoundedAll(queued, 4, (slot) =>
-    archiveOne(slot),
-  );
+  // Drain the queue until it is empty or we approach the function timeout.
+  // A fixed per-run cap (previously 8) could not keep up with daily influx and,
+  // because slots are processed newest-first, permanently starved older
+  // air_dates. Looping within a time budget adapts to load and clears backlog.
+  // maxDuration=300s → a 240s budget leaves margin for the last in-flight batch
+  // plus the response.
+  const BUDGET_MS = 240_000;
+  const BATCH_SIZE = 8;
+  const MAX_BATCHES = 100; // safety backstop against a pathological loop
+  const startedAt = Date.now();
 
   const summary = {
-    processed: results.length,
+    processed: 0,
     archived: 0,
     queued: 0,
     abandoned: 0,
     deferred: 0,
     failed_unsupported: 0,
     total_bytes: 0,
+    batches: 0,
     stale_requeued: staleRecovery.requeued,
     stale_abandoned: staleRecovery.abandoned,
   };
 
-  for (const r of results) {
-    if (r.status in summary) {
-      summary[r.status as keyof typeof summary] =
-        (summary[r.status as keyof typeof summary] as number) + 1;
+  for (let batch = 0; batch < MAX_BATCHES; batch++) {
+    if (Date.now() - startedAt >= BUDGET_MS) break;
+
+    const { data: slots, error } = await sb
+      .from("broadcasts")
+      .select("id, channel, air_date, start_time, product_ids, video_download_attempts")
+      .eq("video_status", "queued")
+      .lt("video_download_attempts", 5)
+      .order("air_date", { ascending: false })
+      .limit(BATCH_SIZE);
+
+    if (error) {
+      return NextResponse.json({ error: error.message, ...summary }, { status: 500 });
     }
-    if (r.bytes) summary.total_bytes += r.bytes;
+
+    const queued = (slots ?? []) as QueuedSlot[];
+    if (queued.length === 0) break;
+
+    const results: ArchiveResult[] = await pBoundedAll(queued, 4, (slot) =>
+      archiveOne(slot),
+    );
+    summary.batches++;
+
+    for (const r of results) {
+      summary.processed++;
+      if (r.status in summary) {
+        summary[r.status as keyof typeof summary] =
+          (summary[r.status as keyof typeof summary] as number) + 1;
+      }
+      if (r.bytes) summary.total_bytes += r.bytes;
+    }
   }
 
   console.log("[archive-videos]", JSON.stringify(summary));
