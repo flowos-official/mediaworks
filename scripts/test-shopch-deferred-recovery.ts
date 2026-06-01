@@ -3,18 +3,21 @@
  *
  *   npx tsx --env-file=.env.local scripts/test-shopch-deferred-recovery.ts
  *
- * Uses a sentinel air_date (2020-01-01) so it never touches real slots, and a
- * stubbed fetchMeta so the assertion is deterministic (no shopch.jp dependency).
+ * Uses sentinel air_dates that never collide with real slots, and a stubbed
+ * fetchMeta so the assertion is deterministic (no shopch.jp dependency).
  * Verifies:
- *   1. deferred slot whose video is now available  → flipped to 'queued'
- *   2. deferred slot still without a video          → left 'deferred'
- *   3. an 'archived' slot is never touched (CAS guard holds)
+ *   1. PAST deferred slot whose video is now available → flipped to 'queued'
+ *   2. PAST deferred slot still without a video          → left 'deferred'
+ *   3. an 'archived' slot is never touched (CAS guard)
+ *   4. a FUTURE-dated deferred slot is NOT swept (air-time gate) — even with a
+ *      video, it stays 'deferred' because its m3u8 won't exist until it airs.
  */
 import { getServiceClient } from "../lib/supabase";
 import { buildProgramId, type ShopChSlotMetadata } from "../lib/broadcasts/shopch-json";
 import { recoverShopChDeferred } from "../lib/broadcasts/shopch-deferred-recovery";
 
-const SENTINEL_DATE = "2020-01-01";
+const PAST_DATE = "2020-01-01"; // strictly before today → eligible for recovery
+const FUTURE_DATE = "2099-01-01"; // not yet aired → excluded by the air-time gate
 const CHANNEL = "shopch";
 
 function metaWith(videoPath: string | null): ShopChSlotMetadata {
@@ -42,26 +45,30 @@ function assert(cond: boolean, msg: string) {
 	}
 }
 
+async function cleanup(sb: ReturnType<typeof getServiceClient>) {
+	await sb.from("broadcasts").delete().eq("channel", CHANNEL).in("air_date", [PAST_DATE, FUTURE_DATE]);
+}
+
 async function main() {
 	const sb = getServiceClient();
 
-	// --- setup: delete-then-insert three sentinel slots ---
-	const slots = [
-		{ start_time: "00:00:00", program_title: "TEST-has-video", video_status: "deferred" },
-		{ start_time: "01:00:00", program_title: "TEST-no-video", video_status: "deferred" },
-		{ start_time: "02:00:00", program_title: "TEST-archived", video_status: "archived" },
+	// --- setup: delete-then-insert sentinel slots ---
+	const rows = [
+		{ air_date: PAST_DATE, start_time: "00:00:00", program_title: "TEST-past-has-video", video_status: "deferred" },
+		{ air_date: PAST_DATE, start_time: "01:00:00", program_title: "TEST-past-no-video", video_status: "deferred" },
+		{ air_date: PAST_DATE, start_time: "02:00:00", program_title: "TEST-past-archived", video_status: "archived" },
+		{ air_date: FUTURE_DATE, start_time: "00:00:00", program_title: "TEST-future-has-video", video_status: "deferred" },
 	];
 
-	await sb.from("broadcasts").delete().eq("channel", CHANNEL).eq("air_date", SENTINEL_DATE);
-
+	await cleanup(sb);
 	const { error: insErr } = await sb.from("broadcasts").insert(
-		slots.map((s) => ({
+		rows.map((r) => ({
 			channel: CHANNEL,
-			air_date: SENTINEL_DATE,
-			start_time: s.start_time,
-			program_title: s.program_title,
-			source_url: `https://test.invalid/shopch-deferred-recovery/${s.start_time}`,
-			video_status: s.video_status,
+			air_date: r.air_date,
+			start_time: r.start_time,
+			program_title: r.program_title,
+			source_url: `https://test.invalid/shopch-deferred-recovery/${r.air_date}/${r.start_time}`,
+			video_status: r.video_status,
 		})),
 	);
 	if (insErr) {
@@ -69,21 +76,22 @@ async function main() {
 		process.exit(1);
 	}
 
-	const pidHasVideo = buildProgramId(SENTINEL_DATE, "00:00:00");
-	const pidNoVideo = buildProgramId(SENTINEL_DATE, "01:00:00");
-	const pidArchived = buildProgramId(SENTINEL_DATE, "02:00:00");
+	const pidPastHasVideo = buildProgramId(PAST_DATE, "00:00:00");
+	const pidPastNoVideo = buildProgramId(PAST_DATE, "01:00:00");
+	const pidPastArchived = buildProgramId(PAST_DATE, "02:00:00");
+	const pidFuture = buildProgramId(FUTURE_DATE, "00:00:00");
 
 	// stub fetchMeta: resolve ONLY our sentinel programIds. Real deferred slots
-	// that fall in the lookback window are deliberately absent from the map →
-	// the recovery counts them as fetchFailed and leaves them untouched, so the
-	// test never mutates production data. has-video resolves with a videoPath,
-	// no-video resolves with null.
-	const sentinelPids = new Set([pidHasVideo, pidNoVideo, pidArchived]);
+	// in the lookback window are deliberately absent → counted as fetchFailed and
+	// left untouched, so the test never mutates production data. The future slot
+	// gets a videoPath too, to prove it stays deferred via the air-time GATE
+	// (not merely because it lacks a video).
+	const sentinelPids = new Set([pidPastHasVideo, pidPastNoVideo, pidPastArchived, pidFuture]);
 	const stub = async (programIds: string[]) => {
 		const m = new Map<string, ShopChSlotMetadata>();
 		for (const pid of programIds) {
 			if (!sentinelPids.has(pid)) continue;
-			if (pid === pidNoVideo) m.set(pid, metaWith(null));
+			if (pid === pidPastNoVideo) m.set(pid, metaWith(null));
 			else m.set(pid, metaWith(`m3u8/prog/${pid}/${pid}`));
 		}
 		return m;
@@ -96,23 +104,25 @@ async function main() {
 	// --- assertions ---
 	const { data: after } = await sb
 		.from("broadcasts")
-		.select("start_time, video_status")
+		.select("air_date, start_time, video_status")
 		.eq("channel", CHANNEL)
-		.eq("air_date", SENTINEL_DATE);
-	const byTime = new Map((after ?? []).map((r) => [r.start_time as string, r.video_status as string]));
+		.in("air_date", [PAST_DATE, FUTURE_DATE]);
+	const statusOf = (air: string, t: string) =>
+		(after ?? []).find((r) => r.air_date === air && r.start_time === t)?.video_status;
 
-	assert(byTime.get("00:00:00") === "queued", "deferred slot WITH video → queued");
-	assert(byTime.get("01:00:00") === "deferred", "deferred slot WITHOUT video → stays deferred");
-	assert(byTime.get("02:00:00") === "archived", "archived slot is never touched (CAS guard)");
-	assert(result.requeued >= 1, "result.requeued counts the promoted slot");
-	assert(result.stillDeferred >= 1, "result.stillDeferred counts the no-video slot");
-	// The archived slot is excluded by the video_status='deferred' SELECT filter.
-	// scanned includes our 2 sentinels (and possibly real deferred slots, which
-	// the stub omits → left untouched), so assert the lower bound.
-	assert(result.scanned >= 2, `scanned includes the 2 sentinel deferred slots (got ${result.scanned})`);
+	assert(statusOf(PAST_DATE, "00:00:00") === "queued", "past deferred slot WITH video → queued");
+	assert(statusOf(PAST_DATE, "01:00:00") === "deferred", "past deferred slot WITHOUT video → stays deferred");
+	assert(statusOf(PAST_DATE, "02:00:00") === "archived", "archived slot is never touched (CAS guard)");
+	assert(statusOf(FUTURE_DATE, "00:00:00") === "deferred", "FUTURE deferred slot (has video) is NOT swept → stays deferred (air-time gate)");
+	assert(result.requeued >= 1, "result.requeued counts the promoted past slot");
+	assert(result.stillDeferred >= 1, "result.stillDeferred counts the no-video past slot");
+	// scanned includes the 2 PAST sentinel deferred slots (the future one is
+	// excluded by the air-time gate, the archived one by the status filter);
+	// real deferred slots may also be scanned but are left untouched.
+	assert(result.scanned >= 2, `scanned includes the 2 past sentinel deferred slots (got ${result.scanned})`);
 
 	// --- cleanup ---
-	await sb.from("broadcasts").delete().eq("channel", CHANNEL).eq("air_date", SENTINEL_DATE);
+	await cleanup(sb);
 	console.log("cleaned up sentinel rows.");
 
 	if (failures > 0) {

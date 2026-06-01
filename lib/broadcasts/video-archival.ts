@@ -137,9 +137,22 @@ export async function archiveOne(slot: QueuedSlot): Promise<ArchiveResult> {
 		}).eq("id", broadcastId);
 		return { broadcastId, status: "archived", bytes };
 	} catch (e) {
+		const msg = (e instanceof Error ? e.message : String(e)).slice(0, 500);
+		// ShopCh's per-program m3u8 publishes only AFTER the program airs; a 403
+		// means the CloudFront object doesn't exist yet (not-yet-aired or publish
+		// lag), NOT a real failure. Roll back to 'deferred' WITHOUT consuming an
+		// attempt so the recovery sweep re-queues it once the video goes live —
+		// otherwise a slot queued too early burns all 5 attempts on 403s and is
+		// wrongly abandoned.
+		if (slot.channel === "shopch" && /403 Forbidden/i.test(msg)) {
+			await sb.from("broadcasts").update({
+				video_status: "deferred",
+				video_error: msg,
+			}).eq("id", broadcastId);
+			return { broadcastId, status: "deferred", error: msg };
+		}
 		const attempts = (slot.video_download_attempts ?? 0) + 1;
 		const finalStatus = attempts >= MAX_ATTEMPTS ? "abandoned" : "queued";
-		const msg = (e instanceof Error ? e.message : String(e)).slice(0, 500);
 		await sb.from("broadcasts").update({
 			video_status: finalStatus,
 			video_download_attempts: attempts,

@@ -62,12 +62,20 @@ export async function recoverShopChDeferred(opts?: {
 		fetchFailed: 0,
 	};
 
-	// Lookback window. ShopCh air_date is a JST calendar date string; comparing
-	// against a UTC-derived cutoff is fine — the window only needs to be roughly
-	// `lookbackDays` wide, and a few hours of skew never excludes a real slot.
-	const cutoff = new Date(Date.now() - lookbackDays * 86_400_000)
-		.toISOString()
-		.slice(0, 10);
+	// Window: [today - lookbackDays, today) in JST. The UPPER bound (strictly
+	// before today) is critical — ShopCh's per-program m3u8 publishes only AFTER
+	// the program airs, but the JSON `pgmMovie` path is pre-populated for future
+	// slots. Queueing a not-yet-aired slot makes the archiver hit a 403 on the
+	// missing m3u8 object and burn its retry budget. Restricting to strictly-past
+	// air_dates guarantees every swept slot has already aired (its video exists),
+	// mirroring the once-per-day enrich which only ever runs on fully-aired
+	// "yesterday" slots.
+	const jstDate = (offsetDays: number) =>
+		new Date(Date.now() + 9 * 3_600_000 + offsetDays * 86_400_000)
+			.toISOString()
+			.slice(0, 10);
+	const cutoff = jstDate(-lookbackDays);
+	const today = jstDate(0);
 
 	const { data, error } = await sb
 		.from("broadcasts")
@@ -75,6 +83,7 @@ export async function recoverShopChDeferred(opts?: {
 		.eq("channel", "shopch")
 		.eq("video_status", "deferred")
 		.gte("air_date", cutoff)
+		.lt("air_date", today)
 		.order("air_date", { ascending: true })
 		.limit(limit);
 
