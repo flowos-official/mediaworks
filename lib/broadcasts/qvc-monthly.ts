@@ -12,6 +12,7 @@
  */
 import { upsertBroadcasts } from "./persist";
 import { scrapeQVCForDate } from "./qvc";
+import { shouldReconcileDate, reconcileFutureSlots } from "./reconcile";
 
 function pad2(n: number): string {
 	return String(n).padStart(2, "0");
@@ -46,6 +47,7 @@ export interface MonthlyRefreshSummary {
 	totalSlots: number;
 	inserted: number;
 	updated: number;
+	reconciledDeleted: number;
 	errors: Array<{ date: string; error: string }>;
 }
 
@@ -63,6 +65,8 @@ export async function refreshQVCMonthlyRange(
 	let totalSlots = 0;
 	let inserted = 0;
 	let updated = 0;
+	let reconciledDeleted = 0;
+	const todayIso = `${today.getUTCFullYear()}-${pad2(today.getUTCMonth() + 1)}-${pad2(today.getUTCDate())}`;
 	const errors: Array<{ date: string; error: string }> = [];
 
 	for (const date of dates) {
@@ -80,6 +84,13 @@ export async function refreshQVCMonthlyRange(
 				totalSlots += result.slots.length;
 				inserted += persist.inserted;
 				updated += persist.updated;
+				if (shouldReconcileDate(iso, todayIso, result.slots.length)) {
+					reconciledDeleted += await reconcileFutureSlots(
+						"qvc",
+						iso,
+						result.slots.map((s) => s.start_time),
+					);
+				}
 				if (persist.errors.length > 0) {
 					errors.push({
 						date: iso,
@@ -103,6 +114,7 @@ export async function refreshQVCMonthlyRange(
 		totalSlots,
 		inserted,
 		updated,
+		reconciledDeleted,
 		errors,
 	};
 }

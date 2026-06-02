@@ -5,6 +5,7 @@
 import assert from "node:assert";
 import { getTodayISOJST } from "../lib/broadcasts/jst-date";
 import { isWhitelistedSlot } from "../lib/broadcasts/whitelist-gate";
+import { shouldReconcileDate } from "../lib/broadcasts/reconcile";
 
 let passed = 0;
 function check(label: string, cond: boolean) {
@@ -33,5 +34,11 @@ check("shopch null category shown (fail-open)", isWhitelistedSlot("shopch", null
 check("shopch whitelisted shown", isWhitelistedSlot("shopch", "コスメ") === true);
 check("shopch known non-whitelist hidden", isWhitelistedSlot("shopch", "雑貨") === false);
 check("oa channel always shown", isWhitelistedSlot("ntv", null) === true);
+
+// --- C: reconciliation guard (future-only, non-empty scrape) ---
+check("reconcile future date with slots", shouldReconcileDate("2026-06-10", "2026-06-03", 20) === true);
+check("reconcile NOT today", shouldReconcileDate("2026-06-03", "2026-06-03", 20) === false);
+check("reconcile NOT past", shouldReconcileDate("2026-05-30", "2026-06-03", 20) === false);
+check("reconcile NOT on empty scrape", shouldReconcileDate("2026-06-10", "2026-06-03", 0) === false);
 
 console.log(`[test:calendar-accuracy] ${passed} assertions passed`);
