@@ -1,6 +1,7 @@
 "use client";
 
 import DateCell from "./DateCell";
+import { getTodayISOJST } from "@/lib/broadcasts/jst-date";
 
 interface Props {
 	year: number;
@@ -68,7 +69,7 @@ export default function MonthGrid({
 	onDateClick,
 }: Props) {
 	const cells = buildGrid(year, month);
-	const todayIso = new Date().toISOString().slice(0, 10);
+	const todayIso = getTodayISOJST();
 	const headers = ["月", "火", "水", "木", "金", "土", "日"];
 
 	return (
