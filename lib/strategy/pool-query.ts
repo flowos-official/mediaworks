@@ -15,6 +15,7 @@
 
 import { getServiceClient } from "@/lib/supabase";
 import { buildCategoryMatchTerms } from "@/lib/strategy/category-mapping";
+import { hasExcludedChannel } from "@/lib/discovery/tv-channels";
 
 const FAIL_OPEN_THRESHOLD = 5;
 const DEFAULT_LOOKBACK_DAYS = 60;
@@ -83,12 +84,15 @@ interface FilterOptions {
 }
 
 function applyFilters(rows: PoolRow[], opts: FilterOptions): PoolRow[] {
-	// R3 + R2 — always strict
+	// R3 + R2 — always strict. Excluded channels (txd) are a hard drop here so
+	// the fail-open thresholds below operate on the already-cleaned set (an
+	// all-txd pool collapses → caller's fresh-search fallback engages).
 	const baseFiltered = rows.filter(
 		(r) =>
 			r.context === opts.context &&
 			r.user_action !== "rejected" &&
-			r.user_action !== "duplicate",
+			r.user_action !== "duplicate" &&
+			!hasExcludedChannel(r.tv_channel_source),
 	);
 
 	// R4 — category fuzzy match with fail-open
