@@ -5,7 +5,9 @@ import { getJSTYearMonth } from "@/lib/broadcasts/jst-date";
 import { recoverQvcPending } from "@/lib/broadcasts/qvc-pending-recovery";
 import { refreshShopChForwardRange } from "@/lib/broadcasts/shopch-forward";
 
-export const maxDuration = 300;
+// QVC monthly (~60 dates) + ShopCh forward (~15 dates) + recovery run
+// sequentially; give the cron headroom beyond the 300s default.
+export const maxDuration = 600;
 
 function verifyCronAuth(req: NextRequest): boolean {
 	const secret = process.env.CRON_SECRET;
@@ -78,8 +80,14 @@ export async function GET(req: NextRequest) {
 		const prevFirst = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 		prevFirst.setUTCMonth(prevFirst.getUTCMonth() - 1);
 		const prevYM = getJSTYearMonth(prevFirst);
+		// ShopCh forward (today..+SHOPCH_FORWARD_DAYS) can write slots into next
+		// month from ~mid-month onward — invalidate it too so the calendar's
+		// next-month view is not stale for up to 6h.
+		const nextFirst = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+		const nextYM = getJSTYearMonth(nextFirst);
 		revalidateTag(`broadcasts:calendar:${prevYM}`, "max");
 		revalidateTag(`broadcasts:calendar:${currentYM}`, "max");
+		revalidateTag(`broadcasts:calendar:${nextYM}`, "max");
 		revalidateTag("broadcasts:totals", "max");
 	} catch (err) {
 		const msg = err instanceof Error ? err.message : String(err);

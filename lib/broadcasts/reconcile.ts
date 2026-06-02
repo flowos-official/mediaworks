@@ -41,7 +41,7 @@ export async function reconcileFutureSlots(
 		.eq("channel", channel)
 		.eq("air_date", isoDate)
 		.is("archived_video_s3", null)
-		.not("video_status", "in", '("downloading","archived")')
+		.not("video_status", "in", "(downloading,archived)")
 		.not("start_time", "in", keepList)
 		.select("id");
 
