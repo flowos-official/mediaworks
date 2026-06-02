@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { refreshQVCMonthlyRange } from "@/lib/broadcasts/qvc-monthly";
 import { getJSTYearMonth } from "@/lib/broadcasts/jst-date";
+import { recoverQvcPending } from "@/lib/broadcasts/qvc-pending-recovery";
 
 export const maxDuration = 300;
 
@@ -29,9 +30,25 @@ export async function GET(req: NextRequest) {
 	const start = Date.now();
 	const summary = await refreshQVCMonthlyRange(jstNow());
 
+	// This refresh is where freshly-published QVC slots get their category
+	// attached (scrapeQVCForDate reads qvc_products.category). The daily
+	// broadcasts cron runs recoverQvcPending an hour *earlier* (16:00 UTC),
+	// so without this call a newly-categorised whitelist slot would sit in
+	// 'pending' until the next day's daily cron — a perpetual ~24h archive
+	// lag. Running it here flips those slots to 'queued' the same day so the
+	// next archive-videos tick picks them up. Idempotent + CAS-guarded.
+	let qvcRecovery: Awaited<ReturnType<typeof recoverQvcPending>> | { error: string };
+	try {
+		qvcRecovery = await recoverQvcPending();
+	} catch (err) {
+		qvcRecovery = { error: err instanceof Error ? err.message : String(err) };
+		console.warn("[qvc-monthly-refresh] recoverQvcPending failed", qvcRecovery);
+	}
+
 	const log = {
 		event: "qvc_monthly_refresh.summary",
 		...summary,
+		qvcRecovery,
 		// trim long error arrays in logs but keep first few for context
 		errors: summary.errors.slice(0, 5),
 		droppedErrors: Math.max(0, summary.errors.length - 5),
