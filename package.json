@@ -53,6 +53,7 @@
     "backfill:broadcasts-category": "tsx --env-file=.env.local scripts/backfill-broadcasts-category.ts",
     "verify:broadcasts": "tsx --env-file=.env.local scripts/verify-broadcasts-run.ts",
     "test:calendar-accuracy": "tsx scripts/test-calendar-accuracy.ts",
+    "test:shopch-forward": "tsx --env-file=.env.local scripts/test-shopch-forward.ts",
     "enrich:qvc-products": "tsx --env-file=.env.local scripts/enrich-qvc-products.ts",
     "publish-registry": "tsx --env-file=.env.local scripts/publish-registry.ts",
     "check:tv-evidence": "tsx --env-file=.env.local scripts/check-tv-evidence.ts",
