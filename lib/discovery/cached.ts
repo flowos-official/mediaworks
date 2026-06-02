@@ -9,6 +9,7 @@ import {
 	loadCategoryDistribution,
 	type CategoryDistribution,
 } from "@/lib/discovery/category-distribution";
+import { hasExcludedChannel } from "@/lib/discovery/tv-channels";
 
 type Context = "home_shopping" | "live_commerce";
 
@@ -58,9 +59,13 @@ export async function getCachedDiscoveryToday(
 		getCachedCategoryDistribution(),
 	]);
 
+	const products = (productsResult.data ?? []).filter(
+		(p) => !hasExcludedChannel((p as { tv_channel_source: string | null }).tv_channel_source),
+	);
+
 	return {
 		session,
-		products: productsResult.data ?? [],
+		products,
 		categoryStats,
 	};
 }
