@@ -129,11 +129,16 @@ async function backfillQVC(
 					console.warn(`[qvc] broadcast update ${row.id} failed:`, updateErr.message);
 				}
 
-				// Seed video_status — requires migration 2026-05-19_broadcasts_video_status_full_enum.sql
+				// Seed video_status — requires migration 2026-05-19_broadcasts_video_status_full_enum.sql.
+				// Guard: never clobber a slot that is already 'archived' (S3 object
+				// exists) or mid-flight 'downloading'. Without this, an unscoped
+				// backfill resets the entire archived history back to 'queued' and
+				// the drain re-downloads videos we already have.
 				const { error: vsErr } = await sb
 					.from("broadcasts")
 					.update({ video_status: videoStatus })
-					.eq("id", row.id);
+					.eq("id", row.id)
+					.not("video_status", "in", "(archived,downloading)");
 				if (vsErr) {
 					if (vsErr.message.includes("broadcasts_video_status_check")) {
 						if (!warnCtx.warned) {
@@ -242,11 +247,14 @@ async function backfillShopCh(
 
 				// Seed video_status — requires migration 2026-05-19_broadcasts_video_status_full_enum.sql.
 				// pgmMovie (meta.videoPath) presence ⇒ aired-program video exists on shopch.jp.
+				// Guard: never clobber 'archived' (S3 object exists) or 'downloading'
+				// (mid-flight) — see the QVC branch above for the rationale.
 				const shVideoStatus = meta.videoPath ? "queued" : "deferred";
 				const { error: vsErr } = await sb
 					.from("broadcasts")
 					.update({ video_status: shVideoStatus })
-					.eq("id", row.id);
+					.eq("id", row.id)
+					.not("video_status", "in", "(archived,downloading)");
 				if (vsErr) {
 					if (vsErr.message.includes("broadcasts_video_status_check")) {
 						if (!warnCtx.warned) {
