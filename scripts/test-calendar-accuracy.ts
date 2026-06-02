@@ -4,6 +4,7 @@
  */
 import assert from "node:assert";
 import { getTodayISOJST } from "../lib/broadcasts/jst-date";
+import { isWhitelistedSlot } from "../lib/broadcasts/whitelist-gate";
 
 let passed = 0;
 function check(label: string, cond: boolean) {
@@ -22,5 +23,15 @@ check(
 	"getTodayISOJST same day midday",
 	getTodayISOJST(new Date("2026-06-02T02:00:00Z")) === "2026-06-02",
 );
+
+// --- A: fail-open whitelist gate ---
+check("qvc null category shown (fail-open)", isWhitelistedSlot("qvc", null) === true);
+check("qvc empty category shown (fail-open)", isWhitelistedSlot("qvc", "") === true);
+check("qvc whitelisted category shown", isWhitelistedSlot("qvc", "家電") === true);
+check("qvc known non-whitelist hidden", isWhitelistedSlot("qvc", "占い") === false);
+check("shopch null category shown (fail-open)", isWhitelistedSlot("shopch", null) === true);
+check("shopch whitelisted shown", isWhitelistedSlot("shopch", "コスメ") === true);
+check("shopch known non-whitelist hidden", isWhitelistedSlot("shopch", "雑貨") === false);
+check("oa channel always shown", isWhitelistedSlot("ntv", null) === true);
 
 console.log(`[test:calendar-accuracy] ${passed} assertions passed`);
