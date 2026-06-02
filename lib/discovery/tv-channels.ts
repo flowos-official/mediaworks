@@ -85,6 +85,36 @@ export function parseChannelSlugs(value: string | null | undefined): string[] {
 }
 
 /**
+ * Channels whose products must NOT surface in discovery / strategy search.
+ * Operator policy (2026-06-02): テレ東マート (txd) is excluded by default.
+ * Calendar visibility (lib/broadcasts/channel-style.ts) is a SEPARATE registry
+ * and is unaffected by this set.
+ */
+export const EXCLUDED_DISCOVERY_SLUGS: ReadonlySet<string> = new Set(["txd"]);
+
+/**
+ * True when a persisted `tv_channel_source` (comma-joined slugs) contains any
+ * excluded slug as a whole token. Uses parseChannelSlugs so "txdx" never
+ * matches "txd". Null/empty => false.
+ */
+export function hasExcludedChannel(tvChannelSource: string | null | undefined): boolean {
+	return parseChannelSlugs(tvChannelSource).some((slug) =>
+		EXCLUDED_DISCOVERY_SLUGS.has(slug),
+	);
+}
+
+/**
+ * True when a channel should be queried in the discovery Brave site: fan-out:
+ * not broadcast-scraped AND not on the exclusion list.
+ */
+export function isDiscoverySearchable(channel: {
+	slug: string;
+	scraped: boolean;
+}): boolean {
+	return !channel.scraped && !EXCLUDED_DISCOVERY_SLUGS.has(channel.slug);
+}
+
+/**
  * Derive the persisted `tv_channel_source` value for a PoolItem.
  * Returns null when no channel hit exists. Output is alphabetically
  * sorted and deduplicated, matching the contract of `serializeChannelSlugs`.

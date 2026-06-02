@@ -24,6 +24,7 @@
     "test:tv-channel-derive": "tsx --env-file=.env.local scripts/test-tv-channel-derive.ts",
     "test:pool-tv-channel": "tsx --env-file=.env.local scripts/test-pool-tv-channel.ts",
     "test:tv-channel-mapping": "tsx --env-file=.env.local scripts/test-tv-channel-mapping.ts",
+    "test:txd-exclusion": "tsx scripts/test-txd-exclusion.ts",
     "test:discovery-partition": "tsx --env-file=.env.local scripts/test-discovery-partition.ts",
     "test:user-guide": "tsx --env-file=.env.local scripts/test-user-guide.ts",
     "test:pool-query": "tsx --env-file=.env.local scripts/test-pool-query-filters.ts",
