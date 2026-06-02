@@ -1,8 +1,8 @@
 /**
  * Single-slot video archival job. Given a queued broadcast row, resolves its
- * m3u8 source URL (QVC only at this stage), pipes the stream through ffmpeg
- * in copy mode (no transcode) into an S3 multipart upload, and updates the
- * broadcasts row with archive metadata or a retryable failure state.
+ * m3u8 source URL, pipes the stream through ffmpeg in copy mode (no transcode)
+ * into an S3 multipart upload, and updates the broadcasts row with archive
+ * metadata or a retryable failure state.
  *
  * Failure model: any throw rolls the slot back to `video_status='queued'`
  * with incremented attempts. At attempts >= MAX_ATTEMPTS the status becomes
@@ -95,21 +95,39 @@ export async function archiveOne(slot: QueuedSlot): Promise<ArchiveResult> {
 	const broadcastId = slot.id;
 
 	// Claim the slot so a parallel cron run doesn't double-process it.
-	const { error: claimErr } = await sb
+	const { data: claimed, error: claimErr } = await sb
 		.from("broadcasts")
 		.update({ video_status: "downloading" })
 		.eq("id", broadcastId)
-		.eq("video_status", "queued");
+		.eq("video_status", "queued")
+		.select("id");
 	if (claimErr) {
 		return { broadcastId, status: "queued", error: claimErr.message };
+	}
+	if (!claimed || claimed.length === 0) {
+		return {
+			broadcastId,
+			status: "queued",
+			error: "claim lost: slot was no longer queued",
+		};
 	}
 
 	const videoUrl = await resolveVideoUrl(slot);
 	if (!videoUrl) {
-		await sb.from("broadcasts").update({
+		const { data: updated, error: updateErr } = await sb.from("broadcasts").update({
 			video_status: "deferred",
 			video_error: "no video_url for lead product",
-		}).eq("id", broadcastId);
+		}).eq("id", broadcastId).eq("video_status", "downloading").select("id");
+		if (updateErr) {
+			return { broadcastId, status: "queued", error: updateErr.message };
+		}
+		if (!updated || updated.length === 0) {
+			return {
+				broadcastId,
+				status: "queued",
+				error: "defer skipped: slot was no longer downloading",
+			};
+		}
 		return { broadcastId, status: "deferred" };
 	}
 
@@ -126,7 +144,7 @@ export async function archiveOne(slot: QueuedSlot): Promise<ArchiveResult> {
 		}
 		// ffmpeg writes a Duration line to stderr around stream start.
 		const durationSec = parseDurationFromStderr(stderrChunks.join(""));
-		await sb.from("broadcasts").update({
+		const { data: updated, error: updateErr } = await sb.from("broadcasts").update({
 			archived_video_s3: key,
 			video_size_bytes: bytes,
 			video_duration_sec: durationSec,
@@ -134,7 +152,18 @@ export async function archiveOne(slot: QueuedSlot): Promise<ArchiveResult> {
 			video_status: "archived",
 			video_downloaded_at: new Date().toISOString(),
 			video_error: null,
-		}).eq("id", broadcastId);
+		}).eq("id", broadcastId).eq("video_status", "downloading").select("id");
+		if (updateErr) {
+			return { broadcastId, status: "queued", bytes, error: updateErr.message };
+		}
+		if (!updated || updated.length === 0) {
+			return {
+				broadcastId,
+				status: "queued",
+				bytes,
+				error: "archive finalization skipped: slot was no longer downloading",
+			};
+		}
 		return { broadcastId, status: "archived", bytes };
 	} catch (e) {
 		const msg = (e instanceof Error ? e.message : String(e)).slice(0, 500);
@@ -145,19 +174,39 @@ export async function archiveOne(slot: QueuedSlot): Promise<ArchiveResult> {
 		// otherwise a slot queued too early burns all 5 attempts on 403s and is
 		// wrongly abandoned.
 		if (slot.channel === "shopch" && /403 Forbidden/i.test(msg)) {
-			await sb.from("broadcasts").update({
+			const { data: updated, error: updateErr } = await sb.from("broadcasts").update({
 				video_status: "deferred",
 				video_error: msg,
-			}).eq("id", broadcastId);
+			}).eq("id", broadcastId).eq("video_status", "downloading").select("id");
+			if (updateErr) {
+				return { broadcastId, status: "queued", error: updateErr.message };
+			}
+			if (!updated || updated.length === 0) {
+				return {
+					broadcastId,
+					status: "queued",
+					error: "403 defer skipped: slot was no longer downloading",
+				};
+			}
 			return { broadcastId, status: "deferred", error: msg };
 		}
 		const attempts = (slot.video_download_attempts ?? 0) + 1;
 		const finalStatus = attempts >= MAX_ATTEMPTS ? "abandoned" : "queued";
-		await sb.from("broadcasts").update({
+		const { data: updated, error: updateErr } = await sb.from("broadcasts").update({
 			video_status: finalStatus,
 			video_download_attempts: attempts,
 			video_error: msg,
-		}).eq("id", broadcastId);
+		}).eq("id", broadcastId).eq("video_status", "downloading").select("id");
+		if (updateErr) {
+			return { broadcastId, status: "queued", error: updateErr.message };
+		}
+		if (!updated || updated.length === 0) {
+			return {
+				broadcastId,
+				status: "queued",
+				error: "failure update skipped: slot was no longer downloading",
+			};
+		}
 		return { broadcastId, status: finalStatus, error: msg };
 	}
 }

@@ -67,6 +67,9 @@ export async function GET(req: NextRequest) {
   const BATCH_SIZE = 8;
   const MAX_BATCHES = 100; // safety backstop against a pathological loop
   const startedAt = Date.now();
+  const todayJst = new Date(Date.now() + 9 * 60 * 60_000)
+    .toISOString()
+    .slice(0, 10);
 
   const summary = {
     processed: 0,
@@ -89,6 +92,7 @@ export async function GET(req: NextRequest) {
       .select("id, channel, air_date, start_time, product_ids, video_download_attempts")
       .eq("video_status", "queued")
       .lt("video_download_attempts", 5)
+      .lte("air_date", todayJst)
       .order("air_date", { ascending: false })
       .limit(BATCH_SIZE);
 
