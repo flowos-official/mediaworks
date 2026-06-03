@@ -111,7 +111,10 @@ export const txdParser: ChannelParser = {
 	name: "テレ東マート",
 	fetchToday: async (jstDate) => {
 		const first = await fetchPage(jstDate, 1);
-		if (!first || !first.RSuccess) return [];
+		// Distinguish a fetch/parse failure (null) — surfaced as ok:false on the
+		// crawl dashboard — from a successful call that genuinely has no data.
+		if (!first) throw new Error("fetch/parse failed (page 1)");
+		if (!first.RSuccess) return [];
 		const rows = parseTxdResponse(first, jstDate);
 		const totalCount = first.RCount ?? rows.length;
 		// Paginate only if first page didn't already cover everything.

@@ -114,10 +114,19 @@ export default function BroadcastVideoModal({
 
         {/* Video */}
         <div className="px-5 pt-4 flex-shrink-0">
+          {/*
+            preload="none" (not "metadata"): archived videos are fragmented MP4
+            (ffmpeg empty_moov, no mehd, mvhd duration=0 — see lib/broadcasts/
+            video-archival.ts). ShopCh programs are ~1hr ≈ 1.2GB, so "metadata"
+            makes the browser fire hundreds of range requests hunting fragments
+            to compute duration and never settle → perpetual spinner. QVC's
+            ~40MB files mask it. "none" stays idle until the user clicks play,
+            then streams sequentially. Verified 2026-06-03.
+          */}
           <video
             key={videoUrl}
             controls
-            preload="metadata"
+            preload="none"
             className="w-full rounded-lg bg-black aspect-video"
           >
             <source src={videoUrl} />

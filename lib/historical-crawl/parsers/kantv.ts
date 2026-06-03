@@ -84,7 +84,7 @@ export const kantvParser: ChannelParser = {
 	name: "カンテレSHOPPING",
 	fetchToday: async (jstDate) => {
 		const r = await politeFetch(HOME_URL);
-		if (!r.ok || !r.body) return [];
+		if (!r.ok || !r.body) throw new Error(`fetch failed: HTTP ${r.status ?? "?"}${r.error ? ` ${r.error}` : ""}`);
 		return parse(r.body, jstDate);
 	},
 };

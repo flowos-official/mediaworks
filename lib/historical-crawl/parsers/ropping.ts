@@ -14,11 +14,14 @@ import { parsePrice } from "../price";
  *  - `.c-product-card__image img[src]` → thumbnail (relative path)
  *  - `.price`                   → price text "¥8,980（税込）"
  *
- * We persist all card rows whose balloon date matches the jstDate passed in
- * by the daily-historical-broadcasts cron. Future-dated cards are skipped
- * (the cron only writes for one day at a time; tomorrow's slot will be
- * captured tomorrow). UNIQUE(channel, air_date, product_name) makes reruns
- * safe.
+ * This page is RETROSPECTIVE: it lists products that have already aired, from
+ * today back ~30 days, with no future dates. The cron runs at 01:30 JST, when
+ * nothing has aired yet that day, so the page holds zero cards for "today" —
+ * matching on jstDate alone perpetually yields 0 rows. We therefore persist
+ * every card whose balloon date is strictly BEFORE jstDate (yesterday and
+ * back). UNIQUE(channel, air_date, product_name) makes the rolling ~30-day
+ * capture idempotent and self-healing: missed days are backfilled on the next
+ * run. Today's (not-yet-aired) and any future cards are skipped.
  */
 
 const PAGE_URL = "https://ropping.jp/product_onair_list";
@@ -53,9 +56,10 @@ export function parse(html: string, jstDate: string): HistoricalRow[] {
 		const card = $(el);
 		const balloon = card.find(".c-product-card__balloon").first().text().trim();
 		const airDate = parseBalloonDate(balloon, jstDate);
-		// Only persist today's slots; cards for other dates will land on their
-		// own day's run (idempotent UNIQUE constraint).
-		if (!airDate || airDate !== jstDate) return;
+		// Retrospective page: persist already-aired days (strictly before today).
+		// Today hasn't aired at cron time (01:30 JST) and future dates never
+		// appear; ISO YYYY-MM-DD compares correctly as strings.
+		if (!airDate || airDate >= jstDate) return;
 
 		const name = card
 			.find(".c-product-card__name")
@@ -103,7 +107,7 @@ export const roppingParser: ChannelParser = {
 	name: "ロッピング",
 	fetchToday: async (jstDate) => {
 		const r = await politeFetch(PAGE_URL);
-		if (!r.ok || !r.body) return [];
+		if (!r.ok || !r.body) throw new Error(`fetch failed: HTTP ${r.status ?? "?"}${r.error ? ` ${r.error}` : ""}`);
 		return parse(r.body, jstDate);
 	},
 };

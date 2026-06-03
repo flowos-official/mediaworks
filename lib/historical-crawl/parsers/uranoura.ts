@@ -11,7 +11,7 @@ export const uranouraParser: ChannelParser = {
 	name: "ABCウラのウラまで",
 	fetchToday: async (jstDate) => {
 		const r = await politeFetch(PAGE_URL);
-		if (!r.ok || !r.body) return [];
+		if (!r.ok || !r.body) throw new Error(`fetch failed: HTTP ${r.status ?? "?"}${r.error ? ` ${r.error}` : ""}`);
 		const rows = parseAsahiCategory(r.body, jstDate, "uranoura", PAGE_URL, "live-crawl:uranoura");
 		await mapWithConcurrency(rows, 5, async (row) => {
 			if (!row.source_url) return;

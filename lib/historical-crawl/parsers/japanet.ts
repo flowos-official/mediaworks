@@ -89,7 +89,7 @@ export const japanetParser: ChannelParser = {
 	name: "ジャパネット",
 	fetchToday: async (jstDate) => {
 		const r = await politeFetch(PAGE_URL);
-		if (!r.ok || !r.body) return [];
+		if (!r.ok || !r.body) throw new Error(`fetch failed: HTTP ${r.status ?? "?"}${r.error ? ` ${r.error}` : ""}`);
 		return parseJapanet(r.body, jstDate);
 	},
 };

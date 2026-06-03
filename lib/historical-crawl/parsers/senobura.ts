@@ -101,7 +101,7 @@ export const senoburaParser: ChannelParser = {
 	name: "ABCせのぶら本舗",
 	fetchToday: async (jstDate) => {
 		const r = await politeFetch(PAGE_URL);
-		if (!r.ok || !r.body) return [];
+		if (!r.ok || !r.body) throw new Error(`fetch failed: HTTP ${r.status ?? "?"}${r.error ? ` ${r.error}` : ""}`);
 		const rows = parseAsahiCategory(r.body, jstDate, "senobura", PAGE_URL, "live-crawl:senobura");
 		await mapWithConcurrency(rows, 5, async (row) => {
 			if (!row.source_url) return;

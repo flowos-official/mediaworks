@@ -56,7 +56,7 @@ export const ntvParser: ChannelParser = {
 	name: "日テレポシュレ",
 	fetchToday: async (jstDate) => {
 		const r = await politeFetch(PAGE_URL);
-		if (!r.ok || !r.body) return [];
+		if (!r.ok || !r.body) throw new Error(`fetch failed: HTTP ${r.status ?? "?"}${r.error ? ` ${r.error}` : ""}`);
 		const rows = parse(r.body, jstDate);
 		await mapWithConcurrency(rows, 5, async (row) => {
 			if (!row.source_url) return;

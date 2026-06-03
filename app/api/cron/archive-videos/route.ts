@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
 import { archiveOne, type QueuedSlot, type ArchiveResult } from "@/lib/broadcasts/video-archival";
 import { recoverStaleDownloading } from "@/lib/broadcasts/stale-downloading-recovery";
+import { recoverQvcPending } from "@/lib/broadcasts/qvc-pending-recovery";
 
 export const maxDuration = 300;
 
@@ -55,6 +56,26 @@ export async function GET(req: NextRequest) {
       "[archive-videos] stale-downloading recovery failed:",
       err instanceof Error ? err.message : String(err),
     );
+  }
+
+  // Close the residual archive lag: a QVC whitelist slot only becomes 'queued'
+  // once recoverQvcPending sees its category, but the category is attached
+  // progressively by product enrichment. The daily recover passes (16:00 +
+  // 17:00 UTC) miss slots categorised in between, so they waited up to ~24h for
+  // the next pass. Running it here (every 2h) flips them within the same tick so
+  // the drain loop below archives them immediately. CAS-guarded + idempotent.
+  let qvcRecovery: Awaited<ReturnType<typeof recoverQvcPending>> | { error: string } = {
+    scanned: 0,
+    queued: 0,
+    deferred: 0,
+    skippedOutOfWhitelist: 0,
+    skippedNoProduct: 0,
+  };
+  try {
+    qvcRecovery = await recoverQvcPending();
+  } catch (err) {
+    qvcRecovery = { error: err instanceof Error ? err.message : String(err) };
+    console.warn("[archive-videos] recoverQvcPending failed:", qvcRecovery);
   }
 
   // Drain the queue until it is empty or we approach the function timeout.
@@ -118,7 +139,8 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  console.log("[archive-videos]", JSON.stringify(summary));
+  const result = { ...summary, qvcRecovery };
+  console.log("[archive-videos]", JSON.stringify(result));
 
-  return NextResponse.json(summary);
+  return NextResponse.json(result);
 }
