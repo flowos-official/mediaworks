@@ -8,6 +8,7 @@ import type {
   ProgressEvent,
   ScreenplayVersionRow,
 } from "@/lib/screenplay/types";
+import { loadActiveRules, checkScreenplay } from "@/lib/screenplay/compliance/check";
 
 export interface ScreenplayWorkflowInput {
   screenplayId: string;
@@ -138,6 +139,31 @@ async function persistStep(
   return { versionId: versionRow.id, versionNumber: versionRow.version_number };
 }
 
+async function checkStep(
+  versionId: string,
+  markdown: string,
+  productBrief: ProductBrief,
+): Promise<void> {
+  "use step";
+  // Non-fatal: a failed check must NEVER fail the generation. The version is
+  // already persisted; the operator can 再チェック on demand.
+  try {
+    const rules = await loadActiveRules();
+    const result = await checkScreenplay(markdown, productBrief, rules);
+    const supabase = getServiceClient();
+    await supabase.from("screenplay_version_checks").insert({
+      version_id: versionId,
+      overall_score: result.overallScore,
+      result,
+      lexicon_version: `rules:${rules.length}`,
+      is_auto: true,
+      created_by: null,
+    });
+  } catch (err) {
+    console.warn("[checkStep] auto-check failed (non-fatal):", err instanceof Error ? err.message : String(err));
+  }
+}
+
 async function markFailedStep(screenplayId: string, message: string): Promise<void> {
   "use step";
   const supabase = getServiceClient();
@@ -167,6 +193,8 @@ export async function screenplayWorkflow(input: ScreenplayWorkflowInput) {
       gen.model,
       gen.thinkingLevel,
     );
+
+    await checkStep(persisted.versionId, gen.markdown, input.productBrief);
 
     await emitProgressStep({
       type: "done",

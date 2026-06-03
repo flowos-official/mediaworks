@@ -7,18 +7,21 @@ import { GenerationProgress } from "./GenerationProgress";
 import { VersionTimeline } from "./VersionTimeline";
 import { ScreenplayViewer } from "./ScreenplayViewer";
 import { FeedbackForm } from "./FeedbackForm";
+import { CheckResultPanel } from "./CheckResultPanel";
 import type { ScreenplayRow, ScreenplayVersionRow } from "@/lib/screenplay/types";
+import type { ScriptCheckResult } from "@/lib/screenplay/compliance/types";
 
 interface Props {
 	initialScreenplay: ScreenplayRow;
 	initialVersions: ScreenplayVersionRow[];
+	latestCheck?: (ScriptCheckResult & { created_at?: string }) | null;
 }
 
 function pad(n: number, w: number): string {
 	return n.toString().padStart(w, "0");
 }
 
-export function ScreenplayWorkspace({ initialScreenplay, initialVersions }: Props) {
+export function ScreenplayWorkspace({ initialScreenplay, initialVersions, latestCheck }: Props) {
 	const router = useRouter();
 	const search = useSearchParams();
 	const [versions, setVersions] = useState(initialVersions);
@@ -173,7 +176,7 @@ export function ScreenplayWorkspace({ initialScreenplay, initialVersions }: Prop
 				) : null}
 			</section>
 
-			{/* RIGHT — DIRECTOR'S NOTE */}
+			{/* RIGHT — DIRECTOR'S NOTE + COMPLIANCE CHECK */}
 			<aside className="lg:sticky lg:top-20 self-start">
 				{selected ? (
 					<FeedbackForm
@@ -189,6 +192,10 @@ export function ScreenplayWorkspace({ initialScreenplay, initialVersions }: Prop
 						</CardContent>
 					</Card>
 				)}
+				<CheckResultPanel
+					screenplayId={initialScreenplay.id}
+					initialCheck={latestCheck ?? null}
+				/>
 			</aside>
 		</div>
 	);
