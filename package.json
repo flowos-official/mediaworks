@@ -91,6 +91,8 @@
     "promote:discovery-research": "tsx --env-file=.env.local scripts/promote-discovered-to-research.ts",
     "complete:recommendation-flow": "tsx --env-file=.env.local scripts/complete-recommendation-flow.ts",
     "test:selections": "tsx --env-file=.env.local scripts/test-selections-state-machine.ts",
+    "test:compliance-lexicon": "tsx scripts/test-compliance-lexicon.ts",
+    "test:screenplay-check": "tsx --env-file=.env.local scripts/test-screenplay-check.ts",
     "test:research-data-model": "tsx --env-file=.env.local scripts/test-research-data-model.ts",
     "test:research-retry-stage": "tsx scripts/test-research-retry-stage.ts",
     "test:research-stuck-detector": "tsx --env-file=.env.local scripts/test-research-stuck-detector.ts",
