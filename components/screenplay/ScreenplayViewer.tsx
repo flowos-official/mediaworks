@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Copy, Download, Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { Copy, Download, Check, ChevronLeft, ChevronRight, FileText } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { ScreenplayMarkdown } from "./markdown-renderer";
 
@@ -40,6 +40,7 @@ export function ScreenplayViewer({
 	nextLabel,
 }: Props) {
 	const [copied, setCopied] = useState(false);
+	const [docxBusy, setDocxBusy] = useState(false);
 
 	function downloadMd() {
 		const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
@@ -49,6 +50,24 @@ export function ScreenplayViewer({
 		a.download = `${title.replace(/[^\p{L}\p{N}]+/gu, "-").slice(0, 60)}${versionLabel ? `-${versionLabel}` : ""}.md`;
 		a.click();
 		URL.revokeObjectURL(url);
+	}
+
+	async function downloadDocx() {
+		setDocxBusy(true);
+		try {
+			// Dynamic import keeps the ~150KB docx lib out of the (already heavy)
+			// screenplay route's initial bundle — loaded only on first click.
+			const { buildScreenplayDocx } = await import("@/lib/screenplay/screenplay-docx");
+			const blob = await buildScreenplayDocx(markdown, title);
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement("a");
+			a.href = url;
+			a.download = `${title.replace(/[^\p{L}\p{N}]+/gu, "-").slice(0, 60)}${versionLabel ? `-${versionLabel}` : ""}.docx`;
+			a.click();
+			URL.revokeObjectURL(url);
+		} finally {
+			setDocxBusy(false);
+		}
 	}
 
 	async function copyMd() {
@@ -108,6 +127,15 @@ export function ScreenplayViewer({
 					>
 						<Download size={12} />
 						.md
+					</button>
+					<button
+						type="button"
+						onClick={downloadDocx}
+						disabled={docxBusy}
+						className="inline-flex items-center gap-1 px-3 py-1.5 text-xs text-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+					>
+						<FileText size={12} />
+						{docxBusy ? "生成中…" : "Word"}
 					</button>
 				</div>
 			</div>
