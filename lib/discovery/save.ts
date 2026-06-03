@@ -6,6 +6,7 @@
 
 import { getServiceClient } from "@/lib/supabase";
 import { normalizeName } from "./exclusion";
+import { hasExcludedChannel, EXCLUDED_DISCOVERY_SLUGS } from "./tv-channels";
 import { fetchRakutenPage } from "./tools/rakuten-page";
 import { fetchAndParseMetadata } from "./tv-channel-enrich";
 import { classifyProductCategories } from "./tv-channel-category-classify";
@@ -165,7 +166,16 @@ export function buildDiscoveredProductRows(
 	sessionId: string,
 	batch: SaveBatch[],
 ): DiscoveredProductRow[] {
-	return batch.map(({ candidate, broadcastTag, broadcastSources, tvEvidence }) => ({
+	const kept = batch.filter(
+		({ candidate }) => !hasExcludedChannel(candidate.tvChannelSource ?? null),
+	);
+	const dropped = batch.length - kept.length;
+	if (dropped > 0) {
+		console.log(
+			`[save] dropped ${dropped} excluded-channel candidate(s) (${[...EXCLUDED_DISCOVERY_SLUGS].join(",")})`,
+		);
+	}
+	return kept.map(({ candidate, broadcastTag, broadcastSources, tvEvidence }) => ({
 		session_id: sessionId,
 		name: candidate.name,
 		name_normalized: normalizeName(candidate.name),

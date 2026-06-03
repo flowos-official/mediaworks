@@ -19,6 +19,15 @@ export function getYesterdayJST(nowUtc: Date = new Date()): Date {
 	);
 }
 
+/**
+ * Returns "YYYY-MM-DD" for "today in JST". Works on both server and client:
+ * Date.now() is a UTC epoch, so shifting by +9h and reading the ISO date gives
+ * the JST calendar day regardless of the host's local timezone.
+ */
+export function getTodayISOJST(nowUtc: Date = new Date()): string {
+	return new Date(nowUtc.getTime() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+}
+
 /** Returns "YYYY-MM" for the given Date's UTC year/month. */
 export function getJSTYearMonth(d: Date): string {
 	const y = d.getUTCFullYear();

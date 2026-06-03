@@ -12,53 +12,7 @@ import {
 	CHANNEL_BADGE,
 	type BroadcastChannelSlug,
 } from "@/lib/broadcasts/channel-style";
-
-const CATEGORIES_BY_CHANNEL: Record<"qvc" | "shopch", readonly string[]> = {
-	qvc: [
-		// Must match QVC's actual top-level breadcrumb labels. qvc.jp's product
-		// pages only ever surface these 6+ rooted categories — homepage nav
-		// labels like "ホーム" / "キッチングッズ" / "ファッション小物" are
-		// marketing groupings and never appear in actual breadcrumbs (subsumed
-		// into "ホーム・キッチン" and "ファッション" respectively). See
-		// scripts/survey-qvc-categories.ts for the live survey.
-		"ビューティ",
-		"ファッション",
-		"健康・ダイエット",
-		"ホーム・キッチン",
-		"レジャー・ホビー",
-		"家電",
-	],
-	shopch: [
-		// Sourced directly from shopch.jp's /json/programprodlist2/{id}.json
-		// `pgmcategory` field as of 2026-05-19 (was Gemini-classified before;
-		// switched after empirical analysis showed 24% Gemini disagreement
-		// and 33% NULL rate). All 10 display names the site emits are
-		// included so the operator can toggle visibility in the chip filter.
-		"コスメ",
-		"グルメ・お酒",
-		"美容・ダイエット・フィットネス",
-		"靴・バッグ・小物・インナー",
-		"ファッション",
-		"ミックス",
-		"ホーム・インテリア",
-		"家電",
-		"ジュエリー",
-		"旅・趣味・暮らし・コレクターズ",
-	],
-};
-
-const QVC_WHITELIST = new Set<string>(CATEGORIES_BY_CHANNEL.qvc);
-const SHOPCH_WHITELIST = new Set<string>(CATEGORIES_BY_CHANNEL.shopch);
-
-// Whitelist gate applied at display time. Data is still persisted regardless
-// of category — see CLAUDE.md "Broadcast Calendar" policy. Non-whitelisted
-// QVC/ShopCh slots are hidden even when `categoryFilter === "all"`. Other
-// (OA) channels have no whitelist and pass through unchanged.
-function isWhitelistedSlot(channel: string, category: string | null): boolean {
-	if (channel === "qvc") return !!category && QVC_WHITELIST.has(category);
-	if (channel === "shopch") return !!category && SHOPCH_WHITELIST.has(category);
-	return true;
-}
+import { CATEGORIES_BY_CHANNEL, isWhitelistedSlot } from "@/lib/broadcasts/whitelist-gate";
 
 interface Props {
 	date: string | null;

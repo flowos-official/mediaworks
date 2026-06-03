@@ -14,7 +14,7 @@ import {
 	type RakutenItem,
 } from "@/lib/rakuten";
 import { getServiceClient } from "@/lib/supabase";
-import { TV_CHANNELS, broadcastsChannelToSlug } from "./tv-channels";
+import { TV_CHANNELS, broadcastsChannelToSlug, isDiscoverySearchable } from "./tv-channels";
 import { LIVE_CHANNELS } from "./live-channels";
 import { findRakutenCrossMatch } from "./rakuten-crossmatch";
 import type { CategoryPlan, Context, PoolItem, Track } from "./types";
@@ -211,7 +211,8 @@ async function fetchTvChannelFromBraveSite(
 	channels: ReadonlyArray<{ slug: string; siteQuery: string; scraped: boolean }>,
 	budget: number,
 ): Promise<PoolItem[]> {
-	const targets = channels.filter((c) => !c.scraped);
+	// Excludes broadcast-scraped channels AND policy-excluded channels (txd).
+	const targets = channels.filter((c) => isDiscoverySearchable(c));
 	if (targets.length === 0 || budget <= 0) return [];
 
 	const allKws = [
