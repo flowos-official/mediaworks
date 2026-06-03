@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
 import { loadCategoryDistribution } from "@/lib/discovery/category-distribution";
 import { getCachedDiscoveryToday } from "@/lib/discovery/cached";
+import { hasExcludedChannel } from "@/lib/discovery/tv-channels";
 
 export const dynamic = "force-dynamic";
 
@@ -105,6 +106,12 @@ export async function GET(req: NextRequest) {
 		return NextResponse.json({ error: prodResult.error.message }, { status: 500 });
 
 	let products: Array<Record<string, unknown>> = (prodResult.data ?? []) as Array<Record<string, unknown>>;
+
+	// Excluded-channel (txd) suppression — mirror the cached path so this
+	// fallback never surfaces テレ東マート products either.
+	products = products.filter(
+		(p) => !hasExcludedChannel((p as { tv_channel_source?: string | null }).tv_channel_source ?? null),
+	);
 
 	// Merge active_selection onto each product
 	const productIds = products.map((p) => p.id as string).filter(Boolean);

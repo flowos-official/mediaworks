@@ -8,6 +8,7 @@ import {
 	getCachedCalendarCounts,
 	getCachedChannelTotals,
 } from "@/lib/broadcasts/cached";
+import { getTodayISOJST } from "@/lib/broadcasts/jst-date";
 
 interface PageProps {
 	params: Promise<{ locale: string }>;
@@ -47,8 +48,9 @@ export default async function Page({ params, searchParams }: PageProps) {
 		redirect(localePath(locale, "/login"));
 	}
 
-	const today = new Date();
-	const todayIso = today.toISOString().slice(0, 10);
+	// JST, not UTC — MonthGrid highlights "today" via getTodayISOJST(); the
+	// default-selected date must match it (else they diverge during JST morning).
+	const todayIso = getTodayISOJST();
 	const selected = sp.date && /^\d{4}-\d{2}-\d{2}$/.test(sp.date) ? sp.date : todayIso;
 	const { y, m, from, to } = monthBoundsAround(selected);
 
