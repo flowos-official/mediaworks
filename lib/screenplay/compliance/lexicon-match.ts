@@ -7,22 +7,46 @@ function inScope(rule: ComplianceRule, category: string | null): boolean {
 	return rule.category_scope.includes(category);
 }
 
-function matches(rule: ComplianceRule, text: string): boolean {
+type Span = [start: number, end: number];
+
+/** All match spans (start,end) of a rule's pattern within `text`. */
+function findSpans(rule: ComplianceRule, text: string): Span[] {
+	const spans: Span[] = [];
 	if (rule.is_regex) {
+		let re: RegExp;
 		try {
-			return new RegExp(rule.pattern, "u").test(text);
+			re = new RegExp(rule.pattern, "gu");
 		} catch {
-			return false; // a malformed regex rule never throws the whole check
+			return spans; // a malformed regex rule never throws the whole check
 		}
+		for (const m of text.matchAll(re)) {
+			if (m.index === undefined) continue;
+			if (m[0].length === 0) break; // guard against zero-width infinite loop
+			spans.push([m.index, m.index + m[0].length]);
+		}
+		return spans;
 	}
-	return text.includes(rule.pattern);
+	let i = text.indexOf(rule.pattern);
+	while (i !== -1) {
+		spans.push([i, i + rule.pattern.length]);
+		i = text.indexOf(rule.pattern, i + 1);
+	}
+	return spans;
+}
+
+/** True when `span` is wholly contained within one of the `outer` spans. */
+function within(span: Span, outer: Span[]): boolean {
+	return outer.some(([s, e]) => span[0] >= s && span[1] <= e);
 }
 
 /**
  * Deterministic pass: flag every active, in-scope, non-`allowed` rule whose
- * pattern appears in the markdown. `allowed` rules are whitelist phrases — if
- * one matches, suppress any flag whose quote is contained within the allowed
- * match span (e.g. "小じわを目立たなくする" must not trip a "消える"-style rule).
+ * pattern appears in the markdown. `allowed` rules are whitelist phrases —
+ * suppress a flag ONLY for the specific occurrences that fall inside an allowed
+ * phrase's text span. A non-allowed pattern that also appears standalone
+ * (outside any allowed span) is still flagged. This is text-span containment,
+ * NOT pattern-string containment — so a short NG pattern that happens to be a
+ * substring of an allowed phrase is not blanket-suppressed everywhere.
  */
 export function matchLexicon(
 	markdown: string,
@@ -30,16 +54,19 @@ export function matchLexicon(
 	category: string | null,
 ): Finding[] {
 	const active = rules.filter((r) => r.active && inScope(r, category));
-	const allowedHits = active
-		.filter((r) => r.allowed && matches(r, markdown))
-		.map((r) => r.pattern);
+
+	const allowedSpans: Span[] = [];
+	for (const r of active) {
+		if (r.allowed) allowedSpans.push(...findSpans(r, markdown));
+	}
 
 	const findings: Finding[] = [];
 	for (const r of active) {
 		if (r.allowed) continue;
-		if (!matches(r, markdown)) continue;
-		// Suppress when the offending pattern is wholly inside an allowed phrase.
-		if (allowedHits.some((a) => a.includes(r.pattern))) continue;
+		const spans = findSpans(r, markdown);
+		if (spans.length === 0) continue;
+		// Suppress only when EVERY occurrence sits inside an allowed span.
+		if (spans.every((sp) => within(sp, allowedSpans))) continue;
 		findings.push({
 			axis: "legal",
 			severity: r.severity,

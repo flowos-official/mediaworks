@@ -71,6 +71,7 @@ async function callGemini(prompt: string): Promise<string> {
 			}
 		}
 		if (dead) continue;
+		console.warn(`[compliance] model ${model} exhausted retries`);
 	}
 	throw lastErr instanceof Error ? lastErr : new Error("All Gemini models failed");
 }

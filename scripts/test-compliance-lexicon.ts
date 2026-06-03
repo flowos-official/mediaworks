@@ -47,4 +47,16 @@ check("allowed/whitelist phrase is not flagged", f.length === 0);
 f = matchLexicon("シミが消える、業界初。", RULES, "化粧品");
 check("lexicon findings are legal+lexicon", f.length >= 2 && f.every((x) => x.axis === "legal" && x.source === "lexicon"));
 
+// 6+7. Text-span suppression: an NG pattern that is a SUBSTRING of an allowed
+// phrase must still fire when it occurs standalone, and be suppressed only when
+// it occurs inside the allowed phrase span.
+const RULES_SUB: ComplianceRule[] = [
+	...RULES,
+	rule({ pattern: "目立たなく", category_scope: ["化粧品"], severity: "med" }),
+];
+f = matchLexicon("シワが目立たなくなります。", RULES_SUB, "化粧品");
+check("NG substring fires when outside any allowed span", f.some((x) => x.quote === "目立たなく"));
+f = matchLexicon("乾燥による小じわを目立たなくする（効能評価試験済み）", RULES_SUB, "化粧品");
+check("NG substring suppressed when only inside an allowed span", !f.some((x) => x.quote === "目立たなく"));
+
 console.log(`[test:compliance-lexicon] ${passed} assertions passed`);

@@ -27,8 +27,13 @@ CREATE POLICY "svc_member_read" ON screenplay_version_checks
   FOR SELECT TO authenticated
   USING (public.current_user_role() IN ('member','admin'));
 
+-- created_by must be NULL (auto/cron) or the inserting user — prevents a
+-- member from attributing a check run to someone else (audit-log integrity).
 CREATE POLICY "svc_member_insert" ON screenplay_version_checks
   FOR INSERT TO authenticated
-  WITH CHECK (public.current_user_role() IN ('member','admin'));
+  WITH CHECK (
+    public.current_user_role() IN ('member','admin')
+    AND (created_by IS NULL OR created_by = auth.uid())
+  );
 
 COMMIT;
