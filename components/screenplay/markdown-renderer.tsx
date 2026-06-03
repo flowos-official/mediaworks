@@ -2,7 +2,7 @@
 // Server Component. Hand-rolled parser because the screenplay format is regular
 // enough that this is more accurate than a generic markdown library.
 import React from "react";
-import { type Block, ROLE_LABELS, CUE_TAGS, SPEAKER_TAGS, parseMarkdown } from "@/lib/screenplay/parse-markdown";
+import { ROLE_LABELS, parseMarkdown } from "@/lib/screenplay/parse-markdown";
 
 const CUE_STYLES: Record<string, { bg: string; ring: string; text: string }> = {
 	"テロップ": { bg: "bg-blue-600/10", ring: "border-blue-200 dark:border-blue-900/40", text: "text-blue-900 dark:text-blue-100" },
