@@ -3,6 +3,7 @@ import { ChevronLeft, Clapperboard } from "lucide-react";
 import { notFound } from "next/navigation";
 import { ScreenplayWorkspace } from "@/components/screenplay/ScreenplayWorkspace";
 import type { ScreenplayRow, ScreenplayVersionRow } from "@/lib/screenplay/types";
+import type { ScriptCheckResult } from "@/lib/screenplay/compliance/types";
 import { localePath } from "@/lib/i18n/locale-path";
 import { getServerClient } from "@/lib/supabase/server";
 
@@ -32,9 +33,22 @@ async function fetchDetail(id: string) {
 		.eq("screenplay_id", id)
 		.order("version_number", { ascending: true });
 
+	let latestCheck: (ScriptCheckResult & { created_at?: string }) | null = null;
+	if (screenplay.current_version_id) {
+		const { data } = await sb
+			.from("screenplay_version_checks")
+			.select("overall_score, result, created_at")
+			.eq("version_id", screenplay.current_version_id)
+			.order("created_at", { ascending: false })
+			.limit(1)
+			.maybeSingle();
+		if (data) latestCheck = { ...(data.result as object), created_at: data.created_at } as ScriptCheckResult & { created_at?: string };
+	}
+
 	return {
 		screenplay: screenplay as ScreenplayRow,
 		versions: (versions ?? []) as ScreenplayVersionRow[],
+		latestCheck,
 	};
 }
 
@@ -49,7 +63,7 @@ export default async function ScreenplayDetailPage({ params }: { params: Promise
 	const { id, locale } = await params;
 	const data = await fetchDetail(id);
 	if (!data) notFound();
-	const { screenplay, versions } = data;
+	const { screenplay, versions, latestCheck } = data;
 	const badge = STATUS_BADGE[screenplay.status];
 
 	return (
@@ -78,7 +92,7 @@ export default async function ScreenplayDetailPage({ params }: { params: Promise
 				</div>
 			</header>
 
-			<ScreenplayWorkspace initialScreenplay={screenplay} initialVersions={versions} />
+			<ScreenplayWorkspace initialScreenplay={screenplay} initialVersions={versions} latestCheck={latestCheck} />
 		</>
 	);
 }
