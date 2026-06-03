@@ -128,6 +128,7 @@
     "cheerio": "^1.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "docx": "^9.7.1",
     "html2canvas-pro": "^2.0.2",
     "jspdf": "^4.2.0",
     "lucide-react": "^0.577.0",
