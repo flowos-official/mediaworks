@@ -3,7 +3,6 @@ import { useState } from "react";
 import { Copy, Download, Check, ChevronLeft, ChevronRight, FileText } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { ScreenplayMarkdown } from "./markdown-renderer";
-import { buildScreenplayDocx } from "@/lib/screenplay/screenplay-docx";
 
 interface Props {
 	markdown: string;
@@ -56,6 +55,9 @@ export function ScreenplayViewer({
 	async function downloadDocx() {
 		setDocxBusy(true);
 		try {
+			// Dynamic import keeps the ~150KB docx lib out of the (already heavy)
+			// screenplay route's initial bundle — loaded only on first click.
+			const { buildScreenplayDocx } = await import("@/lib/screenplay/screenplay-docx");
 			const blob = await buildScreenplayDocx(markdown, title);
 			const url = URL.createObjectURL(blob);
 			const a = document.createElement("a");

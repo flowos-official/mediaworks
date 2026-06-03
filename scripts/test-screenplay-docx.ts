@@ -57,8 +57,16 @@ async function main() {
 	const docXml = zip.getEntry("word/document.xml");
 	check("docx contains word/document.xml", docXml !== null);
 	const xml = docXml ? zip.readAsText(docXml) : "";
-	check("document.xml carries the title text", xml.includes("テスト台本"));
+	check("document.xml carries the markdown H1 title", xml.includes("完成版台本タイトル"));
 	check("document.xml carries a cue tag", xml.includes("テロップ"));
+	check("document.xml carries speaker jp text", xml.includes("こんにちは"));
+	check("document.xml carries a list item", xml.includes("ポイント1"));
+	check("document.xml carries a table cell", xml.includes("9,800円"));
+
+	// Empty markdown → falls back to the title param so the doc is non-empty.
+	const emptyBuf = await buildScreenplayDocxBuffer("   ", "空タイトル");
+	const emptyXml = new AdmZip(emptyBuf).readAsText("word/document.xml");
+	check("empty markdown falls back to title param", emptyXml.includes("空タイトル"));
 
 	console.log(`[test:screenplay-docx] ${passed} assertions passed`);
 }

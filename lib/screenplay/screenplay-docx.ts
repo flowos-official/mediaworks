@@ -16,7 +16,7 @@ import { type Block, ROLE_LABELS, parseMarkdown } from "./parse-markdown";
 const JP_FONT = "Yu Gothic";
 
 function noBorders() {
-	const none = { style: BorderStyle.NONE, size: 0, color: "FFFFFF" } as const;
+	const none = { style: BorderStyle.NONE, size: 0, color: "auto" } as const;
 	return { top: none, bottom: none, left: none, right: none };
 }
 
@@ -106,15 +106,24 @@ function blockToElements(b: Block): Array<Paragraph | Table> {
 			return [dataTable(b)];
 		case "para":
 			return [new Paragraph({ children: [new TextRun({ text: b.text })] })];
+		default: {
+			// Exhaustiveness guard — a new Block kind must be handled explicitly.
+			const _exhaustive: never = b;
+			return _exhaustive;
+		}
 	}
 }
 
 function buildScreenplayDoc(markdown: string, title: string): Document {
 	const blocks = parseMarkdown(markdown);
 	const children: Array<Paragraph | Table> = [];
-	// Always include a document-title paragraph so the title text is searchable
-	children.push(new Paragraph({ heading: HeadingLevel.TITLE, children: [new TextRun({ text: title })] }));
 	for (const b of blocks) children.push(...blockToElements(b));
+	// The screenplay markdown already opens with an H1 title, so render it
+	// faithfully. Only fall back to the `title` param when the markdown is
+	// empty/whitespace, to guarantee a non-empty document.
+	if (children.length === 0) {
+		children.push(new Paragraph({ heading: HeadingLevel.TITLE, children: [new TextRun({ text: title })] }));
+	}
 	return new Document({
 		styles: { default: { document: { run: { font: JP_FONT } } } },
 		sections: [{ children }],
