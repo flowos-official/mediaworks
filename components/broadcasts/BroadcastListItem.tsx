@@ -1,5 +1,5 @@
 import { useTranslations } from "next-intl";
-import { ExternalLink, ShoppingBag, PlayCircle, Play, Loader2 } from "lucide-react";
+import { ExternalLink, ShoppingBag, PlayCircle, Play, Clock } from "lucide-react";
 import ChannelBadge from "./ChannelBadge";
 import { CompetitorFitPanel } from "./CompetitorFitPanel";
 
@@ -197,11 +197,16 @@ export default function BroadcastListItem({ broadcast, onPlayVideo }: Props) {
             </button>
           )}
           {isArchiving && (
+            // Static chip (not a spinner): the slot's video is queued/downloading
+            // server-side, but this panel does not poll — a spinning loader read
+            // as "loading right now in the browser" and looked perpetually stuck.
+            // A static label + tooltip makes clear it appears after auto-processing.
             <span
-              title={t("archiving")}
+              title={t("archivingHint")}
               className="flex items-center gap-1 text-xs text-amber-500"
             >
-              <Loader2 size={14} className="animate-spin" />
+              <Clock size={12} />
+              {t("archiving")}
             </span>
           )}
           <a
