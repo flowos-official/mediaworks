@@ -47,6 +47,21 @@ function FindingCard({ f }: { f: Finding }) {
 					<span className="font-medium">修正案: </span>{f.suggestedRewrite}
 				</p>
 			)}
+			{f.references && f.references.length > 0 && (
+				<div className="mt-1 pl-7 flex flex-wrap gap-2">
+					{f.references.map((ref, i) => (
+						<a
+							key={i}
+							href={ref.url}
+							target="_blank"
+							rel="noreferrer"
+							className="text-xs text-blue-600 dark:text-blue-400 underline underline-offset-2 break-all"
+						>
+							{ref.title || ref.url}
+						</a>
+					))}
+				</div>
+			)}
 		</div>
 	);
 }

@@ -53,6 +53,7 @@
       "historicalCrawl": "OA 수집 상태",
       "discoveryCalibration": "스코어 보정",
       "complianceRules": "심의 룰",
+      "complianceReferences": "심의 참조자료",
       "registry": "스킬 레지스트리",
       "preferences": "환경 설정"
     }
@@ -661,6 +662,30 @@
         "validation": "입력 내용을 확인해주세요.",
         "generic": "저장에 실패했습니다."
       }
+    },
+    "complianceReferences": {
+      "title": "심의 참조자료 (근거 코퍼스)",
+      "subtitle": "考査 체크가 fact·법규 판정의 근거로 참조하는 출처 포함 자료. 여기서 변경하면 다음 체크부터 반영됩니다.",
+      "addButton": "+ 자료 추가",
+      "searchPlaceholder": "토픽·본문·출처로 검색",
+      "filterAllLaws": "전체 법령",
+      "count": "{n}건",
+      "allCategories": "전체 카테고리",
+      "activeYes": "유효",
+      "activeNo": "비활성",
+      "edit": "편집",
+      "empty": "해당하는 자료가 없습니다.",
+      "laws": { "yakkiho": "薬機法", "keihyo": "景表法", "kenzo": "健康増進法", "other": "기타" },
+      "col": { "law": "법령", "category": "카테고리", "topic": "토픽·본문", "source": "출처", "active": "상태", "actions": "작업" },
+      "form": {
+        "createHeading": "자료 추가", "editHeading": "자료 편집", "law": "법령",
+        "category": "대상 카테고리", "categoryPlaceholder": "化粧品, 健康食品",
+        "topic": "토픽", "body": "본문 (근거 스니펫)",
+        "keywords": "검색 키워드", "keywordsPlaceholder": "No.1, 근거, 출처",
+        "citation": "출처명", "sourceUrl": "출처 URL", "active": "유효",
+        "submit": "저장", "saving": "저장 중...", "cancel": "취소"
+      },
+      "err": { "required": "토픽과 본문은 필수입니다.", "duplicate": "같은 법령·토픽의 자료가 이미 존재합니다.", "generic": "저장에 실패했습니다." }
     },
     "registry": {
       "title": "스킬 레지스트리",
