@@ -48,7 +48,7 @@ function FindingCard({ f }: { f: Finding }) {
 				</p>
 			)}
 			{f.references && f.references.length > 0 && (
-				<div className="mt-1 flex flex-wrap gap-2">
+				<div className="mt-1 pl-7 flex flex-wrap gap-2">
 					{f.references.map((ref, i) => (
 						<a
 							key={i}
