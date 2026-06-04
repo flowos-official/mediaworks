@@ -52,6 +52,7 @@
       "users": "ユーザー管理",
       "historicalCrawl": "OA収集状況",
       "discoveryCalibration": "スコア較正",
+      "complianceRules": "考査ルール",
       "registry": "スキル登録",
       "preferences": "環境設定"
     }
@@ -597,6 +598,68 @@
       },
       "forceChange": {
         "banner": "管理者が発行した仮パスワードを使用中です。新しいパスワードを設定してください。"
+      }
+    },
+    "complianceRules": {
+      "title": "考査ルール（薬機法・景表法）",
+      "subtitle": "台本チェックツールが使うNG表現・許容表現の辞書。ここでの変更は次回チェックから即反映されます。",
+      "addButton": "+ ルール追加",
+      "searchPlaceholder": "表現・理由・出典で検索",
+      "filterAllLaws": "すべての法令",
+      "count": "{n}件",
+      "allCategories": "全カテゴリ",
+      "typeNg": "NG表現",
+      "typeAllowed": "許容表現",
+      "activeYes": "有効",
+      "activeNo": "無効",
+      "edit": "編集",
+      "delete": "削除",
+      "confirmDelete": "このルールを削除しますか?",
+      "empty": "該当するルールがありません。",
+      "laws": {
+        "yakkiho": "薬機法",
+        "keihyo": "景表法",
+        "kenzo": "健康増進法"
+      },
+      "sev": {
+        "high": "高",
+        "med": "中",
+        "low": "低"
+      },
+      "col": {
+        "law": "法令",
+        "category": "カテゴリ",
+        "pattern": "表現",
+        "type": "種別",
+        "severity": "重要度",
+        "reason": "理由",
+        "active": "状態",
+        "actions": "操作"
+      },
+      "form": {
+        "createHeading": "ルール追加",
+        "editHeading": "ルール編集",
+        "law": "法令",
+        "severity": "重要度",
+        "category": "対象カテゴリ",
+        "categoryPlaceholder": "化粧品, 医薬部外品",
+        "categoryHint": "カンマ区切り。空欄なら全カテゴリに適用。",
+        "pattern": "表現（リテラルまたは正規表現）",
+        "isRegex": "正規表現として扱う",
+        "allowed": "許容表現（フラグを抑制）",
+        "active": "有効",
+        "reason": "理由",
+        "rewrite": "修正案",
+        "citation": "出典",
+        "submit": "保存",
+        "saving": "保存中...",
+        "cancel": "キャンセル"
+      },
+      "err": {
+        "patternRequired": "表現を入力してください。",
+        "duplicate": "同じ法令・表現のルールが既に存在します。",
+        "validation": "入力内容を確認してください。",
+        "generic": "保存に失敗しました。"
       }
     },
     "registry": {

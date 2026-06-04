@@ -52,6 +52,7 @@
       "users": "사용자 관리",
       "historicalCrawl": "OA 수집 상태",
       "discoveryCalibration": "스코어 보정",
+      "complianceRules": "심의 룰",
       "registry": "스킬 레지스트리",
       "preferences": "환경 설정"
     }
@@ -597,6 +598,68 @@
       },
       "forceChange": {
         "banner": "관리자가 발급한 임시 비밀번호로 로그인했습니다. 새 비밀번호를 설정해주세요."
+      }
+    },
+    "complianceRules": {
+      "title": "심의 룰 (薬機法·景表法)",
+      "subtitle": "대본 체크 도구가 사용하는 NG 표현·허용 표현 사전. 여기서 변경하면 다음 체크부터 즉시 반영됩니다.",
+      "addButton": "+ 룰 추가",
+      "searchPlaceholder": "표현·이유·출처로 검색",
+      "filterAllLaws": "전체 법령",
+      "count": "{n}건",
+      "allCategories": "전체 카테고리",
+      "typeNg": "NG 표현",
+      "typeAllowed": "허용 표현",
+      "activeYes": "유효",
+      "activeNo": "비활성",
+      "edit": "편집",
+      "delete": "삭제",
+      "confirmDelete": "이 룰을 삭제할까요?",
+      "empty": "해당하는 룰이 없습니다.",
+      "laws": {
+        "yakkiho": "薬機法",
+        "keihyo": "景表法",
+        "kenzo": "健康増進法"
+      },
+      "sev": {
+        "high": "높음",
+        "med": "보통",
+        "low": "낮음"
+      },
+      "col": {
+        "law": "법령",
+        "category": "카테고리",
+        "pattern": "표현",
+        "type": "종별",
+        "severity": "중요도",
+        "reason": "이유",
+        "active": "상태",
+        "actions": "작업"
+      },
+      "form": {
+        "createHeading": "룰 추가",
+        "editHeading": "룰 편집",
+        "law": "법령",
+        "severity": "중요도",
+        "category": "대상 카테고리",
+        "categoryPlaceholder": "化粧品, 医薬部外品",
+        "categoryHint": "쉼표 구분. 비우면 전체 카테고리에 적용.",
+        "pattern": "표현 (리터럴 또는 정규식)",
+        "isRegex": "정규식으로 취급",
+        "allowed": "허용 표현 (플래그 억제)",
+        "active": "유효",
+        "reason": "이유",
+        "rewrite": "수정안",
+        "citation": "출처",
+        "submit": "저장",
+        "saving": "저장 중...",
+        "cancel": "취소"
+      },
+      "err": {
+        "patternRequired": "표현을 입력해주세요.",
+        "duplicate": "같은 법령·표현의 룰이 이미 존재합니다.",
+        "validation": "입력 내용을 확인해주세요.",
+        "generic": "저장에 실패했습니다."
       }
     },
     "registry": {
