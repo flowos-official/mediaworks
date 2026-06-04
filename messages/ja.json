@@ -53,6 +53,7 @@
       "historicalCrawl": "OA収集状況",
       "discoveryCalibration": "スコア較正",
       "complianceRules": "考査ルール",
+      "complianceReferences": "考査参照資料",
       "registry": "スキル登録",
       "preferences": "環境設定"
     }
@@ -661,6 +662,32 @@
         "validation": "入力内容を確認してください。",
         "generic": "保存に失敗しました。"
       }
+    },
+    "complianceReferences": {
+      "title": "考査 参照資料（根拠コーパス）",
+      "subtitle": "考査チェックがfact/法規判定の根拠として参照する出典付き資料。ここでの変更は次回チェックから反映されます。",
+      "addButton": "+ 資料追加",
+      "searchPlaceholder": "トピック・本文・出典で検索",
+      "filterAllLaws": "すべての法令",
+      "count": "{n}件",
+      "allCategories": "全カテゴリ",
+      "activeYes": "有効",
+      "activeNo": "無効",
+      "edit": "編集",
+      "delete": "削除",
+      "confirmDelete": "この資料を削除しますか?",
+      "empty": "該当する資料がありません。",
+      "laws": { "yakkiho": "薬機法", "keihyo": "景表法", "kenzo": "健康増進法", "other": "その他" },
+      "col": { "law": "法令", "category": "カテゴリ", "topic": "トピック・本文", "source": "出典", "active": "状態", "actions": "操作" },
+      "form": {
+        "createHeading": "資料追加", "editHeading": "資料編集", "law": "法令",
+        "category": "対象カテゴリ", "categoryPlaceholder": "化粧品, 健康食品",
+        "topic": "トピック", "body": "本文（根拠スニペット）",
+        "keywords": "検索キーワード", "keywordsPlaceholder": "No.1, 根拠, 出典",
+        "citation": "出典名", "sourceUrl": "出典URL", "active": "有効",
+        "submit": "保存", "saving": "保存中...", "cancel": "キャンセル"
+      },
+      "err": { "required": "トピックと本文は必須です。", "duplicate": "同じ法令・トピックの資料が既に存在します。", "generic": "保存に失敗しました。" }
     },
     "registry": {
       "title": "スキルレジストリ",
