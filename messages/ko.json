@@ -674,8 +674,6 @@
       "activeYes": "유효",
       "activeNo": "비활성",
       "edit": "편집",
-      "delete": "삭제",
-      "confirmDelete": "이 자료를 삭제할까요?",
       "empty": "해당하는 자료가 없습니다.",
       "laws": { "yakkiho": "薬機法", "keihyo": "景表法", "kenzo": "健康増進法", "other": "기타" },
       "col": { "law": "법령", "category": "카테고리", "topic": "토픽·본문", "source": "출처", "active": "상태", "actions": "작업" },

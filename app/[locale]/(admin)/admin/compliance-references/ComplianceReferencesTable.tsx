@@ -146,29 +146,29 @@ export default function ComplianceReferencesTable({ initial }: { initial: Compli
 					<Card className="w-full max-w-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
 						<h3 className="font-bold text-lg">{draft.id ? t("form.editHeading") : t("form.createHeading")}</h3>
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-							<label className="block"><span className="text-xs">{t("form.law")}</span>
+							<label className="block"><span className="text-xs text-foreground">{t("form.law")}</span>
 								<select value={draft.law} onChange={(e) => setDraft({ ...draft, law: e.target.value as ReferenceLaw })} className="mt-1 w-full border rounded px-2 py-2">
 									{LAWS.map((l) => <option key={l} value={l}>{t(`laws.${l}`)}</option>)}
 								</select>
 							</label>
-							<label className="block"><span className="text-xs">{t("form.category")}</span>
+							<label className="block"><span className="text-xs text-foreground">{t("form.category")}</span>
 								<input type="text" value={draft.category_scope} onChange={(e) => setDraft({ ...draft, category_scope: e.target.value })} placeholder={t("form.categoryPlaceholder")} className="mt-1 w-full border rounded px-3 py-2 text-sm" />
 							</label>
 						</div>
-						<label className="block"><span className="text-xs">{t("form.topic")}</span>
+						<label className="block"><span className="text-xs text-foreground">{t("form.topic")}</span>
 							<input type="text" value={draft.topic} onChange={(e) => setDraft({ ...draft, topic: e.target.value })} className="mt-1 w-full border rounded px-3 py-2 text-sm" />
 						</label>
-						<label className="block"><span className="text-xs">{t("form.body")}</span>
+						<label className="block"><span className="text-xs text-foreground">{t("form.body")}</span>
 							<textarea value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })} rows={4} className="mt-1 w-full border rounded px-3 py-2 text-sm" />
 						</label>
-						<label className="block"><span className="text-xs">{t("form.keywords")}</span>
+						<label className="block"><span className="text-xs text-foreground">{t("form.keywords")}</span>
 							<input type="text" value={draft.keywords} onChange={(e) => setDraft({ ...draft, keywords: e.target.value })} placeholder={t("form.keywordsPlaceholder")} className="mt-1 w-full border rounded px-3 py-2 text-sm" />
 						</label>
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-							<label className="block"><span className="text-xs">{t("form.citation")}</span>
+							<label className="block"><span className="text-xs text-foreground">{t("form.citation")}</span>
 								<input type="text" value={draft.citation} onChange={(e) => setDraft({ ...draft, citation: e.target.value })} className="mt-1 w-full border rounded px-3 py-2 text-sm" />
 							</label>
-							<label className="block"><span className="text-xs">{t("form.sourceUrl")}</span>
+							<label className="block"><span className="text-xs text-foreground">{t("form.sourceUrl")}</span>
 								<input type="url" value={draft.source_url} onChange={(e) => setDraft({ ...draft, source_url: e.target.value })} className="mt-1 w-full border rounded px-3 py-2 text-sm" />
 							</label>
 						</div>
