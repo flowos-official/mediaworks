@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { requireUser } from "@/lib/auth/require-user";
 import { getServiceClient } from "@/lib/supabase";
-import { loadActiveRules, checkScreenplay } from "@/lib/screenplay/compliance/check";
+import { loadActiveRules, loadActiveReferences, checkScreenplay } from "@/lib/screenplay/compliance/check";
 import type { ProductBrief } from "@/lib/screenplay/types";
 
 export const maxDuration = 90;
@@ -74,8 +74,9 @@ export async function POST(
 		.single();
 	if (verErr || !ver) return Response.json({ error: "version not found" }, { status: 404 });
 
-	const rules = await loadActiveRules();
-	const result = await checkScreenplay(ver.markdown as string, sp.product_info_snapshot as ProductBrief, rules);
+	const [rules, references] = await Promise.all([loadActiveRules(), loadActiveReferences()]);
+	// Manual re-check = full grounding incl. live fact search.
+	const result = await checkScreenplay(ver.markdown as string, sp.product_info_snapshot as ProductBrief, rules, references, { factSearch: true });
 
 	const { data: inserted, error: insErr } = await supabase
 		.from("screenplay_version_checks")
@@ -83,7 +84,7 @@ export async function POST(
 			version_id: ver.id,
 			overall_score: result.overallScore,
 			result,
-			lexicon_version: `rules:${rules.length}`,
+			lexicon_version: `rules:${rules.length} refs:${references.length} h:${result.grounding?.corpusHash ?? ""}`,
 			is_auto: false,
 			created_by: auth.user.id,
 		})

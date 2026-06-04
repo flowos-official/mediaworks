@@ -8,7 +8,7 @@ import type {
   ProgressEvent,
   ScreenplayVersionRow,
 } from "@/lib/screenplay/types";
-import { loadActiveRules, checkScreenplay } from "@/lib/screenplay/compliance/check";
+import { loadActiveRules, loadActiveReferences, checkScreenplay } from "@/lib/screenplay/compliance/check";
 
 export interface ScreenplayWorkflowInput {
   screenplayId: string;
@@ -148,14 +148,16 @@ async function checkStep(
   // Non-fatal: a failed check must NEVER fail the generation. The version is
   // already persisted; the operator can 再チェック on demand.
   try {
-    const rules = await loadActiveRules();
-    const result = await checkScreenplay(markdown, productBrief, rules);
+    const [rules, references] = await Promise.all([loadActiveRules(), loadActiveReferences()]);
+    // Auto check = corpus-only grounding; NO live web search (factSearch defaults
+    // false) so unreleased copy is never sent to an external provider (Codex #1).
+    const result = await checkScreenplay(markdown, productBrief, rules, references);
     const supabase = getServiceClient();
     await supabase.from("screenplay_version_checks").insert({
       version_id: versionId,
       overall_score: result.overallScore,
       result,
-      lexicon_version: `rules:${rules.length}`,
+      lexicon_version: `rules:${rules.length} refs:${references.length} h:${result.grounding?.corpusHash ?? ""}`,
       is_auto: true,
       created_by: null,
     });
