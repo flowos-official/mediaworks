@@ -100,6 +100,7 @@
     "test:compliance-rule-input": "tsx scripts/test-compliance-rule-input.ts",
     "test:compliance-reference-retrieval": "tsx scripts/test-compliance-reference-retrieval.ts",
     "test:compliance-fact-extract": "tsx scripts/test-compliance-fact-extract.ts",
+    "test:compliance-reference-input": "tsx scripts/test-compliance-reference-input.ts",
     "test:screenplay-check": "tsx --env-file=.env.local scripts/test-screenplay-check.ts",
     "test:research-data-model": "tsx --env-file=.env.local scripts/test-research-data-model.ts",
     "test:research-retry-stage": "tsx scripts/test-research-retry-stage.ts",
