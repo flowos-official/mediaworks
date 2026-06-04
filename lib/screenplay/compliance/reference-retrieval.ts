@@ -26,6 +26,6 @@ export function selectReferences(
 		);
 		return { r, score };
 	});
-	scored.sort((a, b) => b.score - a.score || a.r.topic.localeCompare(b.r.topic));
+	scored.sort((a, b) => b.score - a.score || a.r.topic.localeCompare(b.r.topic, "ja"));
 	return scored.filter((x) => x.score > 0).slice(0, k).map((x) => x.r);
 }

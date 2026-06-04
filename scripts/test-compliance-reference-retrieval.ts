@@ -52,4 +52,16 @@ const a = selectReferences("シミ No.1", "化粧品", REFS, 8).map((r) => r.top
 const b = selectReferences("シミ No.1", "化粧品", REFS, 8).map((r) => r.topic).join(",");
 check("deterministic", a === b);
 
+// 6. inactive ref is always excluded (active filter — the riskiest regression)
+const inactiveRefs = [ref({ topic: "inactive", active: false, category_scope: [], keywords: ["シミ"] })];
+check("inactive ref excluded", selectReferences("シミ", "化粧品", inactiveRefs, 8).length === 0);
+
+// 7. equal-score tie broken deterministically by topic asc (both keyword hit once)
+const tieRefs = [
+	ref({ topic: "zzz", category_scope: [], keywords: ["k"] }),
+	ref({ topic: "aaa", category_scope: [], keywords: ["k"] }),
+];
+const tieOut = selectReferences("k", null, tieRefs, 8);
+check("equal-score tie ordered by topic asc", tieOut[0].topic === "aaa" && tieOut[1].topic === "zzz");
+
 console.log(`[test:compliance-reference-retrieval] ${passed} assertions passed`);
