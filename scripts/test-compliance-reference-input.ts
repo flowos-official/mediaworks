@@ -44,4 +44,13 @@ check("empty url allowed", r.ok);
 r = normalizeReference({ active: false }, true);
 check("partial emits only active", r.ok && Object.keys(r.value).length === 1 && r.value.active === false);
 
+// 8. partial-mode invalid URL is STILL rejected (the PATCH route uses partial=true,
+//    so the citation-URL guard must fire there too — security path).
+r = normalizeReference({ source_url: "ftp://bad/x" }, true);
+check("partial invalid url rejected", !r.ok);
+
+// 9. partial-mode valid http URL accepted
+r = normalizeReference({ source_url: "https://caa.go.jp/x" }, true);
+check("partial valid url accepted", r.ok);
+
 console.log(`[test:compliance-reference-input] ${passed} assertions passed`);
