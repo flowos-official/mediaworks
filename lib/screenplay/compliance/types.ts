@@ -55,13 +55,19 @@ export interface FindingSource {
 	url: string;
 }
 
-/** Immutable snapshot of one injected reference, persisted with each check so
- *  a past compliance result stays reproducible even if the corpus row is later
- *  edited or deactivated (Codex audit #1/#2). */
+/** Immutable snapshot of one injected reference, persisted with each check so a
+ *  past compliance result stays fully reproducible even if the corpus row is
+ *  later edited or deactivated (Codex audit #2). Carries EVERY field that fed the
+ *  prompt / retrieval / allowlist / corpusHash — notably `body` (injected into
+ *  the prompt) and `category_scope`/`keywords` (drive retrieval) — so the exact
+ *  inputs behind an old judgment can be reconstructed without the live row. */
 export interface ReferenceSnapshot {
 	id: string;
 	law: ReferenceLaw;
+	category_scope: string[];
 	topic: string;
+	body: string;
+	keywords: string[];
 	citation: string;
 	source_url: string;
 }

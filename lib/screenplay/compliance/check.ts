@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { GEMINI_MODELS_WITH_FALLBACK } from "@/lib/gemini-models";
 import { getServiceClient } from "@/lib/supabase";
@@ -6,6 +5,7 @@ import type { ProductBrief } from "@/lib/screenplay/types";
 import { matchLexicon } from "./lexicon-match";
 import type { ComplianceRule, Finding, ScriptCheckResult, Severity } from "./types";
 import { selectReferences } from "./reference-retrieval";
+import { buildReferenceSnapshot, corpusHashOf } from "./grounding";
 import {
 	extractFactClaims,
 	searchFactEvidence,
@@ -15,7 +15,7 @@ import {
 	capEvidencePerClaim,
 	type FactEvidence,
 } from "./fact-search";
-import type { ComplianceReference, GroundingMeta, ReferenceSnapshot } from "./types";
+import type { ComplianceReference, GroundingMeta } from "./types";
 
 let _genAI: GoogleGenAI | null = null;
 function getGenAI(): GoogleGenAI {
@@ -245,26 +245,6 @@ function score(legal: Finding[], facts: Finding[], quality: Finding[]): number {
 	return Math.max(0, 100 - penalty);
 }
 
-// Hash a canonical snapshot of EVERY field that affects what the model sees or
-// what URLs the allowlist permits (Codex audit #2) — not just id:body. Editing a
-// reference's citation/source_url/topic/keywords now changes the hash, so audit
-// can detect corpus drift behind a stored check result.
-function corpusHashOf(refs: ComplianceReference[]): string {
-	const canonical = refs
-		.map((r) => ({
-			id: r.id,
-			law: r.law,
-			category_scope: [...r.category_scope].sort(),
-			topic: r.topic,
-			body: r.body,
-			keywords: [...r.keywords].sort(),
-			citation: r.citation,
-			source_url: r.source_url,
-		}))
-		.sort((a, b) => a.id.localeCompare(b.id));
-	return createHash("sha256").update(JSON.stringify(canonical)).digest("hex").slice(0, 16);
-}
-
 export interface CheckOptions {
 	/** Run live web search for the fact axis. Default false (auto checks skip it
 	 *  to avoid sending unreleased copy to an external provider — Codex #1). The
@@ -331,13 +311,6 @@ export async function checkScreenplay(
 	const legal = dedupe([...lexFindings, ...llmLegal]);
 	const facts = dedupe(llmFacts);
 	const quality = dedupe(llmQuality);
-	const referencesSnapshot: ReferenceSnapshot[] = selectedRefs.map((r) => ({
-		id: r.id,
-		law: r.law,
-		topic: r.topic,
-		citation: r.citation,
-		source_url: r.source_url,
-	}));
 	const grounding: GroundingMeta = {
 		referenceIds: selectedRefs.map((r) => r.id),
 		corpusHash: corpusHashOf(selectedRefs),
@@ -345,7 +318,7 @@ export async function checkScreenplay(
 		// Egress truth = ALL fetched results (what actually left the boundary),
 		// independent of the rendered/allowlisted subset.
 		searchDomains: evidenceDomains(evidence),
-		referencesSnapshot,
+		referencesSnapshot: buildReferenceSnapshot(selectedRefs),
 	};
 	return { overallScore: score(legal, facts, quality), legal, facts, quality, grounding };
 }
