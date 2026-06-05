@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { GEMINI_MODELS_WITH_FALLBACK } from "@/lib/gemini-models";
 import { getServiceClient } from "@/lib/supabase";
@@ -6,12 +5,14 @@ import type { ProductBrief } from "@/lib/screenplay/types";
 import { matchLexicon } from "./lexicon-match";
 import type { ComplianceRule, Finding, ScriptCheckResult, Severity } from "./types";
 import { selectReferences } from "./reference-retrieval";
+import { buildReferenceSnapshot, corpusHashOf } from "./grounding";
 import {
 	extractFactClaims,
 	searchFactEvidence,
 	buildAllowedUrls,
 	filterReferences,
 	evidenceDomains,
+	capEvidencePerClaim,
 	type FactEvidence,
 } from "./fact-search";
 import type { ComplianceReference, GroundingMeta } from "./types";
@@ -51,6 +52,10 @@ export async function loadActiveReferences(): Promise<ComplianceReference[]> {
 const FACT_SEARCH_ENABLED = process.env.CHECK_FACT_SEARCH_ENABLED !== "false";
 const FACT_MAX_QUERIES = Number(process.env.CHECK_FACT_MAX_QUERIES ?? "5") || 5;
 const REFERENCE_TOP_K = Number(process.env.CHECK_REFERENCE_TOP_K ?? "8") || 8;
+// Number of search hits per claim rendered into the prompt. The citation
+// allowlist is built from exactly this many (Codex audit #3) — must match the
+// slice used in buildPrompt's evidence block.
+const EVIDENCE_RENDER_LIMIT = 3;
 
 function isRetryable(err: unknown): boolean {
 	if (!(err instanceof Error)) return false;
@@ -173,9 +178,12 @@ function buildPrompt(
 	const refBlock = references.length
 		? references.map((r) => `- 【${r.topic}】${r.body}（出典: ${r.citation || r.law}${r.source_url ? ` ${r.source_url}` : ""}）`).join("\n")
 		: "(なし)";
+	// evidence is already capped to EVIDENCE_RENDER_LIMIT per claim by the caller,
+	// and the allowlist is built from this same set — render all of it (no extra
+	// slice here, so rendered URLs == allowlisted URLs exactly).
 	const evidenceBlock = evidence.length
 		? evidence.map((e) => {
-				const hits = e.results.slice(0, 3).map((x) => `    ・${x.title} — ${x.description} (${x.url})`).join("\n");
+				const hits = e.results.map((x) => `    ・${x.title} — ${x.description} (${x.url})`).join("\n");
 				return `- 主張: ${e.claim}\n${hits || "    ・(検索結果なし)"}`;
 		  }).join("\n")
 		: "(検索なし)";
@@ -237,14 +245,6 @@ function score(legal: Finding[], facts: Finding[], quality: Finding[]): number {
 	return Math.max(0, 100 - penalty);
 }
 
-function corpusHashOf(refs: ComplianceReference[]): string {
-	const basis = refs
-		.map((r) => `${r.id}:${r.body}`)
-		.sort()
-		.join("|");
-	return createHash("sha256").update(basis).digest("hex").slice(0, 16);
-}
-
 export interface CheckOptions {
 	/** Run live web search for the fact axis. Default false (auto checks skip it
 	 *  to avoid sending unreleased copy to an external provider — Codex #1). The
@@ -289,13 +289,18 @@ export async function checkScreenplay(
 		}
 	}
 
+	// Render/allowlist parity (Codex audit #3): cap evidence to exactly the hits
+	// rendered into the prompt, then build BOTH the prompt and the allowlist from
+	// that same capped set — an unshown Brave URL can never pass validation.
+	const shownEvidence = capEvidencePerClaim(evidence, EVIDENCE_RENDER_LIMIT);
+
 	// Server-built citation allowlist: only these URLs may appear in findings.
-	const allowedUrls = buildAllowedUrls(selectedRefs.map((r) => r.source_url), evidence);
+	const allowedUrls = buildAllowedUrls(selectedRefs.map((r) => r.source_url), shownEvidence);
 
 	// LLM pass (best-effort).
 	let llmLegal: Finding[] = [], llmFacts: Finding[] = [], llmQuality: Finding[] = [];
 	try {
-		const raw = parseJSON<Record<string, unknown[]>>(await callGemini(buildPrompt(markdown, brief, rules, selectedRefs, evidence)));
+		const raw = parseJSON<Record<string, unknown[]>>(await callGemini(buildPrompt(markdown, brief, rules, selectedRefs, shownEvidence)));
 		llmLegal = (raw.legal ?? []).map((r) => coerceFinding(r, "legal", allowedUrls)).filter(Boolean) as Finding[];
 		llmFacts = (raw.facts ?? []).map((r) => coerceFinding(r, "facts", allowedUrls)).filter(Boolean) as Finding[];
 		llmQuality = (raw.quality ?? []).map((r) => coerceFinding(r, "quality", allowedUrls)).filter(Boolean) as Finding[];
@@ -310,7 +315,10 @@ export async function checkScreenplay(
 		referenceIds: selectedRefs.map((r) => r.id),
 		corpusHash: corpusHashOf(selectedRefs),
 		factSearch: wantSearch,
+		// Egress truth = ALL fetched results (what actually left the boundary),
+		// independent of the rendered/allowlisted subset.
 		searchDomains: evidenceDomains(evidence),
+		referencesSnapshot: buildReferenceSnapshot(selectedRefs),
 	};
 	return { overallScore: score(legal, facts, quality), legal, facts, quality, grounding };
 }
