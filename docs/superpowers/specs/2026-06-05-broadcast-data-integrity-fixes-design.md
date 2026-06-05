@@ -31,8 +31,10 @@ These are independent and do not touch each other's code paths.
 - No schema changes / migrations.
 - No change to the **whitelist display gate** — QVC ジュエリー/グルメ being hidden
   is intentional policy ("broadcast but not shown" is by design, not a bug).
-- No rolling multi-day past reconcile (YAGNI — yesterday-only chosen). Changes
-  older than yesterday remain a known, accepted limitation.
+- No **deletion** of past slots in this drop. Item 3 is detect-and-log only
+  (Phase 1); auto-removal (two-strikes) is deferred to a data-informed Phase 2.
+- No rolling multi-day past reconcile. Changes older than yesterday remain a
+  known, accepted limitation.
 - No touching the in-flight `compliance-rules` working-tree changes; every commit
   here stages only the files listed below.
 
@@ -66,74 +68,120 @@ sb.from("broadcasts")
   .select("id, channel, air_date");
 ```
 
+The update also clears `video_error: null` in the same statement. The only
+normal code path that sets `archived_video_s3` writes `video_status='archived'`
+**and** `video_error: null` atomically (`lib/broadcasts/video-archival.ts:148`);
+leaving `video_error` populated would make a recovered row read as
+"archived after a failure with an error message" on `/admin/archive-status`.
+`video_download_attempts` is left as-is (harmless; status is the operative field).
+
 - **No re-download** — the S3 object already exists; only the status row flips.
 - Genuinely failed slots (abandoned with **no** `archived_video_s3`) are left
   untouched — those are real missing videos, out of scope here.
 - Script prints a before/after count and the affected (channel, air_date) list.
 - Idempotent: a second run flips 0 rows.
+- **Reuse signal:** the script is registered as a reusable npm command, so any
+  future run that flips a non-zero count is itself evidence the footgun (or a
+  similar out-of-band mutation) recurred — the script logs a prominent warning
+  in that case so the count is investigated rather than silently "fixed".
 
 **Verification:** run the script; confirm `abandoned` count drops by 36 and
 `archived` rises by 36; confirm the ▶ play button reappears for a 2026-05-23 /
 2026-05-24 slot on the calendar.
 
-## Item 3 — Yesterday-only reconciliation
+## Item 3 — Yesterday reconciliation: **detect-and-log only (Phase 1)**
 
-Extend reconciliation so the daily re-scrape of *yesterday* also removes slots
-that are in the DB but absent from yesterday's actual aired lineup.
+### Why NOT blind auto-delete
 
-### Why yesterday is safe to reconcile
+Two independent reviews rejected auto-deleting yesterday's stale slots. The
+reasons are concrete and verified against the code:
 
-`daily-broadcasts` already re-scrapes yesterday and gets the **actual** aired
-lineup. The existing `reconcileFutureSlots` delete query already carries the
-guards that make deletion safe regardless of date:
+- The existing `reconcileFutureSlots` delete guards (`reconcile.ts:43-44`) only
+  protect `archived_video_s3 IS NOT NULL` and `video_status IN
+  (downloading,archived)`. Normal slots in `pending / queued / deferred /
+  abandoned` are **not** protected.
+- QVC parser creates every slot with `category: null` (`qvc.ts:136`) and only
+  later attaches a category from cached `qvc_products` (`qvc.ts:154`). So a slot
+  that **genuinely aired yesterday** can legitimately be `category=null`,
+  `video_status IN (pending,queued,deferred)`, `archived_video_s3=null` — i.e.
+  indistinguishable by row state from a stale forward slot that never aired.
+- `scrapedSlotCount > 0` proves the scrape is *non-empty*, not *complete*. A
+  partial re-scrape that drops 1–2 slots passes the gate, and a "completeness
+  ratio + delete cap" only bounds blast radius — it is **not** a correctness
+  guarantee (e.g. 22/24 returned = 91.6% passes, 2 real slots wrongly deleted).
 
-- `archived_video_s3 IS NULL` → an archived recording can **never** be deleted.
-- `video_status NOT IN (downloading, archived)` → belt-and-suspenders on the same.
-- caller gates on `scrapedSlotCount > 0` → never reconcile against an empty /
-  failed scrape (which would wipe a whole day on a transient upstream error).
+Therefore Phase 1 **deletes nothing**. It detects stale candidates and surfaces
+them; deletion (if ever) is a separate, data-informed Phase 2. This mirrors the
+project's existing "observe before automating" pattern (`historical_crawl_runs`).
 
-A yesterday slot that genuinely aired and was recorded is protected by the
-archived-video guard. A stale forward-published slot that never aired has no
-video and is correctly removed.
+### Changes (Phase 1)
 
-### Changes
-
-1. **`lib/broadcasts/reconcile.ts`** — add:
+1. **`lib/broadcasts/reconcile.ts`** — add two pure, unit-testable helpers
+   (no delete, no I/O):
    ```ts
-   export function shouldReconcileYesterday(
-     isoDate: string,
-     yesterdayIso: string,
+   // Whether this channel's yesterday scrape is trustworthy enough to compute
+   // candidates from. Per-channel success + non-empty + completeness sanity.
+   export function canReconcileYesterday(
+     channelOk: boolean,
      scrapedSlotCount: number,
-   ): boolean {
-     return isoDate === yesterdayIso && scrapedSlotCount > 0;
-   }
+     existingDbCount: number,
+   ): boolean { ... }   // ok && scraped>0 && scraped >= ceil(existingDbCount * RATIO)
+
+   // Rows present in DB for (channel, date) but absent from the scraped
+   // start_time set — the stale candidates. Pure set difference.
+   export function staleCandidates(
+     dbRows: { id: string; start_time: string; ... }[],
+     keepStartTimes: string[],
+   ): typeof dbRows { ... }
    ```
-   The caller passes the yesterday string it already computed via the existing
-   `lib/broadcasts/jst-date.ts::getYesterdayJST` (already imported in
-   `daily-broadcasts/route.ts`) — no new date helper. Reuse the existing
-   `reconcileFutureSlots(channel, isoDate, keepStartTimes)` delete unchanged.
+   `reconcileFutureSlots` is left **unchanged** (still future-only). No new
+   delete path is added.
 
 2. **`app/api/cron/daily-broadcasts/route.ts`** — after persisting yesterday's
-   QVC/ShopCh scrape, if `shouldReconcileYesterday(scrapedDate, yesterday, count)`
-   (where `scrapedDate === yesterday` here — the param exists for symmetry with
-   `shouldReconcileDate` and to keep the guard unit-testable), call
-   `reconcileFutureSlots(channel, yesterday, keepStartTimes)` per channel and add
-   the deleted count to the cron summary/log.
+   scrape, for **each channel independently**:
+   - read that channel's own `ScrapeResult` (`qvcResult` / `shopchResult` from
+     `summary.results`), use only if `result.ok`;
+   - `keepStartTimes = result.slots.map(s => s.start_time)` (same derivation as
+     the future reconcilers, `qvc-monthly.ts:87` / `shopch-forward.ts:81`) —
+     never cross channels;
+   - read existing DB rows for `(channel, targetIso)`;
+   - if `canReconcileYesterday(result.ok, slots.length, existingDbCount)`,
+     compute `staleCandidates(...)` and **log them** (count + per-slot
+     channel/start_time/status) to `console` and into the cron summary field
+     `reconcileCandidates`. If the gate fails, log `skipped: incomplete-scrape`.
+   - **No deletion.**
 
-### Scope limitation (explicit)
+   (`targetIso` is the cron's existing yesterday variable from `getYesterdayJST`;
+   there is no separate "today" needed and no tautological guard param.)
 
-Only **yesterday** is reconciled. A last-minute change that happened on a date
-older than yesterday is not auto-corrected — accepted trade-off (avoids the
-scrape load and larger blast radius of a rolling window).
+### What this catches / misses
 
-### Tests
+- **Catches:** surfaces "in DB but not in yesterday's actual lineup" slots so an
+  operator can see how often real stale-past slots occur and whether Phase 2 is
+  even warranted.
+- **Whitelist-hidden slots are NOT false candidates:** the scraper returns ALL
+  slots (whitelist filtering is display-time only, `UnifiedDayDetailPanel.tsx:114`;
+  `qvc.ts:198-202` "DO NOT drop non-whitelist slots"), so hidden-but-aired slots
+  are in `keepStartTimes` and never flagged.
+- **Misses (accepted):** changes older than yesterday; and Phase 1 does not act
+  on candidates — it only reports. Auto-deletion remains deliberately deferred.
 
-- **Unit** (`shouldReconcileYesterday`): yesterday + non-empty → true;
-  today / older / future → false; yesterday + empty scrape → false.
-- **Live, skip-guarded** (`.env.local` required): insert a synthetic stale
-  yesterday row (no `archived_video_s3`) plus a synthetic archived yesterday
-  row; run reconcile with a `keepStartTimes` set excluding both; assert the
-  stale row is deleted and the archived row survives. Clean up after.
+### Phase 2 (deferred, not in this drop)
+
+If the logs show real, frequent stale-past slots worth auto-removing, the safe
+mechanism is **two-strikes**: delete only a candidate confirmed missing across
+two independent successful scrapes. That requires persisting the first strike
+(a nullable column on `broadcasts`) → a manual migration (this repo applies
+migrations by hand). Out of scope until Phase 1 data justifies it.
+
+### Tests (Phase 1)
+
+- **Unit `canReconcileYesterday`:** ok+complete → true; `ok=false` → false;
+  `scraped=0` → false; scraped below completeness ratio → false.
+- **Unit `staleCandidates`:** a DB row absent from keep → flagged; a DB row
+  present in keep (incl. a whitelist-hidden category) → not flagged; empty keep
+  → (caller already gated, but) returns all / is never called.
+- No live-delete test needed — Phase 1 performs no deletion.
 
 ## Rollout / commits
 
@@ -152,6 +200,6 @@ scrape load and larger blast radius of a rolling window).
 | Risk | Mitigation |
 |------|-----------|
 | Item 2 flips a slot whose S3 object is actually broken | Guard requires `archived_video_s3 IS NOT NULL`; S3 keys for these 36 were written by a successful prior archive. Low. Re-archive path still exists if a key is later found dead. |
-| Item 3 deletes a real aired+archived slot | Delete query guards (`archived_video_s3 IS NULL`, status not downloading/archived) make this impossible. |
-| Item 3 wipes a day on a partial/failed scrape | `scrapedSlotCount > 0` gate; yesterday-only. |
+| Item 3 deletes a real aired-but-not-yet-archived slot | **Eliminated by design** — Phase 1 performs no deletion at all. Candidates are only logged. |
+| Item 3 logs noisy false candidates on a partial scrape | `canReconcileYesterday` per-channel-success + completeness-ratio gate; below ratio → `skipped: incomplete-scrape`, no candidate list. (Noise only, never data loss.) |
 | Commits sweep in compliance WIP | Per-item file-scoped staging; verify `git diff --cached` before each commit. |
