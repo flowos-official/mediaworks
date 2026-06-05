@@ -83,6 +83,16 @@ export function filterReferences(
 	return refs.filter((r) => isHttpUrl(r.url) && allowed.has(r.url));
 }
 
+/**
+ * Cap each claim's results to the first n — the exact subset that gets rendered
+ * into the prompt. The citation allowlist is built from this capped evidence so
+ * a URL the model was never shown can never pass validation (Codex audit #3).
+ */
+export function capEvidencePerClaim(evidence: FactEvidence[], n: number): FactEvidence[] {
+	const limit = Math.max(0, n);
+	return evidence.map((e) => ({ claim: e.claim, results: e.results.slice(0, limit) }));
+}
+
 /** Distinct hostnames from fact evidence (for egress audit logging). */
 export function evidenceDomains(evidence: FactEvidence[]): string[] {
 	const s = new Set<string>();

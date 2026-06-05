@@ -8,6 +8,7 @@ import {
 	isHttpUrl,
 	buildAllowedUrls,
 	filterReferences,
+	capEvidencePerClaim,
 	type FactEvidence,
 } from "../lib/screenplay/compliance/fact-search";
 
@@ -62,5 +63,29 @@ const filtered = filterReferences(
 	allowed,
 );
 check("filterReferences keeps only allowlisted http url", filtered.length === 1 && filtered[0].url === "https://caa.go.jp/a");
+
+// --- render/allowlist parity (Codex audit #3) ---
+// Brave returned 5 results for a claim but only the first 3 are rendered into the
+// prompt. The allowlist must be built from the capped (shown) set, so URLs 4-5
+// can never pass validation even though search fetched them.
+const fiveResults: FactEvidence[] = [
+	{ claim: "c", results: [
+		{ title: "1", description: "", url: "https://caa.go.jp/1" },
+		{ title: "2", description: "", url: "https://caa.go.jp/2" },
+		{ title: "3", description: "", url: "https://caa.go.jp/3" },
+		{ title: "4", description: "", url: "https://caa.go.jp/4" },
+		{ title: "5", description: "", url: "https://caa.go.jp/5" },
+	] },
+];
+const capped = capEvidencePerClaim(fiveResults, 3);
+check("capEvidencePerClaim caps results to n", capped[0].results.length === 3);
+check("capEvidencePerClaim preserves claim", capped[0].claim === "c");
+const cappedAllowed = buildAllowedUrls([], capped);
+check("allowlist includes shown URL #3", cappedAllowed.has("https://caa.go.jp/3"));
+check("allowlist EXCLUDES unshown URL #4", !cappedAllowed.has("https://caa.go.jp/4"));
+check("allowlist EXCLUDES unshown URL #5", !cappedAllowed.has("https://caa.go.jp/5"));
+const unshown = filterReferences([{ title: "u4", url: "https://caa.go.jp/4" }], cappedAllowed);
+check("filterReferences rejects an unshown (4th) evidence URL", unshown.length === 0);
+check("capEvidencePerClaim n=0 yields empty results", capEvidencePerClaim(fiveResults, 0)[0].results.length === 0);
 
 console.log(`[test:compliance-fact-extract] ${passed} assertions passed`);

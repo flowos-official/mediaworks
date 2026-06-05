@@ -55,9 +55,21 @@ export interface FindingSource {
 	url: string;
 }
 
+/** Immutable snapshot of one injected reference, persisted with each check so
+ *  a past compliance result stays reproducible even if the corpus row is later
+ *  edited or deactivated (Codex audit #1/#2). */
+export interface ReferenceSnapshot {
+	id: string;
+	law: ReferenceLaw;
+	topic: string;
+	citation: string;
+	source_url: string;
+}
+
 export interface GroundingMeta {
 	referenceIds: string[];   // compliance_references.id injected into this judgment
-	corpusHash: string;       // sha256 over selected refs (id:body), short
+	corpusHash: string;       // sha256 over a canonical snapshot of ALL injected ref fields
 	factSearch: boolean;      // whether live web search ran
 	searchDomains: string[];  // hostnames hit by fact search (egress observability)
+	referencesSnapshot: ReferenceSnapshot[]; // per-injected-ref snapshot (reproducibility)
 }
