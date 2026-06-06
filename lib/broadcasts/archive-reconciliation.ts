@@ -118,6 +118,7 @@ type ProbeFn = (slot: ReconcileSlot) => Promise<boolean>;
 type WebhookFn = (url: string, body: object) => Promise<{ ok: boolean; error?: string }>;
 
 export interface ReconcileOptions {
+  mode?: "audit" | "heal";
   lookbackDays?: number;
   whitelist?: Map<string, Set<string>>;
   probeVideo?: ProbeFn;
@@ -171,6 +172,7 @@ export async function reconcileArchiveCoverage(opts?: ReconcileOptions): Promise
   const probeVideo = opts?.probeVideo ?? defaultProbeVideo;
   const postWebhookFn = opts?.postWebhook;
   const webhookUrl = opts?.webhookUrl ?? process.env.ALERT_WEBHOOK_URL ?? "";
+  const mode = opts?.mode ?? "audit";
 
   const window_to = jstDate(now, 0);      // exclusive (today)
   const window_from = jstDate(now, -lookbackDays);
@@ -226,6 +228,18 @@ export async function reconcileArchiveCoverage(opts?: ReconcileOptions): Promise
         unhealable++;
         gaps.push({ broadcast_id: s.id, channel: s.channel, air_date: s.air_date, start_time: s.start_time, status: s.video_status, classification: "unhealable", reason: `${s.video_status}, video present` });
       }
+    }
+
+    // heal mode: requeue only — skip coverage/record/alert (the daily audit run owns those).
+    if (mode === "heal") {
+      return {
+        window_from, window_to,
+        expected_total: 0, archived_total: 0, coverage_pct: 0,
+        healed, unhealable: 0, no_source, probed,
+        coverage_by_day: [], gaps: [],
+        alerted: false, alert_error: null,
+        duration_ms: Date.now() - t0,
+      };
     }
 
     // coverage
