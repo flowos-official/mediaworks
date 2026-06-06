@@ -8,7 +8,21 @@ import type {
   ProgressEvent,
   ScreenplayVersionRow,
 } from "@/lib/screenplay/types";
-import { loadActiveRules, loadActiveReferences, checkScreenplay } from "@/lib/screenplay/compliance/check";
+import {
+  loadActiveRules,
+  loadActiveReferences,
+  checkScreenplay,
+  callGemini,
+} from "@/lib/screenplay/compliance/check";
+import { buildGenerationComplianceBlock } from "@/lib/screenplay/compliance/context";
+import { hasHighViolation, remediableFindings, countHigh } from "@/lib/screenplay/compliance/triggers";
+import { remediate } from "@/lib/screenplay/remediate";
+import type {
+  ComplianceRule,
+  ComplianceReference,
+  ScriptCheckResult,
+  RemediationStep,
+} from "@/lib/screenplay/compliance/types";
 
 export interface ScreenplayWorkflowInput {
   screenplayId: string;
@@ -16,6 +30,15 @@ export interface ScreenplayWorkflowInput {
   productBrief: ProductBrief;
   feedback?: string;
   baseVersionId?: string;
+}
+
+const AUTO_REMEDIATE = process.env.SCREENPLAY_AUTO_REMEDIATE !== "false";
+const MAX_REMEDIATE_ITERS = Number(process.env.MAX_REMEDIATE_ITERS ?? "3") || 3;
+
+async function loadComplianceStep(): Promise<{ rules: ComplianceRule[]; references: ComplianceReference[] }> {
+  "use step";
+  const [rules, references] = await Promise.all([loadActiveRules(), loadActiveReferences()]);
+  return { rules, references };
 }
 
 async function writeProgressInline(event: ProgressEvent): Promise<void> {
@@ -48,6 +71,7 @@ async function loadPreviousMarkdownStep(baseVersionId: string): Promise<string> 
 async function generateStep(
   input: ScreenplayWorkflowInput,
   previousMarkdown: string | undefined,
+  complianceBlock: string,
 ): Promise<{ markdown: string; model: string; thinkingLevel: string }> {
   "use step";
   await writeProgressInline({ type: "step", name: "generate", status: "started" });
@@ -58,6 +82,7 @@ async function generateStep(
         productBrief: input.productBrief,
         feedback: input.feedback,
         previousMarkdown,
+        complianceBlock,
       },
       (chars) => { void writeProgressInline({ type: "chunk", chars }); },
     );
@@ -139,30 +164,88 @@ async function persistStep(
   return { versionId: versionRow.id, versionNumber: versionRow.version_number };
 }
 
-async function checkStep(
-  versionId: string,
+async function safeCheck(
+  md: string,
+  brief: ProductBrief,
+  rules: ComplianceRule[],
+  references: ComplianceReference[],
+): Promise<ScriptCheckResult | null> {
+  // Corpus-only (no factSearch) — unreleased copy never leaves the boundary (Codex #1).
+  try {
+    return await checkScreenplay(md, brief, rules, references);
+  } catch (err) {
+    console.warn("[remediate] check failed (non-fatal):", err instanceof Error ? err.message : String(err));
+    return null;
+  }
+}
+
+async function remediateLoopStep(
   markdown: string,
-  productBrief: ProductBrief,
+  brief: ProductBrief,
+  rules: ComplianceRule[],
+  references: ComplianceReference[],
+  complianceBlock: string,
+): Promise<{ markdown: string; check: ScriptCheckResult | null; trail: RemediationStep[] }> {
+  "use step";
+  let md = markdown;
+  let check = await safeCheck(md, brief, rules, references);
+  const trail: RemediationStep[] = [];
+  if (AUTO_REMEDIATE && check) {
+    let iter = 0;
+    while (hasHighViolation(check) && iter < MAX_REMEDIATE_ITERS) {
+      const before = check.overallScore;
+      let r;
+      try {
+        r = await remediate(md, remediableFindings(check), callGemini, { brief, complianceBlock });
+      } catch (err) {
+        console.warn("[remediate] iteration failed (non-fatal):", err instanceof Error ? err.message : String(err));
+        break;
+      }
+      md = r.md;
+      const next = await safeCheck(md, brief, rules, references);
+      if (!next) break;
+      check = next;
+      trail.push({
+        iter,
+        tier1: r.tier1Count,
+        sections: r.sectionsRewritten,
+        unlocatable: r.unlocatable,
+        scoreBefore: before,
+        scoreAfter: check.overallScore,
+        residualHigh: countHigh(check),
+      });
+      iter++;
+    }
+  }
+  return { markdown: md, check, trail };
+}
+
+async function persistCheckStep(
+  versionId: string,
+  check: ScriptCheckResult | null,
+  trail: RemediationStep[],
+  rulesLen: number,
+  refsLen: number,
 ): Promise<void> {
   "use step";
-  // Non-fatal: a failed check must NEVER fail the generation. The version is
-  // already persisted; the operator can 再チェック on demand.
+  // Non-fatal: a failed persist must NEVER fail the generation.
+  if (!check) return;
   try {
-    const [rules, references] = await Promise.all([loadActiveRules(), loadActiveReferences()]);
-    // Auto check = corpus-only grounding; NO live web search (factSearch defaults
-    // false) so unreleased copy is never sent to an external provider (Codex #1).
-    const result = await checkScreenplay(markdown, productBrief, rules, references);
     const supabase = getServiceClient();
+    const result: ScriptCheckResult = {
+      ...check,
+      remediation: { enabled: AUTO_REMEDIATE, iterations: trail, finalHigh: countHigh(check) },
+    };
     await supabase.from("screenplay_version_checks").insert({
       version_id: versionId,
-      overall_score: result.overallScore,
+      overall_score: check.overallScore,
       result,
-      lexicon_version: `rules:${rules.length} refs:${references.length} h:${result.grounding?.corpusHash ?? ""}`,
+      lexicon_version: `rules:${rulesLen} refs:${refsLen} h:${check.grounding?.corpusHash ?? ""}`,
       is_auto: true,
       created_by: null,
     });
   } catch (err) {
-    console.warn("[checkStep] auto-check failed (non-fatal):", err instanceof Error ? err.message : String(err));
+    console.warn("[persistCheckStep] failed (non-fatal):", err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -186,17 +269,33 @@ export async function screenplayWorkflow(input: ScreenplayWorkflowInput) {
       previousMarkdown = await loadPreviousMarkdownStep(input.baseVersionId);
     }
 
-    const gen = await generateStep(input, previousMarkdown);
+    const { rules, references } = await loadComplianceStep();
+    const complianceBlock = buildGenerationComplianceBlock(
+      input.productBrief.category ?? null,
+      rules,
+      references,
+    );
+
+    const gen = await generateStep(input, previousMarkdown, complianceBlock);
+
+    const { markdown, check, trail } = await remediateLoopStep(
+      gen.markdown,
+      input.productBrief,
+      rules,
+      references,
+      complianceBlock,
+    );
+
     const persisted = await persistStep(
       input.screenplayId,
-      gen.markdown,
+      markdown,
       input.feedback,
       input.baseVersionId,
       gen.model,
       gen.thinkingLevel,
     );
 
-    await checkStep(persisted.versionId, gen.markdown, input.productBrief);
+    await persistCheckStep(persisted.versionId, check, trail, rules.length, references.length);
 
     await emitProgressStep({
       type: "done",
