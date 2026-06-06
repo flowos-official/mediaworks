@@ -90,7 +90,7 @@ async function callOnce(model: string, prompt: string): Promise<string> {
 	}
 }
 
-async function callGemini(prompt: string): Promise<string> {
+export async function callGemini(prompt: string): Promise<string> {
 	let lastErr: unknown = null;
 	for (const model of GEMINI_MODELS_WITH_FALLBACK) {
 		let dead = false;
