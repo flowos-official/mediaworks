@@ -1,7 +1,7 @@
 /** DB-free unit tests for archive-reconciliation pure functions.
  *   npx tsx scripts/test-archive-reconciliation-unit.ts
  */
-import { classifyCandidate, computeCoverage } from "../lib/broadcasts/archive-reconciliation";
+import { classifyCandidate, computeCoverage, selectAlertWorthy, type GapRecord } from "../lib/broadcasts/archive-reconciliation";
 
 let failures = 0;
 function eq(actual: unknown, expected: unknown, msg: string) {
@@ -34,6 +34,13 @@ eq(
   [{ channel: "qvc", air_date: "2026-06-05", expected: 0, archived: 0, coverage: 100 }],
   "no expected → 100 (n/a)",
 );
+
+// --- selectAlertWorthy ---
+const gHealed: GapRecord = { broadcast_id: "a", channel: "shopch", air_date: "2026-06-01", start_time: "15:00:00", status: "deferred", classification: "healed", reason: "requeued" };
+const gUnheal: GapRecord = { broadcast_id: "b", channel: "qvc", air_date: "2026-06-01", start_time: "20:00:00", status: "abandoned", classification: "unhealable", reason: "abandoned, video present" };
+eq(selectAlertWorthy([gHealed, gUnheal], new Set()).map((g) => g.broadcast_id), ["b"], "first-seen healed excluded; unhealable alerts");
+eq(selectAlertWorthy([gHealed], new Set(["a"])).map((g) => g.broadcast_id), ["a"], "healed gap persisting from previous run → alerts");
+eq(selectAlertWorthy([gHealed], new Set()).map((g) => g.broadcast_id), [], "first-seen healed gap → no alert");
 
 if (failures > 0) { console.error(`\n${failures} assertion(s) failed.`); process.exit(1); }
 console.log("\nall unit assertions passed.");

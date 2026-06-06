@@ -34,3 +34,20 @@ export function computeCoverage(tallies: DayTally[]): CoverageDay[] {
     return { channel: t.channel, air_date: t.air_date, expected, archived: t.archived, coverage };
   });
 }
+
+export interface GapRecord {
+  broadcast_id: string;
+  channel: string;
+  air_date: string;
+  start_time: string;
+  status: string;
+  classification: "healed" | "unhealable";
+  reason: string;
+}
+
+/** A gap is alert-worthy if it is a terminal failure with a real video
+ *  (classification 'unhealable'), OR it was already a gap in the previous run
+ *  (requeued last cycle but still not archived → not healing). */
+export function selectAlertWorthy(gaps: GapRecord[], previousGapIds: Set<string>): GapRecord[] {
+  return gaps.filter((g) => g.classification === "unhealable" || previousGapIds.has(g.broadcast_id));
+}
