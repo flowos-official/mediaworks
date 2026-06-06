@@ -74,6 +74,9 @@
     },
     "app/api/cron/research-stuck-detector/route.ts": {
       "maxDuration": 30
+    },
+    "app/api/cron/archive-reconciliation/route.ts": {
+      "maxDuration": 120
     }
   },
   "crons": [
@@ -124,6 +127,10 @@
     {
       "path": "/api/cron/research-stuck-detector",
       "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/archive-reconciliation",
+      "schedule": "0 21 * * *"
     }
   ]
 }
