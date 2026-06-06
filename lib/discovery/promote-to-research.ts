@@ -134,10 +134,12 @@ export function promotionFeedbackRow(discoveredProductId: string) {
 export async function triggerResearchSynthesis(productId: string): Promise<void> {
 	const cronSecret = process.env.CRON_SECRET;
 	if (!cronSecret) {
-		console.error(
-			"[promote-to-research] CRON_SECRET not set — synthesize will not start",
+		// Throw (not silent return): the just-promoted product would otherwise sit
+		// in status='analyzing' forever with no signal. The caller's .catch marks
+		// it 'failed' so the stuck-detector / operator sees a clear error state.
+		throw new Error(
+			"CRON_SECRET not set — research synthesis cannot be triggered",
 		);
-		return;
 	}
 	const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 	const res = await fetch(`${baseUrl}/api/analyze/synthesize`, {
@@ -217,11 +219,26 @@ export async function promoteDiscoveredProductToResearch(
 	}
 
 	if (options.triggerSynthesis) {
-		triggerResearchSynthesis(newProductId).catch((err) => {
+		triggerResearchSynthesis(newProductId).catch(async (err) => {
 			console.error(
 				`[promote-to-research:${newProductId}] synthesize trigger failed`,
 				err,
 			);
+			// Don't strand the product in 'analyzing' with no signal — mark it
+			// 'failed' with the reason so the stuck-detector / UI surfaces it.
+			const { error: markErr } = await sb
+				.from("products")
+				.update({
+					status: "failed",
+					error_reason: `research synthesis trigger failed: ${err instanceof Error ? err.message : String(err)}`,
+				})
+				.eq("id", newProductId);
+			if (markErr) {
+				console.error(
+					`[promote-to-research:${newProductId}] failed to mark product failed`,
+					markErr,
+				);
+			}
 		});
 	}
 

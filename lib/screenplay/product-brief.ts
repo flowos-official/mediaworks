@@ -61,6 +61,58 @@ function cPackageSummary(row: DiscoveredProductRow): string {
 	return compactLines(lines);
 }
 
+// ── Research-field serializers ───────────────────────────────────────────────
+// The Gemini research schema (lib/gemini.ts ResearchOutput) stores these as
+// OBJECTS / object-arrays, not strings. The brief is a flat string contract, so
+// each needs a dedicated serializer — a plain text()/stringList() yields "" and
+// silently drops the richest broadcast-relevant data (scripts, pricing, marketing).
+
+/** broadcast_scripts: { sec30, sec60, min5 } → labelled multi-line block. */
+function formatBroadcastScripts(value: unknown): string {
+	const o = asRecord(value);
+	const lines = [
+		text(o.sec30) && `【30秒】${text(o.sec30)}`,
+		text(o.sec60) && `【60秒】${text(o.sec60)}`,
+		text(o.min5) && `【5分】${text(o.min5)}`,
+	];
+	return lines.filter((l): l is string => Boolean(l)).join("\n");
+}
+
+/** marketing_strategy: [{ strategy_name, type, ... }] → "name（type）" items. */
+function formatMarketingStrategy(value: unknown): string[] {
+	if (!Array.isArray(value)) return [];
+	return value
+		.map((item) => {
+			const o = asRecord(item);
+			const name = text(o.strategy_name);
+			if (!name) return "";
+			const type = text(o.type);
+			return type ? `${name}（${type}）` : name;
+		})
+		.filter(Boolean)
+		.slice(0, 5);
+}
+
+/** pricing_strategy: { channel_pricing[], bep_analysis } → channel prices + BEP. */
+function formatPricingStrategy(value: unknown): string {
+	const o = asRecord(value);
+	const lines: string[] = [];
+	const channelPricing = o.channel_pricing;
+	if (Array.isArray(channelPricing)) {
+		for (const item of channelPricing.slice(0, 4)) {
+			const r = asRecord(item);
+			const channel = text(r.channel);
+			const price = text(r.recommended_price);
+			if (!channel || !price) continue;
+			const margin = text(r.estimated_margin_pct);
+			lines.push(`  ${channel}: ${price}${margin ? `（粗利${margin}%）` : ""}`);
+		}
+	}
+	const summary = text(asRecord(o.bep_analysis).summary);
+	if (summary) lines.push(`  損益分岐: ${summary}`);
+	return lines.length > 0 ? `チャネル別推奨価格:\n${lines.join("\n")}` : "";
+}
+
 export function isUuid(value: string): boolean {
 	return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
 		value,
@@ -79,9 +131,9 @@ export function buildProductBriefFromRows({
 	const name = text(product.name) || "Untitled product";
 	const category = text(product.category) || text(researchView.category);
 	const productFeatures = stringList(product.features);
-	const uspPoints = stringList(researchView.usp_points);
-	const marketing = stringList(researchView.marketing_strategy);
-	const broadcastScripts = stringList(researchView.broadcast_scripts);
+	const marketing = formatMarketingStrategy(researchView.marketing_strategy);
+	const broadcastScripts = formatBroadcastScripts(researchView.broadcast_scripts);
+	const pricingStrategy = formatPricingStrategy(researchView.pricing_strategy);
 	const cPackage = cPackageSummary(discoveredProduct);
 
 	const description = compactLines([
@@ -89,12 +141,11 @@ export function buildProductBriefFromRows({
 		text(researchView.marketability_description) &&
 			`市場性: ${text(researchView.marketability_description)}`,
 		productFeatures.length > 0 && `特徴:\n- ${productFeatures.join("\n- ")}`,
-		uspPoints.length > 0 && `USP:\n- ${uspPoints.join("\n- ")}`,
 		text(researchView.market_size) && `市場規模: ${text(researchView.market_size)}`,
 		text(product.target_market) && `想定ターゲット: ${text(product.target_market)}`,
 		text(demographics.primary) && `主要顧客: ${text(demographics.primary)}`,
 		marketing.length > 0 && `販売施策:\n- ${marketing.join("\n- ")}`,
-		broadcastScripts.length > 0 && `放送訴求案:\n- ${broadcastScripts.join("\n- ")}`,
+		broadcastScripts && `放送訴求案:\n${broadcastScripts}`,
 	]);
 
 	const notes = compactLines([
@@ -103,7 +154,7 @@ export function buildProductBriefFromRows({
 			`推奨価格帯: ${text(researchView.recommended_price_range)}`,
 		text(researchView.recommended_sales_timing) &&
 			`推奨販売時期: ${text(researchView.recommended_sales_timing)}`,
-		text(researchView.pricing_strategy) && `価格戦略: ${text(researchView.pricing_strategy)}`,
+		pricingStrategy,
 		text(researchView.risk_analysis) && `注意点: ${text(researchView.risk_analysis)}`,
 		cPackage && `Cパッケージ:\n${cPackage}`,
 	]);
