@@ -4,6 +4,7 @@ import {
 	formatPromotionError,
 	PromotionError,
 	promotionFeedbackRow,
+	triggerResearchSynthesis,
 	type DiscoveredProductForPromotion,
 } from "../lib/discovery/promote-to-research";
 
@@ -81,3 +82,23 @@ assert.match(formatted, /details: Failing row contains null/);
 assert.match(formatted, /hint: Set required fields/);
 
 console.log("PASS: discovery promotion helpers");
+
+// Robustness: a missing CRON_SECRET must THROW (not silently no-op), otherwise
+// the just-promoted product is left stuck in status='analyzing' forever with no
+// signal. The caller's .catch then marks the product 'failed'.
+(async () => {
+	const saved = process.env.CRON_SECRET;
+	delete process.env.CRON_SECRET;
+	try {
+		await assert.rejects(
+			triggerResearchSynthesis("00000000-0000-4000-8000-000000000000"),
+			/CRON_SECRET/,
+		);
+		console.log("PASS: triggerResearchSynthesis throws when CRON_SECRET unset");
+	} finally {
+		if (saved !== undefined) process.env.CRON_SECRET = saved;
+	}
+})().catch((e) => {
+	console.error("FAIL:", e);
+	process.exit(1);
+});
