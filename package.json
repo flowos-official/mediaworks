@@ -102,6 +102,7 @@
     "test:compliance-fact-extract": "tsx scripts/test-compliance-fact-extract.ts",
     "test:compliance-reference-input": "tsx scripts/test-compliance-reference-input.ts",
     "test:compliance-grounding": "tsx scripts/test-compliance-grounding.ts",
+    "test:screenplay-prompt": "tsx scripts/test-screenplay-prompt.ts",
     "test:screenplay-check": "tsx --env-file=.env.local scripts/test-screenplay-check.ts",
     "test:research-data-model": "tsx --env-file=.env.local scripts/test-research-data-model.ts",
     "test:research-retry-stage": "tsx scripts/test-research-retry-stage.ts",

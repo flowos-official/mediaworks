@@ -239,6 +239,8 @@ export async function buildUserPrompt(input: GenerateInput): Promise<string> {
 			productBlock,
 		];
 		if (customBlock) parts.push("", "---", "", customBlock);
+		const complianceInitial = input.complianceBlock?.trim();
+		if (complianceInitial) parts.push("", "---", "", "--- 必須遵守 ---", "", complianceInitial);
 		parts.push(
 			"",
 			"---",
@@ -289,6 +291,8 @@ export async function buildUserPrompt(input: GenerateInput): Promise<string> {
 		productBlock,
 	];
 	if (customBlock) parts.push("", "---", "", customBlock);
+	const complianceRefine = input.complianceBlock?.trim();
+	if (complianceRefine) parts.push("", "---", "", "--- 必須遵守 ---", "", complianceRefine);
 	parts.push(
 		"",
 		"---",
