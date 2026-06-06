@@ -231,6 +231,9 @@ export async function reconcileArchiveCoverage(opts?: ReconcileOptions): Promise
     }
 
     // heal mode: requeue only — skip coverage/record/alert (the daily audit run owns those).
+    // unhealable/gaps ARE computed by the loop above but are intentionally dropped here
+    // (returned 0/[]); only the audit run records & alerts on them. `healed` is the sole
+    // signal the every-2h cron consumes from heal mode.
     if (mode === "heal") {
       return {
         window_from, window_to,

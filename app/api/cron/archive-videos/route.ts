@@ -47,7 +47,8 @@ export async function GET(req: NextRequest) {
   // mode requeues any stuck whitelist slot whose video exists — superset of the
   // qvc/shopch pending/deferred sweeps below, which now run as fallback (their
   // counts should drop to ~0). Heal mode skips coverage/record/alert (the daily
-  // archive-reconciliation cron owns those). Non-fatal.
+  // archive-reconciliation cron owns those). The probe overlap with the fallback
+  // sweeps below is temporary by design (Phase 1) — Phase 2 removes the sweeps. Non-fatal.
   let reconcileHeal:
     | Awaited<ReturnType<typeof reconcileArchiveCoverage>>
     | { error: string } = {
