@@ -5,10 +5,15 @@
  */
 import assert from "node:assert";
 import { applyDeterministicPatches, groupBySection, remediateSections, remediate } from "../lib/screenplay/remediate";
-import type { Finding } from "../lib/screenplay/compliance/types";
+import type { ComplianceRule, Finding } from "../lib/screenplay/compliance/types";
 
 const f = (o: Partial<Finding>): Finding => ({
   axis: "legal", severity: "high", quote: "q", reason: "r", citedRule: "", suggestedRewrite: "", source: "llm", ...o,
+});
+
+const rule = (o: Partial<ComplianceRule>): ComplianceRule => ({
+  id: "x", law: "yakkiho", category_scope: [], pattern: "p", is_regex: false,
+  allowed: false, severity: "high", reason: "r", safe_rewrite: "", citation: "", active: true, ...o,
 });
 
 (async () => {
@@ -76,6 +81,37 @@ const f = (o: Partial<Finding>): Finding => ({
     assert.strictEqual(out.tier1Count, 1, "1 deterministic patch");
     assert.strictEqual(out.sectionsRewritten, 1, "1 section rewrite for the remainder");
     assert.ok(!out.md.includes("最強"), "remainder fixed by Tier2");
+  }
+
+  // --- Span-aware Tier1: an NG quote inside an allowed whitelist phrase is preserved ---
+  {
+    const allowedRules = [rule({ pattern: "メイクで目立たなくする", allowed: true, category_scope: [] })];
+    const md = "[N] 問題を目立たなくする。ただしメイクで目立たなくするのはOK。";
+    const findings = [f({ quote: "目立たなくする", suggestedRewrite: "ケアする", source: "lexicon" })];
+    const r = applyDeterministicPatches(md, findings, allowedRules, "化粧品");
+    assert.ok(r.md.includes("メイクで目立たなくする"), "allowed-span occurrence preserved");
+    assert.ok(r.md.includes("問題をケアする"), "standalone occurrence replaced");
+    assert.strictEqual(r.patched.length, 1, "finding patched (standalone only)");
+  }
+
+  // Span-aware: when EVERY occurrence sits inside an allowed span, nothing is patched
+  {
+    const allowedRules = [rule({ pattern: "メイクで目立たなくする", allowed: true, category_scope: [] })];
+    const md = "[N] メイクで目立たなくするのみ。";
+    const findings = [f({ quote: "目立たなくする", suggestedRewrite: "ケアする", source: "lexicon" })];
+    const r = applyDeterministicPatches(md, findings, allowedRules, "化粧品");
+    assert.strictEqual(r.patched.length, 0, "all-occurrences-allowed → not patched");
+    assert.ok(r.md.includes("メイクで目立たなくする"), "allowed phrase intact");
+    assert.strictEqual(r.remaining.length, 1, "deferred to remaining (Tier2)");
+  }
+
+  // Span-aware: with no allowed rules, behaves as before (replace every occurrence)
+  {
+    const md = "効果絶大です。効果絶大とは。";
+    const r = applyDeterministicPatches(md, [f({ quote: "効果絶大", suggestedRewrite: "高評価" })], [], "化粧品");
+    assert.ok(!r.md.includes("効果絶大"), "all occurrences replaced when no allowed spans");
+    assert.ok(r.md.includes("高評価です。高評価とは。"), "both occurrences replaced");
+    assert.strictEqual(r.patched.length, 1, "patched");
   }
 
   console.log("[test:screenplay-remediate] PASS");

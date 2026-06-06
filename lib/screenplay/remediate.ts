@@ -8,15 +8,20 @@
 // Tier 2 — remediateSections: for the remaining findings, regenerate ONLY the
 //   affected act section(s) and splice them back; clean sections stay verbatim.
 
-import type { Finding } from "./compliance/types";
+import type { ComplianceRule, Finding } from "./compliance/types";
 import type { ProductBrief } from "./types";
 import { splitSections, spliceSection, type Section } from "./sections";
+import { allowedSpansFor, within } from "./compliance/lexicon-match";
 
 export type LlmCall = (prompt: string) => Promise<string>;
 
 export interface RemediateOpts {
   brief: ProductBrief;
   complianceBlock?: string;
+  /** Active compliance rules — enables span-aware Tier1 so a deterministic patch
+   *  never rewrites an NG substring that sits inside an `allowed` whitelist
+   *  phrase (the span-aware lexicon deliberately permits those). */
+  rules?: ComplianceRule[];
   /** Reject a section rewrite shorter than this ratio of the original (guards
    *  against a truncated/empty model response). Default 0.3. */
   minSectionRatio?: number;
@@ -33,6 +38,8 @@ export interface RemediateResult {
 export function applyDeterministicPatches(
   md: string,
   findings: Finding[],
+  allowedRules: ComplianceRule[] = [],
+  category: string | null = null,
 ): { md: string; patched: Finding[]; remaining: Finding[] } {
   let out = md;
   const patched: Finding[] = [];
@@ -46,7 +53,28 @@ export function applyDeterministicPatches(
       remaining.push(fnd);
       continue;
     }
-    out = out.split(quote).join(rewrite); // replace all occurrences
+    // Span-aware replace: patch only occurrences OUTSIDE every allowed (whitelist)
+    // span — mirroring the span-aware lexicon, so we never corrupt copy it
+    // deliberately permits. Allowed spans are recomputed on the CURRENT text
+    // because earlier patches shift offsets. With no allowed rules this targets
+    // every occurrence (prior behaviour).
+    const allowed = allowedSpansFor(out, allowedRules, category);
+    const targets: number[] = [];
+    let at = out.indexOf(quote);
+    while (at !== -1) {
+      if (!within([at, at + quote.length], allowed)) targets.push(at);
+      at = out.indexOf(quote, at + quote.length);
+    }
+    if (targets.length === 0) {
+      // every occurrence sits inside an allowed span → defer to context-aware Tier2
+      remaining.push(fnd);
+      continue;
+    }
+    // Replace right-to-left so earlier offsets stay valid as the string mutates.
+    for (let k = targets.length - 1; k >= 0; k--) {
+      const pos = targets[k];
+      out = out.slice(0, pos) + rewrite + out.slice(pos + quote.length);
+    }
     patched.push(fnd);
   }
   return { md: out, patched, remaining };
@@ -137,7 +165,7 @@ export async function remediate(
   callLLM: LlmCall,
   opts: RemediateOpts,
 ): Promise<RemediateResult> {
-  const t1 = applyDeterministicPatches(md, findings);
+  const t1 = applyDeterministicPatches(md, findings, opts.rules ?? [], opts.brief.category ?? null);
   const t2 = await remediateSections(t1.md, t1.remaining, callLLM, opts);
   return { md: t2.md, tier1Count: t1.patched.length, sectionsRewritten: t2.sectionsRewritten, unlocatable: t2.unlocatable };
 }

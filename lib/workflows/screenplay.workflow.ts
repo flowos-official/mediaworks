@@ -196,7 +196,7 @@ async function remediateLoopStep(
       const before = check.overallScore;
       let r;
       try {
-        r = await remediate(md, remediableFindings(check), callGemini, { brief, complianceBlock });
+        r = await remediate(md, remediableFindings(check), callGemini, { brief, complianceBlock, rules });
       } catch (err) {
         console.warn("[remediate] iteration failed (non-fatal):", err instanceof Error ? err.message : String(err));
         break;

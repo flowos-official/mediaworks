@@ -7,7 +7,7 @@ function inScope(rule: ComplianceRule, category: string | null): boolean {
 	return rule.category_scope.includes(category);
 }
 
-type Span = [start: number, end: number];
+export type Span = [start: number, end: number];
 
 /** All match spans (start,end) of a rule's pattern within `text`. */
 function findSpans(rule: ComplianceRule, text: string): Span[] {
@@ -35,8 +35,27 @@ function findSpans(rule: ComplianceRule, text: string): Span[] {
 }
 
 /** True when `span` is wholly contained within one of the `outer` spans. */
-function within(span: Span, outer: Span[]): boolean {
+export function within(span: Span, outer: Span[]): boolean {
 	return outer.some(([s, e]) => span[0] >= s && span[1] <= e);
+}
+
+/**
+ * Text spans of every active, in-scope, `allowed` (whitelist) rule's matches.
+ * Shared by `matchLexicon` (to suppress flags inside an allowed phrase) and by
+ * the Tier-1 remediation patcher (to avoid rewriting copy the lexicon
+ * deliberately permits). Recompute on the current text when offsets may have
+ * shifted.
+ */
+export function allowedSpansFor(
+	text: string,
+	rules: ComplianceRule[],
+	category: string | null,
+): Span[] {
+	const spans: Span[] = [];
+	for (const r of rules) {
+		if (r.active && r.allowed && inScope(r, category)) spans.push(...findSpans(r, text));
+	}
+	return spans;
 }
 
 /**
@@ -55,10 +74,7 @@ export function matchLexicon(
 ): Finding[] {
 	const active = rules.filter((r) => r.active && inScope(r, category));
 
-	const allowedSpans: Span[] = [];
-	for (const r of active) {
-		if (r.allowed) allowedSpans.push(...findSpans(r, markdown));
-	}
+	const allowedSpans = allowedSpansFor(markdown, rules, category);
 
 	const findings: Finding[] = [];
 	for (const r of active) {
