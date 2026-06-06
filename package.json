@@ -85,6 +85,7 @@
     "reconcile:archive": "tsx --env-file=.env.local scripts/reconcile-archive.ts",
     "test:archive-reconciliation-unit": "tsx scripts/test-archive-reconciliation-unit.ts",
     "test:archive-reconciliation": "tsx --env-file=.env.local scripts/test-archive-reconciliation.ts",
+    "test:archive-reconciliation-heal": "tsx --env-file=.env.local scripts/test-archive-reconciliation-heal.ts",
     "test:shopch-deferred-recovery": "tsx --env-file=.env.local scripts/test-shopch-deferred-recovery.ts",
     "test:shopch-pending-recovery": "tsx --env-file=.env.local scripts/test-shopch-pending-recovery.ts",
     "smoke:recommendation-flow": "tsx --env-file=.env.local scripts/smoke-recommendation-flow.ts",
