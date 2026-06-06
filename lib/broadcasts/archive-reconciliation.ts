@@ -234,6 +234,8 @@ export async function reconcileArchiveCoverage(opts?: ReconcileOptions): Promise
   const coverage_by_day = computeCoverage(tallies).sort((a, b) => (a.air_date + a.channel).localeCompare(b.air_date + b.channel));
   const expected_total = coverage_by_day.reduce((n, c) => n + c.expected, 0);
   const archived_total = coverage_by_day.reduce((n, c) => n + c.archived, 0);
+  // coverage_pct is 2dp to fit the numeric(5,2) column; computeCoverage's per-day
+  // values are 1dp (display) and buildWebhookPayload's summary is whole-percent.
   const coverage_pct = expected_total === 0 ? 100 : Math.round((archived_total / expected_total) * 10000) / 100;
 
   // alert
@@ -247,6 +249,8 @@ export async function reconcileArchiveCoverage(opts?: ReconcileOptions): Promise
     const r = await sender(webhookUrl, body);
     alerted = r.ok;
     alert_error = r.ok ? null : (r.error ?? "unknown webhook error");
+  } else if (alertGaps.length > 0 && !webhookUrl) {
+    alert_error = "ALERT_WEBHOOK_URL unset";
   }
 
   const result: ReconcileResult = {
