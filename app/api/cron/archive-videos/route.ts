@@ -3,6 +3,7 @@ import { getServiceClient } from "@/lib/supabase";
 import { archiveOne, type QueuedSlot, type ArchiveResult } from "@/lib/broadcasts/video-archival";
 import { recoverStaleDownloading } from "@/lib/broadcasts/stale-downloading-recovery";
 import { recoverQvcPending } from "@/lib/broadcasts/qvc-pending-recovery";
+import { recoverShopChPending } from "@/lib/broadcasts/shopch-pending-recovery";
 
 export const maxDuration = 300;
 
@@ -78,6 +79,26 @@ export async function GET(req: NextRequest) {
     console.warn("[archive-videos] recoverQvcPending failed:", qvcRecovery);
   }
 
+  // Symmetric ShopCh path: flip whitelist-matching, already-aired slots stranded
+  // in 'pending' (category classified after enrichment ran) → 'queued', so the
+  // drain below archives their video the same tick. Without this, ~1 ShopCh slot
+  // per day was lost permanently (no pending→queued sweep existed for ShopCh).
+  let shopchPendingRecovery:
+    | Awaited<ReturnType<typeof recoverShopChPending>>
+    | { error: string } = {
+    scanned: 0,
+    requeued: 0,
+    stillPending: 0,
+    fetchFailed: 0,
+    skippedNonWhitelist: 0,
+  };
+  try {
+    shopchPendingRecovery = await recoverShopChPending();
+  } catch (err) {
+    shopchPendingRecovery = { error: err instanceof Error ? err.message : String(err) };
+    console.warn("[archive-videos] recoverShopChPending failed:", shopchPendingRecovery);
+  }
+
   // Drain the queue until it is empty or we approach the function timeout.
   // A fixed per-run cap (previously 8) could not keep up with daily influx and,
   // because slots are processed newest-first, permanently starved older
@@ -139,7 +160,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const result = { ...summary, qvcRecovery };
+  const result = { ...summary, qvcRecovery, shopchPendingRecovery };
   console.log("[archive-videos]", JSON.stringify(result));
 
   return NextResponse.json(result);
