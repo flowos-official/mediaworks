@@ -32,6 +32,9 @@ export interface GenerateInput {
   productBrief: ProductBrief;
   feedback?: string;
   previousMarkdown?: string;
+  /** Pre-built compliance block (feature A) injected verbatim into the prompt.
+   *  Empty/undefined → not injected. Built by buildGenerationComplianceBlock. */
+  complianceBlock?: string;
 }
 
 export interface GenerationResult {

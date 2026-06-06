@@ -34,6 +34,7 @@ export interface ScriptCheckResult {
 	facts: Finding[];
 	quality: Finding[];
 	grounding?: GroundingMeta;
+	remediation?: RemediationMeta; // present on auto-checks that ran the loop (B)
 }
 
 export type ReferenceLaw = ComplianceLaw | "other";
@@ -78,4 +79,21 @@ export interface GroundingMeta {
 	factSearch: boolean;      // whether live web search ran
 	searchDomains: string[];  // hostnames hit by fact search (egress observability)
 	referencesSnapshot: ReferenceSnapshot[]; // per-injected-ref snapshot (reproducibility)
+}
+
+/** One auto-remediation iteration's bookkeeping (feature B). */
+export interface RemediationStep {
+	iter: number;
+	tier1: number;        // deterministic patches applied
+	sections: number;     // act sections regenerated
+	unlocatable: number;  // findings whose quote could not be located
+	scoreBefore: number;
+	scoreAfter: number;
+	residualHigh: number; // remediable findings still present after this iter
+}
+
+export interface RemediationMeta {
+	enabled: boolean;
+	iterations: RemediationStep[];
+	finalHigh: number;
 }
