@@ -21,3 +21,16 @@ export function classifyCandidate(status: VideoStatus, videoExists: boolean): Ca
   if (TERMINAL_FAIL.has(status)) return "alert"; // real video, terminal failure
   return "skip";
 }
+
+export interface DayTally { channel: string; air_date: string; archived: number; gapsWithVideo: number; }
+export interface CoverageDay { channel: string; air_date: string; expected: number; archived: number; coverage: number; }
+
+/** Coverage per (channel, air_date). expected = archived + video-exists gaps
+ *  (no-source + in-flight already excluded by the caller). expected==0 → 100 (n/a). */
+export function computeCoverage(tallies: DayTally[]): CoverageDay[] {
+  return tallies.map((t) => {
+    const expected = t.archived + t.gapsWithVideo;
+    const coverage = expected === 0 ? 100 : Math.round((t.archived / expected) * 1000) / 10;
+    return { channel: t.channel, air_date: t.air_date, expected, archived: t.archived, coverage };
+  });
+}
