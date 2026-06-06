@@ -59,34 +59,34 @@ export default async function ArchiveStatusPage({ params }: PageProps) {
 	return (
 		<div className="max-w-5xl mx-auto p-6">
 			<h1 className="text-2xl font-semibold mb-4">Archive Pipeline Status</h1>
-				{run && (
-					<section className="mb-8 border rounded p-4">
-						<h2 className="text-lg font-semibold mb-2">
-							Coverage reconciliation <span className="text-xs text-muted-foreground">({new Date(run.ran_at).toLocaleString("ja-JP")})</span>
-						</h2>
-						<div className="flex gap-4 mb-3 text-sm">
-							<span>overall <b style={{ color: gateColor(run.coverage_pct) }}>{run.coverage_pct}%</b></span>
-							<span>healed {run.healed}</span>
-							<span className={run.unhealable > 0 ? "text-red-600 font-semibold" : ""}>un-healable {run.unhealable}</span>
-							<span className="text-muted-foreground">no-source {run.no_source}</span>
-						</div>
-						<div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-							{(run.coverage_by_day ?? []).map((c) => (
-								<div key={`${c.channel}-${c.air_date}`} className="border rounded px-2 py-1 text-xs">
-									<div className="text-muted-foreground">{c.channel} {c.air_date}</div>
-									<div style={{ color: gateColor(c.coverage) }} className="font-semibold">{c.coverage}% ({c.archived}/{c.expected})</div>
-								</div>
+			{run && (
+				<section className="mb-8 border rounded p-4">
+					<h2 className="text-lg font-semibold mb-2">
+						Coverage reconciliation <span className="text-xs text-muted-foreground">({new Date(run.ran_at).toLocaleString("ja-JP")})</span>
+					</h2>
+					<div className="flex gap-4 mb-3 text-sm">
+						<span>overall <b style={{ color: gateColor(run.coverage_pct) }}>{run.coverage_pct}%</b></span>
+						<span>healed {run.healed}</span>
+						<span className={run.unhealable > 0 ? "text-red-600 font-semibold" : ""}>un-healable {run.unhealable}</span>
+						<span className="text-muted-foreground">no-source {run.no_source}</span>
+					</div>
+					<div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+						{(run.coverage_by_day ?? []).map((c) => (
+							<div key={`${c.channel}-${c.air_date}`} className="border rounded px-2 py-1 text-xs">
+								<div className="text-muted-foreground">{c.channel} {c.air_date}</div>
+								<div style={{ color: gateColor(c.coverage) }} className="font-semibold">{c.coverage}% ({c.archived}/{c.expected})</div>
+							</div>
+						))}
+					</div>
+					{run.unhealable > 0 && (
+						<ul className="mt-3 text-xs text-red-700 list-disc pl-5">
+							{(run.gaps ?? []).filter((g) => g.classification === "unhealable").map((g) => (
+								<li key={`${g.channel}-${g.air_date}-${g.start_time}`}>[{g.channel}] {g.air_date} {g.start_time} — {g.reason}</li>
 							))}
-						</div>
-						{run.unhealable > 0 && (
-							<ul className="mt-3 text-xs text-red-700 list-disc pl-5">
-								{(run.gaps ?? []).filter((g) => g.classification === "unhealable").map((g, i) => (
-									<li key={i}>[{g.channel}] {g.air_date} {g.start_time} — {g.reason}</li>
-								))}
-							</ul>
-						)}
-					</section>
-				)}
+						</ul>
+					)}
+				</section>
+			)}
 			<div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
 				{[...counts.entries()].map(([k, v]) => (
 					<div key={k} className="border rounded p-3">

@@ -111,6 +111,7 @@ export interface ReconcileResult {
   gaps: GapRecord[];
   alerted: boolean;
   alert_error: string | null;
+  duration_ms: number;
 }
 
 type ProbeFn = (slot: ReconcileSlot) => Promise<boolean>;
@@ -164,6 +165,7 @@ async function loadPreviousGapIds(sb: ReturnType<typeof getServiceClient>): Prom
 export async function reconcileArchiveCoverage(opts?: ReconcileOptions): Promise<ReconcileResult> {
   const sb = getServiceClient();
   const now = opts?.now ?? new Date();
+  const t0 = Date.now();
   const lookbackDays = opts?.lookbackDays ?? (Number(process.env.RECONCILE_LOOKBACK_DAYS) || 7);
   const whitelist = opts?.whitelist ?? (await loadWhitelist());
   const probeVideo = opts?.probeVideo ?? defaultProbeVideo;
@@ -173,100 +175,114 @@ export async function reconcileArchiveCoverage(opts?: ReconcileOptions): Promise
   const window_to = jstDate(now, 0);      // exclusive (today)
   const window_from = jstDate(now, -lookbackDays);
 
-  // load whitelist slots in window
-  const slots: ReconcileSlot[] = [];
-  let offset = 0;
-  for (;;) {
-    const { data, error } = await sb
-      .from("broadcasts")
-      .select("id, channel, air_date, start_time, program_title, category, product_ids, video_status, archived_video_s3, video_download_attempts")
-      .in("channel", ["qvc", "shopch"])
-      .gte("air_date", window_from)
-      .lt("air_date", window_to)
-      .range(offset, offset + PAGE - 1);
-    if (error) throw new Error(`[reconcile] load failed: ${error.message}`);
-    const batch = (data ?? []) as ReconcileSlot[];
-    slots.push(...batch.filter((s) => isAllowed(whitelist, s.channel, s.category)));
-    if (batch.length < PAGE) break;
-    offset += PAGE;
-  }
-
-  // per-day tallies + gaps
-  const tallyKey = (s: ReconcileSlot) => `${s.channel}|${s.air_date}`;
-  const archivedByDay = new Map<string, number>();
-  const gapsByDay = new Map<string, number>();
-  const gaps: GapRecord[] = [];
-  let healed = 0, unhealable = 0, no_source = 0, probed = 0;
-
-  for (const s of slots) {
-    const k = tallyKey(s);
-    if (s.archived_video_s3 || s.video_status === "archived") {
-      archivedByDay.set(k, (archivedByDay.get(k) ?? 0) + 1);
-      continue;
-    }
-    if (!STUCK.has(s.video_status)) continue; // queued/downloading → in-flight, skip
-    probed++;
-    const hasVideo = await probeVideo(s);
-    const action = classifyCandidate(s.video_status, hasVideo);
-    if (action === "skip") { no_source++; continue; } // no source video
-    gapsByDay.set(k, (gapsByDay.get(k) ?? 0) + 1);
-    if (action === "requeue") {
-      const { data: upd } = await sb
+  try {
+    // load whitelist slots in window
+    const slots: ReconcileSlot[] = [];
+    let offset = 0;
+    for (;;) {
+      const { data, error } = await sb
         .from("broadcasts")
-        .update({ video_status: "queued", video_error: null })
-        .eq("id", s.id)
-        .in("video_status", ["pending", "deferred"]) // CAS
-        .select("id");
-      if (upd && upd.length > 0) healed++;
-      gaps.push({ broadcast_id: s.id, channel: s.channel, air_date: s.air_date, start_time: s.start_time, status: s.video_status, classification: "healed", reason: "requeued (video present)" });
-    } else { // alert
-      unhealable++;
-      gaps.push({ broadcast_id: s.id, channel: s.channel, air_date: s.air_date, start_time: s.start_time, status: s.video_status, classification: "unhealable", reason: `${s.video_status}, video present` });
+        .select("id, channel, air_date, start_time, program_title, category, product_ids, video_status, archived_video_s3, video_download_attempts")
+        .in("channel", ["qvc", "shopch"])
+        .gte("air_date", window_from)
+        .lt("air_date", window_to)
+        .range(offset, offset + PAGE - 1);
+      if (error) throw new Error(`[reconcile] load failed: ${error.message}`);
+      const batch = (data ?? []) as ReconcileSlot[];
+      slots.push(...batch.filter((s) => isAllowed(whitelist, s.channel, s.category)));
+      if (batch.length < PAGE) break;
+      offset += PAGE;
     }
+
+    // per-day tallies + gaps
+    const tallyKey = (s: ReconcileSlot) => `${s.channel}|${s.air_date}`;
+    const archivedByDay = new Map<string, number>();
+    const gapsByDay = new Map<string, number>();
+    const gaps: GapRecord[] = [];
+    let healed = 0, unhealable = 0, no_source = 0, probed = 0;
+
+    for (const s of slots) {
+      const k = tallyKey(s);
+      if (s.archived_video_s3 || s.video_status === "archived") {
+        archivedByDay.set(k, (archivedByDay.get(k) ?? 0) + 1);
+        continue;
+      }
+      if (!STUCK.has(s.video_status)) continue; // queued/downloading → in-flight, skip
+      probed++;
+      const hasVideo = await probeVideo(s);
+      const action = classifyCandidate(s.video_status, hasVideo);
+      if (action === "skip") { no_source++; continue; } // no source video
+      gapsByDay.set(k, (gapsByDay.get(k) ?? 0) + 1);
+      if (action === "requeue") {
+        const { data: upd } = await sb
+          .from("broadcasts")
+          .update({ video_status: "queued", video_error: null })
+          .eq("id", s.id)
+          .in("video_status", ["pending", "deferred"]) // CAS
+          .select("id");
+        if (upd && upd.length > 0) healed++;
+        gaps.push({ broadcast_id: s.id, channel: s.channel, air_date: s.air_date, start_time: s.start_time, status: s.video_status, classification: "healed", reason: "requeued (video present)" });
+      } else { // alert
+        unhealable++;
+        gaps.push({ broadcast_id: s.id, channel: s.channel, air_date: s.air_date, start_time: s.start_time, status: s.video_status, classification: "unhealable", reason: `${s.video_status}, video present` });
+      }
+    }
+
+    // coverage
+    const dayKeys = new Set<string>([...archivedByDay.keys(), ...gapsByDay.keys()]);
+    const tallies: DayTally[] = [...dayKeys].map((k) => {
+      const [channel, air_date] = k.split("|");
+      return { channel, air_date, archived: archivedByDay.get(k) ?? 0, gapsWithVideo: gapsByDay.get(k) ?? 0 };
+    });
+    const coverage_by_day = computeCoverage(tallies).sort((a, b) => (a.air_date + a.channel).localeCompare(b.air_date + b.channel));
+    const expected_total = coverage_by_day.reduce((n, c) => n + c.expected, 0);
+    const archived_total = coverage_by_day.reduce((n, c) => n + c.archived, 0);
+    // coverage_pct is 2dp to fit the numeric(5,2) column; computeCoverage's per-day
+    // values are 1dp (display) and buildWebhookPayload's summary is whole-percent.
+    const coverage_pct = expected_total === 0 ? 100 : Math.round((archived_total / expected_total) * 10000) / 100;
+
+    // alert
+    const prevGapIds = await loadPreviousGapIds(sb);
+    const alertGaps = selectAlertWorthy(gaps, prevGapIds);
+    let alerted = false;
+    let alert_error: string | null = null;
+    if (alertGaps.length > 0 && webhookUrl) {
+      const sender = postWebhookFn ?? (await import("@/lib/alerts/webhook")).postWebhook;
+      const body = buildWebhookPayload(alertGaps, coverage_by_day);
+      const r = await sender(webhookUrl, body);
+      alerted = r.ok;
+      alert_error = r.ok ? null : (r.error ?? "unknown webhook error");
+    } else if (alertGaps.length > 0 && !webhookUrl) {
+      alert_error = "ALERT_WEBHOOK_URL unset";
+    }
+
+    const duration_ms = Date.now() - t0;
+    const result: ReconcileResult = {
+      window_from, window_to, expected_total, archived_total, coverage_pct,
+      healed, unhealable, no_source, probed, coverage_by_day, gaps, alerted, alert_error,
+      duration_ms,
+    };
+
+    // persist
+    const { error: insErr } = await sb.from("archive_reconciliation_runs").insert({
+      ran_at: now.toISOString(),
+      window_from, window_to, channels: ["qvc", "shopch"],
+      expected_total, archived_total, coverage_pct,
+      healed, unhealable, no_source, probed,
+      coverage_by_day, gaps, alerted, alert_error,
+      duration_ms,
+    });
+    if (insErr) console.warn("[reconcile] run insert failed:", insErr.message);
+
+    return result;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    try {
+      await sb.from("archive_reconciliation_runs").insert({
+        ran_at: now.toISOString(), window_from, window_to, channels: ["qvc", "shopch"],
+        error: msg, duration_ms: Date.now() - t0,
+      });
+    } catch { /* best-effort audit; never mask the original error */ }
+    throw e;
   }
-
-  // coverage
-  const dayKeys = new Set<string>([...archivedByDay.keys(), ...gapsByDay.keys()]);
-  const tallies: DayTally[] = [...dayKeys].map((k) => {
-    const [channel, air_date] = k.split("|");
-    return { channel, air_date, archived: archivedByDay.get(k) ?? 0, gapsWithVideo: gapsByDay.get(k) ?? 0 };
-  });
-  const coverage_by_day = computeCoverage(tallies).sort((a, b) => (a.air_date + a.channel).localeCompare(b.air_date + b.channel));
-  const expected_total = coverage_by_day.reduce((n, c) => n + c.expected, 0);
-  const archived_total = coverage_by_day.reduce((n, c) => n + c.archived, 0);
-  // coverage_pct is 2dp to fit the numeric(5,2) column; computeCoverage's per-day
-  // values are 1dp (display) and buildWebhookPayload's summary is whole-percent.
-  const coverage_pct = expected_total === 0 ? 100 : Math.round((archived_total / expected_total) * 10000) / 100;
-
-  // alert
-  const prevGapIds = await loadPreviousGapIds(sb);
-  const alertGaps = selectAlertWorthy(gaps, prevGapIds);
-  let alerted = false;
-  let alert_error: string | null = null;
-  if (alertGaps.length > 0 && webhookUrl) {
-    const sender = postWebhookFn ?? (await import("@/lib/alerts/webhook")).postWebhook;
-    const body = buildWebhookPayload(alertGaps, coverage_by_day);
-    const r = await sender(webhookUrl, body);
-    alerted = r.ok;
-    alert_error = r.ok ? null : (r.error ?? "unknown webhook error");
-  } else if (alertGaps.length > 0 && !webhookUrl) {
-    alert_error = "ALERT_WEBHOOK_URL unset";
-  }
-
-  const result: ReconcileResult = {
-    window_from, window_to, expected_total, archived_total, coverage_pct,
-    healed, unhealable, no_source, probed, coverage_by_day, gaps, alerted, alert_error,
-  };
-
-  // persist
-  const { error: insErr } = await sb.from("archive_reconciliation_runs").insert({
-    ran_at: now.toISOString(),
-    window_from, window_to, channels: ["qvc", "shopch"],
-    expected_total, archived_total, coverage_pct,
-    healed, unhealable, no_source, probed,
-    coverage_by_day, gaps, alerted, alert_error,
-  });
-  if (insErr) console.warn("[reconcile] run insert failed:", insErr.message);
-
-  return result;
 }
