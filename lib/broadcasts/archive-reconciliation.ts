@@ -51,3 +51,31 @@ export interface GapRecord {
 export function selectAlertWorthy(gaps: GapRecord[], previousGapIds: Set<string>): GapRecord[] {
   return gaps.filter((g) => g.classification === "unhealable" || previousGapIds.has(g.broadcast_id));
 }
+
+/** Slack/Discord-compatible message body (text=Slack, content=Discord, identical). */
+export function buildWebhookPayload(
+  alertGaps: GapRecord[],
+  coverage: CoverageDay[],
+): { text: string; content: string } {
+  const lines = [
+    `🚨 Archive reconciliation — ${alertGaps.length} un-healable gap${alertGaps.length === 1 ? "" : "s"} (video exists, not archived)`,
+  ];
+  for (const g of alertGaps.slice(0, 20)) {
+    lines.push(`  • [${g.channel}] ${g.air_date} ${g.start_time} — ${g.reason}`);
+  }
+  if (alertGaps.length > 20) lines.push(`  … and ${alertGaps.length - 20} more`);
+  const byCh = new Map<string, { archived: number; expected: number }>();
+  for (const c of coverage) {
+    const e = byCh.get(c.channel) ?? { archived: 0, expected: 0 };
+    e.archived += c.archived;
+    e.expected += c.expected;
+    byCh.set(c.channel, e);
+  }
+  const cov = [...byCh.entries()]
+    .map(([ch, e]) => `${ch} ${e.expected === 0 ? 100 : Math.round((e.archived / e.expected) * 100)}% (${e.archived}/${e.expected})`)
+    .join(" · ");
+  lines.push(`Coverage (7d): ${cov}`);
+  lines.push(`→ /admin/archive-status`);
+  const msg = lines.join("\n");
+  return { text: msg, content: msg };
+}

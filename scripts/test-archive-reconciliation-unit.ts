@@ -1,7 +1,7 @@
 /** DB-free unit tests for archive-reconciliation pure functions.
  *   npx tsx scripts/test-archive-reconciliation-unit.ts
  */
-import { classifyCandidate, computeCoverage, selectAlertWorthy, type GapRecord } from "../lib/broadcasts/archive-reconciliation";
+import { classifyCandidate, computeCoverage, selectAlertWorthy, buildWebhookPayload, type GapRecord } from "../lib/broadcasts/archive-reconciliation";
 
 let failures = 0;
 function eq(actual: unknown, expected: unknown, msg: string) {
@@ -41,6 +41,16 @@ const gUnheal: GapRecord = { broadcast_id: "b", channel: "qvc", air_date: "2026-
 eq(selectAlertWorthy([gHealed, gUnheal], new Set()).map((g) => g.broadcast_id), ["b"], "first-seen healed excluded; unhealable alerts");
 eq(selectAlertWorthy([gHealed], new Set(["a"])).map((g) => g.broadcast_id), ["a"], "healed gap persisting from previous run → alerts");
 eq(selectAlertWorthy([gHealed], new Set()).map((g) => g.broadcast_id), [], "first-seen healed gap → no alert");
+
+// --- buildWebhookPayload ---
+const payload = buildWebhookPayload(
+  [gUnheal],
+  [{ channel: "qvc", air_date: "2026-06-01", expected: 20, archived: 19, coverage: 95 }],
+);
+eq(payload.text === payload.content, true, "text and content identical (Slack+Discord)");
+eq(payload.text.includes("1 un-healable gap"), true, "header counts gaps");
+eq(payload.text.includes("[qvc] 2026-06-01 20:00:00"), true, "lists the gap");
+eq(payload.text.includes("qvc 95% (19/20)"), true, "coverage summary present");
 
 if (failures > 0) { console.error(`\n${failures} assertion(s) failed.`); process.exit(1); }
 console.log("\nall unit assertions passed.");
