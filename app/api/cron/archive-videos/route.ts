@@ -4,6 +4,7 @@ import { archiveOne, type QueuedSlot, type ArchiveResult } from "@/lib/broadcast
 import { recoverStaleDownloading } from "@/lib/broadcasts/stale-downloading-recovery";
 import { recoverQvcPending } from "@/lib/broadcasts/qvc-pending-recovery";
 import { recoverShopChPending } from "@/lib/broadcasts/shopch-pending-recovery";
+import { reconcileArchiveCoverage } from "@/lib/broadcasts/archive-reconciliation";
 
 export const maxDuration = 300;
 
@@ -41,6 +42,28 @@ export async function GET(req: NextRequest) {
   }
 
   const sb = getServiceClient();
+
+  // Primary healer (consolidation Phase 1): outcome-driven reconciliation in heal
+  // mode requeues any stuck whitelist slot whose video exists — superset of the
+  // qvc/shopch pending/deferred sweeps below, which now run as fallback (their
+  // counts should drop to ~0). Heal mode skips coverage/record/alert (the daily
+  // archive-reconciliation cron owns those). Non-fatal.
+  let reconcileHeal:
+    | Awaited<ReturnType<typeof reconcileArchiveCoverage>>
+    | { error: string } = {
+    window_from: "", window_to: "", expected_total: 0, archived_total: 0,
+    coverage_pct: 0, healed: 0, unhealable: 0, no_source: 0, probed: 0,
+    coverage_by_day: [], gaps: [], alerted: false, alert_error: null, duration_ms: 0,
+  };
+  try {
+    reconcileHeal = await reconcileArchiveCoverage({
+      mode: "heal",
+      lookbackDays: Number(process.env.RECONCILE_HEAL_LOOKBACK_DAYS) || 7,
+    });
+  } catch (err) {
+    reconcileHeal = { error: err instanceof Error ? err.message : String(err) };
+    console.warn("[archive-videos] reconcileArchiveCoverage(heal) failed:", reconcileHeal);
+  }
 
   // Self-heal: requeue slots orphaned in 'downloading' by a prior run that died
   // mid-stream (function timeout / deploy / crash). Without this they never
@@ -160,7 +183,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const result = { ...summary, qvcRecovery, shopchPendingRecovery };
+  const result = { ...summary, reconcileHeal, qvcRecovery, shopchPendingRecovery };
   console.log("[archive-videos]", JSON.stringify(result));
 
   return NextResponse.json(result);
