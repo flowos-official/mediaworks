@@ -1,11 +1,12 @@
 "use client";
 import { useState } from "react";
-import { Loader2, ShieldAlert, RefreshCw } from "lucide-react";
+import { Loader2, ShieldAlert, RefreshCw, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { ScriptCheckResult, Finding, Severity } from "@/lib/screenplay/compliance/types";
 
 interface CheckWithMeta extends ScriptCheckResult {
 	created_at?: string;
+	lexicon_version?: string;
 }
 
 interface Props {
@@ -84,6 +85,79 @@ function scoreColor(score: number): string {
 	return "text-red-600 dark:text-red-400";
 }
 
+/** Reproducibility metadata — the version stamp, grounding corpus snapshot, and
+ *  auto-remediation trace persisted with each check. Collapsed by default. */
+function ReproducibilityInfo({ check }: { check: CheckWithMeta }) {
+	const [open, setOpen] = useState(false);
+	const g = check.grounding;
+	const r = check.remediation;
+	if (!check.lexicon_version && !g && !r?.enabled) return null;
+
+	return (
+		<div className="mt-4 border-t border-border pt-3">
+			<button
+				type="button"
+				onClick={() => setOpen((v) => !v)}
+				className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors"
+			>
+				<ChevronRight size={12} className={`transition-transform ${open ? "rotate-90" : ""}`} />
+				再現性情報
+			</button>
+			{open && (
+				<div className="mt-2 space-y-2 text-[10px] text-muted-foreground">
+					{check.lexicon_version && (
+						<div>
+							<span className="font-medium text-foreground/70">バージョン: </span>
+							<span className="break-all">{check.lexicon_version}</span>
+						</div>
+					)}
+					{g && (
+						<div className="space-y-1">
+							<div>
+								<span className="font-medium text-foreground/70">グラウンディング: </span>
+								参照{g.referenceIds?.length ?? 0}件 / コーパスhash{" "}
+								{g.corpusHash ? g.corpusHash.slice(0, 12) : "—"} / ファクト検索{" "}
+								{g.factSearch ? "あり" : "なし"}
+							</div>
+							{(g.searchDomains ?? []).length > 0 && (
+								<div className="break-all">検索ドメイン: {g.searchDomains.join(", ")}</div>
+							)}
+							{(g.referencesSnapshot ?? []).length > 0 && (
+								<ul className="list-disc pl-4 space-y-0.5">
+									{g.referencesSnapshot.map((ref) => (
+										<li key={ref.id} className="break-all">
+											[{ref.law}] {ref.topic}
+											{ref.citation ? ` — ${ref.citation}` : ""}
+										</li>
+									))}
+								</ul>
+							)}
+						</div>
+					)}
+					{r?.enabled && (
+						<div className="space-y-1">
+							<div>
+								<span className="font-medium text-foreground/70">自動修正: </span>
+								{r.iterations.length}回 / 残り高リスク {r.finalHigh}件
+							</div>
+							{r.iterations.length > 0 && (
+								<ul className="list-disc pl-4 space-y-0.5">
+									{r.iterations.map((it) => (
+										<li key={it.iter}>
+											iter{it.iter}: {it.scoreBefore}→{it.scoreAfter} (決定論{it.tier1} / 再生成
+											{it.sections} / 未特定{it.unlocatable})
+										</li>
+									))}
+								</ul>
+							)}
+						</div>
+					)}
+				</div>
+			)}
+		</div>
+	);
+}
+
 export function CheckResultPanel({ screenplayId, initialCheck }: Props) {
 	const [check, setCheck] = useState<CheckWithMeta | null>(initialCheck);
 	const [busy, setBusy] = useState(false);
@@ -158,6 +232,7 @@ export function CheckResultPanel({ screenplayId, initialCheck }: Props) {
 						<AxisSection label="法規" findings={check.legal} />
 						<AxisSection label="ファクト" findings={check.facts} />
 						<AxisSection label="品質" findings={check.quality} />
+						<ReproducibilityInfo check={check} />
 					</>
 				) : (
 					<p className="text-xs text-muted-foreground py-3 text-center">

@@ -14,7 +14,7 @@ import type { ScriptCheckResult } from "@/lib/screenplay/compliance/types";
 interface Props {
 	initialScreenplay: ScreenplayRow;
 	initialVersions: ScreenplayVersionRow[];
-	latestCheck?: (ScriptCheckResult & { created_at?: string }) | null;
+	latestCheck?: (ScriptCheckResult & { created_at?: string; lexicon_version?: string }) | null;
 }
 
 function pad(n: number, w: number): string {

@@ -30,7 +30,7 @@ export async function GET(
 
 	const { data } = await supabase
 		.from("screenplay_version_checks")
-		.select("id, overall_score, result, created_at, is_auto")
+		.select("id, overall_score, result, created_at, is_auto, lexicon_version")
 		.eq("version_id", sp.current_version_id)
 		.order("created_at", { ascending: false })
 		.limit(1)
@@ -42,6 +42,7 @@ export async function GET(
 			id: data.id,
 			created_at: data.created_at,
 			is_auto: data.is_auto,
+			lexicon_version: data.lexicon_version ?? undefined,
 			...(data.result as object),
 		},
 	});
@@ -78,13 +79,14 @@ export async function POST(
 	// Manual re-check = full grounding incl. live fact search.
 	const result = await checkScreenplay(ver.markdown as string, sp.product_info_snapshot as ProductBrief, rules, references, { factSearch: true });
 
+	const lexiconVersion = `rules:${rules.length} refs:${references.length} h:${result.grounding?.corpusHash ?? ""}`;
 	const { data: inserted, error: insErr } = await supabase
 		.from("screenplay_version_checks")
 		.insert({
 			version_id: ver.id,
 			overall_score: result.overallScore,
 			result,
-			lexicon_version: `rules:${rules.length} refs:${references.length} h:${result.grounding?.corpusHash ?? ""}`,
+			lexicon_version: lexiconVersion,
 			is_auto: false,
 			created_by: auth.user.id,
 		})
@@ -92,5 +94,5 @@ export async function POST(
 		.single();
 	if (insErr) return Response.json({ error: insErr.message }, { status: 500 });
 
-	return Response.json({ check: { id: inserted.id, created_at: inserted.created_at, ...result } });
+	return Response.json({ check: { id: inserted.id, created_at: inserted.created_at, lexicon_version: lexiconVersion, ...result } });
 }

@@ -33,16 +33,16 @@ async function fetchDetail(id: string) {
 		.eq("screenplay_id", id)
 		.order("version_number", { ascending: true });
 
-	let latestCheck: (ScriptCheckResult & { created_at?: string }) | null = null;
+	let latestCheck: (ScriptCheckResult & { created_at?: string; lexicon_version?: string }) | null = null;
 	if (screenplay.current_version_id) {
 		const { data } = await sb
 			.from("screenplay_version_checks")
-			.select("overall_score, result, created_at")
+			.select("overall_score, result, created_at, lexicon_version")
 			.eq("version_id", screenplay.current_version_id)
 			.order("created_at", { ascending: false })
 			.limit(1)
 			.maybeSingle();
-		if (data) latestCheck = { ...(data.result as object), created_at: data.created_at } as ScriptCheckResult & { created_at?: string };
+		if (data) latestCheck = { ...(data.result as object), created_at: data.created_at, lexicon_version: data.lexicon_version ?? undefined } as ScriptCheckResult & { created_at?: string; lexicon_version?: string };
 	}
 
 	return {
