@@ -148,6 +148,48 @@ async function markProductStatus(
 	if (error) throw error;
 }
 
+export interface ProductSynthesisCore {
+	searchResults: Record<string, string>;
+	research: ResearchOutput;
+	/**
+	 * Non-null when loadBroadcastContext threw. The report still synthesizes without the
+	 * competitor block; the error string is surfaced so the caller decides whether to record it.
+	 */
+	broadcastContextError: string | null;
+}
+
+/**
+ * Shared synthesis core: web research → competitor broadcast context → Gemini synthesis.
+ * Intentionally free of any products.status side-effects so both the initial-analyze path
+ * (synthesizeProductResearch, which marks analyzing/completed/failed) and the daily-refresh
+ * batch (which preserves a product's existing status on failure) can reuse it while keeping
+ * their own status policies. This is the single place the competitor broadcast context is
+ * injected — fixing the prior daily-refresh gap where it was skipped.
+ */
+export async function runProductSynthesis(
+	productInfo: ProductInfo,
+	logLabel: string = productInfo.name,
+): Promise<ProductSynthesisCore> {
+	console.log(`[${logLabel}] Running web research (incl. Japan market)...`);
+	const searchResults = await runProductResearch(productInfo.name, productInfo.category);
+
+	console.log(`[${logLabel}] Loading broadcast context for category: ${productInfo.category}`);
+	let broadcastContext: Awaited<ReturnType<typeof loadBroadcastContext>> = null;
+	let broadcastContextError: string | null = null;
+	try {
+		broadcastContext = await loadBroadcastContext(productInfo.category);
+	} catch (err) {
+		console.warn(`[${logLabel}] broadcast context load failed:`, err);
+		broadcastContextError = err instanceof Error ? err.message.slice(0, 300) : "unknown";
+		broadcastContext = null;
+	}
+	const broadcastContextPrompt = formatBroadcastContextPrompt(broadcastContext);
+
+	console.log(`[${logLabel}] Synthesizing research with ${GEMINI_FLASH}...`);
+	const research = await synthesizeResearch(productInfo, searchResults, broadcastContextPrompt);
+	return { searchResults, research, broadcastContextError };
+}
+
 export async function synthesizeProductResearch(
 	productId: string,
 	sb: SupabaseClient = getServiceClient(),
@@ -170,35 +212,15 @@ export async function synthesizeProductResearch(
 
 		await markProductStatus(sb, productId, "analyzing");
 
-		console.log(`[${productId}] Running web research (incl. Japan market)...`);
-		const searchResults = await runProductResearch(
-			productInfo.name,
-			productInfo.category,
-		);
+		const { searchResults, research, broadcastContextError } =
+			await runProductSynthesis(productInfo, productId);
 
-		console.log(
-			`[${productId}] Loading broadcast context for category: ${productInfo.category}`,
-		);
-		let broadcastContext: Awaited<ReturnType<typeof loadBroadcastContext>> = null;
-		try {
-			broadcastContext = await loadBroadcastContext(productInfo.category);
-		} catch (err) {
-			console.warn(`[${productId}] broadcast context load failed:`, err);
-			const msg = err instanceof Error ? err.message.slice(0, 300) : "unknown";
+		if (broadcastContextError) {
 			// soft-mark; status stays 'analyzing'. markProductStatus("completed", null) later clears it.
 			await sb.from("products")
-				.update({ error_reason: `context_load_failed: ${msg}` })
+				.update({ error_reason: `context_load_failed: ${broadcastContextError}` })
 				.eq("id", productId);
-			broadcastContext = null;
 		}
-		const broadcastContextPrompt = formatBroadcastContextPrompt(broadcastContext);
-
-		console.log(`[${productId}] Synthesizing research with ${GEMINI_FLASH}...`);
-		const research = await synthesizeResearch(
-			productInfo,
-			searchResults,
-			broadcastContextPrompt,
-		);
 
 		const { error: upsertErr } = await sb
 			.from("research_results")

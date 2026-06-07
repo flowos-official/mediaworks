@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
-import { synthesizeResearch } from "@/lib/gemini";
-import { runProductResearch } from "@/lib/brave";
-import type { ProductInfo } from "@/lib/gemini";
+import {
+	buildProductInfoFromProductRow,
+	buildResearchResultInsert,
+	runProductSynthesis,
+} from "@/lib/research/synthesize-product";
 
 export const maxDuration = 300;
 
@@ -37,48 +39,21 @@ export async function GET(request: NextRequest) {
 
 		for (const product of products) {
 			try {
-				const productInfo: ProductInfo = {
-					name: product.name || "Unknown",
-					description: product.description || "",
-					features: product.features || [],
-					category: product.category || "General",
-					price_range: product.price_range,
-					target_market: product.target_market,
-				};
+				const productInfo = buildProductInfoFromProductRow(product);
 
-				// Re-run research
-				const searchResults = await runProductResearch(productInfo.name, productInfo.category);
-				const research = await synthesizeResearch(productInfo, searchResults);
+				// Re-run research through the shared synthesis core (carries competitor
+				// broadcast context + koreaFit sanitization, same as the initial-analyze path).
+				// On failure we keep the product 'completed' (preserve prior good research) —
+				// refresh never marks status, unlike synthesizeProductResearch.
+				const { searchResults, research } = await runProductSynthesis(
+					productInfo,
+					product.name ?? product.id,
+				);
 
-				// Upsert research results
 				const { error: upsertError } = await supabase
 					.from("research_results")
 					.upsert(
-						{
-							product_id: product.id,
-							marketability_score: research.marketability_score,
-							marketability_description: research.marketability_description,
-							demographics: research.demographics,
-							seasonality: research.seasonality,
-							cogs_estimate: research.cogs_estimate,
-							influencers: research.influencers,
-							content_ideas: research.content_ideas,
-							competitor_analysis: research.competitor_analysis,
-							recommended_price_range: research.recommended_price_range,
-							broadcast_scripts: research.broadcast_scripts,
-							japan_export_fit_score: research.japan_export_fit_score,
-							distribution_channels: research.distribution_channels,
-							pricing_strategy: research.pricing_strategy,
-							marketing_strategy: research.marketing_strategy,
-							korea_market_fit: research.korea_market_fit,
-							live_commerce: research.live_commerce,
-							raw_json: {
-								product_info: productInfo,
-								search_results: searchResults,
-								research,
-								refreshed_at: new Date().toISOString(),
-							},
-						},
+						buildResearchResultInsert(product.id, productInfo, searchResults, research),
 						{ onConflict: "product_id" },
 					);
 
