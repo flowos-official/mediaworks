@@ -5,7 +5,7 @@ import { applyRecentBroadcastPenalty } from "@/lib/discovery/recent-broadcast-pe
 import { applyCompetitorTrendBoost } from "@/lib/discovery/competitor-trend-boost";
 import { applyEvidenceBonus, computeTvEvidence } from "@/lib/discovery/tv-evidence";
 import { runStage1 } from "@/lib/discovery/orchestrator";
-import { runOptionalStage } from "@/lib/discovery/cron-budget";
+import { OptionalStageTracker, runOptionalStage } from "@/lib/discovery/cron-budget";
 import {
 	attachPlanToSession,
 	createSession,
@@ -93,6 +93,8 @@ export async function GET(req: NextRequest) {
 		context: CONTEXT,
 	});
 
+	const stages = new OptionalStageTracker();
+
 	try {
 		const orchestrated = await runStage1(learning, TARGET_COUNT, CONTEXT);
 		await attachPlanToSession(sessionId, orchestrated.plan);
@@ -104,6 +106,7 @@ export async function GET(req: NextRequest) {
 			minSaveBudgetMs: OPTIONAL_STAGE_MIN_SAVE_BUDGET_MS,
 			fallback: [] as Awaited<ReturnType<typeof tagBroadcastEvidence>>,
 			task: () => tagBroadcastEvidence(orchestrated.candidates),
+			onOutcome: stages.record,
 		});
 		const broadcastMap = new Map(broadcasts.map((b) => [b.productUrl, b]));
 
@@ -127,6 +130,7 @@ export async function GET(req: NextRequest) {
 				await applyRecentBroadcastPenalty(orchestrated.candidates);
 				return null;
 			},
+			onOutcome: stages.record,
 		});
 
 		// Phase 3-C: small boost when the candidate aligns with categories
@@ -141,6 +145,7 @@ export async function GET(req: NextRequest) {
 				await applyCompetitorTrendBoost(orchestrated.candidates);
 				return null;
 			},
+			onOutcome: stages.record,
 		});
 
 		// TV evidence: per-candidate broadcast-history aggregate.
@@ -158,6 +163,7 @@ export async function GET(req: NextRequest) {
 				TV_EVIDENCE_MIN_BUDGET_MS,
 			),
 			fallback: fallbackEvidenceEntries,
+			onOutcome: stages.record,
 			task: async () =>
 				Promise.all(
 					orchestrated.candidates.map(async (c) => {
@@ -223,6 +229,9 @@ export async function GET(req: NextRequest) {
 			producedCount: savedCount,
 			iterations: orchestrated.iterations,
 			poolSize: orchestrated.poolSize,
+			// Optional scoring stages (penalty/boost/tv-evidence) that did not run
+			// this execution (budget exhausted / timeout / error). Empty = all applied.
+			skippedStages: stages.skipped(),
 		});
 	} catch (err) {
 		const msg = err instanceof Error ? err.message : String(err);

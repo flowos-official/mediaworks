@@ -6,7 +6,7 @@ import { applyCreatorContentBoost } from "@/lib/discovery/creator-content-boost"
 import { applyHashtagMentionBoost } from "@/lib/discovery/hashtag-mention-boost";
 import { clampLiveBoosts } from "@/lib/discovery/live-boost-clamp";
 import { runStage1 } from "@/lib/discovery/orchestrator";
-import { runOptionalStage } from "@/lib/discovery/cron-budget";
+import { OptionalStageTracker, runOptionalStage } from "@/lib/discovery/cron-budget";
 import {
 	attachPlanToSession,
 	createSession,
@@ -89,6 +89,8 @@ export async function GET(req: NextRequest) {
 		context: CONTEXT,
 	});
 
+	const stages = new OptionalStageTracker();
+
 	try {
 		const orchestrated = await runStage1(learning, TARGET_COUNT, CONTEXT);
 		await attachPlanToSession(sessionId, orchestrated.plan);
@@ -115,6 +117,7 @@ export async function GET(req: NextRequest) {
 					await applyRakutenRoomBoost(orchestrated.candidates);
 					return null;
 				},
+				onOutcome: stages.record,
 			}),
 			runOptionalStage({
 				label: `${CONTEXT}:L2-rakuten-live-archive`,
@@ -126,6 +129,7 @@ export async function GET(req: NextRequest) {
 					await applyRakutenLiveArchiveBoost(orchestrated.candidates);
 					return null;
 				},
+				onOutcome: stages.record,
 			}),
 			runOptionalStage({
 				label: `${CONTEXT}:L3-creator-content`,
@@ -137,6 +141,7 @@ export async function GET(req: NextRequest) {
 					await applyCreatorContentBoost(orchestrated.candidates);
 					return null;
 				},
+				onOutcome: stages.record,
 			}),
 			runOptionalStage({
 				label: `${CONTEXT}:L4-hashtag-mention`,
@@ -148,6 +153,7 @@ export async function GET(req: NextRequest) {
 					await applyHashtagMentionBoost(orchestrated.candidates);
 					return null;
 				},
+				onOutcome: stages.record,
 			}),
 		]);
 
@@ -190,6 +196,9 @@ export async function GET(req: NextRequest) {
 			producedCount: savedCount,
 			iterations: orchestrated.iterations,
 			poolSize: orchestrated.poolSize,
+			// Optional boost stages (L1-L4) that did not run this execution
+			// (budget exhausted / timeout / error). Empty = all applied.
+			skippedStages: stages.skipped(),
 		});
 	} catch (err) {
 		const msg = err instanceof Error ? err.message : String(err);
