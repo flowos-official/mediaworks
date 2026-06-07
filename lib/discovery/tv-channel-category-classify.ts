@@ -10,9 +10,8 @@
  * labels the MD strategy panel offers). pool-query's buildCategoryMatchTerms
  * keys on those labels, and `r.category` is substring-matched — so storing the
  * label (e.g. "美容・スキンケア") is matched by a 美容・スキンケア request without any
- * separate channel-whitelist → sales-taxonomy bridge. Modeled on
- * lib/broadcasts/shopch-category.ts. Pure (no server-only) → tsx-importable for
- * the backfill script.
+ * separate channel-whitelist → sales-taxonomy bridge. Pure (no server-only) →
+ * tsx-importable for the backfill script.
  *
  * Fail-open: any error → all null (row keeps NULL category, no worse than today).
  */

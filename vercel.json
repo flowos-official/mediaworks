@@ -9,9 +9,6 @@
     "app/api/cron/daily-refresh/route.ts": {
       "maxDuration": 300
     },
-    "app/api/cron/daily-discovery/route.ts": {
-      "maxDuration": 10
-    },
     "app/api/cron/daily-discovery-home/route.ts": {
       "maxDuration": 300
     },
