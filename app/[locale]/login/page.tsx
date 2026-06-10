@@ -26,7 +26,9 @@ export default function LoginPage() {
     );
     const { error, data } = await sb.auth.signInWithPassword({ email, password });
     if (error) {
-      setErr(t('errors.invalid'));
+      const code = (error as { code?: string }).code;
+      const unconfirmed = code === 'email_not_confirmed' || error.message === 'Email not confirmed';
+      setErr(unconfirmed ? t('errors.emailNotConfirmed') : t('errors.invalid'));
       setLoading(false);
       return;
     }
