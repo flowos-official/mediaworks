@@ -43,8 +43,17 @@ export async function PATCH(
     return NextResponse.json({ error: 'no fields to update' }, { status: 400 });
   }
 
-  const { error } = await auth.sb.from('profiles').update(update).eq('id', id);
+  // .select() so a 0-row update (RLS filtered / no such id) surfaces as an error
+  // instead of a silent ok:true that makes the UI appear to succeed.
+  const { data: updated, error } = await auth.sb
+    .from('profiles')
+    .update(update)
+    .eq('id', id)
+    .select('id');
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!updated || updated.length === 0) {
+    return NextResponse.json({ error: 'user not found or update not permitted' }, { status: 404 });
+  }
   return NextResponse.json({ ok: true });
 }
 
