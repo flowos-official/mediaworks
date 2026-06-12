@@ -690,9 +690,51 @@
     },
     "registry": {
       "title": "스킬 레지스트리",
+      "subtitle": "코드베이스에서 수집한, Gemini를 호출하는 모든 스킬 목록입니다. Git이 진실의 원천이며, DB 행은 <code>git_sha</code>를 키로 하는 불변 복사본입니다.",
       "totalSkills": "등록 스킬 수",
       "activeVersions": "활성 버전 수",
-      "backToList": "← 목록으로"
+      "categories": "카테고리 수",
+      "totalVersionsPublished": "공개 버전 총수",
+      "skillsHeading": "스킬 목록",
+      "noneActive": "(활성 버전 없음)",
+      "emptyState": "아직 공개된 스킬이 없습니다. <code>npm run publish-registry</code> 를 실행하세요.",
+      "backToList": "← 목록으로",
+      "col": {
+        "slug": "슬러그",
+        "displayName": "표시 이름",
+        "category": "카테고리",
+        "activeVersion": "활성 버전",
+        "model": "모델",
+        "versions": "버전 수",
+        "published": "공개일"
+      },
+      "detail": {
+        "createdMeta": "생성 {date} · 공개 버전 {count}",
+        "versionsHeading": "버전",
+        "activeBadge": "활성",
+        "view": "보기 ↓",
+        "showingLabel": "표시 중",
+        "promptSource": "프롬프트 소스",
+        "promptSourceHint": "공개 시점에 <code>Function.prototype.toString()</code> 로 캡처했습니다.",
+        "outputSchema": "출력 스키마",
+        "outputSchemaHint": "공개 시점에 v1 Zod 스키마에서 변환한 JSON Schema입니다.",
+        "metadata": "메타데이터",
+        "validatorsEmpty": "(없음 — Phase A에서 결정적 포스트 검증기를 추가 예정)",
+        "col": {
+          "version": "버전",
+          "gitSha": "Git SHA",
+          "modelProvider": "모델 · 프로바이더",
+          "published": "공개일시",
+          "by": "공개자",
+          "validators": "검증기"
+        },
+        "meta": {
+          "model": "모델",
+          "provider": "프로바이더",
+          "generationConfig": "생성 설정",
+          "validators": "검증기"
+        }
+      }
     },
     "preferences": {
       "languageTitle": "언어",
@@ -718,6 +760,87 @@
         "upserted": "신규",
         "duration": "소요",
         "channels": "채널별 건수 (적색=실패/-50% 이하, 황색=-80% 이하)"
+      }
+    },
+    "discoveryCalibration": {
+      "title": "발굴 스코어 보정",
+      "description": "최근 90일간 <code>tv_fit_score</code> 밴드별 전환율입니다. 밴드가 높을수록 전환이 잘 되어야 하며, 평탄한 곡선은 스코어에 예측력이 없음을 의미합니다. <strong>aired</strong>(방송 실적) 는 발굴 후 수주~수개월 뒤에 반영되므로, 최근 데이터에서 <code>aired</code> 가 낮은 것은 예상된 결과이며 스코어가 나쁘다는 증거가 아닙니다. 선택 수가 {min}건 미만인 밴드는 전환율을 숨깁니다.",
+      "queryFailed": "뷰 조회 실패: {message}",
+      "noData": "아직 데이터가 없습니다.",
+      "col": {
+        "scoreBand": "스코어 밴드",
+        "shown": "노출",
+        "selectedPlus": "선택+",
+        "sourcedPlus": "소싱+",
+        "scheduledPlus": "예정+",
+        "aired": "방송",
+        "dropped": "탈락"
+      }
+    },
+    "archiveStatus": {
+      "title": "아카이브 파이프라인 상태",
+      "reconciliation": {
+        "heading": "커버리지 대조",
+        "overall": "전체",
+        "healed": "복구",
+        "unhealable": "복구 불가",
+        "noSource": "소스 없음"
+      },
+      "totalArchivedBytes": "아카이브 총 용량",
+      "perMonth": "≈ ${cost} / 월",
+      "recentFailures": "최근 실패",
+      "videoStatus": {
+        "queued": "대기 중",
+        "downloading": "다운로드 중",
+        "archived": "아카이브 완료",
+        "abandoned": "실패(중단)",
+        "deferred": "보류"
+      },
+      "col": {
+        "date": "날짜",
+        "channel": "채널",
+        "status": "상태",
+        "attempts": "시도",
+        "error": "오류"
+      },
+      "retry": "재시도"
+    },
+    "researchPipeline": {
+      "title": "리서치 파이프라인",
+      "manualDetect": {
+        "title": "수동 정체(stuck) 감지",
+        "hint": "보통 15분마다 자동 실행됩니다. 수동으로 지금 실행할 수도 있습니다."
+      },
+      "analyzingHeading": "진행 중 (analyzing) — {count}건",
+      "failedHeading": "실패 (failed) — {count}건",
+      "none": "없음",
+      "startedAt": "시작 {time} ({mins}분 전 갱신)",
+      "failedTimeLabel": "실패 시각",
+      "descMissing": "description 미추출 (재업로드 필요)",
+      "reasonUnknown": "원인 불명",
+      "trigger": {
+        "run": "지금 실행",
+        "running": "실행 중..."
+      },
+      "retryForce": "강제 재시도",
+      "retry": "재시도",
+      "requestFailed": "요청에 실패했습니다",
+      "reason": {
+        "safety_blocked": "안전 차단",
+        "rate_limited": "요청 제한",
+        "server_error": "서버 오류",
+        "parse_failed": "JSON 파싱 실패",
+        "schema_validation_failed": "스키마 검증 실패",
+        "extract_empty": "빈 응답",
+        "context_load_failed": "컨텍스트 로드 실패",
+        "cron_secret_missing": "CRON_SECRET 미설정",
+        "trigger_not_invoked": "트리거 미실행",
+        "analysis_timeout": "분석 타임아웃",
+        "extract_failed": "추출 실패",
+        "synthesis_failed": "합성 실패",
+        "file_too_large": "파일 크기 초과",
+        "no_files": "파일 미첨부",
+        "unknown": "원인 불명"
       }
     }
   },

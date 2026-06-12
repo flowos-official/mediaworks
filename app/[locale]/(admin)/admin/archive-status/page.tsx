@@ -1,7 +1,10 @@
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { requireUser } from "@/lib/auth/require-user";
 import { localePath } from "@/lib/i18n/locale-path";
 import RetryButton from "./RetryButton";
+
+const VIDEO_STATUS_KEYS = new Set(["queued", "downloading", "archived", "abandoned", "deferred"]);
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +17,8 @@ export default async function ArchiveStatusPage({ params }: PageProps) {
 	const auth = await requireUser(["admin"]);
 	if ("error" in auth) redirect(localePath(locale, "/login"));
 	const sb = auth.sb;
+	const t = await getTranslations("admin.archiveStatus");
+	const statusLabel = (s: string) => (VIDEO_STATUS_KEYS.has(s) ? t(`videoStatus.${s}`) : s);
 
 	const { data: tally } = await sb
 		.from("broadcasts")
@@ -58,17 +63,17 @@ export default async function ArchiveStatusPage({ params }: PageProps) {
 
 	return (
 		<div className="max-w-5xl mx-auto p-6">
-			<h1 className="text-2xl font-semibold mb-4">Archive Pipeline Status</h1>
+			<h1 className="text-2xl font-semibold mb-4">{t("title")}</h1>
 			{run && (
 				<section className="mb-8 border rounded p-4">
 					<h2 className="text-lg font-semibold mb-2">
-						Coverage reconciliation <span className="text-xs text-muted-foreground">({new Date(run.ran_at).toLocaleString("ja-JP")})</span>
+						{t("reconciliation.heading")} <span className="text-xs text-muted-foreground">({new Date(run.ran_at).toLocaleString("ja-JP")})</span>
 					</h2>
 					<div className="flex gap-4 mb-3 text-sm">
-						<span>overall <b style={{ color: gateColor(run.coverage_pct) }}>{run.coverage_pct}%</b></span>
-						<span>healed {run.healed}</span>
-						<span className={run.unhealable > 0 ? "text-red-600 font-semibold" : ""}>un-healable {run.unhealable}</span>
-						<span className="text-muted-foreground">no-source {run.no_source}</span>
+						<span>{t("reconciliation.overall")} <b style={{ color: gateColor(run.coverage_pct) }}>{run.coverage_pct}%</b></span>
+						<span>{t("reconciliation.healed")} {run.healed}</span>
+						<span className={run.unhealable > 0 ? "text-red-600 font-semibold" : ""}>{t("reconciliation.unhealable")} {run.unhealable}</span>
+						<span className="text-muted-foreground">{t("reconciliation.noSource")} {run.no_source}</span>
 					</div>
 					<div className="grid grid-cols-2 md:grid-cols-4 gap-2">
 						{(run.coverage_by_day ?? []).map((c) => (
@@ -90,25 +95,25 @@ export default async function ArchiveStatusPage({ params }: PageProps) {
 			<div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
 				{[...counts.entries()].map(([k, v]) => (
 					<div key={k} className="border rounded p-3">
-						<div className="text-xs text-muted-foreground">{k}</div>
+						<div className="text-xs text-muted-foreground">{statusLabel(k)}</div>
 						<div className="text-2xl font-semibold">{v.toLocaleString("ja-JP")}</div>
 					</div>
 				))}
 				<div className="border rounded p-3 bg-muted">
-					<div className="text-xs text-muted-foreground">Total archived bytes</div>
+					<div className="text-xs text-muted-foreground">{t("totalArchivedBytes")}</div>
 					<div className="text-lg font-semibold">{(totalBytes / 1e9).toFixed(2)} GB</div>
-					<div className="text-xs text-muted-foreground">≈ ${r2CostUsd} / month</div>
+					<div className="text-xs text-muted-foreground">{t("perMonth", { cost: r2CostUsd })}</div>
 				</div>
 			</div>
-			<h2 className="text-lg font-semibold mb-2">Recent failures</h2>
+			<h2 className="text-lg font-semibold mb-2">{t("recentFailures")}</h2>
 			<table className="w-full text-sm">
 				<thead className="bg-muted border-b">
 					<tr>
-						<th className="text-left px-3 py-2">Date</th>
-						<th className="text-left px-3 py-2">Channel</th>
-						<th className="text-left px-3 py-2">Status</th>
-						<th className="text-left px-3 py-2">Attempts</th>
-						<th className="text-left px-3 py-2">Error</th>
+						<th className="text-left px-3 py-2">{t("col.date")}</th>
+						<th className="text-left px-3 py-2">{t("col.channel")}</th>
+						<th className="text-left px-3 py-2">{t("col.status")}</th>
+						<th className="text-left px-3 py-2">{t("col.attempts")}</th>
+						<th className="text-left px-3 py-2">{t("col.error")}</th>
 						<th className="text-left px-3 py-2"></th>
 					</tr>
 				</thead>
@@ -117,7 +122,7 @@ export default async function ArchiveStatusPage({ params }: PageProps) {
 						<tr key={f.id} className="border-b">
 							<td className="px-3 py-2">{f.air_date} {f.start_time}</td>
 							<td className="px-3 py-2">{f.channel}</td>
-							<td className="px-3 py-2">{f.video_status}</td>
+							<td className="px-3 py-2">{statusLabel(f.video_status)}</td>
 							<td className="px-3 py-2">{f.video_download_attempts ?? 0}</td>
 							<td className="px-3 py-2 text-xs text-muted-foreground">{f.video_error?.slice(0, 80)}</td>
 							<td className="px-3 py-2">

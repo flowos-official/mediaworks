@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { requireUser } from "@/lib/auth/require-user";
 import { localePath } from "@/lib/i18n/locale-path";
 
@@ -39,6 +40,7 @@ export default async function DiscoveryCalibrationPage({ params }: PageProps) {
 	const auth = await requireUser(["admin"]);
 	if ("error" in auth) redirect(localePath(locale, "/login"));
 	const sb = auth.sb;
+	const t = await getTranslations("admin.discoveryCalibration");
 
 	const { data, error } = await sb
 		.from("discovery_score_calibration")
@@ -56,19 +58,19 @@ export default async function DiscoveryCalibrationPage({ params }: PageProps) {
 
 	return (
 		<div className="max-w-5xl mx-auto p-6">
-			<h1 className="text-2xl font-semibold mb-2">Discovery Score Calibration</h1>
+			<h1 className="text-2xl font-semibold mb-2">{t("title")}</h1>
 			<p className="text-sm text-muted-foreground mb-6">
-				Conversion rate by <code>tv_fit_score</code> band over the last 90 days. A
-				higher band should convert better — a flat curve means the score is not
-				predictive. <strong>aired</strong> lags discovery by weeks–months, so a low
-				<code> aired</code> in recent data is expected, not evidence of a bad score.
-				Conversion % is hidden for bands with fewer than {MIN_BAND_SAMPLE} selections.
+				{t.rich("description", {
+					min: MIN_BAND_SAMPLE,
+					code: (chunks) => <code>{chunks}</code>,
+					strong: (chunks) => <strong>{chunks}</strong>,
+				})}
 			</p>
 
 			{error ? (
-				<p className="text-sm text-red-600">View query failed: {error.message}</p>
+				<p className="text-sm text-red-600">{t("queryFailed", { message: error.message })}</p>
 			) : byContext.size === 0 ? (
-				<p className="text-sm text-muted-foreground">No data yet.</p>
+				<p className="text-sm text-muted-foreground">{t("noData")}</p>
 			) : (
 				[...byContext.entries()].map(([context, list]) => (
 					<div key={context} className="mb-8">
@@ -76,13 +78,13 @@ export default async function DiscoveryCalibrationPage({ params }: PageProps) {
 						<table className="w-full text-sm">
 							<thead className="bg-muted border-b">
 								<tr>
-									<th className="text-left px-3 py-2">Score band</th>
-									<th className="text-right px-3 py-2">Shown</th>
-									<th className="text-right px-3 py-2">Selected+</th>
-									<th className="text-right px-3 py-2">Sourced+</th>
-									<th className="text-right px-3 py-2">Scheduled+</th>
-									<th className="text-right px-3 py-2">Aired</th>
-									<th className="text-right px-3 py-2">Dropped</th>
+									<th className="text-left px-3 py-2">{t("col.scoreBand")}</th>
+									<th className="text-right px-3 py-2">{t("col.shown")}</th>
+									<th className="text-right px-3 py-2">{t("col.selectedPlus")}</th>
+									<th className="text-right px-3 py-2">{t("col.sourcedPlus")}</th>
+									<th className="text-right px-3 py-2">{t("col.scheduledPlus")}</th>
+									<th className="text-right px-3 py-2">{t("col.aired")}</th>
+									<th className="text-right px-3 py-2">{t("col.dropped")}</th>
 								</tr>
 							</thead>
 							<tbody>

@@ -111,26 +111,25 @@ export default async function SkillDetailPage({ params, searchParams }: PageProp
 					{categoryBadge(skill.category)}
 				</div>
 				<p className="mt-1 text-[11px] text-muted-foreground">
-					created {formatDateTime(skill.created_at)} · {versions.length} version
-					{versions.length === 1 ? "" : "s"} published
+					{t("detail.createdMeta", { date: formatDateTime(skill.created_at), count: versions.length })}
 				</p>
 			</header>
 
 			{/* Version timeline */}
 			<Card className="mb-6">
 				<CardHeader className="pb-2">
-					<CardTitle className="text-sm font-semibold">Versions</CardTitle>
+					<CardTitle className="text-sm font-semibold">{t("detail.versionsHeading")}</CardTitle>
 				</CardHeader>
 				<CardContent className="overflow-x-auto p-0">
 					<table className="w-full text-sm">
 						<thead className="bg-muted text-xs uppercase tracking-wide text-muted-foreground">
 							<tr>
-								<th className="px-4 py-2 text-left">Version</th>
-								<th className="px-4 py-2 text-left">Git SHA</th>
-								<th className="px-4 py-2 text-left">Model · Provider</th>
-								<th className="px-4 py-2 text-left">Published</th>
-								<th className="px-4 py-2 text-left">By</th>
-								<th className="px-4 py-2 text-right">Validators</th>
+								<th className="px-4 py-2 text-left">{t("detail.col.version")}</th>
+								<th className="px-4 py-2 text-left">{t("detail.col.gitSha")}</th>
+								<th className="px-4 py-2 text-left">{t("detail.col.modelProvider")}</th>
+								<th className="px-4 py-2 text-left">{t("detail.col.published")}</th>
+								<th className="px-4 py-2 text-left">{t("detail.col.by")}</th>
+								<th className="px-4 py-2 text-right">{t("detail.col.validators")}</th>
 								<th className="px-4 py-2"></th>
 							</tr>
 						</thead>
@@ -149,7 +148,7 @@ export default async function SkillDetailPage({ params, searchParams }: PageProp
 											<span className="inline-flex items-center gap-1.5">
 												<span className="font-mono text-[11px]">{v.version_label}</span>
 												{isActive && (
-													<Badge className="bg-green-600/15 text-[9px] text-green-700 dark:text-green-300">active</Badge>
+													<Badge className="bg-green-600/15 text-[9px] text-green-700 dark:text-green-300">{t("detail.activeBadge")}</Badge>
 												)}
 											</span>
 										</td>
@@ -172,7 +171,7 @@ export default async function SkillDetailPage({ params, searchParams }: PageProp
 												href={localePath(locale, `/admin/registry/${skill.slug}?version=${v.version_label}`)}
 												className="text-[10px] text-blue-600 hover:underline"
 											>
-												view ↓
+												{t("detail.view")}
 											</Link>
 										</td>
 									</tr>
@@ -186,18 +185,18 @@ export default async function SkillDetailPage({ params, searchParams }: PageProp
 			{selectedVersion && (
 				<>
 					<div className="mb-3 text-xs text-muted-foreground">
-						Showing <span className="font-mono">{selectedVersion.version_label}</span> ·{" "}
+						{t("detail.showingLabel")} <span className="font-mono">{selectedVersion.version_label}</span> ·{" "}
 						{shortSha(selectedVersion.git_sha)}
 					</div>
 
 					{/* Prompt source */}
 					<Card className="mb-4">
 						<CardHeader className="pb-2">
-							<CardTitle className="text-sm font-semibold">Prompt Source</CardTitle>
+							<CardTitle className="text-sm font-semibold">{t("detail.promptSource")}</CardTitle>
 							<p className="text-[10px] text-muted-foreground">
-								Captured via{" "}
-								<code className="rounded bg-muted px-1">Function.prototype.toString()</code> at
-								publish time.
+								{t.rich("detail.promptSourceHint", {
+									code: (chunks) => <code className="rounded bg-muted px-1">{chunks}</code>,
+								})}
 							</p>
 						</CardHeader>
 						<CardContent>
@@ -211,9 +210,9 @@ export default async function SkillDetailPage({ params, searchParams }: PageProp
 					{/* Output schema */}
 					<Card className="mb-4">
 						<CardHeader className="pb-2">
-							<CardTitle className="text-sm font-semibold">Output Schema</CardTitle>
+							<CardTitle className="text-sm font-semibold">{t("detail.outputSchema")}</CardTitle>
 							<p className="text-[10px] text-muted-foreground">
-								JSON Schema converted from the v1 Zod schema at publish time.
+								{t("detail.outputSchemaHint")}
 							</p>
 						</CardHeader>
 						<CardContent>
@@ -226,15 +225,15 @@ export default async function SkillDetailPage({ params, searchParams }: PageProp
 					{/* Generation config + validators */}
 					<Card>
 						<CardHeader className="pb-2">
-							<CardTitle className="text-sm font-semibold">Metadata</CardTitle>
+							<CardTitle className="text-sm font-semibold">{t("detail.metadata")}</CardTitle>
 						</CardHeader>
 						<CardContent>
 							<dl className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
-								<MetaPair label="Model" value={selectedVersion.model} mono />
-								<MetaPair label="Provider" value={selectedVersion.provider} mono />
+								<MetaPair label={t("detail.meta.model")} value={selectedVersion.model} mono />
+								<MetaPair label={t("detail.meta.provider")} value={selectedVersion.provider} mono />
 								<div className="md:col-span-2">
 									<dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
-										Generation Config
+										{t("detail.meta.generationConfig")}
 									</dt>
 									<dd className="mt-1">
 										<pre className="overflow-auto rounded bg-muted p-2 font-mono text-[11px] text-foreground">
@@ -243,7 +242,7 @@ export default async function SkillDetailPage({ params, searchParams }: PageProp
 									</dd>
 								</div>
 								<div className="md:col-span-2">
-									<dt className="text-[10px] uppercase tracking-wide text-muted-foreground">Validators</dt>
+									<dt className="text-[10px] uppercase tracking-wide text-muted-foreground">{t("detail.meta.validators")}</dt>
 									<dd className="mt-1">
 										{Array.isArray(selectedVersion.validators) &&
 										selectedVersion.validators.length > 0 ? (
@@ -256,7 +255,7 @@ export default async function SkillDetailPage({ params, searchParams }: PageProp
 											</ul>
 										) : (
 											<p className="text-[11px] text-muted-foreground">
-												(none — Phase A will populate deterministic post-validators)
+												{t("detail.validatorsEmpty")}
 											</p>
 										)}
 									</dd>
