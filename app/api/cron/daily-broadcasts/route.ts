@@ -12,9 +12,6 @@ import {
 	type QvcProductLike,
 } from "@/lib/broadcasts/snapshot-enrichment";
 import { buildProgramId } from "@/lib/broadcasts/shopch-json";
-import { recoverQvcPending } from "@/lib/broadcasts/qvc-pending-recovery";
-import { recoverShopChDeferred } from "@/lib/broadcasts/shopch-deferred-recovery";
-
 export const maxDuration = 180;
 
 function verifyCronAuth(req: NextRequest): boolean {
@@ -240,34 +237,6 @@ export async function GET(req: NextRequest) {
 			)
 		: { snapshotRows: 0, brandUpdates: 0, videoQueued: 0, videoDeferred: 0 };
 
-	// Safety net: any QVC slot still 'pending' after enrichment (e.g. from a
-	// partial-failure run) is flipped to queued/deferred here so the archive
-	// cron picks it up. CAS-guarded — never overwrites archived/queued/etc.
-	let qvcRecovery: Awaited<ReturnType<typeof recoverQvcPending>> = {
-		scanned: 0, queued: 0, deferred: 0, skippedOutOfWhitelist: 0, skippedNoProduct: 0,
-	};
-	try {
-		qvcRecovery = await recoverQvcPending();
-	} catch (err) {
-		const msg = err instanceof Error ? err.message : String(err);
-		console.warn("[qvc-recover] failed:", msg);
-	}
-
-	// Self-heal ShopCh slots stranded in 'deferred' — their recording
-	// (pgmMovie) only appears after airing, so a slot enriched while still in
-	// the future never gets promoted by the once-per-date daily enrich. This
-	// sweep re-checks recent deferred slots and queues any whose video is now
-	// live, so the archive cron picks them up. See shopch-deferred-recovery.ts.
-	let shopchRecovery: Awaited<ReturnType<typeof recoverShopChDeferred>> = {
-		scanned: 0, requeued: 0, stillDeferred: 0, fetchFailed: 0,
-	};
-	try {
-		shopchRecovery = await recoverShopChDeferred();
-	} catch (err) {
-		const msg = err instanceof Error ? err.message : String(err);
-		console.warn("[shopch-deferred-recover] failed:", msg);
-	}
-
 	const log = {
 		event: "broadcasts.scrape.summary",
 		date: targetIso,
@@ -306,8 +275,6 @@ export async function GET(req: NextRequest) {
 				videoDeferred: shopchSnapshot.videoDeferred,
 			},
 		},
-		qvcPendingRecovery: qvcRecovery,
-		shopchDeferredRecovery: shopchRecovery,
 		durationMs: Date.now() - start,
 	};
 
