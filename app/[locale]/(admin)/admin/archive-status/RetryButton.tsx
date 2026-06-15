@@ -1,7 +1,9 @@
 "use client";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 
 export default function RetryButton({ broadcastId }: { broadcastId: string }) {
+	const t = useTranslations("admin.archiveStatus");
 	const [pending, setPending] = useState(false);
 	const onClick = async () => {
 		setPending(true);
@@ -11,7 +13,7 @@ export default function RetryButton({ broadcastId }: { broadcastId: string }) {
 	return (
 		<button type="button" disabled={pending} onClick={onClick}
 		  className="text-xs px-2 py-1 rounded border hover:bg-muted disabled:opacity-50">
-			{pending ? "..." : "Retry"}
+			{pending ? "..." : t("retry")}
 		</button>
 	);
 }

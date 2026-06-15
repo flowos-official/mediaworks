@@ -107,8 +107,9 @@ export default async function RegistryListPage() {
 			<header className="mb-6">
 				<h1 className="text-2xl font-semibold text-foreground">{t("title")}</h1>
 				<p className="mt-1 text-sm text-muted-foreground">
-					All Gemini-calling skills cataloged from the codebase. Git is the source of truth — DB rows are immutable copies keyed by{" "}
-					<code className="rounded bg-muted px-1 text-[11px]">git_sha</code>.
+					{t.rich("subtitle", {
+						code: (chunks) => <code className="rounded bg-muted px-1 text-[11px]">{chunks}</code>,
+					})}
 				</p>
 			</header>
 
@@ -116,33 +117,33 @@ export default async function RegistryListPage() {
 				<KPI label={t("totalSkills")} value={totalSkills} />
 				<KPI label={t("activeVersions")} value={activeCount} />
 				<KPI
-					label="Categories"
+					label={t("categories")}
 					value={Object.keys(categoryCounts).length}
 					sub={Object.entries(categoryCounts)
 						.map(([k, n]) => `${k}:${n}`)
 						.join(" · ")}
 				/>
 				<KPI
-					label="Total Versions Published"
+					label={t("totalVersionsPublished")}
 					value={Array.from(versionCountBySkill.values()).reduce((a, b) => a + b, 0)}
 				/>
 			</section>
 
 			<Card>
 				<CardHeader className="pb-2">
-					<CardTitle className="text-sm font-semibold">Skills</CardTitle>
+					<CardTitle className="text-sm font-semibold">{t("skillsHeading")}</CardTitle>
 				</CardHeader>
 				<CardContent className="overflow-x-auto p-0">
 					<table className="w-full text-sm">
 						<thead className="bg-muted text-xs uppercase tracking-wide text-muted-foreground">
 							<tr>
-								<th className="px-4 py-2 text-left">Slug</th>
-								<th className="px-4 py-2 text-left">Display Name</th>
-								<th className="px-4 py-2 text-left">Category</th>
-								<th className="px-4 py-2 text-left">Active Version</th>
-								<th className="px-4 py-2 text-left">Model</th>
-								<th className="px-4 py-2 text-right">Versions</th>
-								<th className="px-4 py-2 text-right">Published</th>
+								<th className="px-4 py-2 text-left">{t("col.slug")}</th>
+								<th className="px-4 py-2 text-left">{t("col.displayName")}</th>
+								<th className="px-4 py-2 text-left">{t("col.category")}</th>
+								<th className="px-4 py-2 text-left">{t("col.activeVersion")}</th>
+								<th className="px-4 py-2 text-left">{t("col.model")}</th>
+								<th className="px-4 py-2 text-right">{t("col.versions")}</th>
+								<th className="px-4 py-2 text-right">{t("col.published")}</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -163,7 +164,7 @@ export default async function RegistryListPage() {
 													<span className="font-mono text-[10px] text-muted-foreground">{shortSha(active.git_sha)}</span>
 												</span>
 											) : (
-												<span className="text-[11px] text-muted-foreground">(none active)</span>
+												<span className="text-[11px] text-muted-foreground">{t("noneActive")}</span>
 											)}
 										</td>
 										<td className="px-4 py-2 font-mono text-[11px] text-muted-foreground">
@@ -186,8 +187,9 @@ export default async function RegistryListPage() {
 							{skills.length === 0 && (
 								<tr>
 									<td colSpan={7} className="px-4 py-12 text-center text-sm text-muted-foreground">
-										No skills published yet. Run{" "}
-										<code className="rounded bg-muted px-1 text-[11px]">npm run publish-registry</code>.
+										{t.rich("emptyState", {
+											code: (chunks) => <code className="rounded bg-muted px-1 text-[11px]">{chunks}</code>,
+										})}
 									</td>
 								</tr>
 							)}

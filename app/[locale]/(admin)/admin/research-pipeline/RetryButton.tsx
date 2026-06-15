@@ -1,7 +1,9 @@
 "use client";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 
 export default function RetryButton({ productId, label }: { productId: string; label: string }) {
+  const t = useTranslations("admin.researchPipeline");
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -22,7 +24,7 @@ export default function RetryButton({ productId, label }: { productId: string; l
       }
       window.location.reload();
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "request failed");
+      setMessage(err instanceof Error ? err.message : t("requestFailed"));
       setPending(false);
     }
   };

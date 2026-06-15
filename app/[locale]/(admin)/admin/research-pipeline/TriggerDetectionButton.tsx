@@ -1,7 +1,9 @@
 "use client";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 
 export default function TriggerDetectionButton() {
+  const t = useTranslations("admin.researchPipeline");
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -18,7 +20,7 @@ export default function TriggerDetectionButton() {
       }
       window.location.reload();
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "request failed");
+      setMessage(err instanceof Error ? err.message : t("requestFailed"));
       setPending(false);
     }
   };
@@ -31,7 +33,7 @@ export default function TriggerDetectionButton() {
         onClick={onClick}
         className="text-sm px-4 py-2 rounded border hover:bg-muted disabled:opacity-50"
       >
-        {pending ? "実行中..." : "今すぐ実行"}
+        {pending ? t("trigger.running") : t("trigger.run")}
       </button>
       {message && <span className="text-xs text-red-600">{message}</span>}
     </div>

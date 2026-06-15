@@ -690,9 +690,51 @@
     },
     "registry": {
       "title": "スキルレジストリ",
+      "subtitle": "コードベースから収集した、Gemini を呼び出す全スキルの一覧です。Git が真実の源であり、DB の行は <code>git_sha</code> をキーとした不変のコピーです。",
       "totalSkills": "登録スキル数",
       "activeVersions": "アクティブ版数",
-      "backToList": "← 一覧に戻る"
+      "categories": "カテゴリ数",
+      "totalVersionsPublished": "公開バージョン総数",
+      "skillsHeading": "スキル一覧",
+      "noneActive": "(稼働版なし)",
+      "emptyState": "まだ公開されたスキルがありません。<code>npm run publish-registry</code> を実行してください。",
+      "backToList": "← 一覧に戻る",
+      "col": {
+        "slug": "スラッグ",
+        "displayName": "表示名",
+        "category": "カテゴリ",
+        "activeVersion": "稼働中バージョン",
+        "model": "モデル",
+        "versions": "バージョン数",
+        "published": "公開日"
+      },
+      "detail": {
+        "createdMeta": "作成日時 {date} · 公開バージョン {count}",
+        "versionsHeading": "バージョン",
+        "activeBadge": "稼働中",
+        "view": "表示 ↓",
+        "showingLabel": "表示中",
+        "promptSource": "プロンプトソース",
+        "promptSourceHint": "公開時に <code>Function.prototype.toString()</code> で取得しました。",
+        "outputSchema": "出力スキーマ",
+        "outputSchemaHint": "公開時に v1 の Zod スキーマから変換した JSON Schema です。",
+        "metadata": "メタデータ",
+        "validatorsEmpty": "(なし — Phase A で決定的なポストバリデーターを追加予定)",
+        "col": {
+          "version": "バージョン",
+          "gitSha": "Git SHA",
+          "modelProvider": "モデル · プロバイダ",
+          "published": "公開日時",
+          "by": "公開者",
+          "validators": "バリデーター"
+        },
+        "meta": {
+          "model": "モデル",
+          "provider": "プロバイダ",
+          "generationConfig": "生成設定",
+          "validators": "バリデーター"
+        }
+      }
     },
     "preferences": {
       "languageTitle": "言語",
@@ -718,6 +760,87 @@
         "upserted": "新規",
         "duration": "所要",
         "channels": "チャネル別件数 (赤=失敗/-50%以下、橙=-80%以下)"
+      }
+    },
+    "discoveryCalibration": {
+      "title": "発掘スコア較正",
+      "description": "過去90日間の <code>tv_fit_score</code> バンド別のコンバージョン率です。バンドが高いほどコンバージョンも高くなるはずで、フラットな曲線はスコアに予測力がないことを意味します。<strong>aired</strong>(放送実績) は発掘から数週間〜数ヶ月遅れて反映されるため、直近データで <code>aired</code> が低いのは想定内であり、スコアが悪い証拠ではありません。選択数が {min} 件未満のバンドではコンバージョン率を非表示にしています。",
+      "queryFailed": "ビュー照会に失敗しました: {message}",
+      "noData": "まだデータがありません。",
+      "col": {
+        "scoreBand": "スコアバンド",
+        "shown": "表示",
+        "selectedPlus": "選択+",
+        "sourcedPlus": "ソーシング+",
+        "scheduledPlus": "予定+",
+        "aired": "放送",
+        "dropped": "却下"
+      }
+    },
+    "archiveStatus": {
+      "title": "アーカイブパイプライン状況",
+      "reconciliation": {
+        "heading": "カバレッジ照合",
+        "overall": "全体",
+        "healed": "復旧",
+        "unhealable": "復旧不能",
+        "noSource": "ソースなし"
+      },
+      "totalArchivedBytes": "アーカイブ総容量",
+      "perMonth": "≈ ${cost} / 月",
+      "recentFailures": "最近の失敗",
+      "videoStatus": {
+        "queued": "待機中",
+        "downloading": "ダウンロード中",
+        "archived": "アーカイブ済み",
+        "abandoned": "失敗(放棄)",
+        "deferred": "保留"
+      },
+      "col": {
+        "date": "日付",
+        "channel": "チャネル",
+        "status": "状態",
+        "attempts": "試行",
+        "error": "エラー"
+      },
+      "retry": "再試行"
+    },
+    "researchPipeline": {
+      "title": "リサーチパイプライン",
+      "manualDetect": {
+        "title": "手動スタック検出",
+        "hint": "通常は15分ごとに自動実行されます。手動で今すぐ実行することもできます。"
+      },
+      "analyzingHeading": "進行中 (analyzing) — {count}件",
+      "failedHeading": "失敗 (failed) — {count}件",
+      "none": "なし",
+      "startedAt": "開始 {time} ({mins}分前に更新)",
+      "failedTimeLabel": "失敗時刻",
+      "descMissing": "description 未抽出 (要再アップロード)",
+      "reasonUnknown": "理由不明",
+      "trigger": {
+        "run": "今すぐ実行",
+        "running": "実行中..."
+      },
+      "retryForce": "強制再試行",
+      "retry": "再試行",
+      "requestFailed": "リクエストに失敗しました",
+      "reason": {
+        "safety_blocked": "セーフティブロック",
+        "rate_limited": "レート制限",
+        "server_error": "サーバーエラー",
+        "parse_failed": "JSON解析失敗",
+        "schema_validation_failed": "スキーマ検証失敗",
+        "extract_empty": "空応答",
+        "context_load_failed": "コンテキスト読込失敗",
+        "cron_secret_missing": "CRON_SECRET未設定",
+        "trigger_not_invoked": "トリガー未起動",
+        "analysis_timeout": "分析タイムアウト",
+        "extract_failed": "抽出失敗",
+        "synthesis_failed": "合成失敗",
+        "file_too_large": "ファイルサイズ超過",
+        "no_files": "ファイル未添付",
+        "unknown": "原因不明"
       }
     }
   },
