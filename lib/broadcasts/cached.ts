@@ -2,6 +2,7 @@ import "server-only";
 import { unstable_cacheLife as cacheLife, unstable_cacheTag as cacheTag } from "next/cache";
 import { getServiceClient } from "@/lib/supabase";
 import { aggregateCalendarCounts, type CountsByDate } from "./aggregate-counts";
+import { KEEP_NON_MISDATED_NTV_OR } from "./ntv-suppression";
 
 const OA_CHANNEL_SLUGS = [
 	"japanet",
@@ -57,10 +58,13 @@ export async function getCachedChannelTotals(): Promise<Record<string, number>> 
 	);
 	const oaCounts = await Promise.all(
 		OA_CHANNEL_SLUGS.map(async (slug) => {
+			// Hide mis-dated ntv rows from the chip (N) total. No-op for other
+			// OA channels (channel.neq.ntv is always true). See ntv-suppression.ts.
 			const { count } = await sb
 				.from("historical_broadcasts")
 				.select("id", { count: "exact", head: true })
-				.eq("channel", slug);
+				.eq("channel", slug)
+				.or(KEEP_NON_MISDATED_NTV_OR);
 			return [slug, count ?? 0] as const;
 		}),
 	);
