@@ -16,6 +16,7 @@
     "test:broadcasts-qvc": "tsx --env-file=.env.local scripts/test-broadcasts-qvc-parser.ts",
     "test:broadcasts-parsers": "npm run test:broadcasts-shopch && npm run test:broadcasts-qvc",
     "test:historical-txd-parser": "tsx scripts/test-historical-txd-parser.ts",
+    "test:historical-ntv-parser": "tsx scripts/test-historical-ntv-parser.ts",
     "test:og-image-extractor": "tsx scripts/test-og-image-extractor.ts",
     "test:ntv-image-extractor": "tsx scripts/test-ntv-image-extractor.ts",
     "test:oa-images-live": "tsx scripts/test-oa-images-live.ts",
