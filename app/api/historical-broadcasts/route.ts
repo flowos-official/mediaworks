@@ -1,5 +1,5 @@
 import { requireUser } from "@/lib/auth/require-user";
-import { KEEP_NON_MISDATED_NTV_OR } from "@/lib/broadcasts/ntv-suppression";
+import { MISDATED_OA_OR_CLAUSES } from "@/lib/broadcasts/misdated-suppression";
 import { type NextRequest, NextResponse } from "next/server";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -82,9 +82,9 @@ export async function GET(req: NextRequest) {
 	if (to) q = q.lte("air_date", to);
 	if (search) q = q.ilike("product_name", `%${search}%`);
 	if (category) q = q.eq("category", category);
-	// Hide mis-dated ntv rows (2026-05-16..06-10) from list + search. No-op for
-	// other channels / dates after the cutoff. See ntv-suppression.ts.
-	q = q.or(KEEP_NON_MISDATED_NTV_OR);
+	// Hide mis-dated OA rows (ntv/junsanpo/tbs) from list + search. Each clause
+	// is a no-op for channels / dates it doesn't target. See misdated-suppression.ts.
+	for (const clause of MISDATED_OA_OR_CLAUSES) q = q.or(clause);
 
 	const { data, count, error } = await q;
 	if (error) {
