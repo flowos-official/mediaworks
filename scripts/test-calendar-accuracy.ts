@@ -7,7 +7,7 @@ import { getTodayISOJST } from "../lib/broadcasts/jst-date";
 import { isWhitelistedSlot } from "../lib/broadcasts/whitelist-gate";
 import { shouldReconcileDate } from "../lib/broadcasts/reconcile";
 import { getForwardDates } from "../lib/broadcasts/shopch-forward";
-import { KEEP_NON_MISDATED_NTV_OR } from "../lib/broadcasts/ntv-suppression";
+import { MISDATED_OA_OR_CLAUSES } from "../lib/broadcasts/misdated-suppression";
 
 let passed = 0;
 function check(label: string, cond: boolean) {
@@ -54,25 +54,31 @@ check("getForwardDates(2) gives today..+2", fd2.length === 3 && isoUTC(fd2[2]) =
 const fdRoll = getForwardDates(new Date(Date.UTC(2026, 11, 30)), 14);
 check("getForwardDates rolls Dec→Jan", isoUTC(fdRoll[14]) === "2027-01-13");
 
-// --- ntv mis-dated display-time suppression (De Morgan of the hide predicate) ---
-// Mirror PostgREST `.or()`: keep a row if ANY "col.op.value" clause holds.
-function keptByOr(orStr: string, row: Record<string, string>): boolean {
+// --- mis-dated OA display-time suppression (De Morgan of the hide predicate) ---
+// Mirror PostgREST: a row is kept iff it passes EVERY channel's `.or()` clause
+// (chained .or() calls AND-combine); within a clause, keep if ANY term holds.
+function keptByClause(orStr: string, row: Record<string, string>): boolean {
 	return orStr.split(",").some((clause) => {
 		const [col, op, ...rest] = clause.split(".");
 		const val = rest.join(".");
 		const cell = String(row[col]);
 		if (op === "neq") return cell !== val;
 		if (op === "gt") return cell > val; // ISO YYYY-MM-DD compares chronologically
-		throw new Error(`unhandled op in KEEP_NON_MISDATED_NTV_OR: ${op}`);
+		throw new Error(`unhandled op in MISDATED_OA_OR_CLAUSES: ${op}`);
 	});
 }
-const ntvPolluted = { channel: "ntv", source_sheet: "live-crawl:ntv", air_date: "2026-06-05" };
-const ntvRebuilt = { channel: "ntv", source_sheet: "live-crawl:ntv", air_date: "2026-06-11" };
-const ntvXlsx = { channel: "ntv", source_sheet: "日テレポシュレ", air_date: "2026-05-06" };
-const otherOA = { channel: "tbs", source_sheet: "live-crawl:tbs", air_date: "2026-06-05" };
-check("ntv mis-dated row (<=cutoff, live-crawl) is hidden", keptByOr(KEEP_NON_MISDATED_NTV_OR, ntvPolluted) === false);
-check("ntv rebuilt row (>cutoff) is kept", keptByOr(KEEP_NON_MISDATED_NTV_OR, ntvRebuilt) === true);
-check("ntv xlsx-import row (different source_sheet) is kept", keptByOr(KEEP_NON_MISDATED_NTV_OR, ntvXlsx) === true);
-check("other OA channel row is kept", keptByOr(KEEP_NON_MISDATED_NTV_OR, otherOA) === true);
+function kept(row: Record<string, string>): boolean {
+	return MISDATED_OA_OR_CLAUSES.every((c) => keptByClause(c, row));
+}
+check("ntv mis-dated row (<=cutoff) hidden", kept({ channel: "ntv", source_sheet: "live-crawl:ntv", air_date: "2026-06-05" }) === false);
+check("junsanpo mis-dated row (<=cutoff) hidden", kept({ channel: "junsanpo", source_sheet: "live-crawl:junsanpo", air_date: "2026-05-16" }) === false);
+check("tbs mis-dated row (<=cutoff) hidden", kept({ channel: "tbs", source_sheet: "live-crawl:tbs", air_date: "2026-06-01" }) === false);
+check("ntv rebuilt row (>cutoff) kept", kept({ channel: "ntv", source_sheet: "live-crawl:ntv", air_date: "2026-06-11" }) === true);
+check("junsanpo rebuilt row (>cutoff) kept", kept({ channel: "junsanpo", source_sheet: "live-crawl:junsanpo", air_date: "2026-06-10" }) === true);
+check("tbs rebuilt row (>cutoff) kept", kept({ channel: "tbs", source_sheet: "live-crawl:tbs", air_date: "2026-06-15" }) === true);
+check("dinos May pollution (<=cutoff) hidden", kept({ channel: "dinos", source_sheet: "live-crawl:dinos", air_date: "2026-05-20" }) === false);
+check("dinos June rebuilt (>cutoff) kept", kept({ channel: "dinos", source_sheet: "live-crawl:dinos", air_date: "2026-06-05" }) === true);
+check("ntv xlsx-import row (different source_sheet) kept", kept({ channel: "ntv", source_sheet: "日テレポシュレ", air_date: "2026-05-06" }) === true);
+check("unaffected OA channel (kantv) kept", kept({ channel: "kantv", source_sheet: "live-crawl:kantv", air_date: "2026-05-20" }) === true);
 
 console.log(`[test:calendar-accuracy] ${passed} assertions passed`);
