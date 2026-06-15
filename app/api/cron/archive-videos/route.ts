@@ -2,8 +2,6 @@ import { type NextRequest, NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
 import { archiveOne, type QueuedSlot, type ArchiveResult } from "@/lib/broadcasts/video-archival";
 import { recoverStaleDownloading } from "@/lib/broadcasts/stale-downloading-recovery";
-import { recoverQvcPending } from "@/lib/broadcasts/qvc-pending-recovery";
-import { recoverShopChPending } from "@/lib/broadcasts/shopch-pending-recovery";
 import { reconcileArchiveCoverage } from "@/lib/broadcasts/archive-reconciliation";
 
 export const maxDuration = 300;
@@ -43,12 +41,9 @@ export async function GET(req: NextRequest) {
 
   const sb = getServiceClient();
 
-  // Primary healer (consolidation Phase 1): outcome-driven reconciliation in heal
-  // mode requeues any stuck whitelist slot whose video exists — superset of the
-  // qvc/shopch pending/deferred sweeps below, which now run as fallback (their
-  // counts should drop to ~0). Heal mode skips coverage/record/alert (the daily
-  // archive-reconciliation cron owns those). The probe overlap with the fallback
-  // sweeps below is temporary by design (Phase 1) — Phase 2 removes the sweeps. Non-fatal.
+  // Primary healer: outcome-driven reconciliation in heal mode requeues any
+  // stuck whitelist slot whose video exists. Heal mode skips coverage/record/alert
+  // (the daily archive-reconciliation cron owns those). Non-fatal.
   let reconcileHeal:
     | Awaited<ReturnType<typeof reconcileArchiveCoverage>>
     | { error: string } = {
@@ -81,46 +76,6 @@ export async function GET(req: NextRequest) {
       "[archive-videos] stale-downloading recovery failed:",
       err instanceof Error ? err.message : String(err),
     );
-  }
-
-  // Close the residual archive lag: a QVC whitelist slot only becomes 'queued'
-  // once recoverQvcPending sees its category, but the category is attached
-  // progressively by product enrichment. The daily recover passes (16:00 +
-  // 17:00 UTC) miss slots categorised in between, so they waited up to ~24h for
-  // the next pass. Running it here (every 2h) flips them within the same tick so
-  // the drain loop below archives them immediately. CAS-guarded + idempotent.
-  let qvcRecovery: Awaited<ReturnType<typeof recoverQvcPending>> | { error: string } = {
-    scanned: 0,
-    queued: 0,
-    deferred: 0,
-    skippedOutOfWhitelist: 0,
-    skippedNoProduct: 0,
-  };
-  try {
-    qvcRecovery = await recoverQvcPending();
-  } catch (err) {
-    qvcRecovery = { error: err instanceof Error ? err.message : String(err) };
-    console.warn("[archive-videos] recoverQvcPending failed:", qvcRecovery);
-  }
-
-  // Symmetric ShopCh path: flip whitelist-matching, already-aired slots stranded
-  // in 'pending' (category classified after enrichment ran) → 'queued', so the
-  // drain below archives their video the same tick. Without this, ~1 ShopCh slot
-  // per day was lost permanently (no pending→queued sweep existed for ShopCh).
-  let shopchPendingRecovery:
-    | Awaited<ReturnType<typeof recoverShopChPending>>
-    | { error: string } = {
-    scanned: 0,
-    requeued: 0,
-    stillPending: 0,
-    fetchFailed: 0,
-    skippedNonWhitelist: 0,
-  };
-  try {
-    shopchPendingRecovery = await recoverShopChPending();
-  } catch (err) {
-    shopchPendingRecovery = { error: err instanceof Error ? err.message : String(err) };
-    console.warn("[archive-videos] recoverShopChPending failed:", shopchPendingRecovery);
   }
 
   // Drain the queue until it is empty or we approach the function timeout.
@@ -184,7 +139,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const result = { ...summary, reconcileHeal, qvcRecovery, shopchPendingRecovery };
+  const result = { ...summary, reconcileHeal };
   console.log("[archive-videos]", JSON.stringify(result));
 
   return NextResponse.json(result);

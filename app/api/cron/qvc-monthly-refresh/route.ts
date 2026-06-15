@@ -2,11 +2,10 @@ import { type NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { refreshQVCMonthlyRange } from "@/lib/broadcasts/qvc-monthly";
 import { getJSTYearMonth } from "@/lib/broadcasts/jst-date";
-import { recoverQvcPending } from "@/lib/broadcasts/qvc-pending-recovery";
 import { refreshShopChForwardRange } from "@/lib/broadcasts/shopch-forward";
 
-// QVC monthly (~60 dates) + ShopCh forward (~15 dates) + recovery run
-// sequentially; give the cron headroom beyond the 300s default.
+// QVC monthly (~60 dates) + ShopCh forward (~15 dates) run sequentially;
+// give the cron headroom beyond the 300s default.
 export const maxDuration = 600;
 
 function verifyCronAuth(req: NextRequest): boolean {
@@ -44,25 +43,9 @@ export async function GET(req: NextRequest) {
 		console.warn("[qvc-monthly-refresh] refreshShopChForwardRange failed", shopchForward);
 	}
 
-	// This refresh is where freshly-published QVC slots get their category
-	// attached (scrapeQVCForDate reads qvc_products.category). The daily
-	// broadcasts cron runs recoverQvcPending an hour *earlier* (16:00 UTC),
-	// so without this call a newly-categorised whitelist slot would sit in
-	// 'pending' until the next day's daily cron — a perpetual ~24h archive
-	// lag. Running it here flips those slots to 'queued' the same day so the
-	// next archive-videos tick picks them up. Idempotent + CAS-guarded.
-	let qvcRecovery: Awaited<ReturnType<typeof recoverQvcPending>> | { error: string };
-	try {
-		qvcRecovery = await recoverQvcPending();
-	} catch (err) {
-		qvcRecovery = { error: err instanceof Error ? err.message : String(err) };
-		console.warn("[qvc-monthly-refresh] recoverQvcPending failed", qvcRecovery);
-	}
-
 	const log = {
 		event: "qvc_monthly_refresh.summary",
 		...summary,
-		qvcRecovery,
 		shopchForward,
 		// trim long error arrays in logs but keep first few for context
 		errors: summary.errors.slice(0, 5),
