@@ -19,6 +19,8 @@
     "test:historical-ntv-parser": "tsx scripts/test-historical-ntv-parser.ts",
     "test:historical-junsanpo-parser": "tsx scripts/test-historical-junsanpo-parser.ts",
     "test:historical-tbs-parser": "tsx scripts/test-historical-tbs-parser.ts",
+    "test:historical-kantv-parser": "tsx scripts/test-historical-kantv-parser.ts",
+    "test:historical-dinos-parser": "tsx scripts/test-historical-dinos-parser.ts",
     "test:og-image-extractor": "tsx scripts/test-og-image-extractor.ts",
     "test:ntv-image-extractor": "tsx scripts/test-ntv-image-extractor.ts",
     "test:oa-images-live": "tsx scripts/test-oa-images-live.ts",

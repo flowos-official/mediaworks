@@ -2,51 +2,56 @@ import * as cheerio from "cheerio";
 import type { ChannelParser, HistoricalRow } from "../types";
 import { dayOfWeekJp } from "../types";
 import { politeFetch } from "../fetch";
-import { parsePrice } from "../price";
-import { ogImageExtractor } from "../image-extractors/og-image";
-import { mapWithConcurrency } from "../image-extractors/types";
+import { parseSlashMonthDay } from "../section-date";
 
-const PAGE_URL = "https://www.dinos.co.jp/tv/premium/";
+/**
+ * フジDinos (いいものプレミアム). The product grid at /tv/premium only renders
+ * the current day's broadcast, so the old parser stamped every card with the
+ * cron's jstDate — a product featured for days then appeared on each of them.
+ * The monthly schedule page lists one entry per broadcast day with the real
+ * date in each item's image alt ("6/1（月）放送　クリアージュ アイリフトNeo")
+ * plus a /p/ product link. Parse that instead so every product carries its
+ * true air date. (Prices aren't exposed on the schedule page → null; image +
+ * name + date are.)
+ */
+const PAGE_URL = "https://www.dinos.co.jp/tv/premium_schedule_s/";
+// "6/1（月）放送　<name>" — full-width or ASCII paren/space; capture the name tail.
+const ALT_RE = /\d{1,2}\/\d{1,2}[（(][日月火水木金土][)）]\s*放送[\s　]*(.+)$/;
 
-function parse(html: string, jstDate: string): HistoricalRow[] {
+export function parseDinos(html: string, jstDate: string): HistoricalRow[] {
 	const $ = cheerio.load(html);
-	const dow = dayOfWeekJp(jstDate);
 	const rows: HistoricalRow[] = [];
+	const seen = new Set<string>();
 
-	$("dl.clearfix").each((_, el) => {
-		const dl = $(el);
-		// Product detail link can be either:
-		//   (a) an inner <a href="/p/..."> on the title/image, or
-		//   (b) a parent <a href="//www.dinos.co.jp/p/..."> wrapping the whole dl.
-		// Most rows on /tv/premium/ today use the wrapper form.
-		const innerHref = dl.find("a[href*='/p/']").first().attr("href");
-		const parentHref = dl.parent("a[href]").attr("href");
-		const href = innerHref ?? parentHref ?? "";
-		const titleText = dl.find("div.cms_datatitle").first().text().replace(/\s+/g, " ").trim();
-		const imgAlt = dl.find("img[alt]").first().attr("alt") ?? "";
-		const name = titleText || imgAlt.trim();
+	$("a[href*='/p/']").each((_, el) => {
+		const a = $(el);
+		const img = a.find("img[alt]").first();
+		const alt = (img.attr("alt") ?? "").replace(/　/g, " ").replace(/\s+/g, " ").trim();
+		const airDate = parseSlashMonthDay(alt, jstDate);
+		if (!airDate) return; // non-broadcast links (e.g. social) have no dated alt
+
+		const name = ALT_RE.exec(alt)?.[1]?.trim() ?? "";
 		if (!name || name.length < 3) return;
 
-		const priceText = dl
-			.find("div.saleprice, .saleprice")
-			.first()
-			.text()
-			.replace(/\s+/g, " ")
-			.trim();
-		const { price, incl } = parsePrice(priceText);
+		const key = `${airDate}|${name}`;
+		if (seen.has(key)) return;
+		seen.add(key);
+
+		const href = a.attr("href") ?? "";
+		const imgSrc = img.attr("src") ?? "";
 
 		rows.push({
 			channel: "dinos",
-			air_date: jstDate,
-			day_of_week: dow,
+			air_date: airDate,
+			day_of_week: dayOfWeekJp(airDate),
 			start_time: null,
 			product_name: name.slice(0, 500),
-			price_text: priceText ? priceText.slice(0, 200) : null,
-			price_jpy: price,
-			price_is_tax_incl: incl,
+			price_text: null,
+			price_jpy: null,
+			price_is_tax_incl: null,
 			source_url: href ? new URL(href, PAGE_URL).toString() : null,
 			source_sheet: "live-crawl:dinos",
-			image_url: null,
+			image_url: imgSrc ? new URL(imgSrc, PAGE_URL).toString() : null,
 		});
 	});
 
@@ -59,11 +64,6 @@ export const dinosParser: ChannelParser = {
 	fetchToday: async (jstDate) => {
 		const r = await politeFetch(PAGE_URL);
 		if (!r.ok || !r.body) throw new Error(`fetch failed: HTTP ${r.status ?? "?"}${r.error ? ` ${r.error}` : ""}`);
-		const rows = parse(r.body, jstDate);
-		await mapWithConcurrency(rows, 5, async (row) => {
-			if (!row.source_url) return;
-			row.image_url = await ogImageExtractor.extract(row.source_url).catch(() => null);
-		});
-		return rows;
+		return parseDinos(r.body, jstDate);
 	},
 };

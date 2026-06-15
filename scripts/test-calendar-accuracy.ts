@@ -76,7 +76,9 @@ check("tbs mis-dated row (<=cutoff) hidden", kept({ channel: "tbs", source_sheet
 check("ntv rebuilt row (>cutoff) kept", kept({ channel: "ntv", source_sheet: "live-crawl:ntv", air_date: "2026-06-11" }) === true);
 check("junsanpo rebuilt row (>cutoff) kept", kept({ channel: "junsanpo", source_sheet: "live-crawl:junsanpo", air_date: "2026-06-10" }) === true);
 check("tbs rebuilt row (>cutoff) kept", kept({ channel: "tbs", source_sheet: "live-crawl:tbs", air_date: "2026-06-15" }) === true);
+check("dinos May pollution (<=cutoff) hidden", kept({ channel: "dinos", source_sheet: "live-crawl:dinos", air_date: "2026-05-20" }) === false);
+check("dinos June rebuilt (>cutoff) kept", kept({ channel: "dinos", source_sheet: "live-crawl:dinos", air_date: "2026-06-05" }) === true);
 check("ntv xlsx-import row (different source_sheet) kept", kept({ channel: "ntv", source_sheet: "日テレポシュレ", air_date: "2026-05-06" }) === true);
-check("unaffected OA channel (dinos) kept", kept({ channel: "dinos", source_sheet: "live-crawl:dinos", air_date: "2026-06-05" }) === true);
+check("unaffected OA channel (kantv) kept", kept({ channel: "kantv", source_sheet: "live-crawl:kantv", air_date: "2026-05-20" }) === true);
 
 console.log(`[test:calendar-accuracy] ${passed} assertions passed`);

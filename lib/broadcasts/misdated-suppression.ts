@@ -21,6 +21,10 @@ export const MISDATED_OA_CUTOFFS: Record<string, string> = {
 	ntv: "2026-06-10",
 	junsanpo: "2026-05-16",
 	tbs: "2026-06-02",
+	// dinos: schedule page covers the current month only, so May blanket
+	// pollution is unrecoverable. (kantv needed no cutoff — its date-filter
+	// pages let the rebuild re-derive every polluted day.)
+	dinos: "2026-05-31",
 };
 
 /**
