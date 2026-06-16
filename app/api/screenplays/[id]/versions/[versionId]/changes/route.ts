@@ -96,12 +96,21 @@ export async function GET(
 
   // Cache write is best-effort and MUST NOT discard an already-computed rationale:
   // before the change_notes migration is applied (manual in this repo) the UPDATE
-  // errors on a missing column, but the AI result is still valid — return it uncached.
+  // fails on a missing column, but the AI result is still valid — return it uncached.
+  // Note: postgrest-js resolves to { error } on a DB error (it does NOT throw), so
+  // capture that explicitly; the try/catch only guards genuine throws (e.g. network).
   const notes: ChangeNotes = { ok: true, key, rationale, computedAt };
   try {
-    await sb.from("screenplay_versions").update({ change_notes: notes }).eq("id", versionId);
+    const { error: writeErr } = await sb
+      .from("screenplay_versions")
+      .update({ change_notes: notes })
+      .eq("id", versionId)
+      .eq("screenplay_id", id);
+    if (writeErr) {
+      console.error("[screenplays/changes] cache write failed (returning uncached):", writeErr.message);
+    }
   } catch (err) {
-    console.error("[screenplays/changes] cache write failed (returning uncached):", err instanceof Error ? err.message : String(err));
+    console.error("[screenplays/changes] cache write threw (returning uncached):", err instanceof Error ? err.message : String(err));
   }
   return Response.json({ rationale, model: key.model, computedAt });
 }
