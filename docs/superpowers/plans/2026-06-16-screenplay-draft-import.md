@@ -260,10 +260,9 @@ function testParseImportJson() {
 
   try {
     const big = "あ".repeat(IMPORT_MARKDOWN_MAX + 500);
-    const r = parseImportJson(JSON.stringify({ markdown: "# h\n" + big, brief: { name: "A", description: "D" } }));
-    if (r.markdown.length > IMPORT_MARKDOWN_MAX) throw new Error(`not capped: ${r.markdown.length}`);
-    pass("caps oversized markdown");
-  } catch (e) { fail("caps oversized markdown", (e as Error).message); }
+    parseImportJson(JSON.stringify({ markdown: "# h\n" + big, brief: { name: "A", description: "D" } }));
+    fail("rejects oversized markdown", "did not throw");
+  } catch (e) { pass("rejects oversized markdown", (e as Error).message); }
 
   try {
     const r = parseImportJson('prefix ```json\n{"markdown":"# t\\n本文","brief":{"name":"A","description":"D"}}\n``` suffix');
@@ -320,8 +319,9 @@ export const IMPORT_SYSTEM_INSTRUCTION = `あなたは日本のテレビショ�
 - 話者ブロックは必ず次の形式（1行で完結）：
   [役名] （演出メモがあれば日本語で）
   セリフ本文
-  役名タグは可能なら次に正規化：[N]（ナレーター） [高橋] [山内] [小島] [お客様] [XX先生]（専門家）。
-  原文の話者がこれらに **明確に対応しない** 場合は、原文の名前をそのまま [名前] として残す（推測で割り当てない）。
+  役名タグは **必ず次の5種のいずれか** に正規化する（システムが認識できるのはこの5種のみ）：
+  [N]（ナレーター） [高橋]（商品アドバイザー・権威役） [山内]（MC・驚き役） [小島]（MC・共感役） [お客様]（愛用者）。
+  原文の話者がこの5種に **きれいに対応しない** 場合（例：専門家「清水先生」、固有名のお客様「片岡さん」）は、最も近い役（専門家→[高橋]、名前付きお客様→[お客様] 等）に割り当て、**元の名前は演出メモ（）に保持する**（例：[お客様] （片岡さん・実感を込めて））。独自の [名前] タグや [XX先生] タグは出力しないこと（パーサが認識せず、ただの段落として表示されてしまう）。
 - 演出キューは独立ブロック：[テロップ] [カメラ] [BGM] [SE] [インサート] [小道具]。
   原文にそれらの指示があれば対応するタグに入れる。無ければ作らない。
 
@@ -344,9 +344,12 @@ export function parseImportJson(text: string): NormalizedDraft {
   if (!match) throw new Error("Gemini did not return JSON");
   const obj = JSON.parse(match[0]) as Record<string, unknown>;
 
-  const markdownRaw = typeof obj.markdown === "string" ? obj.markdown.trim() : "";
-  if (!markdownRaw) throw new Error("正規化結果に台本本文 (markdown) がありません");
-  const markdown = markdownRaw.slice(0, IMPORT_MARKDOWN_MAX);
+  const markdown = typeof obj.markdown === "string" ? obj.markdown.trim() : "";
+  if (!markdown) throw new Error("正規化結果に台本本文 (markdown) がありません");
+  // Faithful import: NEVER silently truncate. Reject over-limit with a clear error.
+  if (markdown.length > IMPORT_MARKDOWN_MAX) {
+    throw new Error(`正規化後の台本が長すぎます（${IMPORT_MARKDOWN_MAX.toLocaleString()} 文字以内にしてください）`);
+  }
 
   if (!obj.brief || typeof obj.brief !== "object") {
     throw new Error("正規化結果に商品情報 (brief) がありません");
@@ -516,11 +519,12 @@ async function testNormalizeLive() {
     const r = await normalizeDraft(draft, "draft.docx");
     if (!r.brief.name || !r.brief.name.trim()) throw new Error("brief.name empty");
     if (!r.markdown.trim()) throw new Error("markdown empty");
-    if (/CTA|お客様VTR|価格表/.test(r.markdown) && !/モップ/.test(draft)) {
-      // sanity only; not a hard fail
-    }
-    pass("normalizeDraft returns markdown + brief", `name="${r.brief.name}" md=${r.markdown.length} chars`);
-  } catch (e) { fail("normalizeDraft returns markdown + brief", (e as Error).message); }
+    // Core faithful-import contract (HARD assertion): the draft has no CTA / price /
+    // customer-VTR section, so the normalizer MUST NOT invent one.
+    const invented = ["CTA", "価格＆オファー", "お客様の声", "テレホンアタック"].filter((s) => r.markdown.includes(s));
+    if (invented.length) throw new Error(`invented section(s) absent from source: ${invented.join(", ")}`);
+    pass("normalizeDraft: faithful, no invented sections", `name="${r.brief.name}" md=${r.markdown.length} chars`);
+  } catch (e) { fail("normalizeDraft: faithful, no invented sections", (e as Error).message); }
 }
 ```
 Register it inside `main()` after `await testDocxRoundTrip();`:
@@ -927,6 +931,7 @@ git commit -m "feat(screenplay): workflow import branch (check-only, auto-remedi
 ```ts
 // app/api/screenplays/import/route.ts
 import { NextRequest, NextResponse } from "next/server";
+import AdmZip from "adm-zip";
 import { requireUser } from "@/lib/auth/require-user";
 import { extractDocxText, normalizeDraft } from "@/lib/screenplay/import";
 import { checkMagicBytes } from "@/lib/upload/magic-bytes";
@@ -960,8 +965,7 @@ export async function POST(request: NextRequest) {
     const lower = fileName.toLowerCase();
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    // .docx only. Magic bytes must be a ZIP/OOXML wordprocessing doc.
-    // .doc (OLE2) and anything else → 415.
+    // .docx only. Magic bytes must be a ZIP/OOXML container; .doc (OLE2) → 415.
     const magic = checkMagicBytes(buffer, DOCX_MIME);
     if (!lower.endsWith(".docx") || magic.kind !== "match") {
       const isLegacyDoc = lower.endsWith(".doc") || magic.detectedMime === "application/x-cfb";
@@ -971,6 +975,22 @@ export async function POST(request: NextRequest) {
             ? "旧 .doc 形式は非対応です。Word で「.docx」形式に保存し直してアップロードしてください。"
             : `非対応のファイル形式です (${fileName})。Word の .docx のみ対応しています。`,
         },
+        { status: 415 },
+      );
+    }
+    // checkMagicBytes accepts ANY zip for an OOXML-declared mime, so a renamed
+    // .xlsx / arbitrary .zip would pass the magic gate and only fail later inside
+    // mammoth (→ 500). Confirm it is actually a Word doc by inspecting the OOXML part.
+    try {
+      if (!new AdmZip(buffer).getEntry("word/document.xml")) {
+        return NextResponse.json(
+          { error: `Word 文書 (.docx) ではありません (${fileName})。` },
+          { status: 415 },
+        );
+      }
+    } catch {
+      return NextResponse.json(
+        { error: `Word ファイルを開けませんでした (${fileName})。ファイルが壊れている可能性があります。` },
         { status: 415 },
       );
     }
@@ -1876,21 +1896,53 @@ with:
 							)}
 ```
 
-- [ ] **Step 3: Pass `variant` from `ScreenplayWorkspace`**
+- [ ] **Step 3: Track run variant in `ScreenplayWorkspace` state**
+
+`?kind=import` is persistent in the URL, so deriving the variant from it each render would make a later refine (from the same page) still show import copy. Capture it into state instead, reset on refine, and clear the param on completion.
 
 In `components/screenplay/ScreenplayWorkspace.tsx`:
 
-(a) Derive the variant from the URL near the top of the component (after `const search = useSearchParams();`):
+(a) Add a run-variant state right after the existing `const [runId, setRunId] = useState<string | null>(initialRun);`:
 ```tsx
-	const isImport = search.get("kind") === "import";
+	// Captured into state (not read from the URL each render): a later refine from
+	// the same page must NOT inherit the persistent ?kind=import.
+	const [runVariant, setRunVariant] = useState<"generate" | "import">(
+		search.get("kind") === "import" && initialRun ? "import" : "generate",
+	);
 ```
-(b) Pass it to `GenerationProgress` — change:
+(b) A refine is always a normal generation — reset the variant when it starts. Change:
+```tsx
+	function handleRefineStart(newRunId: string) {
+		setRunId(newRunId);
+	}
+```
+to:
+```tsx
+	function handleRefineStart(newRunId: string) {
+		setRunVariant("generate");
+		setRunId(newRunId);
+	}
+```
+(c) Clear `kind` on completion so a reload after import doesn't re-show import copy. In `handleComplete`, change:
+```tsx
+		const params = new URLSearchParams(search);
+		params.delete("run");
+		router.replace(`?${params.toString()}`);
+```
+to:
+```tsx
+		const params = new URLSearchParams(search);
+		params.delete("run");
+		params.delete("kind");
+		router.replace(`?${params.toString()}`);
+```
+(d) Pass the variant to `GenerationProgress` — change:
 ```tsx
 							<GenerationProgress runId={runId} onComplete={(versionId) => handleComplete(versionId)} />
 ```
 to:
 ```tsx
-							<GenerationProgress runId={runId} onComplete={(versionId) => handleComplete(versionId)} variant={isImport ? "import" : "generate"} />
+							<GenerationProgress runId={runId} onComplete={(versionId) => handleComplete(versionId)} variant={runVariant} />
 ```
 
 - [ ] **Step 4: tsc + lint check**
@@ -1920,7 +1972,7 @@ Run:
 ```bash
 npx tsc --noEmit && npm run lint && npm run test:screenplay-import
 ```
-Expected: tsc clean, lint clean, `test:screenplay-import` → `11 pass, 0 fail, 0 skip` (with `.env.local` present).
+Expected: tsc clean, lint clean, `test:screenplay-import` → `18 pass, 0 fail, 0 skip` (with `.env.local` + `GEMINI_API_KEY`; offline it is `17 pass, 0 fail, 1 skip`).
 
 - [ ] **Step 2: Production build (catches RSC/client boundary issues)**
 
@@ -1951,3 +2003,12 @@ Use the `superpowers:requesting-code-review` skill (or `/code-review`) on the br
 - **Spec coverage**: §6 normalize → Tasks 3/5; §6 parseImportJson → Task 3; §7 fidelity gate → Task 4; §8 import route + validation → Tasks 9/10/6; §9 workflow branch + per-run remediation → Task 8; §10 UI (ProductBriefEditor, ImportForm, tabs, progress variant) → Tasks 11–14; §11 mammoth dep → Task 1; §13 testing → Tasks 2–6 + 15. All covered.
 - **Type consistency**: `parseBriefObject(obj)`, `parseImportJson(text)→{markdown,brief}`, `NormalizedDraft`, `validateImportedMarkdown(input)→{ok,error?,markdown?}`, `extractDocxText(buffer)→{text,format}`, `GenerationMode "import"`, `ScreenplayWorkflowInput.importedMarkdown`, `persistCheckStep(...,autoRemediateEnabled)`, `BriefDraft`, `GenerationProgress variant` — names match across tasks.
 - **No schema changes**; reuses `screenplays`/`screenplay_versions`/`screenplay_version_checks`. v1 marked `model:"imported"`, `feedback:"Word ドラフト取り込み"`.
+
+## Review round 2 fixes (incorporated)
+
+- **P1 — unknown speaker tags**: the shared parser (`parse-markdown.ts:22-23`) recognizes only `[N] [高橋] [山内] [小島] [お客様]` as speaker blocks; anything else (`[XX先生]`, `[片岡さん]`) renders as a plain paragraph. The import prompt (Task 3) is constrained to map every speaker onto those 5, preserving the original name in the （）delivery note — rather than generalizing the shared parser (out of scope, would change the generation path too).
+- **P1 — oversized markdown**: `parseImportJson` now **throws** instead of silently slicing to 60k (faithful import must not drop content invisibly). Unit test asserts the throw (Task 3).
+- **P2 — docx sniffing**: `checkMagicBytes` returns `match` for any ZIP under an OOXML mime, so a renamed `.xlsx`/`.zip` would pass and only fail inside mammoth (500). Task 9 adds an `AdmZip` check for `word/document.xml` → 415 for non-Word OOXML/corrupt zips.
+- **P2 — persistent `?kind=import`**: variant is now captured into `ScreenplayWorkspace` state, reset on refine, and the `kind` param is cleared on completion (Task 14) — a later refine no longer shows import copy.
+- **P2 — faithfulness smoke**: the "no invented section" check in the live smoke is now a **hard assertion** (Task 5), since it is the core import contract.
+- **P3 — expected counts**: Task 15 corrected to `18 pass` live / `17 pass, 1 skip` offline.

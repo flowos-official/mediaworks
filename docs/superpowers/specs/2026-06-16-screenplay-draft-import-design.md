@@ -94,13 +94,13 @@ Files:
 ### `IMPORT_SYSTEM_INSTRUCTION` (format contract — fix 3)
 
 Shares with generation **only** the tag/書式 vocabulary so the parser/renderer/checker keep working:
-- Speaker tags: `[N]` `[高橋]` `[山内]` `[小島]` `[お客様]` `[XX先生]` — with the `[役名] （演出メモ）` + 本文 block format.
+- Speaker tags: **exactly** `[N]` `[高橋]` `[山内]` `[小島]` `[お客様]` — with the `[役名] （演出メモ）` + 本文 block format. These are the **only** tags the shared parser recognizes as speaker blocks (`lib/screenplay/parse-markdown.ts:23`); any other bracket tag falls through to a plain paragraph.
 - Cue tags: `[テロップ]` `[カメラ]` `[BGM]` `[SE]` `[インサート]` `[小道具]`.
 - Scene breaks: `---`. Headings: `#`/`##`/`###`.
 
 Explicit divergences from generation:
 - **MUST NOT invent sections.** Preserve only the acts/sections present in the source draft. Never add CTA / VTR / 価格＆オファー / メタ情報 / スタイルノート blocks that the writer did not include. This is the direct fix for the prompt.ts:42 "all sections forced" conflict.
-- **MUST preserve wording.** Restructure/re-tag only. Do not summarize, expand, rewrite for quality, or fix compliance. Map the writer's existing speaker names onto the canonical tags where unambiguous; if a speaker can't be confidently mapped, keep the writer's label as `[役名]` verbatim rather than guessing.
+- **MUST preserve wording.** Restructure/re-tag only. Do not summarize, expand, rewrite for quality, or fix compliance. Map **every** speaker onto one of the 5 parser-supported tags above. When a draft speaker doesn't map cleanly (a named expert, a named customer), assign the closest role and **preserve the original name in the （）delivery note** (e.g. `[お客様] （片岡さん）`). Never emit a custom `[名前]` or `[XX先生]` tag — the parser doesn't recognize it and it would render as a plain paragraph (review round 2, P1).
 - **Do NOT translate or strip the source language.** The generation system bans English; import does not — faithfulness wins. (Any resulting quality issues surface in the check, not at import.)
 - Output is strict JSON only: `{ "markdown": string, "brief": { ...ProductBrief } }`. No prose, no code fences.
 
@@ -109,7 +109,7 @@ Explicit divergences from generation:
 ### `parseImportJson` (recommendation)
 
 A **separate** validator (not `parseBriefJson` reuse) because the top-level shape is `{ markdown, brief }`:
-- Validate `markdown`: string, trimmed non-empty, length-capped (≤60k; defense-in-depth even though the server re-validates in §8).
+- Validate `markdown`: string, trimmed non-empty. If it exceeds 60k, **throw** (do NOT slice) — faithful import must never silently drop content (review round 2, P1). The server re-validates in §8.
 - Validate `brief`: delegate to a shared `parseBriefObject(obj)` core extracted from the current `parseBriefJson` (which today regex-matches a top-level JSON object from raw text). The refactor: `parseBriefJson(text)` keeps its signature and internally calls `parseBriefObject(matchedObj)`; `parseImportJson` calls `parseBriefObject(obj.brief)` directly. No behavior change for existing callers.
 
 ## 7. DOCX fidelity gate (fix 4)
@@ -129,7 +129,7 @@ The normalizer is the safety net for arbitrary freeform drafts regardless; this 
 ### NEW `POST /api/screenplays/import`
 - `requireUser(["member","admin"])`. `maxDuration = 120`.
 - multipart/form-data only; field `file`.
-- Guards: size ≤ 25 MB; **extension `.docx`** AND `checkMagicBytes(buffer, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")` → must be `match` (ZIP/OOXML). OLE2 (`.doc`) detected → `415` with message 「.docx 形式で保存し直してください（旧 .doc は非対応）」.
+- Guards: size ≤ 25 MB; **extension `.docx`** AND `checkMagicBytes(buffer, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")` → must be `match` (ZIP/OOXML). OLE2 (`.doc`) detected → `415` with message 「.docx 形式で保存し直してください（旧 .doc は非対応）」. **`checkMagicBytes` treats any ZIP as a match for an OOXML-declared mime, so additionally open the buffer with `AdmZip` and require a `word/document.xml` entry — a renamed `.xlsx`/arbitrary `.zip` otherwise slips through to a mammoth 500. Missing entry / unreadable zip → `415` (review round 2, P2).**
 - Flow: `extractDocxText` → `normalizeDraft` → `200 { markdown, brief, source: { kind: "docx", fileName, size } }`.
 - Errors: 400 (no/empty file), 413 (too large), 415 (wrong type), 500 (mammoth/Gemini failure, message surfaced like the extract route).
 
