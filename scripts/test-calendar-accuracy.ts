@@ -81,4 +81,11 @@ check("dinos June rebuilt (>cutoff) kept", kept({ channel: "dinos", source_sheet
 check("ntv xlsx-import row (different source_sheet) kept", kept({ channel: "ntv", source_sheet: "日テレポシュレ", air_date: "2026-05-06" }) === true);
 check("unaffected OA channel (kantv) kept", kept({ channel: "kantv", source_sheet: "live-crawl:kantv", air_date: "2026-05-20" }) === true);
 
+// uranoura is FULL-HIDE (parser still broken): every live-crawl row hidden,
+// regardless of date — including future rows the broken parser keeps emitting.
+check("uranoura live-crawl row (old date) hidden", kept({ channel: "uranoura", source_sheet: "live-crawl:uranoura", air_date: "2026-05-01" }) === false);
+check("uranoura live-crawl row (today) hidden", kept({ channel: "uranoura", source_sheet: "live-crawl:uranoura", air_date: "2026-06-16" }) === false);
+check("uranoura live-crawl row (future) STILL hidden (no cutoff escape)", kept({ channel: "uranoura", source_sheet: "live-crawl:uranoura", air_date: "2026-12-31" }) === false);
+check("uranoura xlsx-import row (different source_sheet) kept", kept({ channel: "uranoura", source_sheet: "OAウラのウラ", air_date: "2026-05-01" }) === true);
+
 console.log(`[test:calendar-accuracy] ${passed} assertions passed`);
