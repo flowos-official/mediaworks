@@ -9,7 +9,7 @@ import { parseImportJson, IMPORT_MARKDOWN_MAX } from "../lib/screenplay/import/n
 import { extractDocxText } from "../lib/screenplay/import/from-docx";
 import { buildScreenplayDocxBuffer } from "../lib/screenplay/screenplay-docx";
 import { normalizeDraft } from "../lib/screenplay/import/normalize";
-import { validateImportedMarkdown, IMPORTED_MARKDOWN_MAX } from "../lib/screenplay/import/validate";
+import { validateImportedMarkdown } from "../lib/screenplay/import/validate";
 
 type Status = "PASS" | "FAIL" | "SKIP";
 const results: { name: string; status: Status; detail?: string }[] = [];
@@ -110,7 +110,7 @@ function testValidateImportedMarkdown() {
     { name: "rejects empty", input: "   \n  ", ok: false },
     { name: "rejects non-string", input: 123, ok: false },
     { name: "rejects structureless short blob", input: "あいうえお", ok: false },
-    { name: "rejects oversized", input: "# h\n" + "あ".repeat(IMPORTED_MARKDOWN_MAX + 10), ok: false },
+    { name: "rejects oversized", input: "# h\n" + "あ".repeat(IMPORT_MARKDOWN_MAX + 10), ok: false },
   ];
   for (const c of cases) {
     const r = validateImportedMarkdown(c.input);

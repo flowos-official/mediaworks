@@ -5,8 +5,9 @@
 // No "server-only" import — must load under tsx smoke scripts.
 import type { ProductBrief } from "../types";
 import { parseBriefObject } from "../extract/brief-prompt";
+import { IMPORT_MARKDOWN_MAX } from "./constants";
 
-export const IMPORT_MARKDOWN_MAX = 60_000;
+export { IMPORT_MARKDOWN_MAX };
 
 export interface NormalizedDraft {
   markdown: string;
