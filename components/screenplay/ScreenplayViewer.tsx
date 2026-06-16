@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
-import { Copy, Download, Check, ChevronLeft, ChevronRight, FileText } from "lucide-react";
+import { Copy, Download, Check, ChevronLeft, ChevronRight, FileText, GitCompare } from "lucide-react";
+import { ChangeDiffView } from "./ChangeDiffView";
 import { Card } from "@/components/ui/card";
 import { ScreenplayMarkdown } from "./markdown-renderer";
 
@@ -15,6 +16,9 @@ interface Props {
 	onNext?: () => void;
 	prevLabel?: string;
 	nextLabel?: string;
+	baseMarkdown?: string;
+	screenplayId?: string;
+	versionId?: string;
 }
 
 function pad(n: number, w: number): string {
@@ -38,9 +42,14 @@ export function ScreenplayViewer({
 	onNext,
 	prevLabel,
 	nextLabel,
+	baseMarkdown,
+	screenplayId,
+	versionId,
 }: Props) {
 	const [copied, setCopied] = useState(false);
 	const [docxBusy, setDocxBusy] = useState(false);
+	const [showDiff, setShowDiff] = useState(false);
+	const canDiff = !!(baseMarkdown && screenplayId && versionId);
 
 	function downloadMd() {
 		const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
@@ -112,6 +121,19 @@ export function ScreenplayViewer({
 				</div>
 
 				<div className="flex items-center gap-1">
+					{canDiff && (
+						<button
+							type="button"
+							onClick={() => setShowDiff((v) => !v)}
+							className={[
+								"inline-flex items-center gap-1 px-3 py-1.5 text-xs rounded-md transition-colors",
+								showDiff ? "bg-blue-600/15 text-blue-700 dark:text-blue-300" : "text-foreground hover:bg-muted",
+							].join(" ")}
+						>
+							<GitCompare size={12} />
+							{showDiff ? "完成版" : "変更点"}
+						</button>
+					)}
 					<button
 						type="button"
 						onClick={copyMd}
@@ -141,7 +163,16 @@ export function ScreenplayViewer({
 			</div>
 
 			<div className="px-6 py-8 lg:px-10 lg:py-10">
-				<ScreenplayMarkdown markdown={markdown} />
+				{showDiff && canDiff ? (
+					<ChangeDiffView
+						baseMarkdown={baseMarkdown!}
+						markdown={markdown}
+						screenplayId={screenplayId!}
+						versionId={versionId!}
+					/>
+				) : (
+					<ScreenplayMarkdown markdown={markdown} />
+				)}
 			</div>
 		</Card>
 	);
