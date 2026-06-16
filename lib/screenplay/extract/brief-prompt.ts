@@ -30,12 +30,9 @@ export interface ExtractedBriefResult {
   rawJson: string;
 }
 
-export function parseBriefJson(text: string): ProductBrief {
-  const trimmed = text.trim();
-  const match = trimmed.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error("Gemini did not return JSON");
-  const obj = JSON.parse(match[0]) as Record<string, unknown>;
-
+/** Parse + validate a ProductBrief from an already-parsed JSON object.
+ *  Shared by the top-level `parseBriefJson` (extract) and `parseImportJson` (import). */
+export function parseBriefObject(obj: Record<string, unknown>): ProductBrief {
   const name = typeof obj.name === "string" ? obj.name.trim() : "";
   const description = typeof obj.description === "string" ? obj.description.trim() : "";
   if (!name) throw new Error("抽出結果に商品名がありません");
@@ -79,4 +76,12 @@ export function parseBriefJson(text: string): ProductBrief {
     if (Object.keys(price).length) brief.price = price;
   }
   return brief;
+}
+
+export function parseBriefJson(text: string): ProductBrief {
+  const trimmed = text.trim();
+  const match = trimmed.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error("Gemini did not return JSON");
+  const obj = JSON.parse(match[0]) as Record<string, unknown>;
+  return parseBriefObject(obj);
 }
