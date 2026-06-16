@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ChevronLeft, Clapperboard } from "lucide-react";
-import { ScreenplayCreateForm } from "@/components/screenplay/ScreenplayCreateForm";
+import { ScreenplayNewTabs } from "@/components/screenplay/ScreenplayNewTabs";
 import { localePath } from "@/lib/i18n/locale-path";
 
 export default async function NewScreenplayPage({ params }: { params: Promise<{ locale: string }> }) {
@@ -34,7 +34,7 @@ export default async function NewScreenplayPage({ params }: { params: Promise<{ 
 				</div>
 			</header>
 
-			<ScreenplayCreateForm locale={locale} />
+			<ScreenplayNewTabs locale={locale} />
 		</main>
 	);
 }
