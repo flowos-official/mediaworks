@@ -2,6 +2,8 @@
 //   - npx tsx scripts/test-screenplay-diff.ts        # units (offline)
 //   - npm run test:screenplay-diff                   # + live Gemini rationale
 import { computeLineDiff } from "../lib/screenplay/diff";
+import { parseHunkReasons, explainChanges, PROMPT_VERSION } from "../lib/screenplay/change-rationale";
+import { computeLineDiff as _cld } from "../lib/screenplay/diff";
 
 type Status = "PASS" | "FAIL" | "SKIP";
 const results: { name: string; status: Status; detail?: string }[] = [];
@@ -47,9 +49,50 @@ function testComputeLineDiff() {
   } catch (e) { fail("two far-apart changes", (e as Error).message); }
 }
 
+function testParseHunkReasons() {
+  console.log("\n[parseHunkReasons] unit");
+  try {
+    const r = parseHunkReasons('[{"index":0,"reason":"値段表現を修正"},{"index":1,"reason":"文体調整"}]', 2);
+    if (r.length !== 2 || r[0].reason !== "値段表現を修正") throw new Error("happy path mismatch");
+    pass("parses valid reasons");
+  } catch (e) { fail("parses valid reasons", (e as Error).message); }
+
+  try {
+    const r = parseHunkReasons('prefix [{"index":0,"reason":"ok"},{"index":9,"reason":"out of range"}] suffix', 2);
+    if (r.length !== 1 || r[0].index !== 0) throw new Error("should drop out-of-range index + strip prose");
+    pass("drops out-of-range index, strips prose");
+  } catch (e) { fail("drops out-of-range index, strips prose", (e as Error).message); }
+
+  try {
+    const r = parseHunkReasons('[{"index":0,"reason":""},{"index":1,"reason":"  "}]', 2);
+    if (r.length !== 0) throw new Error("empty reasons should be dropped");
+    pass("drops empty reasons");
+  } catch (e) { fail("drops empty reasons", (e as Error).message); }
+
+  try {
+    parseHunkReasons("not json at all", 2);
+    fail("throws on non-JSON", "did not throw");
+  } catch (e) { pass("throws on non-JSON", (e as Error).message); }
+
+  if (PROMPT_VERSION >= 1) pass("PROMPT_VERSION exported"); else fail("PROMPT_VERSION exported", `got ${PROMPT_VERSION}`);
+}
+
+async function testExplainChangesLive() {
+  console.log("\n[explainChanges] live Gemini smoke");
+  if (!process.env.GEMINI_API_KEY) { skip("explainChanges", "GEMINI_API_KEY not set"); return; }
+  try {
+    const hunks = _cld("税込15,800円です。", "単品合計より2,160円お得な税込13,800円です。");
+    const r = await explainChanges(hunks, "値段表現を景表法に合わせて修正", []);
+    if (!Array.isArray(r)) throw new Error("not an array");
+    pass("explainChanges returns reasons", `${r.length} reason(s)`);
+  } catch (e) { fail("explainChanges returns reasons", (e as Error).message); }
+}
+
 async function main() {
   console.log("=== screenplay/diff test ===");
   testComputeLineDiff();
+  testParseHunkReasons();
+  await testExplainChangesLive();
   const f = results.filter((r) => r.status === "FAIL").length;
   const p = results.filter((r) => r.status === "PASS").length;
   const s = results.filter((r) => r.status === "SKIP").length;
