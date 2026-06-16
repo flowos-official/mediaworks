@@ -8,6 +8,7 @@ import { parseBriefObject, parseBriefJson } from "../lib/screenplay/extract/brie
 import { parseImportJson, IMPORT_MARKDOWN_MAX } from "../lib/screenplay/import/normalize-prompt";
 import { extractDocxText } from "../lib/screenplay/import/from-docx";
 import { buildScreenplayDocxBuffer } from "../lib/screenplay/screenplay-docx";
+import { normalizeDraft } from "../lib/screenplay/import/normalize";
 
 type Status = "PASS" | "FAIL" | "SKIP";
 const results: { name: string; status: Status; detail?: string }[] = [];
@@ -99,11 +100,33 @@ async function testDocxRoundTrip() {
   catch (e) { pass("rejects non-docx bytes", (e as Error).message.slice(0, 80)); }
 }
 
+async function testNormalizeLive() {
+  console.log("\n[normalize] live Gemini smoke");
+  if (!process.env.GEMINI_API_KEY) { skip("normalizeDraft", "GEMINI_API_KEY not set"); return; }
+  const draft = [
+    "ナレーター: 毎朝の掃除、大変ですよね。",
+    "高橋さん: そこでこちらのモップが活躍します。吸水力が違います。",
+    "山内: へえ、本当だ！",
+    "テロップ: 今だけ送料無料",
+  ].join("\n");
+  try {
+    const r = await normalizeDraft(draft, "draft.docx");
+    if (!r.brief.name || !r.brief.name.trim()) throw new Error("brief.name empty");
+    if (!r.markdown.trim()) throw new Error("markdown empty");
+    // Core faithful-import contract (HARD assertion): the draft has no CTA / price /
+    // customer-VTR section, so the normalizer MUST NOT invent one.
+    const invented = ["CTA", "価格＆オファー", "お客様の声", "テレホンアタック"].filter((s) => r.markdown.includes(s));
+    if (invented.length) throw new Error(`invented section(s) absent from source: ${invented.join(", ")}`);
+    pass("normalizeDraft: faithful, no invented sections", `name="${r.brief.name}" md=${r.markdown.length} chars`);
+  } catch (e) { fail("normalizeDraft: faithful, no invented sections", (e as Error).message); }
+}
+
 async function main() {
   console.log("=== screenplay/import test ===");
   testParseBriefObject();
   testParseImportJson();
   await testDocxRoundTrip();
+  await testNormalizeLive();
   const f = results.filter((r) => r.status === "FAIL").length;
   const p = results.filter((r) => r.status === "PASS").length;
   const s = results.filter((r) => r.status === "SKIP").length;
