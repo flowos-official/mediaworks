@@ -74,8 +74,11 @@ export async function POST(request: NextRequest) {
       source: { kind: "docx", fileName, size: file.size },
     });
   } catch (err) {
+    // Log the detail server-side, but do NOT surface the raw error to the client:
+    // this path runs mammoth + Gemini, whose error messages can echo provider/parser
+    // internals. Member/admin-gated, but still return a fixed user-facing message.
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[screenplays/import] failed:", msg);
-    return NextResponse.json({ error: `取り込みに失敗しました: ${msg}` }, { status: 500 });
+    return NextResponse.json({ error: "取り込みに失敗しました。ファイル形式を確認して、しばらくしてからもう一度お試しください。" }, { status: 500 });
   }
 }
