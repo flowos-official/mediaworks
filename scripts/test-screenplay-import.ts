@@ -6,6 +6,8 @@
 //   - npm run test:screenplay-import                   # + live Gemini normalize
 import { parseBriefObject, parseBriefJson } from "../lib/screenplay/extract/brief-prompt";
 import { parseImportJson, IMPORT_MARKDOWN_MAX } from "../lib/screenplay/import/normalize-prompt";
+import { extractDocxText } from "../lib/screenplay/import/from-docx";
+import { buildScreenplayDocxBuffer } from "../lib/screenplay/screenplay-docx";
 
 type Status = "PASS" | "FAIL" | "SKIP";
 const results: { name: string; status: Status; detail?: string }[] = [];
@@ -61,10 +63,47 @@ function testParseImportJson() {
   } catch (e) { fail("strips surrounding prose / code fence", (e as Error).message); }
 }
 
+// Our DOCX export renders speaker blocks as borderless 2-col tables and cues as
+// ［tag］ paragraphs. The gate: after a round-trip, the extracted raw text must
+// still carry the role tokens, cue label, and dialogue — enough for the LLM to
+// re-tag. (Bracket tags are NOT expected to survive; the export writes bare roles.)
+async function testDocxRoundTrip() {
+  console.log("\n[from-docx] round-trip fidelity gate");
+  const md = [
+    "# テスト台本 — 取り込み確認",
+    "",
+    "## オープニング",
+    "",
+    "[テロップ] 本日限定のご案内",
+    "",
+    "[高橋] （落ち着いて）",
+    "この商品の特長をご説明します。",
+    "",
+    "[山内] （驚いて）",
+    "それは便利ですね！",
+    "",
+    "---",
+    "",
+    "ふつうの段落。",
+  ].join("\n");
+  try {
+    const buf = await buildScreenplayDocxBuffer(md, "テスト台本");
+    const { text } = await extractDocxText(Buffer.from(buf));
+    for (const token of ["高橋", "山内", "テロップ", "この商品の特長をご説明します", "それは便利ですね"]) {
+      if (!text.includes(token)) throw new Error(`token lost after round-trip: "${token}"`);
+    }
+    pass("round-trip preserves role/cue/dialogue tokens", `${text.length} chars`);
+  } catch (e) { fail("round-trip preserves role/cue/dialogue tokens", (e as Error).message); }
+
+  try { await extractDocxText(Buffer.from([0x00, 0x01, 0x02, 0x03])); fail("rejects non-docx bytes", "did not throw"); }
+  catch (e) { pass("rejects non-docx bytes", (e as Error).message.slice(0, 80)); }
+}
+
 async function main() {
   console.log("=== screenplay/import test ===");
   testParseBriefObject();
   testParseImportJson();
+  await testDocxRoundTrip();
   const f = results.filter((r) => r.status === "FAIL").length;
   const p = results.filter((r) => r.status === "PASS").length;
   const s = results.filter((r) => r.status === "SKIP").length;
