@@ -14,8 +14,12 @@ import { mapWithConcurrency } from "../image-extractors/types";
 // same slot. The text is "MM/DD (曜) HH:MM分放送".
 //
 // IMPORTANT: the page lists ~7 days of recent slots, not just today's. So
-// air_date must come from the slot's .onair-time (with the current year),
-// NOT from the jstDate argument — jstDate is only a fallback.
+// air_date MUST come from the slot's .onair-time (with the current year).
+// Items with no parseable .onair-time are SKIPPED, never stamped with the
+// cron's jstDate — that fallback was the blanket-dating bug. SENOBURA tags
+// every item with an .onair-time; URANADJA's page is a plain product catalog
+// with no broadcast dates at all, so it correctly yields zero rows here (its
+// only legitimate calendar presence is the historical xlsx import).
 export function parseAsahiCategory(
 	html: string,
 	jstDate: string,
@@ -62,19 +66,18 @@ export function parseAsahiCategory(
 			scope = scope.parent();
 		}
 
-		// Parse "05/15 (金) 04:30分放送" → start_time + air_date
-		let startTime: string | null = null;
-		let airDate = jstDate;
+		// Parse "05/15 (金) 04:30分放送" → start_time + air_date. No match means
+		// this item carries no broadcast date — skip it rather than fall back to
+		// jstDate (which blanket-stamped every cron day onto dateless items).
 		const m = onairText.match(/(\d{1,2})\/(\d{1,2}).*?(\d{1,2}):(\d{2})\s*分?放送/);
-		if (m) {
-			const mm = m[1].padStart(2, "0");
-			const dd = m[2].padStart(2, "0");
-			startTime = `${m[3].padStart(2, "0")}:${m[4]}:00`;
-			// Roll back a year if the MM/DD is in the future relative to jstDate
-			const candidate = `${mm}-${dd}`;
-			const year = candidate > jstMonthDay ? jstYear - 1 : jstYear;
-			airDate = `${year}-${mm}-${dd}`;
-		}
+		if (!m) return;
+		const mm = m[1].padStart(2, "0");
+		const dd = m[2].padStart(2, "0");
+		const startTime = `${m[3].padStart(2, "0")}:${m[4]}:00`;
+		// Roll back a year if the MM/DD is in the future relative to jstDate
+		const candidate = `${mm}-${dd}`;
+		const year = candidate > jstMonthDay ? jstYear - 1 : jstYear;
+		const airDate = `${year}-${mm}-${dd}`;
 
 		rows.push({
 			channel,

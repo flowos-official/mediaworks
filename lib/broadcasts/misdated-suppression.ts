@@ -25,41 +25,22 @@ export const MISDATED_OA_CUTOFFS: Record<string, string> = {
 	// pollution is unrecoverable. (kantv needed no cutoff — its date-filter
 	// pages let the rebuild re-derive every polluted day.)
 	dinos: "2026-05-31",
+	// uranoura is NOT here: its category page carries no broadcast dates at all,
+	// so the shared asahi parser was fixed to emit zero rows for it (skip items
+	// with no .onair-time, never fall back to jstDate) rather than hide rows at
+	// display time. The mis-dated rows it had already written were deleted. See
+	// lib/historical-crawl/parsers/senobura.ts::parseAsahiCategory.
 };
-
-/**
- * Channels whose parser is STILL broken, so ALL their live-crawl rows are
- * mis-dated — not just an old window. A date cutoff can't help: the parser
- * keeps stamping the cron's run date onto future days, so each new day's rows
- * would slip past any past cutoff. These channels are hidden in full until the
- * parser can be fixed, then removed from this list.
- *
- * uranoura (ABCウラのウラまで, shop.asahi.co.jp/category/URANADJA): the shared
- * asahi parser dates by `.onair-time`, which this page does not expose, so it
- * falls back to the cron date — the DB shows the same 2 products stamped on
- * every cron day (maxSpan = #days-run). The page can't be reached from the dev
- * environment (shop.asahi.co.jp 400s every non-Vercel IP — local fetch,
- * browser headers, and WebFetch all blocked), so the real date markup is
- * unknown and a parser fix can't be written or verified yet. Hide until then.
- */
-export const MISDATED_OA_FULL_HIDE: readonly string[] = ["uranoura"];
 
 /**
  * One PostgREST `.or()` clause per affected channel — the De Morgan negation of
  * that channel's hide predicate. Apply each clause to a `historical_broadcasts`
  * query (chained `.or()` calls AND-combine, so every channel's pollution is
- * excluded); a cutoff clause is a no-op for other channels (channel.neq.X
- * holds) and for that channel's rows after its cutoff (air_date.gt holds), while
- * a full-hide clause drops every live-crawl row of its channel regardless of
- * date. Both keep rows of other channels and that channel's non-live-crawl rows
- * (e.g. xlsx import). Apply ONLY to `historical_broadcasts` — the `broadcasts`
- * table (qvc/shopch) has no `source_sheet` column.
+ * excluded); each clause is a no-op for rows of other channels (channel.neq.X
+ * holds) and for that channel's rows after its cutoff (air_date.gt holds).
+ * Apply ONLY to `historical_broadcasts` — the `broadcasts` table (qvc/shopch)
+ * has no `source_sheet` column.
  */
-export const MISDATED_OA_OR_CLAUSES: readonly string[] = [
-	...Object.entries(MISDATED_OA_CUTOFFS).map(
-		([ch, cutoff]) => `channel.neq.${ch},source_sheet.neq.live-crawl:${ch},air_date.gt.${cutoff}`,
-	),
-	...MISDATED_OA_FULL_HIDE.map(
-		(ch) => `channel.neq.${ch},source_sheet.neq.live-crawl:${ch}`,
-	),
-];
+export const MISDATED_OA_OR_CLAUSES: readonly string[] = Object.entries(MISDATED_OA_CUTOFFS).map(
+	([ch, cutoff]) => `channel.neq.${ch},source_sheet.neq.live-crawl:${ch},air_date.gt.${cutoff}`,
+);
