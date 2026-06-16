@@ -66,5 +66,36 @@ export interface ScreenplayVersionRow {
   model: string;
   thinking_level: string;
   token_usage: { input?: number; output?: number } | null;
+  change_notes: ChangeNotes | null;
   created_at: string;
+}
+
+// ── Version diff (変更点レビュー) ───────────────────────────────────────────
+export interface DiffLine {
+  type: "context" | "added" | "removed";
+  text: string;
+}
+export interface DiffHunk {
+  index: number;       // stable ordinal; aligns client render ↔ server rationale
+  lines: DiffLine[];
+}
+export interface HunkReason {
+  index: number;       // matches DiffHunk.index
+  reason: string;
+}
+/** Cache invalidation key for change_notes — any field change forces recompute. */
+export interface ChangeNotesKey {
+  diffVersion: number;
+  promptVersion: number;
+  model: string;
+  baseVersionId: string;
+  baseCheckId: string | null;
+  hunkCount: number;
+}
+/** Persisted in screenplay_versions.change_notes — written only on success. */
+export interface ChangeNotes {
+  ok: true;
+  key: ChangeNotesKey;
+  rationale: HunkReason[];
+  computedAt: string;
 }
