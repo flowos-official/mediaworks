@@ -5,7 +5,7 @@ import { getServiceClient } from "@/lib/supabase";
 import { computeLineDiff, DIFF_VERSION } from "@/lib/screenplay/diff";
 import { explainChanges, PROMPT_VERSION } from "@/lib/screenplay/change-rationale";
 import { GEMINI_FLASH } from "@/lib/gemini-models";
-import type { ChangeNotes, ChangeNotesKey } from "@/lib/screenplay/types";
+import type { ChangeNotes, ChangeNotesKey, HunkReason } from "@/lib/screenplay/types";
 import type { Finding, ScriptCheckResult } from "@/lib/screenplay/compliance/types";
 
 export const maxDuration = 60;
@@ -83,15 +83,25 @@ export async function GET(
     return Response.json({ rationale: cached.rationale, model: key.model, computedAt: cached.computedAt });
   }
 
+  let rationale: HunkReason[];
+  let computedAt: string;
   try {
-    const rationale = await explainChanges(diff, (v.feedback as string | null) ?? null, findings);
-    const computedAt = new Date().toISOString();
-    const notes: ChangeNotes = { ok: true, key, rationale, computedAt };
-    await sb.from("screenplay_versions").update({ change_notes: notes }).eq("id", versionId);
-    return Response.json({ rationale, model: key.model, computedAt });
+    rationale = await explainChanges(diff, (v.feedback as string | null) ?? null, findings);
+    computedAt = new Date().toISOString();
   } catch (err) {
-    // Do NOT cache failures — leave change_notes as-is so the next view retries.
+    // Rationale generation failed → return diff-only, do NOT cache (retries next view).
     console.error("[screenplays/changes] rationale failed:", err instanceof Error ? err.message : String(err));
     return Response.json({ rationale: [], model: key.model, computedAt: null });
   }
+
+  // Cache write is best-effort and MUST NOT discard an already-computed rationale:
+  // before the change_notes migration is applied (manual in this repo) the UPDATE
+  // errors on a missing column, but the AI result is still valid — return it uncached.
+  const notes: ChangeNotes = { ok: true, key, rationale, computedAt };
+  try {
+    await sb.from("screenplay_versions").update({ change_notes: notes }).eq("id", versionId);
+  } catch (err) {
+    console.error("[screenplays/changes] cache write failed (returning uncached):", err instanceof Error ? err.message : String(err));
+  }
+  return Response.json({ rationale, model: key.model, computedAt });
 }
