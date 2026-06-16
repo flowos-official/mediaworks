@@ -30,6 +30,8 @@ export interface ScreenplayWorkflowInput {
   productBrief: ProductBrief;
   feedback?: string;
   baseVersionId?: string;
+  /** Present only in mode "import": operator-reviewed, pre-normalized v1 markdown. */
+  importedMarkdown?: string;
 }
 
 const AUTO_REMEDIATE = process.env.SCREENPLAY_AUTO_REMEDIATE !== "false";
@@ -220,12 +222,26 @@ async function remediateLoopStep(
   return { markdown: md, check, trail };
 }
 
+async function checkOnlyStep(
+  markdown: string,
+  brief: ProductBrief,
+  rules: ComplianceRule[],
+  references: ComplianceReference[],
+): Promise<ScriptCheckResult | null> {
+  "use step";
+  await writeProgressInline({ type: "step", name: "check", status: "started" });
+  const check = await safeCheck(markdown, brief, rules, references);
+  await writeProgressInline({ type: "step", name: "check", status: "completed" });
+  return check;
+}
+
 async function persistCheckStep(
   versionId: string,
   check: ScriptCheckResult | null,
   trail: RemediationStep[],
   rulesLen: number,
   refsLen: number,
+  autoRemediateEnabled: boolean,
 ): Promise<void> {
   "use step";
   // Non-fatal: a failed persist must NEVER fail the generation.
@@ -234,7 +250,7 @@ async function persistCheckStep(
     const supabase = getServiceClient();
     const result: ScriptCheckResult = {
       ...check,
-      remediation: { enabled: AUTO_REMEDIATE, iterations: trail, finalHigh: countHigh(check) },
+      remediation: { enabled: autoRemediateEnabled, iterations: trail, finalHigh: countHigh(check) },
     };
     await supabase.from("screenplay_version_checks").insert({
       version_id: versionId,
@@ -263,6 +279,35 @@ export async function screenplayWorkflow(input: ScreenplayWorkflowInput) {
   "use workflow";
 
   try {
+    if (input.mode === "import") {
+      if (!input.importedMarkdown) throw new FatalError("import mode requires importedMarkdown");
+      await emitProgressStep({ type: "step", name: "import", status: "started" });
+      const markdown = input.importedMarkdown;
+      await emitProgressStep({ type: "step", name: "import", status: "completed" });
+
+      const { rules, references } = await loadComplianceStep();
+      // Faithful import: corpus-only check, NO auto-remediate (the draft is the contract).
+      const check = await checkOnlyStep(markdown, input.productBrief, rules, references);
+
+      const persisted = await persistStep(
+        input.screenplayId,
+        markdown,
+        "Word ドラフト取り込み",
+        undefined,
+        "imported",
+        "none",
+      );
+      await persistCheckStep(persisted.versionId, check, [], rules.length, references.length, false);
+
+      await emitProgressStep({
+        type: "done",
+        screenplayId: input.screenplayId,
+        versionId: persisted.versionId,
+        versionNumber: persisted.versionNumber,
+      });
+      return { screenplayId: input.screenplayId, ...persisted };
+    }
+
     let previousMarkdown: string | undefined;
     if (input.mode === "refine") {
       if (!input.baseVersionId) throw new FatalError("refine mode requires baseVersionId");
@@ -295,7 +340,7 @@ export async function screenplayWorkflow(input: ScreenplayWorkflowInput) {
       gen.thinkingLevel,
     );
 
-    await persistCheckStep(persisted.versionId, check, trail, rules.length, references.length);
+    await persistCheckStep(persisted.versionId, check, trail, rules.length, references.length, AUTO_REMEDIATE);
 
     await emitProgressStep({
       type: "done",
