@@ -581,7 +581,7 @@ export function ScreenplayCreateForm({ locale }: { locale: string }) {
 							guarantee: brief.guarantee,
 							notes: brief.notes,
 						}}
-						onBriefChange={(b) => setBrief({ ...brief, ...b })}
+						onBriefChange={(b) => setBrief((prev) => (prev ? { ...prev, ...b } : { ...b }))}
 						bonusesText={bonusesText}
 						onBonusesChange={setBonusesText}
 						listPrice={listPrice}
