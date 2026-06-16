@@ -58,6 +58,23 @@ export async function POST(
 			{ status: 400 },
 		);
 	}
+	// Guard: an explicitly-supplied baseVersionId must belong to THIS screenplay,
+	// so the base_version_id chain (used by the diff feature) can never point at
+	// another screenplay's version.
+	if (baseVersionId) {
+		const { data: baseRow } = await supabase
+			.from("screenplay_versions")
+			.select("id")
+			.eq("id", baseVersionId)
+			.eq("screenplay_id", id)
+			.maybeSingle();
+		if (!baseRow) {
+			return Response.json(
+				{ error: "base version does not belong to this screenplay" },
+				{ status: 400 },
+			);
+		}
+	}
 
 	// Atomic compare-and-set: only ONE concurrent refine can flip the row from
 	// non-generating → generating. The .neq("status","generating") ensures the
