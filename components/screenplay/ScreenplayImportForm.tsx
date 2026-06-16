@@ -72,13 +72,47 @@ export function ScreenplayImportForm({ locale }: { locale: string }) {
 		setExtracting(true);
 		setError(null);
 		try {
-			const form = new FormData();
-			form.append("file", selectedFile);
-			const res = await fetch("/api/screenplays/import", { method: "POST", body: form });
-			const j = await res.json();
+			if (!selectedFile.name.toLowerCase().endsWith(".docx")) {
+				throw new Error("Word の .docx ファイルを選択してください（旧 .doc は非対応です）。");
+			}
+			if (selectedFile.size > 25 * 1024 * 1024) {
+				throw new Error("ファイルサイズが大きすぎます（最大 25MB）。");
+			}
+
+			// Parse the .docx to text IN THE BROWSER, then POST only the text. Large,
+			// image-heavy Word files (which the script text is a tiny fraction of)
+			// would otherwise exceed the serverless request-body limit on upload.
+			const arrayBuffer = await selectedFile.arrayBuffer();
+			let text: string;
+			try {
+				const mod = (await import("mammoth")) as typeof import("mammoth") & {
+					default?: typeof import("mammoth");
+				};
+				const extractRawText = mod.extractRawText ?? mod.default?.extractRawText;
+				if (!extractRawText) throw new Error("mammoth unavailable");
+				const out = await extractRawText({ arrayBuffer });
+				text = (out.value ?? "").trim();
+			} catch {
+				throw new Error("Word ファイルを読み取れませんでした。ファイルが壊れているか .docx ではない可能性があります。");
+			}
+			if (!text) {
+				throw new Error("Word ファイルから文章を抽出できませんでした（空の可能性があります）。");
+			}
+
+			const res = await fetch("/api/screenplays/import", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ text, fileName: selectedFile.name }),
+			});
+			let j: { error?: string; brief?: ExtractedBrief; markdown?: string };
+			try {
+				j = await res.json();
+			} catch {
+				throw new Error(res.ok ? "サーバー応答を解釈できませんでした" : `取り込みに失敗しました (HTTP ${res.status})`);
+			}
 			if (!res.ok) throw new Error(j.error ?? "取り込みに失敗しました");
 			if (!j.brief || typeof j.markdown !== "string") throw new Error("サーバーから取り込み結果が返りませんでした");
-			hydrate(j.brief as ExtractedBrief, j.markdown as string);
+			hydrate(j.brief, j.markdown);
 		} catch (e) {
 			setError(e instanceof Error ? e.message : String(e));
 		} finally {
