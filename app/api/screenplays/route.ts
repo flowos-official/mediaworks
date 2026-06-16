@@ -5,6 +5,7 @@ import { getServiceClient } from "@/lib/supabase";
 import { screenplayWorkflow } from "@/lib/workflows/screenplay.workflow";
 import type { ProductBrief } from "@/lib/screenplay/types";
 import { loadProductBriefForScreenplay } from "@/lib/screenplay/product-brief";
+import { validateImportedMarkdown } from "@/lib/screenplay/import/validate";
 
 export const maxDuration = 60;
 
@@ -86,6 +87,14 @@ export async function POST(request: NextRequest) {
 
 	const { brief: productBrief } = v;
 
+	// Import path: an operator-reviewed, pre-normalized draft seeds v1 directly.
+	let importedMarkdown: string | undefined;
+	if (body && typeof body === "object" && "importedMarkdown" in (body as Record<string, unknown>)) {
+		const val = validateImportedMarkdown((body as Record<string, unknown>).importedMarkdown);
+		if (!val.ok) return Response.json({ error: val.error }, { status: 400 });
+		importedMarkdown = val.markdown;
+	}
+
 	const { data: inserted, error: insErr } = await supabase
 		.from("screenplays")
 		.insert({
@@ -103,11 +112,11 @@ export async function POST(request: NextRequest) {
 	const screenplayId = inserted.id as string;
 
 	try {
-		const run = await start(screenplayWorkflow, [{
-			screenplayId,
-			mode: "initial",
-			productBrief,
-		}]);
+		const run = await start(screenplayWorkflow, [
+			importedMarkdown
+				? { screenplayId, mode: "import" as const, productBrief, importedMarkdown }
+				: { screenplayId, mode: "initial" as const, productBrief },
+		]);
 		await supabase
 			.from("screenplays")
 			.update({ last_run_id: run.runId })

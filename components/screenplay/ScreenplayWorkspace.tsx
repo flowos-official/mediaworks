@@ -37,6 +37,11 @@ export function ScreenplayWorkspace({ initialScreenplay, initialVersions, latest
 			? initialScreenplay.last_run_id
 			: null);
 	const [runId, setRunId] = useState<string | null>(initialRun);
+	// Captured into state (not read from the URL each render): a later refine from
+	// the same page must NOT inherit the persistent ?kind=import.
+	const [runVariant, setRunVariant] = useState<"generate" | "import">(
+		search.get("kind") === "import" && initialRun ? "import" : "generate",
+	);
 
 	// Belt-and-suspenders: if mounting with no runId but screenplay is still
 	// generating, poll the screenplay row briefly to pick up the run as it
@@ -77,10 +82,12 @@ export function ScreenplayWorkspace({ initialScreenplay, initialVersions, latest
 		void refreshList(versionId);
 		const params = new URLSearchParams(search);
 		params.delete("run");
+		params.delete("kind");
 		router.replace(`?${params.toString()}`);
 	}
 
 	function handleRefineStart(newRunId: string) {
+		setRunVariant("generate");
 		setRunId(newRunId);
 	}
 
@@ -145,7 +152,7 @@ export function ScreenplayWorkspace({ initialScreenplay, initialVersions, latest
 			<section className="min-w-0">
 				{isGenerating && runId && (
 					<div className="mb-4">
-						<GenerationProgress runId={runId} onComplete={(versionId) => handleComplete(versionId)} />
+						<GenerationProgress runId={runId} onComplete={(versionId) => handleComplete(versionId)} variant={runVariant} />
 					</div>
 				)}
 				{selected ? (

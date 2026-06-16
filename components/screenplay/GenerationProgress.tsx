@@ -9,9 +9,10 @@ import type { ProgressEvent } from "@/lib/screenplay/types";
 interface Props {
 	runId: string;
 	onComplete: (versionId: string, versionNumber: number) => void;
+	variant?: "generate" | "import";
 }
 
-export function GenerationProgress({ runId, onComplete }: Props) {
+export function GenerationProgress({ runId, onComplete, variant = "generate" }: Props) {
 	const [events, setEvents] = useState<ProgressEvent[]>([]);
 	const [error, setError] = useState<string | null>(null);
 	const [doneAt, setDoneAt] = useState<{ versionId: string; versionNumber: number } | null>(null);
@@ -117,7 +118,11 @@ export function GenerationProgress({ runId, onComplete }: Props) {
 					<div className="flex-1 min-w-0">
 						<div className="flex items-center justify-between gap-3">
 							<h3 className="text-sm font-semibold text-foreground">
-								{error ? "生成に失敗しました" : doneAt ? `第 ${doneAt.versionNumber} 稿を生成しました` : "台本を生成中"}
+								{error
+									? (variant === "import" ? "取り込みに失敗しました" : "生成に失敗しました")
+									: doneAt
+									? (variant === "import" ? "台本を取り込みました" : `第 ${doneAt.versionNumber} 稿を生成しました`)
+									: (variant === "import" ? "台本を取り込み中" : "台本を生成中")}
 							</h3>
 							{!error && !doneAt && (
 								<span className="text-xs text-muted-foreground tabular-nums">
@@ -130,10 +135,12 @@ export function GenerationProgress({ runId, onComplete }: Props) {
 								? error
 								: doneAt
 								? "改稿フィードバックを送信すると、引き続き磨き込めます。"
+								: variant === "import"
+								? "ドラフトを様式に整え、コンプライアンス試験を実行しています。"
 								: "テレ東スタイルの台本を執筆中です。深く考えながら執筆するため、約2〜6分かかります。ページを閉じても処理は継続します。"}
 						</p>
 
-						{!error && !doneAt && (
+						{!error && !doneAt && variant === "generate" && (
 							<div className="mt-3">
 								<div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1.5">
 									<span>{chars > 0 ? `${chars.toLocaleString()} 文字を受信` : "接続中..."}</span>
@@ -145,6 +152,16 @@ export function GenerationProgress({ runId, onComplete }: Props) {
 										style={{ width: `${Math.max(pctTarget, 5)}%` }}
 									/>
 								</div>
+							</div>
+						)}
+						{!error && !doneAt && variant === "import" && (
+							<div className="mt-3 flex items-center gap-2 text-[11px] text-muted-foreground">
+								<Loader2 size={12} className="animate-spin text-blue-600" />
+								<span>
+									{events.some((e) => e.type === "step" && e.name === "check" && e.status === "started")
+										? "試験中..."
+										: "取り込み中..."}
+								</span>
 							</div>
 						)}
 					</div>

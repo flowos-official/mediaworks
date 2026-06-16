@@ -18,6 +18,7 @@ import {
 	RotateCcw,
 } from "lucide-react";
 import { localePath } from "@/lib/i18n/locale-path";
+import { ProductBriefEditor } from "./ProductBriefEditor";
 
 type InputMode = "upload" | "url";
 type Step = 1 | 2 | 3;
@@ -572,153 +573,24 @@ export function ScreenplayCreateForm({ locale }: { locale: string }) {
 					)}
 
 					{/* Fields */}
-					<div className="p-6 space-y-7">
-						{/* Section: 基本情報 */}
-						<section>
-							<div className="flex items-center gap-3 mb-3">
-								<h3 className="text-[10px] font-semibold tracking-[0.16em] uppercase text-muted-foreground">
-									基本情報
-								</h3>
-								<div className="h-px flex-1 bg-border" aria-hidden />
-							</div>
-							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-								<div className="md:col-span-2">
-									<label className="block text-xs font-medium text-foreground mb-1.5">
-										商品名 <span className="text-red-500">*</span>
-									</label>
-									<input
-										type="text"
-										value={brief.name}
-										onChange={(e) => setBrief({ ...brief, name: e.target.value })}
-										className={inputCls}
-										maxLength={200}
-									/>
-								</div>
-								<div className="md:col-span-2">
-									<label className="block text-xs font-medium text-foreground mb-1.5">カテゴリ</label>
-									<input
-										type="text"
-										value={brief.category ?? ""}
-										onChange={(e) => setBrief({ ...brief, category: e.target.value })}
-										className={inputCls}
-										maxLength={200}
-									/>
-								</div>
-								<div className="md:col-span-2">
-									<label className="block text-xs font-medium text-foreground mb-1.5">
-										特徴・スペック <span className="text-red-500">*</span>
-									</label>
-									<textarea
-										value={brief.description}
-										onChange={(e) => setBrief({ ...brief, description: e.target.value })}
-										rows={8}
-										className={`${inputCls} resize-y leading-relaxed`}
-										maxLength={16000}
-									/>
-									<div className="flex items-center justify-end mt-1">
-										<p className="text-[11px] text-muted-foreground tabular-nums">
-											{brief.description.length.toLocaleString()} / 16,000 文字
-										</p>
-									</div>
-								</div>
-							</div>
-						</section>
-
-						{/* Section: 価格 */}
-						<section>
-							<div className="flex items-center gap-3 mb-3">
-								<h3 className="text-[10px] font-semibold tracking-[0.16em] uppercase text-muted-foreground">
-									価格
-								</h3>
-								<div className="h-px flex-1 bg-border" aria-hidden />
-							</div>
-							<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-								<div>
-									<label className="block text-xs font-medium text-foreground mb-1.5">メーカー直販価格</label>
-									<div className="relative">
-										<span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">¥</span>
-										<input
-											type="number"
-											inputMode="numeric"
-											value={listPrice}
-											onChange={(e) => setListPrice(e.target.value)}
-											min={0}
-											className={`${inputCls} pl-7 tabular-nums`}
-										/>
-									</div>
-								</div>
-								<div>
-									<label className="block text-xs font-medium text-foreground mb-1.5">本日特別価格</label>
-									<div className="relative">
-										<span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">¥</span>
-										<input
-											type="number"
-											inputMode="numeric"
-											value={salePrice}
-											onChange={(e) => setSalePrice(e.target.value)}
-											min={0}
-											className={`${inputCls} pl-7 tabular-nums`}
-										/>
-									</div>
-								</div>
-								<div>
-									<label className="block text-xs font-medium text-foreground mb-1.5">送料</label>
-									<div className="relative">
-										<span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">¥</span>
-										<input
-											type="number"
-											inputMode="numeric"
-											value={shippingPrice}
-											onChange={(e) => setShippingPrice(e.target.value)}
-											min={0}
-											className={`${inputCls} pl-7 tabular-nums`}
-										/>
-									</div>
-								</div>
-							</div>
-						</section>
-
-						{/* Section: 特典・補足 */}
-						<section>
-							<div className="flex items-center gap-3 mb-3">
-								<h3 className="text-[10px] font-semibold tracking-[0.16em] uppercase text-muted-foreground">
-									特典・補足
-								</h3>
-								<div className="h-px flex-1 bg-border" aria-hidden />
-							</div>
-							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-								<div>
-									<label className="block text-xs font-medium text-foreground mb-1.5">保証</label>
-									<input
-										type="text"
-										value={brief.guarantee ?? ""}
-										onChange={(e) => setBrief({ ...brief, guarantee: e.target.value })}
-										className={inputCls}
-										maxLength={500}
-									/>
-								</div>
-								<div>
-									<label className="block text-xs font-medium text-foreground mb-1.5">ボーナス・特典 (1行1件)</label>
-									<textarea
-										value={bonusesText}
-										onChange={(e) => setBonusesText(e.target.value)}
-										rows={3}
-										className={`${inputCls} resize-none`}
-									/>
-								</div>
-								<div className="md:col-span-2">
-									<label className="block text-xs font-medium text-foreground mb-1.5">その他のメモ</label>
-									<textarea
-										value={brief.notes ?? ""}
-										onChange={(e) => setBrief({ ...brief, notes: e.target.value })}
-										rows={3}
-										className={`${inputCls} resize-none`}
-										maxLength={4000}
-									/>
-								</div>
-							</div>
-						</section>
-					</div>
+					<ProductBriefEditor
+						brief={{
+							name: brief.name,
+							category: brief.category,
+							description: brief.description,
+							guarantee: brief.guarantee,
+							notes: brief.notes,
+						}}
+						onBriefChange={(b) => setBrief((prev) => (prev ? { ...prev, ...b } : { ...b }))}
+						bonusesText={bonusesText}
+						onBonusesChange={setBonusesText}
+						listPrice={listPrice}
+						salePrice={salePrice}
+						shippingPrice={shippingPrice}
+						onListPrice={setListPrice}
+						onSalePrice={setSalePrice}
+						onShippingPrice={setShippingPrice}
+					/>
 				</div>
 			)}
 
