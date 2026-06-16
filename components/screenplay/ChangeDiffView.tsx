@@ -19,7 +19,12 @@ export function ChangeDiffView({ baseMarkdown, markdown, screenplayId, versionId
 	useEffect(() => {
 		if (hunks.length === 0) return;
 		let cancelled = false;
-		// eslint-disable-next-line react-hooks/set-state-in-effect -- loading flag set synchronously before async fetch
+		// Reset reasons on every (version) change so a previous version's reasons
+		// never render against this version's hunks — neither while the new fetch
+		// is in flight nor if it fails (indices are positional, so stale reasons
+		// would silently mislabel the wrong hunks).
+		// eslint-disable-next-line react-hooks/set-state-in-effect -- reset + loading flag set synchronously before the async fetch
+		setReasons({});
 		setLoading(true);
 		fetch(`/api/screenplays/${screenplayId}/versions/${versionId}/changes`, { cache: "no-store" })
 			.then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
