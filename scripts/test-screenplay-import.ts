@@ -8,7 +8,7 @@ import { parseBriefObject, parseBriefJson } from "../lib/screenplay/extract/brie
 import { parseImportJson, IMPORT_MARKDOWN_MAX } from "../lib/screenplay/import/normalize-prompt";
 import { extractDocxText } from "../lib/screenplay/import/from-docx";
 import { buildScreenplayDocxBuffer } from "../lib/screenplay/screenplay-docx";
-import { normalizeDraft } from "../lib/screenplay/import/normalize";
+import { normalizeDraft, DraftTooLongError } from "../lib/screenplay/import/normalize";
 import { validateImportedMarkdown } from "../lib/screenplay/import/validate";
 
 type Status = "PASS" | "FAIL" | "SKIP";
@@ -140,11 +140,25 @@ async function testNormalizeLive() {
   } catch (e) { fail("normalizeDraft: faithful, no invented sections", (e as Error).message); }
 }
 
+function testDraftTooLongError() {
+  console.log("\n[DraftTooLongError] unit");
+  // The route's 422 path depends on this being an Error subclass carrying a
+  // fixed, internals-free message — lock that contract.
+  try {
+    const e = new DraftTooLongError();
+    if (!(e instanceof Error)) throw new Error("not an Error subclass");
+    if (e.name !== "DraftTooLongError") throw new Error(`name mismatch: ${e.name}`);
+    if (!e.message.includes("長すぎ")) throw new Error(`message mismatch: ${e.message}`);
+    pass("DraftTooLongError shape", e.message);
+  } catch (e) { fail("DraftTooLongError shape", (e as Error).message); }
+}
+
 async function main() {
   console.log("=== screenplay/import test ===");
   testParseBriefObject();
   testParseImportJson();
   testValidateImportedMarkdown();
+  testDraftTooLongError();
   await testDocxRoundTrip();
   await testNormalizeLive();
   const f = results.filter((r) => r.status === "FAIL").length;
