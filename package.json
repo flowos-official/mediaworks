@@ -153,6 +153,7 @@
     "cheerio": "^1.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "diff": "^7.0.0",
     "docx": "^9.7.1",
     "html2canvas-pro": "^2.0.2",
     "jspdf": "^4.2.0",
@@ -173,6 +174,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/adm-zip": "^0.5.8",
+    "@types/diff": "^7.0.2",
     "@types/node": "^20",
     "@types/pg": "^8.20.0",
     "@types/react": "^19",
