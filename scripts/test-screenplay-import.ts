@@ -9,6 +9,7 @@ import { parseImportJson, IMPORT_MARKDOWN_MAX } from "../lib/screenplay/import/n
 import { extractDocxText } from "../lib/screenplay/import/from-docx";
 import { buildScreenplayDocxBuffer } from "../lib/screenplay/screenplay-docx";
 import { normalizeDraft } from "../lib/screenplay/import/normalize";
+import { validateImportedMarkdown, IMPORTED_MARKDOWN_MAX } from "../lib/screenplay/import/validate";
 
 type Status = "PASS" | "FAIL" | "SKIP";
 const results: { name: string; status: Status; detail?: string }[] = [];
@@ -100,6 +101,24 @@ async function testDocxRoundTrip() {
   catch (e) { pass("rejects non-docx bytes", (e as Error).message.slice(0, 80)); }
 }
 
+function testValidateImportedMarkdown() {
+  console.log("\n[validateImportedMarkdown] unit");
+  const cases: { name: string; input: unknown; ok: boolean }[] = [
+    { name: "accepts heading-structured md", input: "# 台本\n\n本文がここに入ります。", ok: true },
+    { name: "accepts speaker-tagged md", input: "[N]\nこんにちは。\n[高橋]\nどうも。", ok: true },
+    { name: "accepts >=8 non-empty lines", input: Array.from({ length: 8 }, (_, i) => `行${i}`).join("\n"), ok: true },
+    { name: "rejects empty", input: "   \n  ", ok: false },
+    { name: "rejects non-string", input: 123, ok: false },
+    { name: "rejects structureless short blob", input: "あいうえお", ok: false },
+    { name: "rejects oversized", input: "# h\n" + "あ".repeat(IMPORTED_MARKDOWN_MAX + 10), ok: false },
+  ];
+  for (const c of cases) {
+    const r = validateImportedMarkdown(c.input);
+    if (r.ok === c.ok) pass(c.name, r.ok ? "ok" : r.error);
+    else fail(c.name, `expected ok=${c.ok}, got ok=${r.ok} (${r.error ?? ""})`);
+  }
+}
+
 async function testNormalizeLive() {
   console.log("\n[normalize] live Gemini smoke");
   if (!process.env.GEMINI_API_KEY) { skip("normalizeDraft", "GEMINI_API_KEY not set"); return; }
@@ -125,6 +144,7 @@ async function main() {
   console.log("=== screenplay/import test ===");
   testParseBriefObject();
   testParseImportJson();
+  testValidateImportedMarkdown();
   await testDocxRoundTrip();
   await testNormalizeLive();
   const f = results.filter((r) => r.status === "FAIL").length;
