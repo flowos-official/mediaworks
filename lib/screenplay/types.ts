@@ -1,5 +1,5 @@
 // lib/screenplay/types.ts
-export type GenerationMode = "initial" | "refine";
+export type GenerationMode = "initial" | "refine" | "import";
 
 export type ProgressEvent =
   | { type: "step"; name: string; status: "started" | "completed" | "failed"; detail?: string }
