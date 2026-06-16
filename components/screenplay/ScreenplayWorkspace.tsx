@@ -167,6 +167,13 @@ export function ScreenplayWorkspace({ initialScreenplay, initialVersions, latest
 						onNext={goNext}
 						prevLabel={prev ? `v${pad(prev.version_number, 2)}` : undefined}
 						nextLabel={next ? `v${pad(next.version_number, 2)}` : undefined}
+						baseMarkdown={
+							selected.base_version_id
+								? versions.find((vv) => vv.id === selected.base_version_id)?.markdown
+								: undefined
+						}
+						screenplayId={initialScreenplay.id}
+						versionId={selected.id}
 					/>
 				) : !isGenerating ? (
 					<Card className="border-border border-dashed">
