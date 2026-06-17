@@ -33,7 +33,7 @@ export function ReviewPanel({
 
 	return (
 		<Tabs value={activeTab} onValueChange={(v) => onTabChange(v as ReviewTab)} className="gap-3">
-			<TabsList className="w-full">
+			<TabsList className="w-full sticky top-0 z-10">
 				<TabsTrigger value="check">
 					試験結果{findingCount != null && findingCount > 0 ? ` (${findingCount})` : ""}
 				</TabsTrigger>
@@ -41,7 +41,7 @@ export function ReviewPanel({
 				<TabsTrigger value="refine">改稿</TabsTrigger>
 			</TabsList>
 
-			<TabsContent value="check">
+			<TabsContent value="check" keepMounted>
 				<CheckResultPanel
 					screenplayId={screenplayId}
 					versionId={version.id}
