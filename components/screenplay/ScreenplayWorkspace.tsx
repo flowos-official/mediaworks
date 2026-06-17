@@ -208,7 +208,9 @@ export function ScreenplayWorkspace({ initialScreenplay, initialVersions, latest
 				)}
 				<CheckResultPanel
 					screenplayId={initialScreenplay.id}
+					versionId={selectedId ?? ""}
 					initialCheck={latestCheck ?? null}
+					initialCheckVersionId={initialScreenplay.current_version_id ?? null}
 				/>
 			</aside>
 		</div>

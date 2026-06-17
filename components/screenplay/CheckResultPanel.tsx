@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Loader2, ShieldAlert, RefreshCw, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { ScriptCheckResult, Finding, Severity } from "@/lib/screenplay/compliance/types";
@@ -11,7 +11,10 @@ interface CheckWithMeta extends ScriptCheckResult {
 
 interface Props {
 	screenplayId: string;
+	versionId: string;
 	initialCheck: CheckWithMeta | null;
+	initialCheckVersionId: string | null;
+	onCheckChange?: (check: CheckWithMeta | null) => void;
 }
 
 const SEVERITY_CLS: Record<Severity, string> = {
@@ -158,19 +161,58 @@ function ReproducibilityInfo({ check }: { check: CheckWithMeta }) {
 	);
 }
 
-export function CheckResultPanel({ screenplayId, initialCheck }: Props) {
-	const [check, setCheck] = useState<CheckWithMeta | null>(initialCheck);
+export function CheckResultPanel({ screenplayId, versionId, initialCheck, initialCheckVersionId, onCheckChange }: Props) {
+	const seeded = versionId === initialCheckVersionId;
+	const [check, setCheck] = useState<CheckWithMeta | null>(seeded ? initialCheck : null);
 	const [busy, setBusy] = useState(false);
 	const [err, setErr] = useState<string | null>(null);
+	const [loading, setLoading] = useState(false);
+
+	// Refetch when the selected version changes. The initial render for the
+	// SSR-seeded version skips the fetch (uses initialCheck); every other
+	// version fetches its own latest check and never shows a stale result.
+	useEffect(() => {
+		let cancelled = false;
+		if (versionId === initialCheckVersionId) {
+			setCheck(initialCheck);
+			setErr(null);
+			onCheckChange?.(initialCheck);
+			return;
+		}
+		setLoading(true);
+		setErr(null);
+		setCheck(null);
+		onCheckChange?.(null);
+		(async () => {
+			try {
+				const res = await fetch(`/api/screenplays/${screenplayId}/versions/${versionId}/check`, { cache: "no-store" });
+				const j = (await res.json()) as { check?: CheckWithMeta | null; error?: string };
+				if (!res.ok) throw new Error(j.error ?? "試験結果の取得に失敗しました");
+				if (cancelled) return;
+				setCheck(j.check ?? null);
+				onCheckChange?.(j.check ?? null);
+			} catch (e) {
+				if (cancelled) return;
+				setCheck(null);
+				onCheckChange?.(null);
+				setErr(e instanceof Error ? e.message : String(e));
+			} finally {
+				if (!cancelled) setLoading(false);
+			}
+		})();
+		return () => { cancelled = true; };
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [versionId]);
 
 	async function recheck() {
 		setBusy(true);
 		setErr(null);
 		try {
-			const res = await fetch(`/api/screenplays/${screenplayId}/check`, { method: "POST" });
+			const res = await fetch(`/api/screenplays/${screenplayId}/versions/${versionId}/check`, { method: "POST" });
 			const j = await res.json() as { check?: CheckWithMeta; error?: string };
 			if (!res.ok) throw new Error(j.error ?? "再チェックに失敗しました");
 			setCheck(j.check ?? null);
+			onCheckChange?.(j.check ?? null);
 		} catch (e) {
 			setErr(e instanceof Error ? e.message : String(e));
 		} finally {
@@ -210,7 +252,11 @@ export function CheckResultPanel({ screenplayId, initialCheck }: Props) {
 					</div>
 				)}
 
-				{check ? (
+				{loading ? (
+					<p className="text-xs text-muted-foreground py-3 text-center flex items-center justify-center gap-2">
+						<Loader2 size={12} className="animate-spin" /> 試験結果を読み込み中…
+					</p>
+				) : check ? (
 					<>
 						<div className="flex items-baseline gap-2 mb-1">
 							<span className={`text-2xl font-bold ${scoreColor(check.overallScore)}`}>
