@@ -141,8 +141,25 @@ export function ScreenplayWorkspace({ initialScreenplay, initialVersions, latest
 				/>
 			)}
 
+			{/* HISTORY — lg/sm dropdown (hidden at xl), sits above the grid */}
+			{versions.length > 1 && (
+				<div className="xl:hidden mb-4">
+					<label htmlFor="screenplay-version-select" className="text-[11px] font-medium text-muted-foreground mr-2">改稿履歴</label>
+					<select
+						id="screenplay-version-select"
+						value={selectedId ?? ""}
+						onChange={(e) => setSelectedId(e.target.value)}
+						className="text-sm border border-border rounded-lg px-2 py-1.5 bg-card"
+					>
+						{versions.map((v) => (
+							<option key={v.id} value={v.id}>第 {v.version_number} 稿{v.feedback ? ` — ${v.feedback.slice(0, 24)}` : ""}</option>
+						))}
+					</select>
+				</div>
+			)}
+
 			<div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(360px,420px)] xl:grid-cols-[220px_minmax(0,1fr)_minmax(380px,440px)] gap-6">
-				{/* HISTORY — xl rail; lg/sm compact selector */}
+				{/* HISTORY — xl rail */}
 				<aside className="hidden xl:block xl:sticky xl:top-[7rem] self-start">
 					<Card className="border-border">
 						<CardContent className="p-4">
@@ -164,24 +181,8 @@ export function ScreenplayWorkspace({ initialScreenplay, initialVersions, latest
 					</Card>
 				</aside>
 
-				{/* HISTORY — lg/sm dropdown (hidden at xl) */}
-				{versions.length > 1 && (
-					<div className="xl:hidden">
-						<label className="text-[11px] font-medium text-muted-foreground mr-2">改稿履歴</label>
-						<select
-							value={selectedId ?? ""}
-							onChange={(e) => setSelectedId(e.target.value)}
-							className="text-sm border border-border rounded-lg px-2 py-1.5 bg-card"
-						>
-							{versions.map((v) => (
-								<option key={v.id} value={v.id}>第 {v.version_number} 稿{v.feedback ? ` — ${v.feedback.slice(0, 24)}` : ""}</option>
-							))}
-						</select>
-					</div>
-				)}
-
 				{/* CENTER — SCRIPT */}
-				<section className="min-w-0 lg:sticky lg:top-[7rem] self-start lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
+				<section className="min-w-0 lg:sticky lg:top-[7rem] self-start lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto min-h-0">
 					{isGenerating && runId && (
 						<div className="mb-4">
 							<GenerationProgress runId={runId} onComplete={(versionId) => handleComplete(versionId)} variant={runVariant} />
@@ -203,7 +204,7 @@ export function ScreenplayWorkspace({ initialScreenplay, initialVersions, latest
 				</section>
 
 				{/* RIGHT — REVIEW PANEL */}
-				<aside className="lg:sticky lg:top-[7rem] self-start lg:max-h-[calc(100vh-8rem)] overflow-y-auto min-h-0">
+				<aside className="lg:sticky lg:top-[7rem] self-start lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto min-h-0">
 					{selected ? (
 						<ReviewPanel
 							screenplayId={initialScreenplay.id}
