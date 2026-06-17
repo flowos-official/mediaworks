@@ -57,6 +57,7 @@
     "test:screenplay-docx": "tsx scripts/test-screenplay-docx.ts",
     "test:screenplay-import": "tsx --env-file=.env.local scripts/test-screenplay-import.ts",
     "test:screenplay-diff": "tsx --env-file=.env.local scripts/test-screenplay-diff.ts",
+    "test:version-check": "tsx --env-file=.env.local scripts/test-version-check-api.ts",
     "stress:screenplays": "tsx --env-file=.env.local scripts/stress-screenplays.ts",
     "backfill:broadcasts": "tsx --env-file=.env.local scripts/backfill-broadcasts.ts",
     "backfill:broadcasts-category": "tsx --env-file=.env.local scripts/backfill-broadcasts-category.ts",
