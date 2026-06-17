@@ -5,7 +5,7 @@
  */
 
 import { getServiceClient } from "@/lib/supabase";
-import { loadWhitelist, isAllowed } from "./category-filter";
+import { loadWhitelist, isAllowed, normalizeCategory } from "./category-filter";
 import { buildProgramId } from "./shopch-json";
 import { resolveQvcVideoUrl } from "./qvc-video-resolver";
 
@@ -177,8 +177,9 @@ export async function reconcileArchiveCoverage(opts?: ReconcileOptions): Promise
   const window_from = jstDate(now, -lookbackDays);
 
   try {
-    // load whitelist slots in window
-    const slots: ReconcileSlot[] = [];
+    // load all qvc/shopch slots in window (whitelist filter applied after we
+    // resolve effective category — see below)
+    const rawSlots: ReconcileSlot[] = [];
     let offset = 0;
     for (;;) {
       const { data, error } = await sb
@@ -190,10 +191,34 @@ export async function reconcileArchiveCoverage(opts?: ReconcileOptions): Promise
         .range(offset, offset + PAGE - 1);
       if (error) throw new Error(`[reconcile] load failed: ${error.message}`);
       const batch = (data ?? []) as ReconcileSlot[];
-      slots.push(...batch.filter((s) => isAllowed(whitelist, s.channel, s.category)));
+      rawSlots.push(...batch);
       if (batch.length < PAGE) break;
       offset += PAGE;
     }
+
+    // A brand-new QVC product is unenriched at scrape time, so broadcasts.category
+    // is NULL even when the product later gets a whitelist category. The daily
+    // cron backfills that going forward; reconciliation must also resolve it from
+    // qvc_products so pre-existing NULL rows aren't permanently invisible to heal.
+    const qvcNullPids = [...new Set(
+      rawSlots
+        .filter((s) => s.channel === "qvc" && !normalizeCategory(s.category) && (s.product_ids?.length ?? 0) > 0)
+        .flatMap((s) => s.product_ids ?? []),
+    )];
+    const productCat = new Map<string, string | null>();
+    for (let i = 0; i < qvcNullPids.length; i += 500) {
+      const { data: prods, error: pErr } = await sb
+        .from("qvc_products").select("id, category").in("id", qvcNullPids.slice(i, i + 500));
+      if (pErr) throw new Error(`[reconcile] qvc_products category load failed: ${pErr.message}`);
+      for (const p of (prods ?? []) as { id: string; category: string | null }[]) productCat.set(p.id, p.category);
+    }
+    const effectiveCategory = (s: ReconcileSlot): string | null => {
+      if (normalizeCategory(s.category)) return s.category;
+      if (s.channel !== "qvc") return s.category;
+      for (const pid of s.product_ids ?? []) { const c = productCat.get(pid); if (c) return c; }
+      return null;
+    };
+    const slots = rawSlots.filter((s) => isAllowed(whitelist, s.channel, effectiveCategory(s)));
 
     // per-day tallies + gaps
     const tallyKey = (s: ReconcileSlot) => `${s.channel}|${s.air_date}`;

@@ -105,11 +105,23 @@ export async function archiveOne(slot: QueuedSlot): Promise<ArchiveResult> {
 		};
 	}
 
-	const videoUrl = await resolveVideoUrl(slot);
+	// resolveVideoUrl can throw on a transient DB error (it must NOT silently
+	// read that as "no video"). Roll the claimed slot back to 'queued' so the
+	// next drain retries — never strand it in 'downloading' or wrongly defer it.
+	let videoUrl: string | null;
+	try {
+		videoUrl = await resolveVideoUrl(slot);
+	} catch (e) {
+		const msg = (e instanceof Error ? e.message : String(e)).slice(0, 500);
+		await sb.from("broadcasts")
+			.update({ video_status: "queued", video_error: msg })
+			.eq("id", broadcastId).eq("video_status", "downloading");
+		return { broadcastId, status: "queued", error: msg };
+	}
 	if (!videoUrl) {
 		const { data: updated, error: updateErr } = await sb.from("broadcasts").update({
 			video_status: "deferred",
-			video_error: "no video_url for lead product",
+			video_error: "no video_url for any product",
 		}).eq("id", broadcastId).eq("video_status", "downloading").select("id");
 		if (updateErr) {
 			return { broadcastId, status: "queued", error: updateErr.message };

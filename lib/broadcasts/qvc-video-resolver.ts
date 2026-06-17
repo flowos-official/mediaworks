@@ -41,10 +41,14 @@ export async function resolveQvcVideoUrl(
 ): Promise<string | null> {
 	if (!productIds || productIds.length === 0) return null;
 	const sb = getServiceClient();
-	const { data } = await sb
+	const { data, error } = await sb
 		.from("qvc_products")
 		.select("id, video_url")
 		.in("id", productIds as string[]);
+	// A transient query failure must NOT be silently read as "no video" — that
+	// would defer a slot (download) or mark it no_source (reconcile) when a video
+	// may well exist. Throw so the caller's retry/attempt logic handles it.
+	if (error) throw new Error(`resolveQvcVideoUrl: qvc_products query failed: ${error.message}`);
 	const byId = new Map<string, string | null>();
 	for (const p of (data ?? []) as { id: string; video_url: string | null }[]) {
 		byId.set(p.id, p.video_url);

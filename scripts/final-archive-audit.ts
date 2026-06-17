@@ -49,6 +49,9 @@ async function main(): Promise<void> {
 	// lead one), and a NULL broadcasts.category is resolved from the product.
 	const sb = getServiceClient();
 	const whitelist = await loadWhitelist();
+	// Forward/future slots aren't a gap — the daily cron archives them once their
+	// day passes. Only aired slots (air_date < today JST) can be a real anomaly.
+	const todayJst = new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10);
 	const qvcPids = [...new Set(rows.filter((r) => r.channel === "qvc").flatMap((r) => r.product_ids ?? []))];
 	const pVideo = new Map<string, boolean>();
 	const pCat = new Map<string, string | null>();
@@ -92,6 +95,7 @@ async function main(): Promise<void> {
 		// previous (category && !deferred) filter silently under-reported.
 		const qAnomaly = q.filter((r) => {
 			if (r.archived_video_s3) return false;
+			if (r.air_date >= todayJst) return false; // future = not yet a gap
 			return isAllowed(whitelist, "qvc", effCategory(r)) && anyVideo(r);
 		});
 		anomalyCount += qAnomaly.length;

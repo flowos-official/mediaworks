@@ -50,9 +50,12 @@ async function main() {
 	const notArchived = rows.filter((r) => !r.archived_video_s3 && r.video_status !== "archived");
 	console.log(`QVC since ${since}: ${rows.length} slots, ${rows.length - notArchived.length} archived, ${notArchived.length} not archived\n`);
 
-	// breakdown: not-archived, has ANY product video, by whitelist-class and by first-video
-	const gap = notArchived.filter(anyVideo);
-	console.log(`Not archived AND >=1 product has video_url: ${gap.length}`);
+	// breakdown: AIRED (air_date < today JST), not-archived, has ANY product video.
+	// Future/forward slots are excluded — they aren't a gap yet (the daily cron
+	// archives them once their day passes), so counting them inflates the gap.
+	const todayJst = new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10);
+	const gap = notArchived.filter((r) => r.air_date < todayJst && anyVideo(r));
+	console.log(`Aired, not archived, >=1 product has video_url: ${gap.length} (future slots excluded)`);
 	const byClass = { whitelist: 0, null: 0, nonwhitelist: 0 };
 	const firstHas = { yes: 0, no: 0 };
 	const byStatus = new Map<string, number>();
