@@ -16,7 +16,7 @@ import { mapWithConcurrency } from "../image-extractors/types";
  * scrape that date→id map, fetch each date's page, and stamp products with the
  * filter's real broadcast date. Idempotent upsert keeps reruns self-healing.
  *
- * Two pitfalls the parser must dodge (verified live 2026-06-16):
+ * Three pitfalls the parser must dodge (verified live 2026-06-16, revised 2026-06-17):
  *  1. **Evergreen promo blocks.** Every page renders several product carousels
  *     besides the dated results: a 2nd `shop_products_section` instance, a
  *     `versatility_products_section` view, plus 通販スターDaily / recommendation
@@ -30,11 +30,17 @@ import { mapWithConcurrency } from "../image-extractors/types";
  *     indistinguishable from a real page except by content — title, canonical,
  *     og:url and dropdown state are identical. Fix: treat the homepage's own
  *     listing as the "fallback fingerprint" and drop any filter page whose
- *     product set equals it. This also drops the latest real date (its listing
- *     == default); that date is captured on a later run once a newer broadcast
- *     pushes it off the default — idempotent upsert backfills it. The trade is
- *     deliberate: a few days' lag on the newest date in exchange for zero
- *     false-dated rows, which is the calendar's stated priority.
+ *     product set equals it.
+ *  3. **The newest date IS the default listing.** Because of (2) the default
+ *     drop also threw away the latest real broadcast (its filter page == the
+ *     homepage default), leaving it uncaptured for up to a week until a newer
+ *     broadcast pushed it off the default. Fix: the homepage labels the default
+ *     listing's true broadcast date in `<p class="c-foundMenu__current">` (e.g.
+ *     "6/12(金)"). We read that label and stamp the default listing with it, so
+ *     the newest date is captured immediately. Filter pages whose date equals
+ *     the labelled default are skipped (already captured); the fingerprint drop
+ *     then only removes genuine dead-id fallbacks. If the label is missing
+ *     (markup change) we fall back to the conservative drop, never false-dating.
  */
 const HOME_URL = "https://ktvolm.jp/";
 const FILTER_PARAM = "field_onair_dates_target_id_entityreference_filter";
@@ -42,6 +48,8 @@ const MAX_DATES = 20; // bound the fan-out; the homepage exposes ~10 date filter
 // Only the exposed-filter results live here; the 1st instance is the dated set.
 const RESULTS_SELECTOR =
 	"div.view-id-shop_products_list.view-display-id-shop_products_section";
+// The default listing's true broadcast date is labelled here ("6/12(金)").
+const CURRENT_DATE_SELECTOR = "p.c-foundMenu__current";
 
 /** Stable identity of a page's dated listing — sorted product names. Used to
  * detect filter pages that fell back to the default (latest-day) listing. */
@@ -50,6 +58,15 @@ function listingFingerprint(rows: HistoricalRow[]): string {
 		.map((r) => r.product_name)
 		.sort()
 		.join("");
+}
+
+/** Read the default listing's labelled broadcast date from the homepage
+ * (`<p class="c-foundMenu__current">6/12(金)</p>`). Returns null when the label
+ * is absent/unparseable so the caller can fall back to the conservative drop. */
+export function extractCurrentBroadcastDate(homeHtml: string, jstDate: string): string | null {
+	const $ = cheerio.load(homeHtml);
+	const text = $(CURRENT_DATE_SELECTOR).first().text();
+	return parseSlashMonthDay(text, jstDate);
 }
 
 /** Extract { airDate, id } for each dated filter link on the homepage. */
@@ -124,7 +141,14 @@ export const kantvParser: ChannelParser = {
 		// The homepage's own dated listing is what a dead-id filter falls back
 		// to; pages matching it carry no date-specific data.
 		const fallbackPrint = listingFingerprint(parseKantv(home.body, jstDate));
+		// The default listing is the newest broadcast; its date is labelled on the
+		// page. Capture it directly under that date instead of dropping it.
+		const defaultDate = extractCurrentBroadcastDate(home.body, jstDate);
+		const defaultRows = defaultDate ? parseKantv(home.body, defaultDate) : [];
 		const perDate = await mapWithConcurrency(filters, 3, async (f) => {
+			// The labelled default date is already captured from the homepage;
+			// its filter page is the fallback content, so skip it.
+			if (defaultDate && f.airDate === defaultDate) return [] as HistoricalRow[];
 			const r = await politeFetch(`${HOME_URL}?${FILTER_PARAM}=${f.id}`);
 			if (!r.ok || !r.body) return [] as HistoricalRow[];
 			const rows = parseKantv(r.body, f.airDate);
@@ -132,8 +156,8 @@ export const kantvParser: ChannelParser = {
 			if (listingFingerprint(rows) === fallbackPrint) return [] as HistoricalRow[];
 			return rows;
 		});
-		return perDate.flat();
+		return [...defaultRows, ...perDate.flat()];
 	},
 };
 
-export const __test = { parseKantv, extractDateFilters, listingFingerprint };
+export const __test = { parseKantv, extractDateFilters, extractCurrentBroadcastDate, listingFingerprint };

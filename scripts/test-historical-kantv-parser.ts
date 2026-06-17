@@ -38,11 +38,22 @@ const evergreenSample = "スタイリーフェイス 1台";
 ok(!rows.some((r) => r.product_name.startsWith(evergreenSample)), `evergreen product "${evergreenSample}" excluded`);
 
 // --- fallback fingerprint: the homepage's listing equals the latest date's
-// (4462) listing, so fetchToday drops 4462 to avoid re-stamping default content
-// onto a dead-filter date. This is the dedup premise. ---
+// (4462) listing. A dead-id filter page also returns this default listing, so
+// fetchToday drops any filter page whose fingerprint matches it. ---
 const homePrint = __test.listingFingerprint(__test.parseKantv(home, JST_DATE));
 const f4462Print = __test.listingFingerprint(rows);
-ok(homePrint === f4462Print, "homepage listing fingerprint == latest-date (4462) listing → fetchToday treats 4462 as fallback");
+ok(homePrint === f4462Print, "homepage listing fingerprint == latest-date (4462) listing");
 ok(homePrint.length > 0, "fingerprint is non-empty");
+
+// --- heading-based capture of the newest date (2026-06-17 fix): because the
+// latest date's filter page is indistinguishable from the default by
+// fingerprint, the OLD parser dropped it and the newest broadcast went
+// uncaptured for ~a week. The homepage labels the default's true date in
+// `p.c-foundMenu__current` ("6/12(金)"); we read it and stamp the default
+// listing with it instead of dropping. ---
+const currentDate = __test.extractCurrentBroadcastDate(home, JST_DATE);
+ok(currentDate === "2026-06-12", `reads default listing's broadcast date from p.c-foundMenu__current (${currentDate})`);
+const defaultRows = currentDate ? __test.parseKantv(home, currentDate) : [];
+ok(defaultRows.length >= 25 && defaultRows.every((r) => r.air_date === "2026-06-12"), `default listing captured under 6/12, not dropped (${defaultRows.length} rows)`);
 
 console.log(`\n[test:historical-kantv-parser] ${filters.length} date filters, ${rows.length} dated products on 2026-06-12, ${pass} assertions passed`);
