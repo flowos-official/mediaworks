@@ -2,12 +2,10 @@
 import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { CheckResultPanel } from "./CheckResultPanel";
+import type { CheckWithMeta } from "./CheckResultPanel";
 import { ChangeDiffView } from "./ChangeDiffView";
 import { FeedbackForm } from "./FeedbackForm";
 import type { ScreenplayVersionRow } from "@/lib/screenplay/types";
-import type { ScriptCheckResult } from "@/lib/screenplay/compliance/types";
-
-type CheckWithMeta = ScriptCheckResult & { created_at?: string; lexicon_version?: string };
 export type ReviewTab = "check" | "diff" | "refine";
 
 interface Props {

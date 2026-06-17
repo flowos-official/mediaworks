@@ -4,7 +4,7 @@ import { Loader2, ShieldAlert, RefreshCw, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { ScriptCheckResult, Finding, Severity } from "@/lib/screenplay/compliance/types";
 
-interface CheckWithMeta extends ScriptCheckResult {
+export interface CheckWithMeta extends ScriptCheckResult {
 	created_at?: string;
 	lexicon_version?: string;
 }

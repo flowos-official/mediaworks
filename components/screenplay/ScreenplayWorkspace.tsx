@@ -5,9 +5,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { FileText } from "lucide-react";
 import { GenerationProgress } from "./GenerationProgress";
 import { VersionTimeline } from "./VersionTimeline";
+import { ScreenplayHeaderBar } from "./ScreenplayHeaderBar";
 import { ScreenplayViewer } from "./ScreenplayViewer";
-import { FeedbackForm } from "./FeedbackForm";
-import { CheckResultPanel } from "./CheckResultPanel";
+import { ReviewPanel, type ReviewTab } from "./ReviewPanel";
 import type { ScreenplayRow, ScreenplayVersionRow } from "@/lib/screenplay/types";
 import type { ScriptCheckResult } from "@/lib/screenplay/compliance/types";
 
@@ -15,13 +15,14 @@ interface Props {
 	initialScreenplay: ScreenplayRow;
 	initialVersions: ScreenplayVersionRow[];
 	latestCheck?: (ScriptCheckResult & { created_at?: string; lexicon_version?: string }) | null;
+	initialCheckVersionId?: string | null;
 }
 
 function pad(n: number, w: number): string {
 	return n.toString().padStart(w, "0");
 }
 
-export function ScreenplayWorkspace({ initialScreenplay, initialVersions, latestCheck }: Props) {
+export function ScreenplayWorkspace({ initialScreenplay, initialVersions, latestCheck, initialCheckVersionId = null }: Props) {
 	const router = useRouter();
 	const search = useSearchParams();
 	const [versions, setVersions] = useState(initialVersions);
@@ -42,6 +43,7 @@ export function ScreenplayWorkspace({ initialScreenplay, initialVersions, latest
 	const [runVariant, setRunVariant] = useState<"generate" | "import">(
 		search.get("kind") === "import" && initialRun ? "import" : "generate",
 	);
+	const [activeReviewTab, setActiveReviewTab] = useState<ReviewTab>("check");
 
 	// Belt-and-suspenders: if mounting with no runId but screenplay is still
 	// generating, poll the screenplay row briefly to pick up the run as it
@@ -69,17 +71,20 @@ export function ScreenplayWorkspace({ initialScreenplay, initialVersions, latest
 		return () => { stop = true; };
 	}, [runId, initialScreenplay.id, initialScreenplay.status]);
 
-	async function refreshList(newSelectedId?: string) {
+	async function refreshListReturning(newSelectedId?: string): Promise<ScreenplayVersionRow[]> {
 		const res = await fetch(`/api/screenplays/${initialScreenplay.id}`, { cache: "no-store" });
-		if (!res.ok) return;
+		if (!res.ok) return versions;
 		const j = (await res.json()) as { screenplay: ScreenplayRow; versions: ScreenplayVersionRow[] };
 		setVersions(j.versions);
 		setSelectedId(newSelectedId ?? j.screenplay.current_version_id ?? j.versions[j.versions.length - 1]?.id ?? null);
+		return j.versions;
 	}
 
-	function handleComplete(versionId: string) {
+	async function handleComplete(versionId: string) {
 		setRunId(null);
-		void refreshList(versionId);
+		const list = await refreshListReturning(versionId);
+		const v = list.find((x) => x.id === versionId);
+		setActiveReviewTab(v?.base_version_id ? "diff" : "check");
 		const params = new URLSearchParams(search);
 		params.delete("run");
 		params.delete("kind");
@@ -115,104 +120,109 @@ export function ScreenplayWorkspace({ initialScreenplay, initialVersions, latest
 		return () => window.removeEventListener("keydown", onKey);
 	}, [goPrev, goNext]);
 
-	return (
-		<div className="grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)_340px] gap-6">
-			{/* LEFT — REVISION TIMELINE */}
-			<aside className="lg:sticky lg:top-20 self-start">
-				<Card className="border-border">
-					<CardContent className="p-4">
-						<div className="flex items-center justify-between mb-3">
-							<h2 className="text-sm font-semibold text-foreground">改稿履歴</h2>
-							<span className="text-[11px] text-muted-foreground">{versions.length}件</span>
-						</div>
-						{versions.length > 0 ? (
-							<VersionTimeline
-								versions={versions.map((v) => ({
-									id: v.id,
-									version_number: v.version_number,
-									feedback: v.feedback,
-									created_at: v.created_at,
-								}))}
-								selectedId={selectedId}
-								onSelect={setSelectedId}
-							/>
-						) : (
-							<p className="text-xs text-muted-foreground py-4 text-center">
-								まだ稿がありません
-							</p>
-						)}
-						<div className="text-[11px] text-muted-foreground mt-4 pt-3 border-t border-border leading-relaxed">
-							⌘← / ⌘→ で版を移動できます
-						</div>
-					</CardContent>
-				</Card>
-			</aside>
+	const baseMarkdown = selected?.base_version_id
+		? versions.find((vv) => vv.id === selected.base_version_id)?.markdown
+		: undefined;
 
-			{/* CENTER — SCRIPT VIEWER */}
-			<section className="min-w-0">
-				{isGenerating && runId && (
-					<div className="mb-4">
-						<GenerationProgress runId={runId} onComplete={(versionId) => handleComplete(versionId)} variant={runVariant} />
+	return (
+		<div>
+			{selected && (
+				<ScreenplayHeaderBar
+					markdown={selected.markdown}
+					title={initialScreenplay.title}
+					versionLabel={`第 ${selected.version_number} 稿`}
+					createdAt={selected.created_at}
+					hasPrev={!!prev}
+					hasNext={!!next}
+					onPrev={goPrev}
+					onNext={goNext}
+					prevLabel={prev ? `v${pad(prev.version_number, 2)}` : undefined}
+					nextLabel={next ? `v${pad(next.version_number, 2)}` : undefined}
+				/>
+			)}
+
+			<div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(360px,420px)] xl:grid-cols-[220px_minmax(0,1fr)_minmax(380px,440px)] gap-6">
+				{/* HISTORY — xl rail; lg/sm compact selector */}
+				<aside className="hidden xl:block xl:sticky xl:top-[7rem] self-start">
+					<Card className="border-border">
+						<CardContent className="p-4">
+							<div className="flex items-center justify-between mb-3">
+								<h2 className="text-sm font-semibold text-foreground">改稿履歴</h2>
+								<span className="text-[11px] text-muted-foreground">{versions.length}件</span>
+							</div>
+							{versions.length > 0 ? (
+								<VersionTimeline
+									versions={versions.map((v) => ({ id: v.id, version_number: v.version_number, feedback: v.feedback, created_at: v.created_at }))}
+									selectedId={selectedId}
+									onSelect={setSelectedId}
+								/>
+							) : (
+								<p className="text-xs text-muted-foreground py-4 text-center">まだ稿がありません</p>
+							)}
+							<div className="text-[11px] text-muted-foreground mt-4 pt-3 border-t border-border leading-relaxed">⌘← / ⌘→ で版を移動できます</div>
+						</CardContent>
+					</Card>
+				</aside>
+
+				{/* HISTORY — lg/sm dropdown (hidden at xl) */}
+				{versions.length > 1 && (
+					<div className="xl:hidden">
+						<label className="text-[11px] font-medium text-muted-foreground mr-2">改稿履歴</label>
+						<select
+							value={selectedId ?? ""}
+							onChange={(e) => setSelectedId(e.target.value)}
+							className="text-sm border border-border rounded-lg px-2 py-1.5 bg-card"
+						>
+							{versions.map((v) => (
+								<option key={v.id} value={v.id}>第 {v.version_number} 稿{v.feedback ? ` — ${v.feedback.slice(0, 24)}` : ""}</option>
+							))}
+						</select>
 					</div>
 				)}
-				{selected ? (
-					<ScreenplayViewer
-						markdown={selected.markdown}
-						title={initialScreenplay.title}
-						versionLabel={`第 ${selected.version_number} 稿`}
-						createdAt={selected.created_at}
-						hasPrev={!!prev}
-						hasNext={!!next}
-						onPrev={goPrev}
-						onNext={goNext}
-						prevLabel={prev ? `v${pad(prev.version_number, 2)}` : undefined}
-						nextLabel={next ? `v${pad(next.version_number, 2)}` : undefined}
-						baseMarkdown={
-							selected.base_version_id
-								? versions.find((vv) => vv.id === selected.base_version_id)?.markdown
-								: undefined
-						}
-						screenplayId={initialScreenplay.id}
-						versionId={selected.id}
-					/>
-				) : !isGenerating ? (
-					<Card className="border-border border-dashed">
-						<CardContent className="py-16 flex flex-col items-center justify-center text-center">
-							<div className="w-14 h-14 bg-muted rounded-full flex items-center justify-center mb-3">
-								<FileText size={24} className="text-muted-foreground" />
-							</div>
-							<p className="text-sm text-foreground font-medium">まだ台本がありません</p>
-							<p className="text-xs text-muted-foreground mt-1">
-								右側のフォームから最初の台本を生成してください。
-							</p>
-						</CardContent>
-					</Card>
-				) : null}
-			</section>
 
-			{/* RIGHT — DIRECTOR'S NOTE + COMPLIANCE CHECK */}
-			<aside className="lg:sticky lg:top-20 self-start">
-				{selected ? (
-					<FeedbackForm
-						screenplayId={initialScreenplay.id}
-						baseVersionId={selected.id}
-						disabled={isGenerating}
-						onStart={handleRefineStart}
-					/>
-				) : (
-					<Card className="border-border">
-						<CardContent className="p-5 text-center text-xs text-muted-foreground">
-							最初の台本ができたら、ここで改稿できます。
-						</CardContent>
-					</Card>
-				)}
-				<CheckResultPanel
-					screenplayId={initialScreenplay.id}
-					versionId={selectedId ?? ""}
-					initialCheck={latestCheck ?? null}
-					initialCheckVersionId={initialScreenplay.current_version_id ?? null}
-				/>
-			</aside>
+				{/* CENTER — SCRIPT */}
+				<section className="min-w-0 lg:sticky lg:top-[7rem] self-start lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
+					{isGenerating && runId && (
+						<div className="mb-4">
+							<GenerationProgress runId={runId} onComplete={(versionId) => handleComplete(versionId)} variant={runVariant} />
+						</div>
+					)}
+					{selected ? (
+						<ScreenplayViewer markdown={selected.markdown} />
+					) : !isGenerating ? (
+						<Card className="border-border border-dashed">
+							<CardContent className="py-16 flex flex-col items-center justify-center text-center">
+								<div className="w-14 h-14 bg-muted rounded-full flex items-center justify-center mb-3">
+									<FileText size={24} className="text-muted-foreground" />
+								</div>
+								<p className="text-sm text-foreground font-medium">まだ台本がありません</p>
+								<p className="text-xs text-muted-foreground mt-1">右側のフォームから最初の台本を生成してください。</p>
+							</CardContent>
+						</Card>
+					) : null}
+				</section>
+
+				{/* RIGHT — REVIEW PANEL */}
+				<aside className="lg:sticky lg:top-[7rem] self-start lg:max-h-[calc(100vh-8rem)] overflow-y-auto min-h-0">
+					{selected ? (
+						<ReviewPanel
+							screenplayId={initialScreenplay.id}
+							version={selected}
+							baseMarkdown={baseMarkdown}
+							initialCheck={latestCheck ?? null}
+							initialCheckVersionId={initialCheckVersionId}
+							isGenerating={isGenerating}
+							activeTab={activeReviewTab}
+							onTabChange={setActiveReviewTab}
+							onRefineStart={handleRefineStart}
+						/>
+					) : (
+						<Card className="border-border">
+							<CardContent className="p-5 text-center text-xs text-muted-foreground">最初の台本ができたら、ここで改稿できます。</CardContent>
+						</Card>
+					)}
+				</aside>
+			</div>
 		</div>
 	);
 }
