@@ -92,7 +92,12 @@ export default async function ScreenplayDetailPage({ params }: { params: Promise
 				</div>
 			</header>
 
-			<ScreenplayWorkspace initialScreenplay={screenplay} initialVersions={versions} latestCheck={latestCheck} />
+			<ScreenplayWorkspace
+				initialScreenplay={screenplay}
+				initialVersions={versions}
+				latestCheck={latestCheck}
+				initialCheckVersionId={screenplay.current_version_id ?? null}
+			/>
 		</>
 	);
 }

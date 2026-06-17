@@ -1,17 +1,20 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Loader2, ShieldAlert, RefreshCw, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { ScriptCheckResult, Finding, Severity } from "@/lib/screenplay/compliance/types";
 
-interface CheckWithMeta extends ScriptCheckResult {
+export interface CheckWithMeta extends ScriptCheckResult {
 	created_at?: string;
 	lexicon_version?: string;
 }
 
 interface Props {
 	screenplayId: string;
+	versionId: string;
 	initialCheck: CheckWithMeta | null;
+	initialCheckVersionId: string | null;
+	onCheckChange?: (check: CheckWithMeta | null) => void;
 }
 
 const SEVERITY_CLS: Record<Severity, string> = {
@@ -158,21 +161,78 @@ function ReproducibilityInfo({ check }: { check: CheckWithMeta }) {
 	);
 }
 
-export function CheckResultPanel({ screenplayId, initialCheck }: Props) {
-	const [check, setCheck] = useState<CheckWithMeta | null>(initialCheck);
+export function CheckResultPanel({ screenplayId, versionId, initialCheck, initialCheckVersionId, onCheckChange }: Props) {
+	const seeded = versionId === initialCheckVersionId;
+	const [check, setCheck] = useState<CheckWithMeta | null>(seeded ? initialCheck : null);
 	const [busy, setBusy] = useState(false);
 	const [err, setErr] = useState<string | null>(null);
+	const [loading, setLoading] = useState(false);
+
+	// Tracks the currently-selected version so async responses (GET and the
+	// manual POST) can be dropped if the user switched versions mid-flight.
+	const versionRef = useRef(versionId);
+	useEffect(() => { versionRef.current = versionId; }, [versionId]);
+
+	// Seed the SSR initialCheck ONLY on the first render and only for the
+	// initially-selected version. Returning to that version later (e.g. after a
+	// manual re-check) fetches fresh, so a stale SSR snapshot never wins.
+	const firstRunRef = useRef(true);
+
+	useEffect(() => {
+		let cancelled = false;
+		const isFirst = firstRunRef.current;
+		firstRunRef.current = false;
+
+		if (isFirst && versionId === initialCheckVersionId) {
+			setLoading(false);
+			setCheck(initialCheck);
+			setErr(null);
+			onCheckChange?.(initialCheck);
+			return;
+		}
+
+		setLoading(true);
+		setErr(null);
+		setCheck(null);
+		onCheckChange?.(null);
+		(async () => {
+			try {
+				const res = await fetch(`/api/screenplays/${screenplayId}/versions/${versionId}/check`, { cache: "no-store" });
+				const j = (await res.json()) as { check?: CheckWithMeta | null; error?: string };
+				if (!res.ok) throw new Error(j.error ?? "試験結果の取得に失敗しました");
+				if (cancelled) return;
+				setCheck(j.check ?? null);
+				onCheckChange?.(j.check ?? null);
+			} catch (e) {
+				if (cancelled) return;
+				setCheck(null);
+				onCheckChange?.(null);
+				setErr(e instanceof Error ? e.message : String(e));
+			} finally {
+				if (!cancelled) setLoading(false);
+			}
+		})();
+		return () => { cancelled = true; };
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [versionId]);
 
 	async function recheck() {
+		const requestVersionId = versionId;
 		setBusy(true);
 		setErr(null);
 		try {
-			const res = await fetch(`/api/screenplays/${screenplayId}/check`, { method: "POST" });
+			const res = await fetch(`/api/screenplays/${screenplayId}/versions/${versionId}/check`, { method: "POST" });
 			const j = await res.json() as { check?: CheckWithMeta; error?: string };
 			if (!res.ok) throw new Error(j.error ?? "再チェックに失敗しました");
-			setCheck(j.check ?? null);
+			// Drop the result if the user switched versions while the POST was in flight.
+			if (requestVersionId === versionRef.current) {
+				setCheck(j.check ?? null);
+				onCheckChange?.(j.check ?? null);
+			}
 		} catch (e) {
-			setErr(e instanceof Error ? e.message : String(e));
+			if (requestVersionId === versionRef.current) {
+				setErr(e instanceof Error ? e.message : String(e));
+			}
 		} finally {
 			setBusy(false);
 		}
@@ -210,7 +270,11 @@ export function CheckResultPanel({ screenplayId, initialCheck }: Props) {
 					</div>
 				)}
 
-				{check ? (
+				{loading ? (
+					<p className="text-xs text-muted-foreground py-3 text-center flex items-center justify-center gap-2">
+						<Loader2 size={12} className="animate-spin" /> 試験結果を読み込み中…
+					</p>
+				) : check ? (
 					<>
 						<div className="flex items-baseline gap-2 mb-1">
 							<span className={`text-2xl font-bold ${scoreColor(check.overallScore)}`}>
