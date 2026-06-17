@@ -112,6 +112,9 @@ export function ScreenplayWorkspace({ initialScreenplay, initialVersions, latest
 
 	useEffect(() => {
 		function onKey(e: KeyboardEvent) {
+			const t = e.target as HTMLElement | null;
+			const tag = t?.tagName;
+			if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || t?.isContentEditable) return;
 			if (!(e.metaKey || e.ctrlKey)) return;
 			if (e.key === "ArrowLeft") { e.preventDefault(); goPrev(); }
 			else if (e.key === "ArrowRight") { e.preventDefault(); goNext(); }
@@ -160,7 +163,7 @@ export function ScreenplayWorkspace({ initialScreenplay, initialVersions, latest
 
 			<div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(360px,420px)] xl:grid-cols-[220px_minmax(0,1fr)_minmax(380px,440px)] gap-6">
 				{/* HISTORY — xl rail */}
-				<aside className="hidden xl:block xl:sticky xl:top-[7rem] self-start">
+				<aside className="hidden xl:block xl:sticky xl:top-[7rem] self-start xl:max-h-[calc(100vh-8rem)] xl:overflow-y-auto">
 					<Card className="border-border">
 						<CardContent className="p-4">
 							<div className="flex items-center justify-between mb-3">

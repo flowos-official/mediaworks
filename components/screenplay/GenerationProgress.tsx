@@ -1,7 +1,7 @@
 // components/screenplay/GenerationProgress.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2, CheckCircle2, AlertTriangle, Sparkles } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { ProgressEvent } from "@/lib/screenplay/types";
@@ -18,6 +18,9 @@ export function GenerationProgress({ runId, onComplete, variant = "generate" }: 
 	const [doneAt, setDoneAt] = useState<{ versionId: string; versionNumber: number } | null>(null);
 	const [startedAt] = useState<number>(() => Date.now());
 	const [now, setNow] = useState<number>(() => Date.now());
+
+	const onCompleteRef = useRef(onComplete);
+	useEffect(() => { onCompleteRef.current = onComplete; });
 
 	useEffect(() => {
 		if (doneAt || error) return;
@@ -51,7 +54,7 @@ export function GenerationProgress({ runId, onComplete, variant = "generate" }: 
 							setEvents((prev) => [...prev, ev]);
 							if (ev.type === "done") {
 								setDoneAt({ versionId: ev.versionId, versionNumber: ev.versionNumber });
-								onComplete(ev.versionId, ev.versionNumber);
+								onCompleteRef.current(ev.versionId, ev.versionNumber);
 							} else if (ev.type === "error") {
 								setError(ev.message);
 							}
@@ -71,7 +74,7 @@ export function GenerationProgress({ runId, onComplete, variant = "generate" }: 
 						const sj = (await sr.json()) as { status: string; returnValue?: { versionId: string; versionNumber: number } };
 						if (sj.status === "completed" && sj.returnValue) {
 							setDoneAt({ versionId: sj.returnValue.versionId, versionNumber: sj.returnValue.versionNumber });
-							onComplete(sj.returnValue.versionId, sj.returnValue.versionNumber);
+							onCompleteRef.current(sj.returnValue.versionId, sj.returnValue.versionNumber);
 							return;
 						}
 						if (sj.status === "failed") {
@@ -91,7 +94,7 @@ export function GenerationProgress({ runId, onComplete, variant = "generate" }: 
 			cancelled = true;
 			controller.abort();
 		};
-	}, [runId, onComplete]);
+	}, [runId]);
 
 	const lastChunk = [...events].reverse().find((e) => e.type === "chunk") as { type: "chunk"; chars: number } | undefined;
 	const elapsedSec = Math.floor((now - startedAt) / 1000);

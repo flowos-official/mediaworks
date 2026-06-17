@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Loader2, ShieldAlert, RefreshCw, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { ScriptCheckResult, Finding, Severity } from "@/lib/screenplay/compliance/types";
@@ -168,17 +168,29 @@ export function CheckResultPanel({ screenplayId, versionId, initialCheck, initia
 	const [err, setErr] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
 
-	// Refetch when the selected version changes. The initial render for the
-	// SSR-seeded version skips the fetch (uses initialCheck); every other
-	// version fetches its own latest check and never shows a stale result.
+	// Tracks the currently-selected version so async responses (GET and the
+	// manual POST) can be dropped if the user switched versions mid-flight.
+	const versionRef = useRef(versionId);
+	useEffect(() => { versionRef.current = versionId; }, [versionId]);
+
+	// Seed the SSR initialCheck ONLY on the first render and only for the
+	// initially-selected version. Returning to that version later (e.g. after a
+	// manual re-check) fetches fresh, so a stale SSR snapshot never wins.
+	const firstRunRef = useRef(true);
+
 	useEffect(() => {
 		let cancelled = false;
-		if (versionId === initialCheckVersionId) {
+		const isFirst = firstRunRef.current;
+		firstRunRef.current = false;
+
+		if (isFirst && versionId === initialCheckVersionId) {
+			setLoading(false);
 			setCheck(initialCheck);
 			setErr(null);
 			onCheckChange?.(initialCheck);
 			return;
 		}
+
 		setLoading(true);
 		setErr(null);
 		setCheck(null);
@@ -205,16 +217,22 @@ export function CheckResultPanel({ screenplayId, versionId, initialCheck, initia
 	}, [versionId]);
 
 	async function recheck() {
+		const requestVersionId = versionId;
 		setBusy(true);
 		setErr(null);
 		try {
 			const res = await fetch(`/api/screenplays/${screenplayId}/versions/${versionId}/check`, { method: "POST" });
 			const j = await res.json() as { check?: CheckWithMeta; error?: string };
 			if (!res.ok) throw new Error(j.error ?? "再チェックに失敗しました");
-			setCheck(j.check ?? null);
-			onCheckChange?.(j.check ?? null);
+			// Drop the result if the user switched versions while the POST was in flight.
+			if (requestVersionId === versionRef.current) {
+				setCheck(j.check ?? null);
+				onCheckChange?.(j.check ?? null);
+			}
 		} catch (e) {
-			setErr(e instanceof Error ? e.message : String(e));
+			if (requestVersionId === versionRef.current) {
+				setErr(e instanceof Error ? e.message : String(e));
+			}
 		} finally {
 			setBusy(false);
 		}
