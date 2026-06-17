@@ -52,11 +52,14 @@ async function backfillQVC(): Promise<{
 	const candidates = rows.length;
 	if (candidates === 0) return { candidates: 0, updated: 0, skipped: 0 };
 
-	// Collect first product_ids and look up their category from qvc_products.
+	// Collect ALL product_ids (not just the lead one) and look up their category
+	// from qvc_products. QVC's lead product is often unenriched while a later
+	// product carries the category, so scanning all ids recovers slots the
+	// first-only lookup would skip.
 	const productIds = Array.from(
 		new Set(
 			(rows as { id: string; product_ids: string[] | null }[])
-				.map((r) => r.product_ids?.[0])
+				.flatMap((r) => r.product_ids ?? [])
 				.filter((p): p is string => typeof p === "string"),
 		),
 	);
@@ -73,8 +76,10 @@ async function backfillQVC(): Promise<{
 	let updated = 0;
 	let skipped = 0;
 	for (const r of rows as { id: string; product_ids: string[] | null }[]) {
-		const firstId = r.product_ids?.[0];
-		const category = firstId ? productCategory.get(firstId) : undefined;
+		// First product (in slot order) that has a known category.
+		const category = (r.product_ids ?? [])
+			.map((pid) => productCategory.get(pid))
+			.find((c): c is string => typeof c === "string");
 		if (!category) {
 			skipped += 1;
 			continue;

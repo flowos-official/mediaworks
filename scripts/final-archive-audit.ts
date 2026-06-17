@@ -7,11 +7,7 @@
  *   3. Any unexpected anomalies (e.g. archived rows without archived_video_s3)
  */
 import { getServiceClient } from "../lib/supabase";
-
-const QVC_WHITELIST = new Set([
-	"ビューティ", "ファッション", "ホーム・キッチン",
-	"レジャー・ホビー", "健康・ダイエット", "家電",
-]);
+import { loadWhitelist, isAllowed } from "../lib/broadcasts/category-filter";
 
 interface Row {
 	channel: string;
@@ -48,6 +44,24 @@ async function main(): Promise<void> {
 	const rows = await pageAll();
 	console.log(`=== Last 30 days: ${rows.length} broadcast rows ===\n`);
 
+	// Resolve QVC product video_url + category so the anomaly count reflects
+	// reality: a slot has video if ANY product has a digest clip (not just the
+	// lead one), and a NULL broadcasts.category is resolved from the product.
+	const sb = getServiceClient();
+	const whitelist = await loadWhitelist();
+	const qvcPids = [...new Set(rows.filter((r) => r.channel === "qvc").flatMap((r) => r.product_ids ?? []))];
+	const pVideo = new Map<string, boolean>();
+	const pCat = new Map<string, string | null>();
+	for (let i = 0; i < qvcPids.length; i += 500) {
+		const { data } = await sb.from("qvc_products").select("id,video_url,category").in("id", qvcPids.slice(i, i + 500));
+		for (const p of (data ?? []) as { id: string; video_url: string | null; category: string | null }[]) {
+			pVideo.set(p.id, !!p.video_url);
+			pCat.set(p.id, p.category);
+		}
+	}
+	const anyVideo = (r: Row) => (r.product_ids ?? []).some((pid) => pVideo.get(pid));
+	const effCategory = (r: Row): string | null => r.category ?? (r.product_ids ?? []).map((pid) => pCat.get(pid)).find((c) => c) ?? null;
+
 	// All-time totals (last 30 days) per channel
 	for (const ch of ["shopch", "qvc"] as const) {
 		const sub = rows.filter((r) => r.channel === ch);
@@ -72,13 +86,14 @@ async function main(): Promise<void> {
 		const shArch = sh.filter((r) => r.archived_video_s3).length;
 		const qArch = q.filter((r) => r.archived_video_s3).length;
 
-		// Anomaly: QVC in whitelist + product_ids present but not archived
-		const qAnomaly = q.filter((r) =>
-			!r.archived_video_s3 &&
-			r.category && QVC_WHITELIST.has(r.category) &&
-			r.product_ids && r.product_ids.length > 0 &&
-			r.video_status !== "deferred",
-		);
+		// Anomaly: QVC not archived but a video exists for a whitelist slot.
+		// Counts deferred slots (lead product had no digest, a later one does) and
+		// resolves a NULL broadcasts.category from the product — the two cases the
+		// previous (category && !deferred) filter silently under-reported.
+		const qAnomaly = q.filter((r) => {
+			if (r.archived_video_s3) return false;
+			return isAllowed(whitelist, "qvc", effCategory(r)) && anyVideo(r);
+		});
 		anomalyCount += qAnomaly.length;
 		const marker = qAnomaly.length > 0 ? `  ⚠ ${qAnomaly.length}` : "";
 		console.log(`${d}  ${String(shArch).padStart(3)}/${String(sh.length).padEnd(3)}              ${String(qArch).padStart(3)}/${String(q.length).padEnd(3)}${marker}`);

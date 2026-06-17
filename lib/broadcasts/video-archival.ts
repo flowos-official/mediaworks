@@ -13,6 +13,7 @@ import { Readable } from "node:stream";
 import ffmpegInstaller from "@ffmpeg-installer/ffmpeg";
 import { getServiceClient } from "@/lib/supabase";
 import { buildProgramId } from "./shopch-json";
+import { resolveQvcVideoUrl } from "./qvc-video-resolver";
 import { broadcastVideoKey, uploadStreamToS3 } from "./video-storage";
 
 const MAX_ATTEMPTS = 5;
@@ -34,23 +35,15 @@ export interface ArchiveResult {
 }
 
 /** Look up the m3u8 URL for the slot.
- *  QVC: per-product video_url stored on qvc_products by the enrichment cron.
+ *  QVC: per-PRODUCT digest clip on qvc_products.video_url. Scans ALL the slot's
+ *    products (not just the lead one) via the shared resolver, so a slot whose
+ *    lead product lacks a digest but a later product has one still archives.
  *  ShopCh: per-program video derived from programId (= air_date + start_time).
  *    Pattern confirmed against shop.jp on 2026-05-27 — public CloudFront,
  *    no auth/cookies/Referer required. */
 async function resolveVideoUrl(slot: QueuedSlot): Promise<string | null> {
 	if (slot.channel === "qvc") {
-		const firstPid = slot.product_ids?.[0];
-		if (!firstPid) return null;
-		const sb = getServiceClient();
-		const { data } = await sb
-			.from("qvc_products")
-			.select("video_url")
-			.eq("id", firstPid)
-			.maybeSingle();
-		const url = (data as { video_url: string | null } | null)?.video_url ?? null;
-		if (!url) return null;
-		return url.startsWith("http") ? url : `https:${url}`;
+		return resolveQvcVideoUrl(slot.product_ids);
 	}
 	if (slot.channel === "shopch") {
 		const programId = buildProgramId(slot.air_date, slot.start_time);

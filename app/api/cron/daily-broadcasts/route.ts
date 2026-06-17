@@ -3,7 +3,7 @@ import { revalidateTag } from "next/cache";
 import { scrapeAllForDate } from "@/lib/broadcasts";
 import { enrichQvcProducts } from "@/lib/qvc-products/enrich";
 import { getServiceClient } from "@/lib/supabase";
-import { loadWhitelist, isAllowed } from "@/lib/broadcasts/category-filter";
+import { loadWhitelist, isAllowed, normalizeCategory } from "@/lib/broadcasts/category-filter";
 import { getYesterdayJST, getJSTYearMonth } from "@/lib/broadcasts/jst-date";
 import {
 	buildQvcSnapshotRows,
@@ -29,38 +29,74 @@ async function enrichQvcSlotSnapshots(
 	qvcSlots: Array<{ channel: string; air_date: string; start_time: string; product_ids: string[] | null; category: string | null }>,
 	broadcastIdMap: Map<string, string>,
 	whitelist: Map<string, Set<string>>,
-): Promise<{ snapshotRows: number; brandUpdates: number; videoQueued: number; videoDeferred: number }> {
+): Promise<{ snapshotRows: number; brandUpdates: number; videoQueued: number; videoDeferred: number; categoryBackfilled: number }> {
 	const sb = getServiceClient();
 	let snapshotRows = 0;
 	let brandUpdates = 0;
 	let videoQueued = 0;
 	let videoDeferred = 0;
+	let categoryBackfilled = 0;
 
-	// Collect all unique product IDs from whitelist-matching slots.
-	const eligibleSlots = qvcSlots.filter(
-		(s) => s.product_ids && s.product_ids.length > 0 && isAllowed(whitelist, "qvc", s.category),
-	);
-	if (eligibleSlots.length === 0) return { snapshotRows, brandUpdates, videoQueued, videoDeferred };
+	// Consider ALL slots with products first. A brand-new product is unenriched
+	// at scrape time, so the slot's own category is NULL — but enrichQvcProducts
+	// (which ran just before this) has now populated qvc_products.category, so we
+	// resolve an effective category from the products and backfill the NULL
+	// broadcasts.category. Without this, new whitelist slots stay category-null
+	// and never enter the archive queue (fail-closed whitelist).
+	const slotsWithProducts = qvcSlots.filter((s) => s.product_ids && s.product_ids.length > 0);
+	if (slotsWithProducts.length === 0) return { snapshotRows, brandUpdates, videoQueued, videoDeferred, categoryBackfilled };
 
-	const allProductIds = [...new Set(eligibleSlots.flatMap((s) => s.product_ids ?? []))];
+	const allProductIds = [...new Set(slotsWithProducts.flatMap((s) => s.product_ids ?? []))];
 
-	// Fetch qvc_products rows for all needed IDs in one query.
+	// Fetch qvc_products rows for all needed IDs in one query (incl. category).
 	const { data: qvcProductRows, error: productError } = await sb
 		.from("qvc_products")
-		.select("id,name,image_url,price_text,brand,original_price_jpy,sale_label,video_url")
+		.select("id,name,image_url,price_text,brand,original_price_jpy,sale_label,video_url,category")
 		.in("id", allProductIds);
 
 	if (productError) {
 		console.warn("[snapshot] qvc_products fetch failed:", productError.message);
-		return { snapshotRows, brandUpdates, videoQueued, videoDeferred };
+		return { snapshotRows, brandUpdates, videoQueued, videoDeferred, categoryBackfilled };
 	}
 
-	const products = (qvcProductRows ?? []) as (QvcProductLike & { video_url?: string | null })[];
+	const products = (qvcProductRows ?? []) as (QvcProductLike & { video_url?: string | null; category?: string | null })[];
+	const categoryById = new Map<string, string | null>();
+	for (const p of products) categoryById.set(p.id, p.category ?? null);
+
+	// Effective category: the slot's own when present, else the first product (in
+	// slot order) that carries a category. Mirrors the whitelist gate's intent.
+	const effectiveCategory = (s: { category: string | null; product_ids: string[] | null }): string | null => {
+		if (normalizeCategory(s.category)) return s.category;
+		for (const pid of s.product_ids ?? []) {
+			const c = categoryById.get(pid);
+			if (c) return c;
+		}
+		return null;
+	};
+
+	const eligibleSlots = slotsWithProducts.filter((s) => isAllowed(whitelist, "qvc", effectiveCategory(s)));
+	if (eligibleSlots.length === 0) return { snapshotRows, brandUpdates, videoQueued, videoDeferred, categoryBackfilled };
 
 	for (const slot of eligibleSlots) {
 		const key = `${slot.channel}|${slot.air_date}|${slot.start_time}`;
 		const broadcastId = broadcastIdMap.get(key);
 		if (!broadcastId) continue;
+
+		// Backfill a NULL broadcasts.category from the resolved product category so
+		// reconciliation (which reads DB category) and the UI gate see it. CAS on
+		// `category IS NULL` so we never overwrite a real value.
+		if (!normalizeCategory(slot.category)) {
+			const effCat = effectiveCategory(slot);
+			if (effCat) {
+				const { data: catUpd } = await sb
+					.from("broadcasts")
+					.update({ category: effCat })
+					.eq("id", broadcastId)
+					.is("category", null)
+					.select("id");
+				if (catUpd && catUpd.length > 0) categoryBackfilled++;
+			}
+		}
 
 		const productIds = slot.product_ids ?? [];
 		const slotProducts = products.filter((p) => productIds.includes(p.id));
@@ -113,7 +149,7 @@ async function enrichQvcSlotSnapshots(
 		}
 	}
 
-	return { snapshotRows, brandUpdates, videoQueued, videoDeferred };
+	return { snapshotRows, brandUpdates, videoQueued, videoDeferred, categoryBackfilled };
 }
 
 /**
@@ -226,7 +262,7 @@ export async function GET(req: NextRequest) {
 				summary.broadcastIds,
 				whitelist,
 			)
-		: { snapshotRows: 0, brandUpdates: 0, videoQueued: 0, videoDeferred: 0 };
+		: { snapshotRows: 0, brandUpdates: 0, videoQueued: 0, videoDeferred: 0, categoryBackfilled: 0 };
 
 	const shopchSnapshot = shopchResult?.ok && shopchResult.shopchMetadataByProgramId
 		? await enrichShopChSlotSnapshots(
@@ -267,6 +303,7 @@ export async function GET(req: NextRequest) {
 				brandUpdates: qvcSnapshot.brandUpdates,
 				videoQueued: qvcSnapshot.videoQueued,
 				videoDeferred: qvcSnapshot.videoDeferred,
+				categoryBackfilled: qvcSnapshot.categoryBackfilled,
 			},
 			shopch: {
 				snapshotRows: shopchSnapshot.snapshotRows,

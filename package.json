@@ -80,6 +80,7 @@
     "test:qvc-brand": "tsx scripts/test-qvc-fetcher-brand.ts",
     "test:shopch-products": "tsx scripts/test-shopch-products-snapshot.ts",
     "test:snapshot-enrichment": "tsx scripts/test-snapshot-enrichment.ts",
+    "test:qvc-video-resolver": "tsx scripts/test-qvc-video-resolver.ts",
     "backfill:broadcast-products": "tsx --env-file=.env.local scripts/backfill-broadcast-products.ts",
     "drain:archive-queue": "tsx --env-file=.env.local scripts/drain-archive-queue.ts",
     "daily:archive": "npm run backfill:broadcast-products && npm run drain:archive-queue",
