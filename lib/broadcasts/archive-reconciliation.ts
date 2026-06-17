@@ -7,6 +7,7 @@
 import { getServiceClient } from "@/lib/supabase";
 import { loadWhitelist, isAllowed } from "./category-filter";
 import { buildProgramId } from "./shopch-json";
+import { resolveQvcVideoUrl } from "./qvc-video-resolver";
 
 export type VideoStatus =
   | "pending" | "queued" | "downloading" | "archived"
@@ -134,14 +135,12 @@ function jstDate(now: Date, offsetDays: number): string {
   return new Date(now.getTime() + 9 * 3_600_000 + offsetDays * 86_400_000).toISOString().slice(0, 10);
 }
 
-/** Default probe: QVC = lead product video_url present (DB); ShopCh = m3u8 200/206 (HTTP). */
+/** Default probe: QVC = ANY product has a video_url (DB, shared resolver);
+ *  ShopCh = m3u8 200/206 (HTTP). Sharing resolveQvcVideoUrl keeps the probe's
+ *  "has video?" verdict identical to what the downloader will actually fetch. */
 export async function defaultProbeVideo(slot: ReconcileSlot): Promise<boolean> {
   if (slot.channel === "qvc") {
-    const pid = slot.product_ids?.[0];
-    if (!pid) return false;
-    const sb = getServiceClient();
-    const { data } = await sb.from("qvc_products").select("video_url").eq("id", pid).maybeSingle();
-    return !!(data as { video_url: string | null } | null)?.video_url;
+    return !!(await resolveQvcVideoUrl(slot.product_ids));
   }
   const programId = buildProgramId(slot.air_date, slot.start_time);
   const url = `https://www.shopch.jp/m3u8/prog/${programId}/${programId}_jwplayer.m3u8`;
