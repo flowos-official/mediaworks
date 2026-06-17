@@ -11,7 +11,8 @@
  *   npm run backfill:broadcast-products
  */
 import { getServiceClient } from "../lib/supabase";
-import { loadWhitelist, isAllowed } from "../lib/broadcasts/category-filter";
+import { loadWhitelist, isAllowed, normalizeCategory } from "../lib/broadcasts/category-filter";
+import { pickFirstVideoUrl } from "../lib/broadcasts/qvc-video-resolver";
 import {
 	buildQvcSnapshotRows,
 	buildShopChSnapshotRows,
@@ -67,31 +68,45 @@ async function backfillQVC(
 			product_ids: string[] | null;
 		};
 		const rows = data as BroadcastRow[];
+		let eligibleCount = 0;
 
-		// Filter to whitelist-matching slots that have at least one product_id
-		const eligible = rows.filter(
-			(r) =>
-				Array.isArray(r.product_ids) &&
-				r.product_ids.length > 0 &&
-				isAllowed(whitelist, "qvc", r.category),
+		// Slots with at least one product_id. Whitelist is decided AFTER we fetch
+		// product categories, so a NULL broadcasts.category (unenriched at scrape
+		// time) can be resolved from the product — matching the daily cron.
+		const withPids = rows.filter(
+			(r) => Array.isArray(r.product_ids) && r.product_ids.length > 0,
 		);
 
-		if (eligible.length > 0) {
-			// Collect all unique product IDs across eligible slots
+		if (withPids.length > 0) {
+			// Collect all unique product IDs across these slots
 			const allProductIds = Array.from(
-				new Set(eligible.flatMap((r) => r.product_ids as string[])),
+				new Set(withPids.flatMap((r) => r.product_ids as string[])),
 			);
 
-			// Fetch qvc_products in one go
+			// Fetch qvc_products in one go (incl. category for effective-category resolution)
 			const { data: qvcProductsRaw } = await sb
 				.from("qvc_products")
-				.select("id, name, image_url, price_text, brand, original_price_jpy, sale_label, video_url")
+				.select("id, name, image_url, price_text, brand, original_price_jpy, sale_label, video_url, category")
 				.in("id", allProductIds);
 
-			type QvcProductRow = QvcProductLike & { video_url?: string | null };
+			type QvcProductRow = QvcProductLike & { video_url?: string | null; category?: string | null };
 			const qvcProducts = (qvcProductsRaw ?? []) as QvcProductRow[];
 			const byId = new Map<string, QvcProductRow>();
-			for (const p of qvcProducts) byId.set(p.id, p);
+			const videoUrlById = new Map<string, string | null>();
+			for (const p of qvcProducts) { byId.set(p.id, p); videoUrlById.set(p.id, p.video_url ?? null); }
+
+			// Effective category: slot's own, else first product (in order) with one.
+			const effectiveCategory = (r: BroadcastRow): string | null => {
+				if (normalizeCategory(r.category)) return r.category;
+				for (const pid of r.product_ids ?? []) {
+					const c = byId.get(pid)?.category;
+					if (c) return c;
+				}
+				return null;
+			};
+
+			const eligible = withPids.filter((r) => isAllowed(whitelist, "qvc", effectiveCategory(r)));
+			eligibleCount = eligible.length;
 
 			for (const row of eligible) {
 				const pids = row.product_ids as string[];
@@ -109,13 +124,19 @@ async function backfillQVC(
 					continue;
 				}
 
-				// Determine brand and video_status
+				// Backfill a NULL broadcasts.category from the resolved product
+				// category (CAS on category IS NULL) so reconciliation + the UI gate
+				// see it. Matches the daily cron.
+				const effCat = effectiveCategory(row);
+				if (!normalizeCategory(row.category) && effCat) {
+					await sb.from("broadcasts").update({ category: effCat }).eq("id", row.id).is("category", null);
+				}
+
+				// Determine brand and video_status. hasVideo scans ALL products via
+				// the shared resolver — using product_ids[0] only is the lead-product
+				// bug that left queued slots re-deferred when this backfill re-ran.
 				const brandName = pickBrandFromQvcProducts(pids, slotProducts);
-				const firstProduct = byId.get(pids[0]);
-				const hasVideo = !!(
-					firstProduct?.video_url &&
-					(firstProduct.video_url as string).length > 0
-				);
+				const hasVideo = !!pickFirstVideoUrl(pids, videoUrlById);
 				const videoStatus: string = hasVideo ? "queued" : "deferred";
 
 				const { error: updateErr } = await sb
@@ -158,7 +179,7 @@ async function backfillQVC(
 		}
 
 		console.log(
-			`[qvc] page ${page}: rows=${rows.length} eligible=${eligible.length} updated=${qvcUpdated}`,
+			`[qvc] page ${page}: rows=${rows.length} eligible=${eligibleCount} updated=${qvcUpdated}`,
 		);
 
 		if (data.length < PAGE_SIZE) break;
