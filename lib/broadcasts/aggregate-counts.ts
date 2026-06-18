@@ -1,5 +1,6 @@
 import { getServiceClient } from "@/lib/supabase";
 import { MISDATED_OA_OR_CLAUSES } from "./misdated-suppression";
+import { DELISTED_CALENDAR_CHANNELS } from "./channel-style";
 
 const CHUNK_SIZE = 1000;
 // Safety stop in case the table grows unexpectedly. 45-day SSR window with
@@ -36,11 +37,14 @@ export async function aggregateCalendarCounts(
 				.order("air_date", { ascending: true })
 				.order("channel", { ascending: true })
 				.range(offset, offset + CHUNK_SIZE - 1);
-			// Hide mis-dated OA rows (ntv/junsanpo/tbs blanket-stamp pollution).
-			// historical_broadcasts only — the broadcasts table has no source_sheet
-			// column. See misdated-suppression.ts.
+			// Hide mis-dated OA rows (ntv/junsanpo/tbs blanket-stamp pollution) and
+			// delisted channels (ropping) whose rows are preserved but must not be
+			// counted on the calendar. historical_broadcasts only — the broadcasts
+			// table has no source_sheet column / OA channels. See
+			// misdated-suppression.ts + channel-style.ts::DELISTED_CALENDAR_CHANNELS.
 			if (table === "historical_broadcasts") {
 				for (const clause of MISDATED_OA_OR_CLAUSES) query = query.or(clause);
+				for (const ch of DELISTED_CALENDAR_CHANNELS) query = query.neq("channel", ch);
 			}
 			const { data, error } = await query;
 			if (error || !data) break;

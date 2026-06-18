@@ -1,5 +1,6 @@
 import { requireUser } from "@/lib/auth/require-user";
 import { MISDATED_OA_OR_CLAUSES } from "@/lib/broadcasts/misdated-suppression";
+import { DELISTED_CALENDAR_CHANNELS } from "@/lib/broadcasts/channel-style";
 import { type NextRequest, NextResponse } from "next/server";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -13,9 +14,12 @@ const OA_CHANNELS = new Set([
 	"senobura",
 	"uranoura",
 	"txd",
-	"ropping",
 	"kantv",
 ]);
+// ropping was delisted from the calendar 2026-06-18 (duplicate of junsanpo).
+// Its historical_broadcasts rows are preserved but excluded from this read API
+// so they don't resurface in the calendar's free-text search. Shared list in
+// lib/broadcasts/channel-style.ts::DELISTED_CALENDAR_CHANNELS.
 
 export interface HistoricalBroadcastRow {
 	id: string;
@@ -77,6 +81,9 @@ export async function GET(req: NextRequest) {
 		.range(offset, offset + limit - 1);
 
 	if (channel) q = q.eq("channel", channel);
+	// Exclude delisted channels (ropping) from list + search — rows are kept in
+	// the DB but must not appear in the calendar.
+	for (const delisted of DELISTED_CALENDAR_CHANNELS) q = q.neq("channel", delisted);
 	if (date) q = q.eq("air_date", date);
 	if (from) q = q.gte("air_date", from);
 	if (to) q = q.lte("air_date", to);

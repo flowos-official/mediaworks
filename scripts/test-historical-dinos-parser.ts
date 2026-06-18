@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { parseDinos } from "../lib/historical-crawl/parsers/dinos";
+import { parseDinos, parseDinosProductDetail } from "../lib/historical-crawl/parsers/dinos";
 
 const FIXTURE = join(process.cwd(), "scripts/fixtures/historical-crawl/dinos-schedule.html");
 const JST_DATE = "2026-06-15";
@@ -32,5 +32,23 @@ ok(maxSpan <= 2, `max product date-span is small (${maxSpan})`);
 ok(rows.some((r) => r.air_date > JST_DATE), "forward broadcast days present (dated from alt, not jstDate)");
 ok(rows.every((r) => r.image_url), "image extracted for every entry");
 ok(rows.some((r) => r.product_name.includes("クリアージュ") && r.air_date === "2026-06-01"), "クリアージュ アイリフトNeo dated 2026-06-01");
+
+// --- product detail enrichment (price + image from /p/ page) ---
+// Minimal HTML mirroring the real dinos /p/ markup observed 2026-06-18.
+const PRODUCT_HTML = `<!doctype html><html><head>
+<meta property="og:image" content="https://www.dinos.co.jp/defaultMall/images/goods/TAA/2606/etc/T61691c1.jpg">
+<meta property="product:price:amount" content="5980">
+<meta property="og:title" content="猛暑対策ディノス特別セット 通販 - ディノス">
+</head><body>
+<div class="box-cart-price-01">¥5,980 税込</div>
+<div class="price fs-small">¥6,578</div>
+</body></html>`;
+const detail = parseDinosProductDetail(PRODUCT_HTML, "https://www.dinos.co.jp/p/N000434304/");
+ok(detail.price_jpy === 5980, `detail price from product:price:amount (got ${detail.price_jpy})`);
+ok(detail.price_is_tax_incl === true, "detail price flagged 税込");
+ok(detail.image_url === "https://www.dinos.co.jp/defaultMall/images/goods/TAA/2606/etc/T61691c1.jpg", "detail og:image extracted");
+
+const empty = parseDinosProductDetail("<html><head></head><body>no price here</body></html>", "https://www.dinos.co.jp/p/x/");
+ok(empty.price_jpy === null && empty.image_url === null, "detail parse returns nulls when markup absent (non-fatal)");
 
 console.log(`\n[test:historical-dinos-parser] ${rows.length} rows / ${distinct} dates, maxSpan=${maxSpan}, ${pass} assertions passed`);
