@@ -8,6 +8,7 @@ import {
 	type PerChannelRunEntry,
 	type RunStatus,
 } from "@/lib/historical-crawl/runs";
+import { maybeSendCrawlAlert } from "@/lib/historical-crawl/alert";
 
 export const maxDuration = 300;
 
@@ -92,6 +93,24 @@ export async function GET(req: NextRequest) {
 
 		console.log(JSON.stringify(log));
 
+		// Proactive ops alert (PUSH): ping ALERT_WEBHOOK_URL on a partial run, a
+		// channel that errored, or a channel whose row count dropped below 50% of
+		// its 7-day median. Silent when healthy. Best-effort — an alert failure
+		// must never break the crawl, so it is fully wrapped.
+		try {
+			const r = await maybeSendCrawlAlert({ jstDate: date, status, channels });
+			if (r.alerts.length > 0 && !r.sent) {
+				console.warn(
+					`[cron daily-historical-broadcasts] alert not sent (${r.skippedReason ?? r.error}): ${r.alerts.length} condition(s)`,
+				);
+			}
+		} catch (err) {
+			console.warn(
+				"[cron daily-historical-broadcasts] alert failed:",
+				err instanceof Error ? err.message : String(err),
+			);
+		}
+
 		return NextResponse.json({ ok: true, ...log });
 	} catch (err) {
 		const msg = err instanceof Error ? err.message : String(err);
@@ -106,6 +125,18 @@ export async function GET(req: NextRequest) {
 			error: msg.slice(0, 500),
 		});
 		console.error("[cron daily-historical-broadcasts] failed:", msg);
+
+		// Alert on total failure too — there are no per-channel rows here, so this
+		// fires a single run_failed ping. Best-effort, never rethrows.
+		try {
+			await maybeSendCrawlAlert({ jstDate: date, status: "failed", channels: [] });
+		} catch (alertErr) {
+			console.warn(
+				"[cron daily-historical-broadcasts] failure-alert failed:",
+				alertErr instanceof Error ? alertErr.message : String(alertErr),
+			);
+		}
+
 		return NextResponse.json(
 			{ ok: false, runId, error: msg },
 			{ status: 500 },
