@@ -10,7 +10,9 @@ import { uranouraParser } from "./parsers/uranoura";
 import { dinosParser } from "./parsers/dinos";
 import { japanetParser } from "./parsers/japanet";
 import { txdParser } from "./parsers/txd";
-import { roppingParser } from "./parsers/ropping";
+// roppingParser intentionally NOT imported/registered: ropping was delisted
+// from the broadcast calendar 2026-06-18 (duplicate of junsanpo). The parser
+// file is kept for re-enablement. See lib/broadcasts/channel-style.ts.
 import { kantvParser } from "./parsers/kantv";
 
 export const ALL_PARSERS: readonly ChannelParser[] = [
@@ -22,7 +24,6 @@ export const ALL_PARSERS: readonly ChannelParser[] = [
 	dinosParser,
 	japanetParser,
 	txdParser,
-	roppingParser,
 	kantvParser,
 ];
 

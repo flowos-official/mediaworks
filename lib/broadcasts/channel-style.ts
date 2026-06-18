@@ -2,7 +2,7 @@
 // Single source of truth so DayDetailPanel and HistoricalBroadcasts stay
 // consistent.
 //
-// Scope: 12 channels (qvc + shopch + 10 OA channels with scrapeable schedule
+// Scope: 11 channels (qvc + shopch + 9 OA channels with scrapeable schedule
 // pages). Discovery uses a different, larger registry —
 // `lib/discovery/tv-channels.ts` (15 channels) — that adds Brave site:-only
 // channels with no schedule pages. Don't unify the two: this list is the
@@ -11,6 +11,14 @@
 //
 // History: btops was removed 2026-05-17 after the site closed.
 // ropping + kantv added 2026-05-21 (PR #69 broadcast parsers).
+// ropping DELISTED from the calendar 2026-06-18: its on-air list (ropping.jp)
+// duplicates テレ朝じゅん散歩 (junsanpo — same TV-Asahi Ropping source, ~82% of
+// products shared). Removed from OA_CHANNELS so it no longer renders on the
+// calendar; the slug is retained in the type + badge/dot/short maps below so
+// preserved historical_broadcasts rows still render gracefully if surfaced.
+// roppingParser is also unregistered in lib/historical-crawl/index.ts (no new
+// rows) and excluded from the historical-broadcasts search API. Discovery
+// sourcing (lib/discovery/*) is intentionally untouched.
 
 export type BroadcastChannelSlug =
 	| "qvc"
@@ -35,9 +43,15 @@ export const OA_CHANNELS: { slug: BroadcastChannelSlug; name: string }[] = [
 	{ slug: "senobura", name: "ABCせのぶら" },
 	{ slug: "uranoura", name: "ABCウラのウラまで" },
 	{ slug: "txd", name: "テレ東マート" },
-	{ slug: "ropping", name: "ロッピング" },
 	{ slug: "kantv", name: "カンテレSHOPPING" },
 ];
+
+// Channels delisted from the calendar whose historical_broadcasts rows are kept
+// in the DB (history preserved). EVERY calendar read/aggregate path over
+// historical_broadcasts must exclude these so retained rows never resurface in
+// counts, lists, or search — apply via `.neq("channel", ch)`. ropping delisted
+// 2026-06-18 (duplicate of junsanpo). Discovery sourcing is NOT affected.
+export const DELISTED_CALENDAR_CHANNELS = ["ropping"] as const;
 
 export const ALL_CHANNELS: { slug: BroadcastChannelSlug; name: string }[] = [
 	{ slug: "qvc", name: "QVC" },

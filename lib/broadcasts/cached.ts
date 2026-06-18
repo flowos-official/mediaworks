@@ -13,7 +13,6 @@ const OA_CHANNEL_SLUGS = [
 	"senobura",
 	"uranoura",
 	"txd",
-	"ropping",
 	"kantv",
 ] as const;
 
