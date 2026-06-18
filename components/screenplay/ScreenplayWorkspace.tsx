@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { FileText } from "lucide-react";
@@ -123,9 +123,29 @@ export function ScreenplayWorkspace({ initialScreenplay, initialVersions, latest
 		return () => window.removeEventListener("keydown", onKey);
 	}, [goPrev, goNext]);
 
-	const baseMarkdown = selected?.base_version_id
-		? versions.find((vv) => vv.id === selected.base_version_id)?.markdown
-		: undefined;
+	// Hunk → script jump: scroll the left pane to the block whose source line
+	// best matches the hunk's start, then flash it. Blocks carry data-md-line
+	// (0-based source line, set by the markdown renderer).
+	const scriptRef = useRef<HTMLElement>(null);
+	const jumpToLine = useCallback((line: number) => {
+		const root = scriptRef.current;
+		if (!root) return;
+		const nodes = Array.from(root.querySelectorAll<HTMLElement>("[data-md-line]"));
+		if (nodes.length === 0) return;
+		let best: HTMLElement | null = null;
+		for (const n of nodes) {
+			const l = Number(n.dataset.mdLine);
+			if (Number.isNaN(l)) continue;
+			if (l <= line) best = n;
+			else break;
+		}
+		const target = best ?? nodes[0];
+		target.scrollIntoView({ behavior: "smooth", block: "center" });
+		target.animate(
+			[{ backgroundColor: "rgba(37,99,235,0.16)" }, { backgroundColor: "transparent" }],
+			{ duration: 1400, easing: "ease-out" },
+		);
+	}, []);
 
 	return (
 		<div>
@@ -185,7 +205,7 @@ export function ScreenplayWorkspace({ initialScreenplay, initialVersions, latest
 				</aside>
 
 				{/* CENTER — SCRIPT */}
-				<section className="min-w-0 lg:sticky lg:top-[7rem] self-start lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto min-h-0">
+				<section ref={scriptRef} className="min-w-0 lg:sticky lg:top-[7rem] self-start lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto min-h-0">
 					{isGenerating && runId && (
 						<div className="mb-4">
 							<GenerationProgress runId={runId} onComplete={(versionId) => handleComplete(versionId)} variant={runVariant} />
@@ -212,13 +232,14 @@ export function ScreenplayWorkspace({ initialScreenplay, initialVersions, latest
 						<ReviewPanel
 							screenplayId={initialScreenplay.id}
 							version={selected}
-							baseMarkdown={baseMarkdown}
+							versions={versions}
 							initialCheck={latestCheck ?? null}
 							initialCheckVersionId={initialCheckVersionId}
 							isGenerating={isGenerating}
 							activeTab={activeReviewTab}
 							onTabChange={setActiveReviewTab}
 							onRefineStart={handleRefineStart}
+							onJumpToLine={jumpToLine}
 						/>
 					) : (
 						<Card className="border-border">

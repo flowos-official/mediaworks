@@ -48,6 +48,12 @@ check("parses a table", blocks.some((b) => b.kind === "table"));
 check("parses an hr", kinds.includes("hr"));
 check("parses a para", blocks.some((b) => b.kind === "para"));
 
+// --- block.line source-line capture (powers the 変更点 hunk→script jump) ---
+check("heading-1 records source line 0", blocks.some((b) => b.kind === "heading" && b.level === 1 && b.line === 0));
+check("speaker records its source line", blocks.some((b) => b.kind === "speaker" && b.role === "N" && b.line === 6));
+check("hr records its source line", blocks.some((b) => b.kind === "hr" && b.line === 19));
+check("para records its source line", blocks.some((b) => b.kind === "para" && b.line === 21));
+
 // --- docx builder produces valid OOXML ---
 async function main() {
 	const buf = await buildScreenplayDocxBuffer(FIXTURE, "テスト台本");

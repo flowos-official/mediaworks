@@ -47,6 +47,21 @@ function testComputeLineDiff() {
     if (h[0].index !== 0 || h[1].index !== 1) throw new Error("hunk indices must be 0,1");
     pass("two far-apart changes → 2 hunks, indices 0,1");
   } catch (e) { fail("two far-apart changes", (e as Error).message); }
+
+  // newStart anchors the hunk at its first line in the NEW doc (powers 本文へ jump).
+  try {
+    const h = computeLineDiff("a\nb", "a\nX\nb");
+    if (h[0].newStart !== 0) throw new Error(`expected newStart 0, got ${h[0].newStart}`);
+    pass("newStart = 0 for a top-anchored change");
+  } catch (e) { fail("newStart top-anchored", (e as Error).message); }
+
+  try {
+    // change at new-doc line 4 (X); CONTEXT=3 pulls the hunk start back to line 1 (b).
+    const h = computeLineDiff("a\nb\nc\nd\ne\nf\ng", "a\nb\nc\nd\nX\nf\ng");
+    if (h.length !== 1) throw new Error(`expected 1 hunk, got ${h.length}`);
+    if (h[0].newStart !== 1) throw new Error(`expected newStart 1, got ${h[0].newStart}`);
+    pass("newStart includes leading context (deep modification)");
+  } catch (e) { fail("newStart deep modification", (e as Error).message); }
 }
 
 function testParseHunkReasons() {

@@ -78,6 +78,7 @@ export interface DiffLine {
 export interface DiffHunk {
   index: number;       // stable ordinal; aligns client render ↔ server rationale
   lines: DiffLine[];
+  newStart?: number;   // 0-based start line in the NEW doc — for hunk→script jump
 }
 export interface HunkReason {
   index: number;       // matches DiffHunk.index
