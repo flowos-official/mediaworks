@@ -4,14 +4,14 @@ import { DELISTED_CALENDAR_CHANNELS } from "./channel-style";
 
 const CHUNK_SIZE = 1000;
 // Safety stop in case the table grows unexpectedly. 45-day SSR window with
-// 12 channels at ~100 events/day per channel is ~54k rows worst case.
+// 11 channels at ~100 events/day per channel is ~50k rows worst case.
 const MAX_CHUNKS = 200;
 
 export type CountsByDate = Record<string, Record<string, number>>;
 
 /**
  * Aggregate per-day per-channel broadcast counts across both `broadcasts`
- * (qvc + shopch) and `historical_broadcasts` (10 OA channels). Paginates
+ * (qvc + shopch) and `historical_broadcasts` (9 OA channels). Paginates
  * to bypass the PostgREST row cap that silently truncated wider date
  * windows (May 21 2026 incident: ntv dropped because rows landed past
  * the 10k cap of a single `.range()` call).
