@@ -2,14 +2,18 @@
 // Pure screenplay-markdown parser shared by the React renderer and the .docx
 // exporter. No React, no "server-only" — importable from tsx smoke scripts.
 
+// `line` is the 0-based source-line index where the block starts (same indexing
+// as `md.split(/\r?\n/)`). Optional + additive — existing consumers (renderer,
+// docx exporter, tests) ignore it; the 2-pane diff uses it to jump from a hunk
+// to the matching spot in the rendered script.
 export type Block =
-	| { kind: "heading"; level: 1 | 2 | 3; text: string }
-	| { kind: "hr" }
-	| { kind: "cue"; tag: string; lines: string[] }
-	| { kind: "speaker"; role: string; delivery?: string; jp: string; en?: string }
-	| { kind: "list"; items: string[] }
-	| { kind: "table"; rows: string[][] }
-	| { kind: "para"; text: string };
+	| { kind: "heading"; level: 1 | 2 | 3; text: string; line?: number }
+	| { kind: "hr"; line?: number }
+	| { kind: "cue"; tag: string; lines: string[]; line?: number }
+	| { kind: "speaker"; role: string; delivery?: string; jp: string; en?: string; line?: number }
+	| { kind: "list"; items: string[]; line?: number }
+	| { kind: "table"; rows: string[][]; line?: number }
+	| { kind: "para"; text: string; line?: number };
 
 export const ROLE_LABELS: Record<string, string> = {
 	N: "ナレーター",
@@ -30,16 +34,17 @@ export function parseMarkdown(md: string): Block[] {
 		const line = lines[i];
 		const trimmed = line.trimEnd();
 		if (!trimmed.trim()) { i++; continue; }
+		const start = i;
 
 		const h = trimmed.match(/^(#{1,3})\s+(.+)$/);
 		if (h) {
-			blocks.push({ kind: "heading", level: h[1].length as 1 | 2 | 3, text: h[2] });
+			blocks.push({ kind: "heading", level: h[1].length as 1 | 2 | 3, text: h[2], line: start });
 			i++;
 			continue;
 		}
 
 		if (/^---+$/.test(trimmed.trim())) {
-			blocks.push({ kind: "hr" });
+			blocks.push({ kind: "hr", line: start });
 			i++;
 			continue;
 		}
@@ -63,7 +68,7 @@ export function parseMarkdown(md: string): Block[] {
 					body.push(lines[i].replace(/^\s+/, ""));
 					i++;
 				}
-				blocks.push({ kind: "cue", tag: inside, lines: body });
+				blocks.push({ kind: "cue", tag: inside, lines: body, line: start });
 				continue;
 			}
 
@@ -82,7 +87,7 @@ export function parseMarkdown(md: string): Block[] {
 						i++;
 					}
 				}
-				blocks.push({ kind: "speaker", role: inside, delivery, jp, en });
+				blocks.push({ kind: "speaker", role: inside, delivery, jp, en, line: start });
 				continue;
 			}
 		}
@@ -97,7 +102,7 @@ export function parseMarkdown(md: string): Block[] {
 				if (!cells.every((c) => /^[:\-]*$/.test(c))) rows.push(cells);
 				i++;
 			}
-			blocks.push({ kind: "table", rows });
+			blocks.push({ kind: "table", rows, line: start });
 			continue;
 		}
 
@@ -107,11 +112,11 @@ export function parseMarkdown(md: string): Block[] {
 				items.push(lines[i].trim().replace(/^[\-*●○※]\s+|^\d+\.\s+/, ""));
 				i++;
 			}
-			blocks.push({ kind: "list", items });
+			blocks.push({ kind: "list", items, line: start });
 			continue;
 		}
 
-		blocks.push({ kind: "para", text: trimmed });
+		blocks.push({ kind: "para", text: trimmed, line: start });
 		i++;
 	}
 	return blocks;

@@ -12,6 +12,9 @@ export interface CheckWithMeta extends ScriptCheckResult {
 interface Props {
 	screenplayId: string;
 	versionId: string;
+	/** Which draft this result belongs to, e.g. "第 3 稿" — shown as a chip so a
+	 *  fast version switch can't make the result look like it's for another 稿. */
+	versionLabel?: string;
 	initialCheck: CheckWithMeta | null;
 	initialCheckVersionId: string | null;
 	onCheckChange?: (check: CheckWithMeta | null) => void;
@@ -161,7 +164,7 @@ function ReproducibilityInfo({ check }: { check: CheckWithMeta }) {
 	);
 }
 
-export function CheckResultPanel({ screenplayId, versionId, initialCheck, initialCheckVersionId, onCheckChange }: Props) {
+export function CheckResultPanel({ screenplayId, versionId, versionLabel, initialCheck, initialCheckVersionId, onCheckChange }: Props) {
 	const seeded = versionId === initialCheckVersionId;
 	const [check, setCheck] = useState<CheckWithMeta | null>(seeded ? initialCheck : null);
 	const [busy, setBusy] = useState(false);
@@ -249,7 +252,14 @@ export function CheckResultPanel({ screenplayId, versionId, initialCheck, initia
 							<ShieldAlert size={16} className="text-yellow-600" />
 						</div>
 						<div>
-							<h3 className="text-sm font-semibold text-foreground">試験結果</h3>
+							<div className="flex items-center gap-2">
+								<h3 className="text-sm font-semibold text-foreground">試験結果</h3>
+								{versionLabel && (
+									<span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground whitespace-nowrap">
+										{versionLabel}
+									</span>
+								)}
+							</div>
 							<p className="text-[11px] text-muted-foreground">薬機法・景表法・品質チェック</p>
 						</div>
 					</div>

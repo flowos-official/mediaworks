@@ -11,21 +11,24 @@ export type ReviewTab = "check" | "diff" | "refine";
 interface Props {
 	screenplayId: string;
 	version: ScreenplayVersionRow;
-	baseMarkdown?: string;
+	versions: ScreenplayVersionRow[];
 	initialCheck: CheckWithMeta | null;
 	initialCheckVersionId: string | null;
 	isGenerating: boolean;
 	activeTab: ReviewTab;
 	onTabChange: (t: ReviewTab) => void;
 	onRefineStart: (runId: string) => void;
+	onJumpToLine?: (line: number) => void;
 }
 
 export function ReviewPanel({
-	screenplayId, version, baseMarkdown, initialCheck, initialCheckVersionId,
-	isGenerating, activeTab, onTabChange, onRefineStart,
+	screenplayId, version, versions, initialCheck, initialCheckVersionId,
+	isGenerating, activeTab, onTabChange, onRefineStart, onJumpToLine,
 }: Props) {
 	const [findingCount, setFindingCount] = useState<number | null>(null);
-	const canDiff = !!(baseMarkdown && version.base_version_id);
+	// At least one OTHER version exists → there is something to diff against
+	// (the base it was refined from, or any earlier 稿 the operator picks).
+	const canDiff = versions.some((v) => v.id !== version.id);
 
 	function handleCheckChange(c: CheckWithMeta | null) {
 		setFindingCount(c ? c.legal.length + c.facts.length + c.quality.length : null);
@@ -45,6 +48,7 @@ export function ReviewPanel({
 				<CheckResultPanel
 					screenplayId={screenplayId}
 					versionId={version.id}
+					versionLabel={`第 ${version.version_number} 稿`}
 					initialCheck={initialCheck}
 					initialCheckVersionId={initialCheckVersionId}
 					onCheckChange={handleCheckChange}
@@ -54,10 +58,13 @@ export function ReviewPanel({
 			<TabsContent value="diff">
 				{canDiff ? (
 					<ChangeDiffView
-						baseMarkdown={baseMarkdown!}
-						markdown={version.markdown}
+						key={version.id}
+						versions={versions.map((v) => ({ id: v.id, version_number: v.version_number, markdown: v.markdown }))}
+						currentVersionId={version.id}
+						currentMarkdown={version.markdown}
+						canonicalBaseId={version.base_version_id}
 						screenplayId={screenplayId}
-						versionId={version.id}
+						onJumpToLine={onJumpToLine}
 					/>
 				) : (
 					<div className="rounded-lg border border-dashed border-border p-6 text-center text-xs text-muted-foreground">

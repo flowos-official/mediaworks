@@ -30,7 +30,7 @@ export function ScreenplayMarkdown({ markdown }: { markdown: string }) {
 				if (b.kind === "heading") {
 					if (b.level === 1) {
 						return (
-							<header key={idx} className="mb-10 pb-6 border-b border-border">
+							<header key={idx} data-md-line={b.line} className="mb-10 pb-6 border-b border-border">
 								<div className="text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-600/10 inline-block px-2 py-0.5 rounded-full mb-3">
 									完成版 台本
 								</div>
@@ -42,13 +42,13 @@ export function ScreenplayMarkdown({ markdown }: { markdown: string }) {
 					}
 					if (b.level === 2) {
 						return (
-							<h2 key={idx} className="mt-12 mb-4 text-xs font-semibold tracking-wide text-muted-foreground uppercase border-b border-border pb-2">
+							<h2 key={idx} data-md-line={b.line} className="mt-12 mb-4 text-xs font-semibold tracking-wide text-muted-foreground uppercase border-b border-border pb-2">
 								<span className="text-foreground normal-case text-lg font-bold">{b.text}</span>
 							</h2>
 						);
 					}
 					return (
-						<h3 key={idx} className="mt-10 mb-4 text-lg font-bold text-foreground flex items-center gap-2">
+						<h3 key={idx} data-md-line={b.line} className="mt-10 mb-4 text-lg font-bold text-foreground flex items-center gap-2">
 							<span className="w-1 h-5 bg-blue-600 rounded-full" aria-hidden />
 							{b.text}
 						</h3>
@@ -57,7 +57,7 @@ export function ScreenplayMarkdown({ markdown }: { markdown: string }) {
 
 				if (b.kind === "hr") {
 					return (
-						<div key={idx} className="my-10 flex items-center gap-3">
+						<div key={idx} data-md-line={b.line} className="my-10 flex items-center gap-3">
 							<div className="h-px flex-1 bg-border" />
 							<span className="text-[10px] tracking-widest uppercase text-muted-foreground">場面転換</span>
 							<div className="h-px flex-1 bg-border" />
@@ -68,7 +68,7 @@ export function ScreenplayMarkdown({ markdown }: { markdown: string }) {
 				if (b.kind === "cue") {
 					const style = CUE_STYLES[b.tag] ?? { bg: "bg-muted", ring: "border-border", text: "text-foreground" };
 					return (
-						<div key={idx} className={`my-4 rounded-xl border ${style.ring} ${style.bg} px-4 py-3`}>
+						<div key={idx} data-md-line={b.line} className={`my-4 rounded-xl border ${style.ring} ${style.bg} px-4 py-3`}>
 							<div className={`text-[11px] font-bold tracking-wide ${style.text} mb-1.5`}>
 								［{b.tag}］
 							</div>
@@ -82,7 +82,7 @@ export function ScreenplayMarkdown({ markdown }: { markdown: string }) {
 				if (b.kind === "speaker") {
 					const roleCls = ROLE_STYLES[b.role] ?? "bg-muted text-foreground";
 					return (
-						<div key={idx} className="my-5 grid grid-cols-[120px_1fr] gap-4 py-2 border-b border-dashed border-border">
+						<div key={idx} data-md-line={b.line} className="my-5 grid grid-cols-[120px_1fr] gap-4 py-2 border-b border-dashed border-border">
 							<div>
 								<span className={`inline-flex items-center text-xs font-bold px-2 py-1 rounded-md ${roleCls}`}>
 									{b.role}
@@ -106,7 +106,7 @@ export function ScreenplayMarkdown({ markdown }: { markdown: string }) {
 
 				if (b.kind === "list") {
 					return (
-						<ul key={idx} className="my-3 pl-0 list-none space-y-1">
+						<ul key={idx} data-md-line={b.line} className="my-3 pl-0 list-none space-y-1">
 							{b.items.map((it, ii) => (
 								<li key={ii} className="text-[13.5px] leading-[1.7] grid grid-cols-[20px_1fr] gap-1 text-foreground">
 									<span className="text-blue-500 tabular-nums">{(ii + 1).toString().padStart(2, "0")}</span>
@@ -120,7 +120,7 @@ export function ScreenplayMarkdown({ markdown }: { markdown: string }) {
 				if (b.kind === "table") {
 					const [head, ...body] = b.rows;
 					return (
-						<div key={idx} className="my-6 border border-border rounded-xl overflow-hidden">
+						<div key={idx} data-md-line={b.line} className="my-6 border border-border rounded-xl overflow-hidden">
 							<table className="w-full border-collapse text-sm">
 								{head && (
 									<thead className="bg-muted">
@@ -153,7 +153,7 @@ export function ScreenplayMarkdown({ markdown }: { markdown: string }) {
 				}
 
 				return (
-					<p key={idx} className="text-[14.5px] leading-[1.9] my-3 text-foreground">
+					<p key={idx} data-md-line={b.line} className="text-[14.5px] leading-[1.9] my-3 text-foreground">
 						{b.text}
 					</p>
 				);

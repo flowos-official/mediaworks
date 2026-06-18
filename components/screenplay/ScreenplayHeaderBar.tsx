@@ -1,6 +1,7 @@
 "use client";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Copy, Download, Check, ChevronLeft, ChevronRight, FileText } from "lucide-react";
+import { parseMarkdown } from "@/lib/screenplay/parse-markdown";
 
 interface Props {
 	markdown: string;
@@ -16,6 +17,23 @@ interface Props {
 }
 
 function pad(n: number, w: number): string { return n.toString().padStart(w, "0"); }
+
+// Count the rendered SCRIPT text (dialogue, narration, cues, tables…) rather than
+// raw markdown length — markdown syntax (##, **, |, -) and whitespace shouldn't
+// inflate the "文字数" an operator reads as broadcast content length.
+function renderedTextLength(md: string): number {
+	const strip = (s: string) => s.replace(/\s/g, "").length;
+	let n = 0;
+	for (const b of parseMarkdown(md)) {
+		if (b.kind === "heading") n += strip(b.text);
+		else if (b.kind === "para") n += strip(b.text);
+		else if (b.kind === "cue") n += strip(b.lines.join(""));
+		else if (b.kind === "speaker") n += strip((b.delivery ?? "") + b.jp + (b.en ?? ""));
+		else if (b.kind === "list") n += strip(b.items.join(""));
+		else if (b.kind === "table") n += strip(b.rows.flat().join(""));
+	}
+	return n;
+}
 function formatStamp(iso?: string): string {
 	if (!iso) return "";
 	const d = new Date(iso);
@@ -25,7 +43,7 @@ function formatStamp(iso?: string): string {
 export function ScreenplayHeaderBar({ markdown, title, versionLabel, createdAt, hasPrev, hasNext, onPrev, onNext, prevLabel, nextLabel }: Props) {
 	const [copied, setCopied] = useState(false);
 	const [docxBusy, setDocxBusy] = useState(false);
-	const chars = markdown.length;
+	const chars = useMemo(() => renderedTextLength(markdown), [markdown]);
 	const safeName = `${title.replace(/[^\p{L}\p{N}]+/gu, "-").slice(0, 60)}${versionLabel ? `-${versionLabel.replace(/\s+/g, "")}` : ""}`;
 
 	function downloadMd() {

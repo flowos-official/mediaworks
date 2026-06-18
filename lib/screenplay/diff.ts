@@ -13,11 +13,20 @@ const CONTEXT = 3;
 export function computeLineDiff(base: string, next: string): DiffHunk[] {
   const parts = diffLines(base ?? "", next ?? "");
   const flat: DiffLine[] = [];
+  // 0-based line index in the NEW document for each flat entry. Removed lines
+  // don't exist in `next`, so they share the index of the line that follows
+  // them. Lets a hunk point back at the matching spot in the rendered script.
+  const newLineOf: number[] = [];
+  let newLineNo = 0;
   for (const p of parts) {
     const type: DiffLine["type"] = p.added ? "added" : p.removed ? "removed" : "context";
     const lines = p.value.split("\n");
     if (lines.length > 0 && lines[lines.length - 1] === "") lines.pop(); // drop trailing newline artifact
-    for (const text of lines) flat.push({ type, text });
+    for (const text of lines) {
+      flat.push({ type, text });
+      newLineOf.push(newLineNo);
+      if (type !== "removed") newLineNo++;
+    }
   }
 
   const changed: number[] = [];
@@ -37,7 +46,7 @@ export function computeLineDiff(base: string, next: string): DiffHunk[] {
     }
     const from = Math.max(0, start - CONTEXT);
     const to = Math.min(flat.length - 1, end + CONTEXT);
-    hunks.push({ index: hunks.length, lines: flat.slice(from, to + 1) });
+    hunks.push({ index: hunks.length, lines: flat.slice(from, to + 1), newStart: newLineOf[from] });
     i = j + 1;
   }
   return hunks;
