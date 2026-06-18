@@ -22,6 +22,7 @@
     "test:historical-kantv-parser": "tsx scripts/test-historical-kantv-parser.ts",
     "test:historical-dinos-parser": "tsx scripts/test-historical-dinos-parser.ts",
     "test:historical-asahi-parser": "tsx scripts/test-historical-asahi-parser.ts",
+    "test:historical-crawl-alert": "tsx scripts/test-historical-crawl-alert.ts",
     "test:og-image-extractor": "tsx scripts/test-og-image-extractor.ts",
     "test:ntv-image-extractor": "tsx scripts/test-ntv-image-extractor.ts",
     "test:oa-images-live": "tsx scripts/test-oa-images-live.ts",
