@@ -23,6 +23,7 @@ export const IMAGE_EXTRACTORS: Record<OAChannelSlug, ImageExtractor | null> = {
 	ropping: null, // image_url populated inside ropping parser from card thumbnail
 	kantv: null, // same — image_url populated from c-card__img inside parser
 	rakuraku: ogImageExtractor, // same asahi template as senobura/uranoura
+	ichiban: null, // image_url populated inside ichiban parser from card thumbnail
 };
 
 export type { ImageExtractor } from "./types";

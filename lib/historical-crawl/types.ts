@@ -9,7 +9,8 @@ export type OAChannelSlug =
 	| "txd"
 	| "ropping"
 	| "kantv"
-	| "rakuraku";
+	| "rakuraku"
+	| "ichiban";
 
 /**
  * Row to upsert into public.historical_broadcasts.

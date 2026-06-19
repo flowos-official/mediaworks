@@ -2,7 +2,7 @@
 // Single source of truth so DayDetailPanel and HistoricalBroadcasts stay
 // consistent.
 //
-// Scope: 11 channels (qvc + shopch + 9 OA channels with scrapeable schedule
+// Scope: 12 channels (qvc + shopch + 10 OA channels with scrapeable schedule
 // pages). Discovery uses a different, larger registry —
 // `lib/discovery/tv-channels.ts` (15 channels) — that adds Brave site:-only
 // channels with no schedule pages. Don't unify the two: this list is the
@@ -25,6 +25,9 @@
 // for preserved rows; uranouraParser unregistered. Net OA count unchanged (9).
 // (discovery already lists らくらく茂 under the separate slug `rakurakum`; the
 // two registries stay independent by design.)
+// いちばん本舗 (ichiban, 東海テレビ shop.tokai-tv.com) ADDED 2026-06-19 per
+// operator feedback — OA count is now 10. Its calendar slug `ichiban` matches
+// the existing discovery slug (no rename needed, unlike rakuraku).
 
 export type BroadcastChannelSlug =
 	| "qvc"
@@ -39,7 +42,8 @@ export type BroadcastChannelSlug =
 	| "txd"
 	| "ropping"
 	| "kantv"
-	| "rakuraku";
+	| "rakuraku"
+	| "ichiban";
 
 export const OA_CHANNELS: { slug: BroadcastChannelSlug; name: string }[] = [
 	{ slug: "japanet", name: "ジャパネット" },
@@ -51,6 +55,7 @@ export const OA_CHANNELS: { slug: BroadcastChannelSlug; name: string }[] = [
 	{ slug: "txd", name: "テレ東マート" },
 	{ slug: "kantv", name: "カンテレSHOPPING" },
 	{ slug: "rakuraku", name: "ABCらくらく茂" },
+	{ slug: "ichiban", name: "いちばん本舗" },
 ];
 
 // Channels delisted from the calendar whose historical_broadcasts rows are kept
@@ -81,6 +86,7 @@ export const CHANNEL_BADGE: Record<BroadcastChannelSlug, string> = {
 	ropping: "bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-500/15 dark:text-orange-200 dark:border-orange-500/30",
 	kantv: "bg-teal-100 text-teal-800 border-teal-200 dark:bg-teal-500/15 dark:text-teal-200 dark:border-teal-500/30",
 	rakuraku: "bg-lime-100 text-lime-800 border-lime-200 dark:bg-lime-500/15 dark:text-lime-200 dark:border-lime-500/30",
+	ichiban: "bg-fuchsia-100 text-fuchsia-800 border-fuchsia-200 dark:bg-fuchsia-500/15 dark:text-fuchsia-200 dark:border-fuchsia-500/30",
 };
 
 // Solid dots for compact calendar-cell rendering. Mirror the badge palette
@@ -99,6 +105,7 @@ export const CHANNEL_DOT: Record<BroadcastChannelSlug, string> = {
 	ropping: "bg-orange-500",
 	kantv: "bg-teal-500",
 	rakuraku: "bg-lime-500",
+	ichiban: "bg-fuchsia-500",
 };
 
 // One-character abbreviation used on the calendar cell when a tooltip alone
@@ -119,6 +126,7 @@ export const CHANNEL_SHORT: Record<BroadcastChannelSlug, string> = {
 	ropping: "ロ",
 	kantv: "関",
 	rakuraku: "茂",
+	ichiban: "本",
 };
 
 export function channelDisplayName(slug: string): string {

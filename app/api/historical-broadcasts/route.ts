@@ -15,6 +15,7 @@ const OA_CHANNELS = new Set([
 	"txd",
 	"kantv",
 	"rakuraku",
+	"ichiban",
 ]);
 // ropping (2026-06-18, duplicate of junsanpo) and uranoura (2026-06-19, off-air)
 // were delisted from the calendar. Their historical_broadcasts rows are
