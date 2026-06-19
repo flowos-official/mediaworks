@@ -19,6 +19,12 @@
 // roppingParser is also unregistered in lib/historical-crawl/index.ts (no new
 // rows) and excluded from the historical-broadcasts search API. Discovery
 // sourcing (lib/discovery/*) is intentionally untouched.
+// uranoura DELISTED + らくらく茂 (rakuraku) ADDED 2026-06-19 per ABC operator
+// feedback: ウラのウラまで is off-air, replaced by らくらく茂 (weekly Mon,
+// shop.asahi.co.jp/category/RAKURAKU). uranoura slug retained in the maps below
+// for preserved rows; uranouraParser unregistered. Net OA count unchanged (9).
+// (discovery already lists らくらく茂 under the separate slug `rakurakum`; the
+// two registries stay independent by design.)
 
 export type BroadcastChannelSlug =
 	| "qvc"
@@ -32,7 +38,8 @@ export type BroadcastChannelSlug =
 	| "uranoura"
 	| "txd"
 	| "ropping"
-	| "kantv";
+	| "kantv"
+	| "rakuraku";
 
 export const OA_CHANNELS: { slug: BroadcastChannelSlug; name: string }[] = [
 	{ slug: "japanet", name: "ジャパネット" },
@@ -41,17 +48,18 @@ export const OA_CHANNELS: { slug: BroadcastChannelSlug; name: string }[] = [
 	{ slug: "tbs", name: "TBSキニナル" },
 	{ slug: "dinos", name: "フジDinos" },
 	{ slug: "senobura", name: "ABCせのぶら" },
-	{ slug: "uranoura", name: "ABCウラのウラまで" },
 	{ slug: "txd", name: "テレ東マート" },
 	{ slug: "kantv", name: "カンテレSHOPPING" },
+	{ slug: "rakuraku", name: "ABCらくらく茂" },
 ];
 
 // Channels delisted from the calendar whose historical_broadcasts rows are kept
 // in the DB (history preserved). EVERY calendar read/aggregate path over
 // historical_broadcasts must exclude these so retained rows never resurface in
 // counts, lists, or search — apply via `.neq("channel", ch)`. ropping delisted
-// 2026-06-18 (duplicate of junsanpo). Discovery sourcing is NOT affected.
-export const DELISTED_CALENDAR_CHANNELS = ["ropping"] as const;
+// 2026-06-18 (duplicate of junsanpo); uranoura delisted 2026-06-19 (off-air,
+// replaced by rakuraku). Discovery sourcing is NOT affected.
+export const DELISTED_CALENDAR_CHANNELS = ["ropping", "uranoura"] as const;
 
 export const ALL_CHANNELS: { slug: BroadcastChannelSlug; name: string }[] = [
 	{ slug: "qvc", name: "QVC" },
@@ -72,6 +80,7 @@ export const CHANNEL_BADGE: Record<BroadcastChannelSlug, string> = {
 	txd: "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-200 dark:border-emerald-500/30",
 	ropping: "bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-500/15 dark:text-orange-200 dark:border-orange-500/30",
 	kantv: "bg-teal-100 text-teal-800 border-teal-200 dark:bg-teal-500/15 dark:text-teal-200 dark:border-teal-500/30",
+	rakuraku: "bg-lime-100 text-lime-800 border-lime-200 dark:bg-lime-500/15 dark:text-lime-200 dark:border-lime-500/30",
 };
 
 // Solid dots for compact calendar-cell rendering. Mirror the badge palette
@@ -89,6 +98,7 @@ export const CHANNEL_DOT: Record<BroadcastChannelSlug, string> = {
 	txd: "bg-emerald-500",
 	ropping: "bg-orange-500",
 	kantv: "bg-teal-500",
+	rakuraku: "bg-lime-500",
 };
 
 // One-character abbreviation used on the calendar cell when a tooltip alone
@@ -108,6 +118,7 @@ export const CHANNEL_SHORT: Record<BroadcastChannelSlug, string> = {
 	txd: "東",
 	ropping: "ロ",
 	kantv: "関",
+	rakuraku: "茂",
 };
 
 export function channelDisplayName(slug: string): string {

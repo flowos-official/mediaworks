@@ -6,25 +6,26 @@ import { junsanpoParser } from "./parsers/junsanpo";
 import { ntvParser } from "./parsers/ntv";
 import { tbsParser } from "./parsers/tbs";
 import { senoburaParser } from "./parsers/senobura";
-import { uranouraParser } from "./parsers/uranoura";
 import { dinosParser } from "./parsers/dinos";
 import { japanetParser } from "./parsers/japanet";
 import { txdParser } from "./parsers/txd";
-// roppingParser intentionally NOT imported/registered: ropping was delisted
-// from the broadcast calendar 2026-06-18 (duplicate of junsanpo). The parser
-// file is kept for re-enablement. See lib/broadcasts/channel-style.ts.
+// roppingParser (delisted 2026-06-18, duplicate of junsanpo) and uranouraParser
+// (delisted 2026-06-19, off-air — replaced by rakuraku) intentionally NOT
+// imported/registered: no new rows. Parser files are kept for re-enablement.
+// See lib/broadcasts/channel-style.ts.
 import { kantvParser } from "./parsers/kantv";
+import { rakurakuParser } from "./parsers/rakuraku";
 
 export const ALL_PARSERS: readonly ChannelParser[] = [
 	junsanpoParser,
 	ntvParser,
 	tbsParser,
 	senoburaParser,
-	uranouraParser,
 	dinosParser,
 	japanetParser,
 	txdParser,
 	kantvParser,
+	rakurakuParser,
 ];
 
 export interface CrawlAllResult {
