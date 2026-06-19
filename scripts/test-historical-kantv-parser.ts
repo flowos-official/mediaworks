@@ -56,4 +56,15 @@ ok(currentDate === "2026-06-12", `reads default listing's broadcast date from p.
 const defaultRows = currentDate ? __test.parseKantv(home, currentDate) : [];
 ok(defaultRows.length >= 25 && defaultRows.every((r) => r.air_date === "2026-06-12"), `default listing captured under 6/12, not dropped (${defaultRows.length} rows)`);
 
+// --- 3-program OA times (2026-06-19): each program stamps its own start_time;
+// omitting it stays null (back-compat). ---
+const timed = __test.parseKantv(filter4462, "2026-06-12", "02:20:00");
+ok(timed.length > 0 && timed.every((r) => r.start_time === "02:20:00"), "start_time stamped on every row when provided");
+ok(rows.every((r) => r.start_time === null), "start_time null when omitted (back-compat)");
+
+// --- weekly 通販スターdaily page labels the broadcast week as
+// "MM/DD(月) ～ MM/DD(金)"; the FIRST date is the week-start Monday we stamp on. ---
+const weekHtml = '<div class="c-foundMenu__current">06/15(月) ～ 06/19(金)</div>';
+ok(__test.extractCurrentBroadcastDate(weekHtml, JST_DATE) === "2026-06-15", "weekly label → week-start Monday (06/15)");
+
 console.log(`\n[test:historical-kantv-parser] ${filters.length} date filters, ${rows.length} dated products on 2026-06-12, ${pass} assertions passed`);
