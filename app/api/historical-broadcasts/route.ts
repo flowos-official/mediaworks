@@ -12,13 +12,14 @@ const OA_CHANNELS = new Set([
 	"tbs",
 	"dinos",
 	"senobura",
-	"uranoura",
 	"txd",
 	"kantv",
+	"rakuraku",
 ]);
-// ropping was delisted from the calendar 2026-06-18 (duplicate of junsanpo).
-// Its historical_broadcasts rows are preserved but excluded from this read API
-// so they don't resurface in the calendar's free-text search. Shared list in
+// ropping (2026-06-18, duplicate of junsanpo) and uranoura (2026-06-19, off-air)
+// were delisted from the calendar. Their historical_broadcasts rows are
+// preserved but excluded from this read API so they don't resurface in the
+// calendar's free-text search. Shared list in
 // lib/broadcasts/channel-style.ts::DELISTED_CALENDAR_CHANNELS.
 
 export interface HistoricalBroadcastRow {

@@ -11,9 +11,9 @@ const OA_CHANNEL_SLUGS = [
 	"tbs",
 	"dinos",
 	"senobura",
-	"uranoura",
 	"txd",
 	"kantv",
+	"rakuraku",
 ] as const;
 
 const TV_CHANNEL_SLUGS = ["qvc", "shopch"] as const;

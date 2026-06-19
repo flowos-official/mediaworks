@@ -29,7 +29,8 @@ export interface CrawlAlert {
  * Alert thresholds. `UNDERCAPTURE_RATIO` mirrors the dashboard's red flag
  * (<50% of 7-day median). `MIN_MEDIAN_SAMPLES` / `MIN_MEDIAN` suppress noise
  * from channels with too little history, or naturally tiny/variable counts
- * (japanet ~1/day, uranoura 0/day) where a 50% drop carries no signal.
+ * (japanet ~1/day; dateless asahi catalogs like rakuraku can be 0/day) where a
+ * 50% drop carries no signal.
  */
 export const UNDERCAPTURE_RATIO = 0.5;
 export const MIN_MEDIAN_SAMPLES = 3;
