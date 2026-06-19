@@ -15,6 +15,7 @@ import { txdParser } from "./parsers/txd";
 // See lib/broadcasts/channel-style.ts.
 import { kantvParser } from "./parsers/kantv";
 import { rakurakuParser } from "./parsers/rakuraku";
+import { ichibanParser } from "./parsers/ichiban";
 
 export const ALL_PARSERS: readonly ChannelParser[] = [
 	junsanpoParser,
@@ -26,6 +27,7 @@ export const ALL_PARSERS: readonly ChannelParser[] = [
 	txdParser,
 	kantvParser,
 	rakurakuParser,
+	ichibanParser,
 ];
 
 export interface CrawlAllResult {
