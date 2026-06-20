@@ -5,8 +5,11 @@
  * to `historical_crawl_runs`, and `/admin/historical-crawl` surfaces it — but
  * that is PULL only (someone has to open the dashboard). This module turns it
  * into PUSH: a single webhook ping when a run fails outright, a channel errors,
- * or a channel's row count falls below 50% of its 7-day median (the same red
- * threshold the dashboard flags). When everything is healthy it stays silent.
+ * a channel's row count falls below 50% of its 7-day median (the same red
+ * threshold the dashboard flags), or a channel has returned 0 rows for N
+ * consecutive runs (a silently-empty source, or a new parser that never
+ * captured anything — the blind spot the median check can't see). When
+ * everything is healthy it stays silent.
  *
  * Mirrors the archive-reconciliation alert design: small pure functions
  * (`selectCrawlAlerts`, `buildCrawlAlertPayload`) plus a thin dependency-injected
@@ -20,7 +23,7 @@ import type { ChannelBaseline, PerChannelRunEntry, RunStatus } from "./runs";
 import { postWebhook } from "../alerts/webhook";
 
 export interface CrawlAlert {
-	kind: "run_failed" | "channel_error" | "channel_undercapture";
+	kind: "run_failed" | "channel_error" | "channel_undercapture" | "channel_silent";
 	channel?: string;
 	detail: string;
 }
@@ -29,12 +32,16 @@ export interface CrawlAlert {
  * Alert thresholds. `UNDERCAPTURE_RATIO` mirrors the dashboard's red flag
  * (<50% of 7-day median). `MIN_MEDIAN_SAMPLES` / `MIN_MEDIAN` suppress noise
  * from channels with too little history, or naturally tiny/variable counts
- * (japanet ~1/day; dateless asahi catalogs like rakuraku can be 0/day) where a
- * 50% drop carries no signal.
+ * (japanet ~1/day) where a single-run 50% drop carries no signal. A channel
+ * that is PERSISTENTLY 0 is caught separately by `selectSilentChannels` below.
  */
 export const UNDERCAPTURE_RATIO = 0.5;
 export const MIN_MEDIAN_SAMPLES = 3;
 export const MIN_MEDIAN = 5;
+/** A registered channel that returns 0 rows for this many consecutive runs is
+ * flagged as silently broken — catches a new parser that never captured
+ * anything (no median to undercut) and a source that quietly went empty. */
+export const ZERO_STREAK_RUNS = 3;
 
 export interface SelectCrawlAlertsOpts {
 	undercaptureRatio?: number;
@@ -86,6 +93,45 @@ export function selectCrawlAlerts(
 	return alerts;
 }
 
+/** A run's per-channel `channels` snapshot (subset of PerChannelRunEntry that
+ * `selectSilentChannels` needs). */
+export interface RunChannelsSnapshot {
+	channels: Array<{ channel: string; rowCount: number; error?: string }>;
+}
+
+/**
+ * Flag channels that have returned 0 rows for `threshold` consecutive runs
+ * (the most recent `threshold` runs, current included). This is the safety net
+ * for the median check's blind spot: a newly-added parser that never captured
+ * anything (no 7-day median to undercut), or a source that quietly went empty
+ * without throwing. Errored entries are skipped (channel_error covers those),
+ * and a channel absent from any run in the window breaks its streak. Pure.
+ */
+export function selectSilentChannels(
+	recentRuns: RunChannelsSnapshot[],
+	threshold: number = ZERO_STREAK_RUNS,
+): CrawlAlert[] {
+	if (recentRuns.length < threshold) return []; // not enough history to judge
+	const window = recentRuns.slice(0, threshold);
+	const latest = window[0]?.channels ?? [];
+	const alerts: CrawlAlert[] = [];
+	for (const c of latest) {
+		if (c.error || c.rowCount !== 0) continue;
+		const allZero = window.every((run) => {
+			const e = (run.channels ?? []).find((x) => x.channel === c.channel);
+			return e != null && !e.error && e.rowCount === 0;
+		});
+		if (allZero) {
+			alerts.push({
+				kind: "channel_silent",
+				channel: c.channel,
+				detail: `0 rows for ${threshold} consecutive runs — source or parser likely broken`,
+			});
+		}
+	}
+	return alerts;
+}
+
 /** Build a Slack/Discord-compatible payload. Pure. */
 export function buildCrawlAlertPayload(
 	jstDate: string,
@@ -108,9 +154,11 @@ export interface MaybeSendCrawlAlertInput {
 
 export interface MaybeSendCrawlAlertDeps {
 	loadBaseline?: (lookbackDays?: number) => Promise<ChannelBaseline[]>;
+	loadRecentRuns?: (limit: number) => Promise<RunChannelsSnapshot[]>;
 	postWebhook?: (url: string, body: object) => Promise<{ ok: boolean; error?: string }>;
 	webhookUrl?: string;
 	selectOpts?: SelectCrawlAlertsOpts;
+	zeroStreakRuns?: number;
 }
 
 export interface MaybeSendCrawlAlertResult {
@@ -144,6 +192,23 @@ export async function maybeSendCrawlAlert(
 		baselines = await load(7);
 	}
 	const alerts = selectCrawlAlerts(input.status, input.channels, baselines, deps.selectOpts);
+
+	// Silent-zero safety net: ping when a channel has been 0 for N consecutive
+	// runs (needs run history, so it's here rather than in the pure selector).
+	// Skipped on a total failure (no per-channel data). Deduped against channels
+	// already flagged above so we never double-alert the same channel.
+	if (input.status !== "failed") {
+		const streak = deps.zeroStreakRuns ?? ZERO_STREAK_RUNS;
+		const loadRuns =
+			deps.loadRecentRuns ??
+			(async (n: number) => (await import("./runs")).loadRecentRunChannels(n));
+		const recentRuns = await loadRuns(streak);
+		const flagged = new Set(alerts.map((a) => a.channel).filter(Boolean));
+		for (const s of selectSilentChannels(recentRuns, streak)) {
+			if (!flagged.has(s.channel)) alerts.push(s);
+		}
+	}
+
 	if (alerts.length === 0) return { alerts, sent: false, skippedReason: "no_alerts" };
 	if (!url) return { alerts, sent: false, skippedReason: "no_webhook_url" };
 
