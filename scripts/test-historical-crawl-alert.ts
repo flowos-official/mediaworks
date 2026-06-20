@@ -5,9 +5,11 @@
  */
 import {
 	selectCrawlAlerts,
+	selectSilentChannels,
 	buildCrawlAlertPayload,
 	maybeSendCrawlAlert,
 	type CrawlAlert,
+	type RunChannelsSnapshot,
 } from "../lib/historical-crawl/alert";
 import type { ChannelBaseline, PerChannelRunEntry } from "../lib/historical-crawl/runs";
 
@@ -73,13 +75,17 @@ async function main() {
 	console.log("\nmaybeSendCrawlAlert (DI; no real DB/network):");
 	const baselines = [base("junsanpo", 139), base("ntv", 85)];
 	const loadBaselineStub = async (_d?: number) => baselines;
+	// No recent-run history by default → the silent-zero check is a no-op, so
+	// these cases isolate the baseline/undercapture behaviour. Injected so the
+	// dynamic ./runs import (and its Supabase client) never loads.
+	const noRecent = async (_n: number): Promise<RunChannelsSnapshot[]> => [];
 
 	// undercapture + url set → sends
 	{
 		const calls: Array<{ url: string; body: object }> = [];
 		const r = await maybeSendCrawlAlert(
 			{ jstDate: "2026-06-15", status: "completed", channels: [ch("junsanpo", 0), ch("ntv", 85)] },
-			{ loadBaseline: loadBaselineStub, postWebhook: async (url, body) => { calls.push({ url, body }); return { ok: true }; }, webhookUrl: "https://hook.example/x" },
+			{ loadBaseline: loadBaselineStub, loadRecentRuns: noRecent, postWebhook: async (url, body) => { calls.push({ url, body }); return { ok: true }; }, webhookUrl: "https://hook.example/x" },
 		);
 		ok(r.sent === true && r.alerts.length === 1 && calls.length === 1, "undercapture + url → sent once");
 		ok(calls[0]?.url === "https://hook.example/x", "posted to the configured url");
@@ -90,7 +96,7 @@ async function main() {
 		let called = false;
 		const r = await maybeSendCrawlAlert(
 			{ jstDate: "2026-06-15", status: "completed", channels: [ch("junsanpo", 140), ch("ntv", 85)] },
-			{ loadBaseline: loadBaselineStub, postWebhook: async () => { called = true; return { ok: true }; }, webhookUrl: "https://hook.example/x" },
+			{ loadBaseline: loadBaselineStub, loadRecentRuns: noRecent, postWebhook: async () => { called = true; return { ok: true }; }, webhookUrl: "https://hook.example/x" },
 		);
 		ok(r.sent === false && r.skippedReason === "no_alerts" && !called, "healthy → not sent, webhook untouched");
 	}
@@ -100,7 +106,7 @@ async function main() {
 		let called = false;
 		const r = await maybeSendCrawlAlert(
 			{ jstDate: "2026-06-15", status: "completed", channels: [ch("junsanpo", 0)] },
-			{ loadBaseline: loadBaselineStub, postWebhook: async () => { called = true; return { ok: true }; }, webhookUrl: "" },
+			{ loadBaseline: loadBaselineStub, loadRecentRuns: noRecent, postWebhook: async () => { called = true; return { ok: true }; }, webhookUrl: "" },
 		);
 		ok(r.sent === false && r.skippedReason === "no_webhook_url" && !called, "no url → skipped, webhook untouched");
 	}
@@ -119,9 +125,54 @@ async function main() {
 	{
 		const r = await maybeSendCrawlAlert(
 			{ jstDate: "2026-06-15", status: "completed", channels: [ch("junsanpo", 0)] },
-			{ loadBaseline: loadBaselineStub, postWebhook: async () => ({ ok: false, error: "webhook HTTP 500" }), webhookUrl: "https://hook.example/x" },
+			{ loadBaseline: loadBaselineStub, loadRecentRuns: noRecent, postWebhook: async () => ({ ok: false, error: "webhook HTTP 500" }), webhookUrl: "https://hook.example/x" },
 		);
 		ok(r.sent === false && r.error === "webhook HTTP 500", "webhook failure → sent=false with error");
+	}
+
+	// --- selectSilentChannels (persistent-zero detection) ---
+	console.log("\nselectSilentChannels:");
+	const run = (entries: Array<[string, number] | [string, number, string]>): RunChannelsSnapshot => ({
+		channels: entries.map((e) => ({ channel: e[0], rowCount: e[1], ...(e[2] ? { error: e[2] } : {}) })),
+	});
+	eq(
+		kinds(selectSilentChannels([run([["rakuraku", 0], ["ntv", 80]]), run([["rakuraku", 0], ["ntv", 79]]), run([["rakuraku", 0], ["ntv", 81]])])),
+		["channel_silent:rakuraku"],
+		"0 for 3 consecutive runs → channel_silent",
+	);
+	eq(selectSilentChannels([run([["rakuraku", 0]]), run([["rakuraku", 0]])]), [], "<3 runs → no silent alert (insufficient history)");
+	eq(selectSilentChannels([run([["rakuraku", 0]]), run([["rakuraku", 5]]), run([["rakuraku", 0]])]), [], "non-zero in window → streak broken");
+	eq(selectSilentChannels([run([["rakuraku", 0]]), run([["ntv", 80]]), run([["rakuraku", 0]])]), [], "absent in a run → streak broken");
+	eq(selectSilentChannels([run([["senobura", 0, "HTTP 503"]]), run([["senobura", 0, "HTTP 503"]]), run([["senobura", 0, "HTTP 503"]])]), [], "errored 0-runs → not silent (channel_error covers it)");
+	eq(selectSilentChannels([run([["ntv", 80]]), run([["ntv", 79]]), run([["ntv", 81]])]), [], "non-zero channel → not silent");
+
+	console.log("\nmaybeSendCrawlAlert + silent-zero:");
+	// a silently-0 new channel (no baseline) pings via the silent path
+	{
+		const r = await maybeSendCrawlAlert(
+			{ jstDate: "2026-06-20", status: "completed", channels: [ch("rakuraku", 0), ch("ntv", 85)] },
+			{
+				loadBaseline: loadBaselineStub,
+				loadRecentRuns: async () => [run([["rakuraku", 0]]), run([["rakuraku", 0]]), run([["rakuraku", 0]])],
+				postWebhook: async () => ({ ok: true }),
+				webhookUrl: "https://hook.example/x",
+			},
+		);
+		ok(r.sent === true && kinds(r.alerts).includes("channel_silent:rakuraku"), "silently-0 new channel → channel_silent sent");
+	}
+	// dedup: a channel already flagged (undercapture) is NOT double-alerted as silent
+	{
+		const r = await maybeSendCrawlAlert(
+			{ jstDate: "2026-06-20", status: "completed", channels: [ch("junsanpo", 0)] },
+			{
+				loadBaseline: loadBaselineStub, // junsanpo median 139 → undercapture
+				loadRecentRuns: async () => [run([["junsanpo", 0]]), run([["junsanpo", 0]]), run([["junsanpo", 0]])],
+				postWebhook: async () => ({ ok: true }),
+				webhookUrl: "https://hook.example/x",
+			},
+		);
+		const j = r.alerts.filter((a) => a.channel === "junsanpo");
+		ok(j.length === 1 && j[0].kind === "channel_undercapture", "channel already flagged → not double-alerted as silent");
 	}
 
 	console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);

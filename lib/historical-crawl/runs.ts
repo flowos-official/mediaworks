@@ -114,3 +114,25 @@ export async function loadBaseline(
 	}
 	return out;
 }
+
+/**
+ * The `channels` snapshot of the most recent `limit` runs (newest first). Used
+ * by the silent-zero alert to detect a channel that's returned 0 rows for N
+ * consecutive runs — the blind spot the median-based undercapture check can't
+ * see (a brand-new parser has no median; a quietly-empty source throws no error).
+ */
+export async function loadRecentRunChannels(
+	limit: number,
+	client?: SupabaseClient,
+): Promise<{ channels: PerChannelRunEntry[] }[]> {
+	const sb = client ?? getServiceClient();
+	const { data, error } = await sb
+		.from("historical_crawl_runs")
+		.select("channels")
+		.order("run_at", { ascending: false })
+		.limit(limit);
+	if (error || !data) return [];
+	return data.map((r) => ({
+		channels: (r as { channels: PerChannelRunEntry[] }).channels ?? [],
+	}));
+}
