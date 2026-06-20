@@ -23,6 +23,7 @@
     "test:historical-dinos-parser": "tsx scripts/test-historical-dinos-parser.ts",
     "test:historical-asahi-parser": "tsx scripts/test-historical-asahi-parser.ts",
     "test:historical-ichiban-parser": "tsx scripts/test-historical-ichiban-parser.ts",
+    "test:historical-rakuraku-parser": "tsx scripts/test-historical-rakuraku-parser.ts",
     "test:historical-crawl-alert": "tsx scripts/test-historical-crawl-alert.ts",
     "test:og-image-extractor": "tsx scripts/test-og-image-extractor.ts",
     "test:ntv-image-extractor": "tsx scripts/test-ntv-image-extractor.ts",
