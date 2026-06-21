@@ -100,6 +100,7 @@ export default function UnifiedDayDetailPanel({ date }: Props) {
 	const timedError = isCurrentDay ? dayState.timedError : false;
 	const oaError = isCurrentDay ? dayState.oaError : false;
 	const loading = date !== null && !isCurrentDay;
+	const hasFetchError = timedError || oaError;
 
 	if (!date) {
 		return (
@@ -253,10 +254,18 @@ export default function UnifiedDayDetailPanel({ date }: Props) {
 				</div>
 			)}
 
+			{!loading && hasFetchError && timedRows.length + oaRows.length > 0 && (
+				<div className="mb-3 rounded-lg border border-amber-300 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/50 dark:text-amber-200">
+					{t("unified.partialFetchFailed")}
+				</div>
+			)}
+
 			{totalShown === 0 && !loading ? (
 				<div className="text-sm text-muted-foreground p-6 text-center border border-dashed border-border rounded-lg">
 					{timedRows.length + oaRows.length === 0
-						? t("empty.day")
+						? hasFetchError
+							? t("unified.fetchFailed")
+							: t("empty.day")
 						: t("empty.filtered")}
 				</div>
 			) : (

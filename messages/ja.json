@@ -424,7 +424,8 @@
     "unified": {
       "timedSection": "時間順 (QVC + ShopCh)",
       "oaSection": "OA チャネル (時間情報なし)",
-      "fetchFailed": "取得失敗"
+      "fetchFailed": "取得失敗",
+      "partialFetchFailed": "一部の番組データを取得できませんでした。表示されている件数は不完全な可能性があります。"
     },
     "loading": "読み込み中…",
     "monthNav": {
@@ -436,6 +437,7 @@
     "archiving": "アーカイブ待ち",
     "archivingHint": "動画は自動処理の完了後に表示されます",
     "archivedBroadcast": "アーカイブ放送",
+    "videoArchiveNotConfigured": "動画アーカイブの保存先が設定されていないため、再生できません。",
     "productsInBroadcast": "出演商品 ({n}件)",
     "soldOut": "完売",
     "empty": {

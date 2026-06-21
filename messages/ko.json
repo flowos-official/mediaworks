@@ -424,7 +424,8 @@
     "unified": {
       "timedSection": "시간순 (QVC + ShopCh)",
       "oaSection": "OA 채널 (시간 정보 없음)",
-      "fetchFailed": "가져오기 실패"
+      "fetchFailed": "가져오기 실패",
+      "partialFetchFailed": "일부 방송 데이터를 가져오지 못했습니다. 표시된 건수는 불완전할 수 있습니다."
     },
     "loading": "로딩 중…",
     "monthNav": {
@@ -436,6 +437,7 @@
     "archiving": "아카이브 대기",
     "archivingHint": "영상은 자동 처리 완료 후 표시됩니다",
     "archivedBroadcast": "아카이브 방송",
+    "videoArchiveNotConfigured": "영상 아카이브 저장 위치가 설정되지 않아 재생할 수 없습니다.",
     "productsInBroadcast": "출연 상품 ({n}개)",
     "soldOut": "완판",
     "empty": {

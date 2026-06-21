@@ -7,7 +7,7 @@ import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { ChevronDown } from 'lucide-react';
 import { localePath } from '@/lib/i18n/locale-path';
-import { findActiveGroup, type NavGroup } from '@/lib/nav/groups';
+import { findActiveGroup, visibleMembersForRole, type NavGroup } from '@/lib/nav/groups';
 import type { Role } from '@/lib/auth/route-permissions';
 
 interface Props {
@@ -23,6 +23,7 @@ export default function GroupDropdown({ group, role, locale, memberBadges }: Pro
   const t = useTranslations();
   const isActive = findActiveGroup(pathname)?.key === group.key;
   const visibility = group.visibility[role];
+  const visibleMembers = visibleMembersForRole(group, role);
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -53,6 +54,7 @@ export default function GroupDropdown({ group, role, locale, memberBadges }: Pro
   useEffect(() => () => cancelClose(), []);
 
   if (visibility === 'hidden') return null;
+  if (visibility === 'full' && visibleMembers.length === 0) return null;
 
   // 'productsOnly': render single direct link, no dropdown UI
   if (visibility === 'productsOnly') {
@@ -64,6 +66,26 @@ export default function GroupDropdown({ group, role, locale, memberBadges }: Pro
         }`}
       >
         {t('nav.firm.products')}
+      </Link>
+    );
+  }
+
+  if (visibleMembers.length === 1) {
+    const member = visibleMembers[0];
+    const badge = memberBadges?.[member.href] ?? 0;
+    return (
+      <Link
+        href={localePath(locale, member.href)}
+        className={`inline-flex items-center gap-1 text-sm font-medium ${
+          isActive ? 'text-blue-600' : 'text-muted-foreground hover:text-foreground'
+        }`}
+      >
+        {t(member.labelKey)}
+        {badge > 0 && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/15 text-indigo-700 dark:text-indigo-300">
+            {badge}
+          </span>
+        )}
       </Link>
     );
   }
@@ -111,7 +133,7 @@ export default function GroupDropdown({ group, role, locale, memberBadges }: Pro
             role="menu"
             className="min-w-[180px] bg-card border border-border rounded-lg shadow-lg py-1"
           >
-            {group.members.map((m) => {
+            {visibleMembers.map((m) => {
               const badge = memberBadges?.[m.href] ?? 0;
               return (
                 <Link

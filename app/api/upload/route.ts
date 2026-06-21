@@ -1,5 +1,5 @@
 import { requireUser } from "@/lib/auth/require-user";
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { getServiceClient } from '@/lib/supabase';
 import { checkAnalyzeRateLimit } from "@/lib/research/analyze-rate-limit";
 import { checkMagicBytes } from "@/lib/upload/magic-bytes";
@@ -17,6 +17,9 @@ const SUPPORTED_MIME_TYPES = new Set([
   'image/gif',
   'image/webp',
 ]);
+
+const MAX_SINGLE_FILE_BYTES = 15 * 1024 * 1024;
+const MAX_TOTAL_UPLOAD_BYTES = 20 * 1024 * 1024;
 
 // Fallback: infer MIME type from file extension when browser/curl doesn't set it
 const EXT_TO_MIME: Record<string, string> = {
@@ -80,6 +83,40 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No files provided' }, { status: 400 });
     }
 
+    const acceptedFiles: Array<{ file: File; mimeType: string }> = [];
+    for (const file of files) {
+      const mimeType = resolveMimeType(file);
+      if (!mimeType) {
+        console.warn(`Skipping unsupported file: ${file.name} (type: ${file.type})`);
+        continue;
+      }
+      if (file.size > MAX_SINGLE_FILE_BYTES) {
+        return NextResponse.json(
+          { error: `file '${file.name}' exceeds 15MB` },
+          { status: 400 },
+        );
+      }
+      acceptedFiles.push({ file, mimeType });
+    }
+
+    if (acceptedFiles.length === 0) {
+      return NextResponse.json({ error: 'No supported files provided' }, { status: 400 });
+    }
+
+    const totalUploadBytes = acceptedFiles.reduce((sum, item) => sum + item.file.size, 0);
+    if (totalUploadBytes > MAX_TOTAL_UPLOAD_BYTES) {
+      return NextResponse.json(
+        { error: 'Total upload payload exceeds 20MB' },
+        { status: 400 },
+      );
+    }
+
+    const cronSecret = process.env.CRON_SECRET;
+    if (!cronSecret) {
+      console.error('[upload] CRON_SECRET not configured — refusing to create unanalyzable product');
+      return NextResponse.json({ error: 'CRON_SECRET not configured' }, { status: 500 });
+    }
+
     const supabase = getServiceClient();
     const uploadedFiles: Array<{
       fileName: string;
@@ -90,13 +127,7 @@ export async function POST(request: NextRequest) {
     }> = [];
 
     // Upload all files to Supabase Storage
-    for (const file of files) {
-      const mimeType = resolveMimeType(file);
-      if (!mimeType) {
-        console.warn(`Skipping unsupported file: ${file.name} (type: ${file.type})`);
-        continue;
-      }
-
+    for (const { file, mimeType } of acceptedFiles) {
       const fileBuffer = await file.arrayBuffer();
       const fileBytes = new Uint8Array(fileBuffer);
       const headBuffer = Buffer.from(fileBytes.slice(0, 16));
@@ -194,26 +225,42 @@ export async function POST(request: NextRequest) {
 
     // Trigger async analysis with all uploaded files
     const baseUrl = request.nextUrl.origin;
-    const cronSecret = process.env.CRON_SECRET;
-    if (!cronSecret) {
-      console.warn('[upload] CRON_SECRET not set; async analyze trigger may be rejected');
-    }
-
     const filesBody = uploadedFiles.map((f) => ({
       base64: Buffer.from(f.fileBytes).toString('base64'),
       mimeType: f.mimeType,
       fileName: f.fileName,
     }));
 
-    fetch(`${baseUrl}/api/analyze`, {
-      method: 'POST',
-      headers: buildAnalyzeTriggerHeaders(cronSecret),
-      body: JSON.stringify({
-        productId: product.id,
-        files: filesBody,
-        locale,
-      }),
-    }).catch(console.error);
+    // Dispatch the analyze trigger inside after() so the request is guaranteed to be
+    // sent — and its failure-recording runs — after the response returns. A bare
+    // fire-and-forget fetch can be dropped when the serverless function suspends,
+    // leaving the trigger unsent. Mirrors app/api/discovery/enrich/[productId]/route.ts.
+    after(() =>
+      fetch(`${baseUrl}/api/analyze`, {
+        method: 'POST',
+        headers: buildAnalyzeTriggerHeaders(cronSecret),
+        body: JSON.stringify({
+          productId: product.id,
+          files: filesBody,
+          locale,
+        }),
+      })
+        .then(async (res) => {
+          if (res.status === 401 || res.status === 403 || res.status === 404) {
+            await supabase
+              .from('products')
+              .update({ status: 'failed', error_reason: `analyze_trigger_http_${res.status}` })
+              .eq('id', product.id);
+          }
+        })
+        .catch(async (err) => {
+          console.error('[upload] analyze trigger failed:', err);
+          await supabase
+            .from('products')
+            .update({ status: 'failed', error_reason: 'analyze_trigger_failed' })
+            .eq('id', product.id);
+        }),
+    );
 
     return NextResponse.json({
       success: true,

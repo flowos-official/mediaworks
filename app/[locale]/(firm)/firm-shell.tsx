@@ -33,7 +33,7 @@ function FilterAction() {
 const NO_DATE_FILTER_PATHS = ['/gallery'];
 
 export default function FirmShell({ role, title, subtitle, children }: FirmShellProps) {
-  const showFullChrome = role !== 'viewer';
+  const showFullChrome = role !== null && role !== 'viewer';
   const pathname = usePathname() ?? '';
   const showDateFilter = !NO_DATE_FILTER_PATHS.some((p) => pathname.includes(p));
   return (
@@ -46,7 +46,7 @@ export default function FirmShell({ role, title, subtitle, children }: FirmShell
           action={showFullChrome && showDateFilter ? <FilterAction /> : undefined}
         />
         <div className="space-y-6">
-          {showFullChrome && <GroupSubNav groupKey="firm" />}
+          {showFullChrome && <GroupSubNav groupKey="firm" role={role} />}
           {children}
         </div>
       </main>

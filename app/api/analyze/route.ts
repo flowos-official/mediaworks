@@ -1,5 +1,5 @@
 import { hasInternalSecret, requireUser } from "@/lib/auth/require-user";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
 import { extractProductInfo } from "@/lib/gemini";
 import { GeminiCallError } from "@/lib/gemini/errors";
@@ -80,7 +80,10 @@ export async function POST(request: NextRequest) {
 	}
 	const totalBytes = files.reduce((s, f) => s + sizeOf(f.base64), 0);
 	if (totalBytes > MAX_TOTAL_PAYLOAD_MB * 1024 * 1024) {
-		// Drop smallest files until under cap. Keep primary (files[0]) prioritised.
+		// Greedily keep the largest files that fit under the cap (sorted by size,
+		// descending). This is keyed on size, not position — files[0] is not
+		// guaranteed to survive. Only reachable via the internal/legacy path; the
+		// upload route already caps total payload at 20MB before calling here.
 		const sorted = [...files].sort((a, b) => sizeOf(b.base64) - sizeOf(a.base64));
 		const kept: AnalyzeFile[] = [];
 		let sum = 0;
@@ -132,18 +135,26 @@ export async function POST(request: NextRequest) {
 				{ status: 500 },
 			);
 		}
-		const baseUrl =
-			process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-		fetch(`${baseUrl}/api/analyze/synthesize`, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				Authorization: `Bearer ${cronSecret}`,
-			},
-			body: JSON.stringify({ productId }),
-		}).catch((err) => {
-			console.error(`[${productId}] Failed to trigger synthesize:`, err);
-		});
+		const baseUrl = process.env.INTERNAL_APP_URL || request.nextUrl.origin;
+		// Dispatch synthesize inside after() so the trigger is guaranteed to fire after
+		// the response returns; a bare fire-and-forget fetch can be dropped when the
+		// function suspends. Mirrors app/api/discovery/enrich/[productId]/route.ts.
+		after(() =>
+			fetch(`${baseUrl}/api/analyze/synthesize`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: `Bearer ${cronSecret}`,
+				},
+				body: JSON.stringify({ productId }),
+			}).catch((err) => {
+				console.error(`[${productId}] Failed to trigger synthesize:`, err);
+				void supabase
+					.from("products")
+					.update({ status: "failed", error_reason: "synthesize_trigger_failed" })
+					.eq("id", productId);
+			}),
+		);
 
 		console.log(`[${productId}] Extraction done, synthesis triggered async`);
 		return NextResponse.json({

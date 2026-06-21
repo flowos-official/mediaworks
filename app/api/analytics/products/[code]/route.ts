@@ -12,13 +12,23 @@ export async function GET(
 	const { code } = await params;
 	const { searchParams } = new URL(request.url);
 	const yearParam = searchParams.get("year") || "2025,2026";
-	const years = yearParam.split(",").map(Number);
+	const years = Array.from(new Set(yearParam.split(",").map(Number)));
+	if (
+		years.length === 0 ||
+		years.some((year) => !Number.isInteger(year) || year < 2000 || year > 2100)
+	) {
+		return NextResponse.json({ error: "Invalid year parameter" }, { status: 400 });
+	}
 
 	const supabase = getServiceClient();
 
 	const dateFilters = years.map((y) => ({
 		start: `${y}-01-01`,
 		end: `${y}-12-31`,
+	}));
+	const monthFilters = years.map((y) => ({
+		start: `${y}-01`,
+		end: `${y}-12`,
 	}));
 
 	// Use monthly_summaries for monthly data, sales_weekly only for weekly drill-down
@@ -33,6 +43,7 @@ export async function GET(
 			.from("monthly_summaries")
 			.select("*")
 			.eq("product_code", code)
+			.or(monthFilters.map((d) => `and(year_month.gte.${d.start},year_month.lte.${d.end})`).join(","))
 			.order("year_month", { ascending: true }),
 		supabase
 			.from("product_details")
@@ -43,6 +54,12 @@ export async function GET(
 
 	if (salesResult.error) {
 		return NextResponse.json({ error: salesResult.error.message }, { status: 500 });
+	}
+	if (monthlyResult.error) {
+		return NextResponse.json({ error: monthlyResult.error.message }, { status: 500 });
+	}
+	if (detailResult.error) {
+		return NextResponse.json({ error: detailResult.error.message }, { status: 500 });
 	}
 
 	const rows = salesResult.data ?? [];

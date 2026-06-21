@@ -580,7 +580,7 @@ function LCListView({ locale, router }: { locale: string; router: ReturnType<typ
 			setError(err instanceof Error ? err.message : String(err));
 			setStatus('error');
 		}
-	}, [userGoal, selectedPlatforms, locale, router]);
+	}, [userGoal, selectedPlatforms, seedProductId, locale, router]);
 
 	const handleViewSaved = (id: string) => {
 		router.push(localePath(locale, `/analytics/strategy/live/${id}`));

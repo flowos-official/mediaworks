@@ -8,6 +8,8 @@ export interface NavMember {
   labelKey: string;
   /** Locale-agnostic path; pass through localePath() at render time. */
   href: string;
+  /** Optional per-member role filter inside an otherwise visible group. */
+  roles?: readonly Role[];
 }
 
 export type GroupVisibility = 'full' | 'productsOnly' | 'hidden';
@@ -44,12 +46,12 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     landing: '/broadcasts',
     pathPrefixes: ['/broadcasts', '/analytics/discovery', '/analytics/strategy', '/analytics/pipeline'],
     members: [
-      { labelKey: 'nav.market.broadcasts', href: '/broadcasts' },
-      { labelKey: 'nav.market.discovery', href: '/analytics/discovery' },
-      { labelKey: 'nav.market.strategy', href: '/analytics/strategy' },
-      { labelKey: 'nav.market.pipeline', href: '/analytics/pipeline' },
+      { labelKey: 'nav.market.broadcasts', href: '/broadcasts', roles: ['admin', 'member'] },
+      { labelKey: 'nav.market.discovery', href: '/analytics/discovery', roles: ['admin', 'member'] },
+      { labelKey: 'nav.market.strategy', href: '/analytics/strategy', roles: ['admin', 'member'] },
+      { labelKey: 'nav.market.pipeline', href: '/analytics/pipeline', roles: ['admin', 'member', 'viewer'] },
     ],
-    visibility: { admin: 'full', member: 'full', viewer: 'hidden' },
+    visibility: { admin: 'full', member: 'full', viewer: 'full' },
   },
   {
     key: 'produce',
@@ -101,4 +103,8 @@ export function findActiveMember(group: NavGroup, pathname: string): NavMember |
   return (
     group.members.find((m) => stripped === m.href || stripped.startsWith(m.href + '/')) ?? null
   );
+}
+
+export function visibleMembersForRole(group: NavGroup, role: Role): NavMember[] {
+  return group.members.filter((m) => !m.roles || m.roles.includes(role));
 }

@@ -1,8 +1,11 @@
 import { NextRequest } from "next/server";
 import { getRun } from "workflow/api";
 import type { ProgressEvent } from "@/lib/screenplay/types";
+import { requireUser } from "@/lib/auth/require-user";
 
 export const maxDuration = 800;
+
+const RUN_ID_RE = /^wrun_[A-Z0-9]+$/i;
 
 export async function GET(
 	_request: NextRequest,
@@ -12,9 +15,20 @@ export async function GET(
 
 	// Validate runId shape early to avoid unhandled rejections from the SDK
 	// when an unknown / malformed runId is passed.
-	if (!/^wrun_[A-Z0-9]+$/i.test(runId)) {
+	if (!RUN_ID_RE.test(runId)) {
 		return Response.json({ error: "invalid runId" }, { status: 404 });
 	}
+
+	const auth = await requireUser(["member", "admin"]);
+	if ("error" in auth) return auth.error;
+
+	const { data: screenplay, error: screenplayErr } = await auth.sb
+		.from("screenplays")
+		.select("id")
+		.eq("last_run_id", runId)
+		.maybeSingle();
+	if (screenplayErr) return Response.json({ error: screenplayErr.message }, { status: 500 });
+	if (!screenplay) return Response.json({ error: "run not found" }, { status: 404 });
 
 	try {
 		const run = getRun(runId);

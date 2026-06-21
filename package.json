@@ -107,6 +107,7 @@
     "test:strategy-sub-tabs-i18n": "tsx --env-file=.env.local scripts/test-strategy-sub-tabs-i18n.ts",
     "test:user-guide-page": "tsx scripts/test-user-guide-page.ts",
     "test:navbar-guide-theme-placement": "tsx scripts/test-navbar-guide-theme-placement.ts",
+    "test:nav-permissions": "tsx scripts/test-nav-permissions.ts",
     "promote:discovery-research": "tsx --env-file=.env.local scripts/promote-discovered-to-research.ts",
     "complete:recommendation-flow": "tsx --env-file=.env.local scripts/complete-recommendation-flow.ts",
     "test:selections": "tsx --env-file=.env.local scripts/test-selections-state-machine.ts",

@@ -4,23 +4,27 @@ import Link from 'next/link';
 import { useParams, usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { localePath } from '@/lib/i18n/locale-path';
-import { NAV_GROUPS, findActiveMember, type GroupKey } from '@/lib/nav/groups';
+import { NAV_GROUPS, findActiveMember, visibleMembersForRole, type GroupKey } from '@/lib/nav/groups';
+import type { Role } from '@/lib/auth/route-permissions';
 
 interface GroupSubNavProps {
   groupKey: GroupKey;
+  role: Role;
 }
 
-export default function GroupSubNav({ groupKey }: GroupSubNavProps) {
+export default function GroupSubNav({ groupKey, role }: GroupSubNavProps) {
   const { locale } = useParams<{ locale: string }>();
   const pathname = usePathname();
   const t = useTranslations();
   const group = NAV_GROUPS.find((g) => g.key === groupKey);
   if (!group) return null;
+  const visibleMembers = visibleMembersForRole(group, role);
+  if (visibleMembers.length === 0) return null;
   const activeHref = findActiveMember(group, pathname)?.href ?? null;
 
   return (
     <div className="flex gap-1 p-1 bg-card border border-border rounded-xl shadow-sm w-fit">
-      {group.members.map((m) => {
+      {visibleMembers.map((m) => {
         const isActive = activeHref === m.href;
         return (
           <Link

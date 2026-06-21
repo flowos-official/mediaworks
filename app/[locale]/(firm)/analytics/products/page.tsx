@@ -13,7 +13,7 @@ export default function ProductsPage() {
   const { selectedYears } = useAnalyticsFilter();
   const yearParam = selectedYears.join(',');
 
-  const [products, setProducts] = useState<{ products: unknown[]; total: number } | null>(null);
+  const [products, setProducts] = useState<{ products: unknown[]; total: number; viewer?: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
@@ -91,14 +91,16 @@ export default function ProductsPage() {
 
       {!loading && products && (
         <div className="space-y-6">
-          <button
-            type="button"
-            onClick={() => setShowTaicho(true)}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-border rounded-xl text-sm text-muted-foreground hover:border-blue-400 hover:text-blue-600 transition-colors"
-          >
-            <FileSpreadsheet size={16} />
-            {tg('uploadButton')} (.xlsx / .xlsm)
-          </button>
+          {!products.viewer && (
+            <button
+              type="button"
+              onClick={() => setShowTaicho(true)}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-border rounded-xl text-sm text-muted-foreground hover:border-blue-400 hover:text-blue-600 transition-colors"
+            >
+              <FileSpreadsheet size={16} />
+              {tg('uploadButton')} (.xlsx / .xlsm)
+            </button>
+          )}
           <TopProductsTable
             products={(products.products as Parameters<typeof TopProductsTable>[0]['products'])}
             onSelectProduct={setSelectedProduct}
@@ -106,7 +108,7 @@ export default function ProductsPage() {
         </div>
       )}
 
-      {showTaicho && (
+      {showTaicho && !products?.viewer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div
             className="absolute inset-0 bg-black/40"
@@ -166,6 +168,7 @@ export default function ProductsPage() {
       {selectedProduct && (
         <ProductDetailModal
           productCode={selectedProduct}
+          years={selectedYears}
           onClose={() => setSelectedProduct(null)}
         />
       )}

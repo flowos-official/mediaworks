@@ -101,6 +101,7 @@ type ImageData = {
 type ModalTab = 'overview' | 'sku' | 'logistics' | 'confidential' | 'contacts' | 'images';
 
 type ProductDetailLoadState = {
+  requestKey: string | null;
   productCode: string | null;
   data: ProductDetailData | null;
   images: ImageData[];
@@ -125,13 +126,18 @@ function InfoRow({ label, value }: { label: string; value: string | number | nul
 
 export default function ProductDetailModal({
   productCode,
+  years,
   onClose,
 }: {
   productCode: string;
+  years?: number[];
   onClose: () => void;
 }) {
   const t = useTranslations('productDetailModal');
+  const yearParam = (years?.length ? years : [2025, 2026]).join(',');
+  const requestKey = `${productCode}:${yearParam}`;
   const [loadState, setLoadState] = useState<ProductDetailLoadState>({
+    requestKey: null,
     productCode: null,
     data: null,
     images: [],
@@ -162,7 +168,7 @@ export default function ProductDetailModal({
     let ignore = false;
     // Fetch product data and images in parallel
     Promise.all([
-      fetch(`/api/analytics/products/${productCode}?year=2025,2026`)
+      fetch(`/api/analytics/products/${productCode}?year=${encodeURIComponent(yearParam)}`)
         .then((res) => { if (!res.ok) throw new Error('Failed to fetch'); return res.json(); }),
       fetch(`/api/analytics/products/${productCode}/images`)
         .then((res) => res.json())
@@ -171,6 +177,7 @@ export default function ProductDetailModal({
       .then(([productData, imageData]) => {
         if (ignore) return;
         setLoadState({
+          requestKey,
           productCode,
           data: productData,
           images: imageData.images ?? [],
@@ -180,6 +187,7 @@ export default function ProductDetailModal({
       .catch((err) => {
         if (ignore) return;
         setLoadState({
+          requestKey,
           productCode,
           data: null,
           images: [],
@@ -189,9 +197,9 @@ export default function ProductDetailModal({
     return () => {
       ignore = true;
     };
-  }, [productCode]);
+  }, [productCode, requestKey, yearParam]);
 
-  const isCurrentLoad = loadState.productCode === productCode;
+  const isCurrentLoad = loadState.requestKey === requestKey;
   const data = isCurrentLoad ? loadState.data : null;
   const images = isCurrentLoad ? loadState.images : [];
   const error = isCurrentLoad ? loadState.error : null;

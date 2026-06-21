@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -478,9 +478,12 @@ function ListView({ locale, router }: { locale: string; router: ReturnType<typeo
 	const seedUrl = searchParams?.get("sourceUrl") ?? null;
 	const seedProductId = searchParams?.get("seedId") ?? null;
 	const seedProductIdsRaw = searchParams?.get("seedIds") ?? null;
-	const seedProductIds = seedProductIdsRaw
-		? seedProductIdsRaw.split(",").map((s) => s.trim()).filter((s) => s.length > 0)
-		: null;
+	const seedProductIds = useMemo(
+		() => seedProductIdsRaw
+			? seedProductIdsRaw.split(",").map((s) => s.trim()).filter((s) => s.length > 0)
+			: null,
+		[seedProductIdsRaw],
+	);
 
 	// Input state
 	const [userGoal, setUserGoal] = useState(() => {
@@ -651,7 +654,7 @@ function ListView({ locale, router }: { locale: string; router: ReturnType<typeo
 			setError(err instanceof Error ? err.message : String(err));
 			setStatus('error');
 		}
-	}, [userGoal, category, targetMarket, priceRange, handleWorkflowEvent]);
+	}, [userGoal, category, targetMarket, priceRange, seedProductId, seedProductIds, handleWorkflowEvent]);
 
 	const handleViewSaved = (id: string) => {
 		router.push(localePath(locale, `/analytics/strategy/expansion/${id}`));

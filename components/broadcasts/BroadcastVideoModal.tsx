@@ -48,7 +48,10 @@ export default function BroadcastVideoModal({
   });
 
   const isOpen = !!(broadcastId && videoKey);
-  const videoUrl = `${process.env.NEXT_PUBLIC_VIDEO_ARCHIVE_BASE_URL ?? ""}/${videoKey ?? ""}`;
+  const archiveBaseUrl = process.env.NEXT_PUBLIC_VIDEO_ARCHIVE_BASE_URL;
+  const videoUrl = archiveBaseUrl && videoKey
+    ? `${archiveBaseUrl.replace(/\/$/, "")}/${videoKey.replace(/^\//, "")}`
+    : null;
   const hasCurrentProducts = isOpen && productState.broadcastId === broadcastId;
   const products = hasCurrentProducts ? productState.products : [];
   const loading = isOpen && !hasCurrentProducts;
@@ -123,14 +126,20 @@ export default function BroadcastVideoModal({
             ~40MB files mask it. "none" stays idle until the user clicks play,
             then streams sequentially. Verified 2026-06-03.
           */}
-          <video
-            key={videoUrl}
-            controls
-            preload="none"
-            className="w-full rounded-lg bg-black aspect-video"
-          >
-            <source src={videoUrl} />
-          </video>
+          {videoUrl ? (
+            <video
+              key={videoUrl}
+              controls
+              preload="none"
+              className="w-full rounded-lg bg-black aspect-video"
+            >
+              <source src={videoUrl} />
+            </video>
+          ) : (
+            <div className="flex aspect-video w-full items-center justify-center rounded-lg border border-dashed border-border bg-muted px-4 text-center text-sm text-muted-foreground">
+              {t("videoArchiveNotConfigured")}
+            </div>
+          )}
         </div>
 
         {/* Product list */}

@@ -7,7 +7,7 @@ import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Menu, X } from 'lucide-react';
 import { localePath } from '@/lib/i18n/locale-path';
-import { NAV_GROUPS, findActiveGroup, findActiveMember, stripLocale } from '@/lib/nav/groups';
+import { NAV_GROUPS, findActiveGroup, findActiveMember, stripLocale, visibleMembersForRole } from '@/lib/nav/groups';
 import type { Role } from '@/lib/auth/route-permissions';
 
 interface Props {
@@ -32,7 +32,12 @@ export default function MobileNavSheet({ role, locale, memberBadges }: Props) {
     return () => document.removeEventListener('keydown', onKey);
   }, [open]);
 
-  const groups = NAV_GROUPS.filter((g) => g.visibility[role] !== 'hidden');
+  const groups = NAV_GROUPS
+    .map((group) => ({ group, visibleMembers: visibleMembersForRole(group, role) }))
+    .filter(({ group, visibleMembers }) =>
+      group.visibility[role] !== 'hidden' &&
+      (group.visibility[role] === 'productsOnly' || visibleMembers.length > 0)
+    );
 
   return (
     <>
@@ -68,7 +73,7 @@ export default function MobileNavSheet({ role, locale, memberBadges }: Props) {
             >
               {t('nav.guide')}
             </Link>
-            {groups.map((g) => {
+            {groups.map(({ group: g, visibleMembers }) => {
               const isActiveGroup = activeGroup?.key === g.key;
               if (g.visibility[role] === 'productsOnly') {
                 return (
@@ -84,6 +89,28 @@ export default function MobileNavSheet({ role, locale, memberBadges }: Props) {
                   </Link>
                 );
               }
+              if (visibleMembers.length === 1) {
+                const member = visibleMembers[0];
+                const isActiveMember = activeMemberHref === member.href;
+                const badge = memberBadges?.[member.href] ?? 0;
+                return (
+                  <Link
+                    key={g.key}
+                    href={localePath(locale, member.href)}
+                    onClick={() => setOpen(false)}
+                    className={`flex items-center justify-between py-3 px-3 text-base font-medium rounded-lg hover:bg-muted ${
+                      isActiveGroup || isActiveMember ? 'text-blue-600 bg-blue-600/10' : 'text-foreground'
+                    }`}
+                  >
+                    {t(member.labelKey)}
+                    {badge > 0 && (
+                      <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/15 text-indigo-700 dark:text-indigo-300">
+                        {badge}
+                      </span>
+                    )}
+                  </Link>
+                );
+              }
               return (
                 <details key={g.key} className="group" open={isActiveGroup}>
                   <summary className={`flex items-center justify-between py-3 px-3 text-base font-semibold cursor-pointer rounded-lg hover:bg-muted ${
@@ -93,7 +120,7 @@ export default function MobileNavSheet({ role, locale, memberBadges }: Props) {
                     <span className="text-muted-foreground group-open:rotate-180 transition-transform">▾</span>
                   </summary>
                   <div className="pl-4 space-y-1 pb-2">
-                    {g.members.map((m) => {
+                    {visibleMembers.map((m) => {
                       const isActiveMember = activeMemberHref === m.href;
                       const badge = memberBadges?.[m.href] ?? 0;
                       return (
