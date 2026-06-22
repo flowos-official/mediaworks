@@ -98,6 +98,10 @@
       "schedule": "30 16 * * *"
     },
     {
+      "path": "/api/cron/daily-historical-broadcasts-pm",
+      "schedule": "0 8 * * *"
+    },
+    {
       "path": "/api/cron/qvc-monthly-refresh",
       "schedule": "0 17 * * *"
     },
