@@ -51,7 +51,9 @@
     "admin": {
       "users": "ユーザー管理",
       "historicalCrawl": "OA収集状況",
+      "archiveStatus": "アーカイブ状況",
       "discoveryCalibration": "スコア較正",
+      "researchPipeline": "リサーチパイプライン",
       "complianceRules": "考査ルール",
       "complianceReferences": "考査参照資料",
       "registry": "スキル登録",
@@ -805,7 +807,8 @@
         "attempts": "試行",
         "error": "エラー"
       },
-      "retry": "再試行"
+      "retry": "再試行",
+      "retryFailed": "再試行に失敗しました"
     },
     "researchPipeline": {
       "title": "リサーチパイプライン",

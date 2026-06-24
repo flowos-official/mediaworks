@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getServiceClient } from "@/lib/supabase";
+import { localePath } from "@/lib/i18n/locale-path";
 
 export const dynamic = "force-dynamic";
 
@@ -90,7 +91,12 @@ async function loadData(): Promise<{
 	};
 }
 
-export default async function RegistryListPage() {
+export default async function RegistryListPage({
+	params,
+}: {
+	params: Promise<{ locale: string }>;
+}) {
+	const { locale } = await params;
 	const t = await getTranslations("admin.registry");
 	const { skills, versionsBySkill, versionCountBySkill } = await loadData();
 
@@ -153,7 +159,7 @@ export default async function RegistryListPage() {
 								return (
 									<tr key={s.id} className="border-t border-border hover:bg-muted">
 										<td className="px-4 py-2 font-mono text-[12px] text-blue-700 dark:text-blue-300">
-											<Link href={`/admin/registry/${s.slug}`}>{s.slug}</Link>
+											<Link href={localePath(locale, `/admin/registry/${s.slug}`)}>{s.slug}</Link>
 										</td>
 										<td className="px-4 py-2 text-foreground">{s.display_name}</td>
 										<td className="px-4 py-2">{categoryBadge(s.category)}</td>

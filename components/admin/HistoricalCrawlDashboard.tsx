@@ -5,6 +5,7 @@ import type {
 	ChannelBaseline,
 	PerChannelRunEntry,
 } from "@/lib/historical-crawl/runs";
+import { channelDisplayName } from "@/lib/broadcasts/channel-style";
 
 interface RunRow {
 	id: string;
@@ -70,12 +71,14 @@ export default function HistoricalCrawlDashboard({ initialRuns, baseline }: Prop
 									key={b.channel}
 									className="bg-card border border-border rounded-lg p-3"
 								>
-									<div className="text-xs text-muted-foreground">{b.channel}</div>
+									<div className="text-xs font-medium text-foreground truncate" title={b.channel}>
+										{channelDisplayName(b.channel)}
+									</div>
 									<div className="text-xl font-bold text-foreground">
 										{b.median7d}
 									</div>
-									<div className="text-[10px] text-muted-foreground">
-										{t("samples", { n: b.samples })}
+									<div className="text-[10px] text-muted-foreground font-mono">
+										{b.channel} · {t("samples", { n: b.samples })}
 									</div>
 								</div>
 							))}
@@ -147,10 +150,10 @@ export default function HistoricalCrawlDashboard({ initialRuns, baseline }: Prop
 															}`}
 															title={
 																c.error ??
-																`${c.rowCount} rows vs median ${median}`
+																`${c.channel}: ${c.rowCount} rows vs median ${median}`
 															}
 														>
-															{c.channel}:{c.rowCount}
+															{channelDisplayName(c.channel)}:{c.rowCount}
 														</span>
 													);
 												})}
