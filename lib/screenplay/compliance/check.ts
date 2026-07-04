@@ -23,12 +23,13 @@ function getGenAI(): GoogleGenAI {
 	return _genAI;
 }
 
-export async function loadActiveRules(): Promise<ComplianceRule[]> {
+export async function loadActiveRules(tenant: string = "mediaworks"): Promise<ComplianceRule[]> {
 	const sb = getServiceClient();
 	const { data, error } = await sb
 		.from("compliance_rules")
 		.select("id,law,category_scope,pattern,is_regex,allowed,severity,reason,safe_rewrite,citation,active")
-		.eq("active", true);
+		.eq("active", true)
+		.eq("tenant", tenant);
 	if (error) {
 		console.warn("[compliance] loadActiveRules failed:", error.message);
 		return [];
@@ -36,12 +37,13 @@ export async function loadActiveRules(): Promise<ComplianceRule[]> {
 	return (data ?? []) as ComplianceRule[];
 }
 
-export async function loadActiveReferences(): Promise<ComplianceReference[]> {
+export async function loadActiveReferences(tenant: string = "mediaworks"): Promise<ComplianceReference[]> {
 	const sb = getServiceClient();
 	const { data, error } = await sb
 		.from("compliance_references")
 		.select("id,law,category_scope,topic,body,keywords,citation,source_url,active")
-		.eq("active", true);
+		.eq("active", true)
+		.eq("tenant", tenant);
 	if (error) {
 		console.warn("[compliance] loadActiveReferences failed:", error.message);
 		return [];
