@@ -122,6 +122,7 @@
     "test:compliance-context": "tsx scripts/test-compliance-context.ts",
     "test:compliance-triggers": "tsx scripts/test-compliance-triggers.ts",
     "test:compliance-legal-axis": "tsx scripts/test-compliance-legal-axis.ts",
+    "test:compliance-display": "tsx scripts/test-compliance-display.ts",
     "test:screenplay-remediate": "tsx scripts/test-screenplay-remediate.ts",
     "test:screenplay-check": "tsx --env-file=.env.local scripts/test-screenplay-check.ts",
     "test:research-data-model": "tsx --env-file=.env.local scripts/test-research-data-model.ts",

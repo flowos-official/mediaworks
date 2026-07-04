@@ -184,12 +184,26 @@ export function describeLegalAxis(laws: string[]): string {
 	return labels.length ? labels.join("・") : "関連法規";
 }
 
+export interface DisplayInput { telop?: string; priceShown?: string; requiredNotice?: string }
+
+export function buildDisplayBlock(display?: DisplayInput): string {
+	if (!display) return "";
+	const lines = [
+		display.telop && `- テロップ: ${display.telop}`,
+		display.priceShown && `- 価格表示: ${display.priceShown}`,
+		display.requiredNotice && `- 必須告知: ${display.requiredNotice}`,
+	].filter(Boolean);
+	if (!lines.length) return "";
+	return `【画面表示（テロップ・価格・必須告知）】\n${lines.join("\n")}`;
+}
+
 function buildPrompt(
 	markdown: string,
 	brief: ProductBrief,
 	rules: ComplianceRule[],
 	references: ComplianceReference[],
 	evidence: FactEvidence[],
+	display?: DisplayInput,
 ): string {
 	const ngList = rules.filter((r) => !r.allowed).slice(0, 60).map((r) => `- [${r.law}] ${r.pattern} (${r.reason})`).join("\n");
 	const okList = rules.filter((r) => r.allowed).slice(0, 30).map((r) => `- ${r.pattern}`).join("\n");
@@ -205,6 +219,7 @@ function buildPrompt(
 				return `- 主張: ${e.claim}\n${hits || "    ・(検索結果なし)"}`;
 		  }).join("\n")
 		: "(検索なし)";
+	const displayBlock = buildDisplayBlock(display);
 	return `あなたは日本のテレビ通販の考査担当者です。以下の放送台本を3観点で点検し、純粋なJSONのみで出力してください（markdown装飾なし）。
 
 【商品情報（事実の根拠）】
@@ -234,7 +249,7 @@ ${evidenceBlock}
 2. facts: 台本中の数値・断定のうち、商品情報または検索結果で裏付けられないもの。裏付け/反証に使ったURLを references に入れる。
 3. quality: 構成の欠落（オープニング/実演/オファー/CTAのいずれか不足、時間配分の偏り、訴求の重複）。
 
-【台本】
+${displayBlock ? displayBlock + "\n\n" : ""}【台本】
 ${markdown.slice(0, 12000)}
 
 【出力JSON】
@@ -268,6 +283,7 @@ export interface CheckOptions {
 	 *  to avoid sending unreleased copy to an external provider — Codex #1). The
 	 *  POST re-check passes true. */
 	factSearch?: boolean;
+	display?: DisplayInput;
 }
 
 export async function checkScreenplay(
@@ -318,7 +334,7 @@ export async function checkScreenplay(
 	// LLM pass (best-effort).
 	let llmLegal: Finding[] = [], llmFacts: Finding[] = [], llmQuality: Finding[] = [];
 	try {
-		const raw = parseJSON<Record<string, unknown[]>>(await callGemini(buildPrompt(markdown, brief, rules, selectedRefs, shownEvidence)));
+		const raw = parseJSON<Record<string, unknown[]>>(await callGemini(buildPrompt(markdown, brief, rules, selectedRefs, shownEvidence, opts.display)));
 		llmLegal = (raw.legal ?? []).map((r) => coerceFinding(r, "legal", allowedUrls)).filter(Boolean) as Finding[];
 		llmFacts = (raw.facts ?? []).map((r) => coerceFinding(r, "facts", allowedUrls)).filter(Boolean) as Finding[];
 		llmQuality = (raw.quality ?? []).map((r) => coerceFinding(r, "quality", allowedUrls)).filter(Boolean) as Finding[];
@@ -326,7 +342,10 @@ export async function checkScreenplay(
 		console.warn("[compliance] LLM pass failed (deterministic findings only):", err instanceof Error ? err.message : String(err));
 	}
 
-	const legal = dedupe([...lexFindings, ...llmLegal]);
+	const telopFindings = opts.display?.telop
+		? matchLexicon(opts.display.telop, rules, brief.category ?? null)
+		: [];
+	const legal = dedupe([...lexFindings, ...telopFindings, ...llmLegal]);
 	const facts = dedupe(llmFacts);
 	const quality = dedupe(llmQuality);
 	const grounding: GroundingMeta = {
@@ -341,4 +360,4 @@ export async function checkScreenplay(
 	return { overallScore: score(legal, facts, quality), legal, facts, quality, grounding };
 }
 
-export const __test = { describeLegalAxis };
+export const __test = { describeLegalAxis, buildDisplayBlock };
