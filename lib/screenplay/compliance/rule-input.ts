@@ -3,7 +3,7 @@
 
 import type { ComplianceLaw, Severity } from "./types";
 
-export const LAWS: ComplianceLaw[] = ["yakkiho", "keihyo", "kenzo"];
+export const LAWS: ComplianceLaw[] = ["yakkiho", "keihyo", "kenzo", "shokuhin", "tokushoho"];
 export const SEVS: Severity[] = ["high", "med", "low"];
 
 export interface RuleInput {

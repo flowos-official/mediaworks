@@ -3,7 +3,7 @@
 
 import type { ReferenceLaw } from "./types";
 
-export const REFERENCE_LAWS: ReferenceLaw[] = ["yakkiho", "keihyo", "kenzo", "other"];
+export const REFERENCE_LAWS: ReferenceLaw[] = ["yakkiho", "keihyo", "kenzo", "other", "shokuhin", "tokushoho"];
 
 export interface ReferenceInput {
 	law?: string;

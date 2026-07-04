@@ -53,4 +53,10 @@ check("partial invalid url rejected", !r.ok);
 r = normalizeReference({ source_url: "https://caa.go.jp/x" }, true);
 check("partial valid url accepted", r.ok);
 
+// 10. food-axis laws accepted (shokuhin/tokushoho added alongside yakkiho/keihyo/kenzo/other)
+r = normalizeReference({ law: "shokuhin", topic: "原産地表示", body: "..." }, false);
+check("shokuhin law accepted", r.ok);
+r = normalizeReference({ law: "tokushoho", topic: "定期購入の解約条件", body: "..." }, false);
+check("tokushoho law accepted", r.ok);
+
 console.log(`[test:compliance-reference-input] ${passed} assertions passed`);

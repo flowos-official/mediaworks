@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import type { ComplianceRule, ComplianceLaw, Severity } from "@/lib/screenplay/compliance/types";
 
-const LAWS: ComplianceLaw[] = ["yakkiho", "keihyo", "kenzo"];
+const LAWS: ComplianceLaw[] = ["yakkiho", "keihyo", "kenzo", "shokuhin", "tokushoho"];
 const SEVS: Severity[] = ["high", "med", "low"];
 
 type Draft = {
