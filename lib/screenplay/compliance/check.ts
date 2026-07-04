@@ -166,6 +166,24 @@ function coerceFinding(raw: unknown, axis: Finding["axis"], allowed: Set<string>
 	};
 }
 
+const LAW_LABELS: Record<string, string> = {
+	yakkiho: "薬機法",
+	keihyo: "景表法",
+	kenzo: "健康増進法",
+	shokuhin: "食品表示法",
+	tokushoho: "特商法",
+};
+
+export function describeLegalAxis(laws: string[]): string {
+	const seen = new Set<string>();
+	const labels: string[] = [];
+	for (const l of laws) {
+		const label = LAW_LABELS[l];
+		if (label && !seen.has(label)) { seen.add(label); labels.push(label); }
+	}
+	return labels.length ? labels.join("・") : "関連法規";
+}
+
 function buildPrompt(
 	markdown: string,
 	brief: ProductBrief,
@@ -212,7 +230,7 @@ ${evidenceBlock}
 <<<END 検索結果>>>
 
 【点検観点】
-1. legal: 薬機法・景表法・健康増進法の違反疑い（上記NGの言い換え・優良誤認・No.1/最上級の根拠欠如等）。根拠資料があれば references に出典を付す。
+1. legal: ${describeLegalAxis(rules.map((r) => r.law))}の違反疑い（上記NGの言い換え・優良誤認・No.1/最上級の根拠欠如等）。根拠資料があれば references に出典を付す。
 2. facts: 台本中の数値・断定のうち、商品情報または検索結果で裏付けられないもの。裏付け/反証に使ったURLを references に入れる。
 3. quality: 構成の欠落（オープニング/実演/オファー/CTAのいずれか不足、時間配分の偏り、訴求の重複）。
 
@@ -322,3 +340,5 @@ export async function checkScreenplay(
 	};
 	return { overallScore: score(legal, facts, quality), legal, facts, quality, grounding };
 }
+
+export const __test = { describeLegalAxis };
