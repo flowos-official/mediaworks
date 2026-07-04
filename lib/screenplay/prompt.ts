@@ -3,14 +3,25 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import type { GenerateInput, ProductBrief } from "./types";
 
-const STYLE_BIBLE_PATH = path.join(process.cwd(), "lib/screenplay/style-bible.json");
+const STYLE_DIR = path.join(process.cwd(), "lib/screenplay/style");
+const BASE_STYLE_BIBLE_PATH = path.join(process.cwd(), "lib/screenplay/style-bible.json");
 
-let _styleBible: string | null = null;
+const _styleCache = new Map<string, string>();
 
-async function loadStyleBible(): Promise<string> {
-	if (!_styleBible) _styleBible = await fs.readFile(STYLE_BIBLE_PATH, "utf-8");
-	return _styleBible;
+async function loadStyleBible(tenant: string = "mediaworks"): Promise<string> {
+	const cached = _styleCache.get(tenant);
+	if (cached) return cached;
+	let content: string;
+	try {
+		content = await fs.readFile(path.join(STYLE_DIR, `${tenant}.json`), "utf-8");
+	} catch {
+		content = await fs.readFile(BASE_STYLE_BIBLE_PATH, "utf-8");   // fallback
+	}
+	_styleCache.set(tenant, content);
+	return content;
 }
+
+export const __test = { loadStyleBible };
 
 // ────────────────────────────────────────────────────────────────────────────
 // SYSTEM INSTRUCTION — immutable role / output contract.
