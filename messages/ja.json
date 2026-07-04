@@ -625,7 +625,9 @@
       "laws": {
         "yakkiho": "薬機法",
         "keihyo": "景表法",
-        "kenzo": "健康増進法"
+        "kenzo": "健康増進法",
+        "shokuhin": "食品表示法",
+        "tokushoho": "特商法"
       },
       "sev": {
         "high": "高",
@@ -680,7 +682,7 @@
       "activeNo": "無効",
       "edit": "編集",
       "empty": "該当する資料がありません。",
-      "laws": { "yakkiho": "薬機法", "keihyo": "景表法", "kenzo": "健康増進法", "other": "その他" },
+      "laws": { "yakkiho": "薬機法", "keihyo": "景表法", "kenzo": "健康増進法", "other": "その他", "shokuhin": "食品表示法", "tokushoho": "特商法" },
       "col": { "law": "法令", "category": "カテゴリ", "topic": "トピック・本文", "source": "出典", "active": "状態", "actions": "操作" },
       "form": {
         "createHeading": "資料追加", "editHeading": "資料編集", "law": "法令",

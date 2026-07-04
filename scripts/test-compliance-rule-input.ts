@@ -96,4 +96,10 @@ check("overlong pattern rejected", !r.ok);
 r = normalizeRule(null, false);
 check("null input rejected gracefully on create", !r.ok);
 
+// 13. food-axis laws accepted (shokuhin/tokushoho added alongside yakkiho/keihyo/kenzo)
+r = normalizeRule({ law: "shokuhin", pattern: "国産100%" }, false);
+check("shokuhin law accepted", r.ok);
+r = normalizeRule({ law: "tokushoho", pattern: "定期便の解約条件" }, false);
+check("tokushoho law accepted", r.ok);
+
 console.log(`[test:compliance-rule-input] ${passed} assertions passed`);

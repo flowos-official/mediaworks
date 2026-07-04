@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { ComplianceReference, ReferenceLaw } from "@/lib/screenplay/compliance/types";
 
-const LAWS: ReferenceLaw[] = ["yakkiho", "keihyo", "kenzo", "other"];
+const LAWS: ReferenceLaw[] = ["yakkiho", "keihyo", "kenzo", "other", "shokuhin", "tokushoho"];
 
 type Draft = {
 	id: string | null;

@@ -1,4 +1,4 @@
-export type ComplianceLaw = "yakkiho" | "keihyo" | "kenzo";
+export type ComplianceLaw = "yakkiho" | "keihyo" | "kenzo" | "shokuhin" | "tokushoho";
 export type Severity = "high" | "med" | "low";
 
 export interface ComplianceRule {
