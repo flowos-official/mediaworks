@@ -620,7 +620,8 @@
       "generateFailed": "생성에 실패했습니다",
       "streamUnavailable": "스트림을 사용할 수 없습니다",
       "connectionLost": "연결이 끊겼습니다: {msg}",
-      "connectionError": "연결 오류: {msg} / {detail}"
+      "connectionError": "연결 오류: {msg} / {detail}",
+      "refineFailed": "개정에 실패했습니다"
     },
     "form": {
       "productName": "상품명",
@@ -643,13 +644,46 @@
       "v1": "초안",
       "downloadMd": ".md 다운로드",
       "copyMd": "Markdown 복사",
-      "copied": "복사됨"
+      "copied": "복사됨",
+      "copy": "복사",
+      "versionCount": "{count}건",
+      "noVersions": "아직 원고가 없습니다",
+      "keyboardHint": "⌘← / ⌘→ 로 버전을 이동할 수 있습니다",
+      "noScript": "아직 대본이 없습니다",
+      "noScriptHint": "오른쪽 폼에서 첫 대본을 생성해주세요.",
+      "reviewPlaceholder": "첫 대본이 완성되면 여기서 개정할 수 있습니다.",
+      "prev": "이전",
+      "next": "다음",
+      "prevVersion": "이전 버전",
+      "nextVersion": "다음 버전",
+      "prevVersionWithDraft": "이전 버전 (第 {n} 稿)",
+      "nextVersionWithDraft": "다음 버전 (第 {n} 稿)",
+      "chars": "{n}자",
+      "generating": "생성 중…",
+      "justNow": "방금 전",
+      "minutesAgo": "{n}분 전",
+      "hoursAgo": "{n}시간 전",
+      "daysAgo": "{n}일 전",
+      "firstGeneration": "최초 생성"
     },
     "feedback": {
       "label": "피드백을 입력하여 개정",
       "placeholder": "예: 실연 데모를 마지막에 넣어주세요. 고객 후기를 3명으로 늘리고, 각자의 직업을 다르게 해주세요.",
       "submit": "이 내용으로 개정",
-      "sending": "전송 중…"
+      "sending": "전송 중…",
+      "heading": "개정 피드백",
+      "hint": "구체적으로 전달할수록 자연스럽게 반영됩니다.",
+      "frequentRequests": "자주 쓰는 요청",
+      "suggestions": [
+        "실연 데모를 마지막쯤으로 옮겨주세요.",
+        "가격을 보여주기 전에 할인 이유를 한 단계 더 강조해주세요.",
+        "고객 후기를 3명으로 늘리고, 연령대와 직업을 다르게 해주세요.",
+        "이 특징 설명을 마지막에 넣어주세요."
+      ]
+    },
+    "renderer": {
+      "finalScript": "완성판 대본",
+      "sceneChange": "장면 전환"
     }
   },
   "auth": {

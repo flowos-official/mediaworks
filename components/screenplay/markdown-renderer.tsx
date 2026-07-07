@@ -1,7 +1,10 @@
 // components/screenplay/markdown-renderer.tsx
-// Server Component. Hand-rolled parser because the screenplay format is regular
-// enough that this is more accurate than a generic markdown library.
+// Client Component (rendered inside ScreenplayViewer's client tree). Hand-rolled
+// parser because the screenplay format is regular enough that this is more
+// accurate than a generic markdown library.
+"use client";
 import React from "react";
+import { useTranslations } from "next-intl";
 import { ROLE_LABELS, parseMarkdown } from "@/lib/screenplay/parse-markdown";
 
 const CUE_STYLES: Record<string, { bg: string; ring: string; text: string }> = {
@@ -22,6 +25,7 @@ const ROLE_STYLES: Record<string, string> = {
 };
 
 export function ScreenplayMarkdown({ markdown }: { markdown: string }) {
+	const t = useTranslations("screenplay.renderer");
 	const blocks = parseMarkdown(markdown);
 
 	return (
@@ -32,7 +36,7 @@ export function ScreenplayMarkdown({ markdown }: { markdown: string }) {
 						return (
 							<header key={idx} data-md-line={b.line} className="mb-10 pb-6 border-b border-border">
 								<div className="text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-600/10 inline-block px-2 py-0.5 rounded-full mb-3">
-									完成版 台本
+									{t("finalScript")}
 								</div>
 								<h1 className="text-3xl font-bold tracking-tight text-foreground leading-tight">
 									{b.text}
@@ -59,7 +63,7 @@ export function ScreenplayMarkdown({ markdown }: { markdown: string }) {
 					return (
 						<div key={idx} data-md-line={b.line} className="my-10 flex items-center gap-3">
 							<div className="h-px flex-1 bg-border" />
-							<span className="text-[10px] tracking-widest uppercase text-muted-foreground">場面転換</span>
+							<span className="text-[10px] tracking-widest uppercase text-muted-foreground">{t("sceneChange")}</span>
 							<div className="h-px flex-1 bg-border" />
 						</div>
 					);

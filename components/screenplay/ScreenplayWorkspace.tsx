@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { FileText } from "lucide-react";
@@ -23,6 +24,7 @@ function pad(n: number, w: number): string {
 }
 
 export function ScreenplayWorkspace({ initialScreenplay, initialVersions, latestCheck, initialCheckVersionId = null }: Props) {
+	const t = useTranslations("screenplay");
 	const router = useRouter();
 	const search = useSearchParams();
 	const [versions, setVersions] = useState(initialVersions);
@@ -167,7 +169,7 @@ export function ScreenplayWorkspace({ initialScreenplay, initialVersions, latest
 			{/* HISTORY — lg/sm dropdown (hidden at xl), sits above the grid */}
 			{versions.length > 1 && (
 				<div className="xl:hidden mb-4">
-					<label htmlFor="screenplay-version-select" className="text-[11px] font-medium text-muted-foreground mr-2">改稿履歴</label>
+					<label htmlFor="screenplay-version-select" className="text-[11px] font-medium text-muted-foreground mr-2">{t("workspace.history")}</label>
 					<select
 						id="screenplay-version-select"
 						value={selectedId ?? ""}
@@ -187,8 +189,8 @@ export function ScreenplayWorkspace({ initialScreenplay, initialVersions, latest
 					<Card className="border-border">
 						<CardContent className="p-4">
 							<div className="flex items-center justify-between mb-3">
-								<h2 className="text-sm font-semibold text-foreground">改稿履歴</h2>
-								<span className="text-[11px] text-muted-foreground">{versions.length}件</span>
+								<h2 className="text-sm font-semibold text-foreground">{t("workspace.history")}</h2>
+								<span className="text-[11px] text-muted-foreground">{t("workspace.versionCount", { count: versions.length })}</span>
 							</div>
 							{versions.length > 0 ? (
 								<VersionTimeline
@@ -197,9 +199,9 @@ export function ScreenplayWorkspace({ initialScreenplay, initialVersions, latest
 									onSelect={setSelectedId}
 								/>
 							) : (
-								<p className="text-xs text-muted-foreground py-4 text-center">まだ稿がありません</p>
+								<p className="text-xs text-muted-foreground py-4 text-center">{t("workspace.noVersions")}</p>
 							)}
-							<div className="text-[11px] text-muted-foreground mt-4 pt-3 border-t border-border leading-relaxed">⌘← / ⌘→ で版を移動できます</div>
+							<div className="text-[11px] text-muted-foreground mt-4 pt-3 border-t border-border leading-relaxed">{t("workspace.keyboardHint")}</div>
 						</CardContent>
 					</Card>
 				</aside>
@@ -219,8 +221,8 @@ export function ScreenplayWorkspace({ initialScreenplay, initialVersions, latest
 								<div className="w-14 h-14 bg-muted rounded-full flex items-center justify-center mb-3">
 									<FileText size={24} className="text-muted-foreground" />
 								</div>
-								<p className="text-sm text-foreground font-medium">まだ台本がありません</p>
-								<p className="text-xs text-muted-foreground mt-1">右側のフォームから最初の台本を生成してください。</p>
+								<p className="text-sm text-foreground font-medium">{t("workspace.noScript")}</p>
+								<p className="text-xs text-muted-foreground mt-1">{t("workspace.noScriptHint")}</p>
 							</CardContent>
 						</Card>
 					) : null}
@@ -243,7 +245,7 @@ export function ScreenplayWorkspace({ initialScreenplay, initialVersions, latest
 						/>
 					) : (
 						<Card className="border-border">
-							<CardContent className="p-5 text-center text-xs text-muted-foreground">最初の台本ができたら、ここで改稿できます。</CardContent>
+							<CardContent className="p-5 text-center text-xs text-muted-foreground">{t("workspace.reviewPlaceholder")}</CardContent>
 						</Card>
 					)}
 				</aside>
