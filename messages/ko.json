@@ -490,7 +490,12 @@
         "updated": "최종 수정"
       },
       "count": "{count}건",
-      "revisions": "개정 {count}회"
+      "revisions": "개정 {count}회",
+      "untitled": "(제목 없음)",
+      "justNow": "방금 전",
+      "minutesAgo": "{n}분 전",
+      "hoursAgo": "{n}시간 전",
+      "daysAgo": "{n}일 전"
     },
     "status": {
       "pending": "대기 중",

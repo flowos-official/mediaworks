@@ -490,7 +490,12 @@
         "updated": "最終更新"
       },
       "count": "{count} 件",
-      "revisions": "改稿 {count} 回"
+      "revisions": "改稿 {count} 回",
+      "untitled": "（無題）",
+      "justNow": "たった今",
+      "minutesAgo": "{n}分前",
+      "hoursAgo": "{n}時間前",
+      "daysAgo": "{n}日前"
     },
     "status": {
       "pending": "待機中",

@@ -73,20 +73,27 @@ function formatStamp(iso: string): string {
 	return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function relativeFromNow(iso: string): string {
-	const ms = Date.now() - new Date(iso).getTime();
-	const min = Math.floor(ms / 60_000);
-	if (min < 1) return "たった今";
-	if (min < 60) return `${min}分前`;
-	const hr = Math.floor(min / 60);
-	if (hr < 24) return `${hr}時間前`;
-	const day = Math.floor(hr / 24);
-	if (day < 7) return `${day}日前`;
-	return formatStamp(iso);
+// Relative-timestamp formatter bound to the translator so `/ko` list rows read
+// Korean while `/ja` keeps the original wording. Falls back to the numeric
+// YYYY/MM/DD HH:mm stamp once the row is a week or more old.
+function useRelative(): (iso: string) => string {
+	const t = useTranslations("screenplay.list");
+	return (iso: string) => {
+		const ms = Date.now() - new Date(iso).getTime();
+		const min = Math.floor(ms / 60_000);
+		if (min < 1) return t("justNow");
+		if (min < 60) return t("minutesAgo", { n: min });
+		const hr = Math.floor(min / 60);
+		if (hr < 24) return t("hoursAgo", { n: hr });
+		const day = Math.floor(hr / 24);
+		if (day < 7) return t("daysAgo", { n: day });
+		return formatStamp(iso);
+	};
 }
 
 export function ScreenplayList({ rows, locale }: { rows: Row[]; locale: string }) {
 	const t = useTranslations("screenplay");
+	const relative = useRelative();
 
 	if (rows.length === 0) {
 		return (
@@ -137,7 +144,7 @@ export function ScreenplayList({ rows, locale }: { rows: Row[]; locale: string }
 									</div>
 									<div className="min-w-0">
 										<div className="text-sm font-medium text-foreground truncate">
-											{r.title || <span className="text-muted-foreground italic">（無題）</span>}
+											{r.title || <span className="text-muted-foreground italic">{t("list.untitled")}</span>}
 										</div>
 										{/* Meta line: source badge · category chip · revisions · product link.
 										    Wraps; every segment is conditional so nothing dangles when absent. */}
@@ -164,7 +171,7 @@ export function ScreenplayList({ rows, locale }: { rows: Row[]; locale: string }
 													<Package size={9} />
 												</span>
 											)}
-											<span className="text-[11px] text-muted-foreground font-mono md:hidden">{relativeFromNow(r.updated_at)}</span>
+											<span className="text-[11px] text-muted-foreground font-mono md:hidden">{relative(r.updated_at)}</span>
 										</div>
 									</div>
 								</div>
@@ -177,7 +184,7 @@ export function ScreenplayList({ rows, locale }: { rows: Row[]; locale: string }
 								</span>
 
 								<span className="hidden md:block text-xs text-muted-foreground tabular-nums w-36 text-right">
-									<span className="text-muted-foreground">{relativeFromNow(r.updated_at)}</span>
+									<span className="text-muted-foreground">{relative(r.updated_at)}</span>
 								</span>
 
 								<ArrowRight
