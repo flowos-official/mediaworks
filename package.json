@@ -148,7 +148,8 @@
     "test:channel-taste": "tsx --env-file=.env.local scripts/test-channel-taste.ts",
     "test:competitor-boost-channel-scope": "tsx --env-file=.env.local scripts/test-competitor-boost-channel-scope.ts",
     "test:backward-compat-parsed-goal": "tsx scripts/test-backward-compat-parsed-goal.ts",
-    "check:chokepoint": "tsx scripts/check-runGoalAnalysis-callers.ts"
+    "check:chokepoint": "tsx scripts/check-runGoalAnalysis-callers.ts",
+    "check:i18n": "tsx scripts/check-message-parity.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1016.0",

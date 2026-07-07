@@ -480,11 +480,39 @@
     "subtitle": "상품별로 생방송과 같은 대본을 생성·개정할 수 있습니다.",
     "new": "신규 작성",
     "noneYet": "아직 대본이 없습니다. '신규 작성'에서 시작해주세요.",
+    "list": {
+      "title": "대본 목록",
+      "subtitle": "상품을 선택해 생방송 같은 TV 홈쇼핑 대본을 생성합니다. 피드백을 보내면 몇 번이든 개정할 수 있습니다.",
+      "new": "새 대본 만들기",
+      "empty": {
+        "title": "아직 대본이 없습니다",
+        "body": "'새 대본 만들기'에서 상품 자료를 업로드하거나 URL을 지정해 생성을 시작하세요."
+      },
+      "col": {
+        "title": "제목",
+        "status": "상태",
+        "updated": "최종 수정"
+      },
+      "count": "{count}건",
+      "revisions": "개정 {count}회"
+    },
     "status": {
-      "pending": "대기",
+      "pending": "대기 중",
       "generating": "생성 중",
       "ready": "완성",
       "failed": "실패"
+    },
+    "source": {
+      "upload": "파일",
+      "url": "URL",
+      "import": "Word 가져오기",
+      "product": "상품",
+      "unknown": "기타"
+    },
+    "detail": {
+      "back": "대본 목록으로",
+      "badge": "TV 홈쇼핑 대본",
+      "revisionsCount": "개정 {count}회"
     },
     "form": {
       "productName": "상품명",

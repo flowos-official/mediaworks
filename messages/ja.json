@@ -480,11 +480,39 @@
     "subtitle": "商品ごとに、生放送さながらの台本を生成・改稿できます。",
     "new": "新規作成",
     "noneYet": "まだ台本はありません。「新規作成」から始めてください。",
+    "list": {
+      "title": "台本一覧",
+      "subtitle": "商品を選んで、生放送さながらのテレビショッピング台本を作成します。フィードバックを送ると何度でも改稿できます。",
+      "new": "新しい台本を作成",
+      "empty": {
+        "title": "まだ台本がありません",
+        "body": "「新しい台本を作成」から、商品資料をアップロードするか URL を指定して生成を開始してください。"
+      },
+      "col": {
+        "title": "タイトル",
+        "status": "状態",
+        "updated": "最終更新"
+      },
+      "count": "{count} 件",
+      "revisions": "改稿 {count} 回"
+    },
     "status": {
-      "pending": "待機",
+      "pending": "待機中",
       "generating": "生成中",
       "ready": "完成",
       "failed": "失敗"
+    },
+    "source": {
+      "upload": "ファイル",
+      "url": "URL",
+      "import": "Word取込",
+      "product": "商品",
+      "unknown": "その他"
+    },
+    "detail": {
+      "back": "台本一覧に戻る",
+      "badge": "テレビショッピング台本",
+      "revisionsCount": "改稿 {count} 回"
     },
     "form": {
       "productName": "商品名",
