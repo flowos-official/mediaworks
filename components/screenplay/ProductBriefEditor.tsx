@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from "next-intl";
 
 export interface BriefDraft {
 	name: string;
@@ -36,18 +37,19 @@ export function ProductBriefEditor({
 	onSalePrice,
 	onShippingPrice,
 }: Props) {
+	const t = useTranslations("screenplay.form");
 	return (
 		<div className="p-6 space-y-7">
 			{/* 基本情報 */}
 			<section>
 				<div className="flex items-center gap-3 mb-3">
-					<h3 className="text-[10px] font-semibold tracking-[0.16em] uppercase text-muted-foreground">基本情報</h3>
+					<h3 className="text-[10px] font-semibold tracking-[0.16em] uppercase text-muted-foreground">{t("basicInfo")}</h3>
 					<div className="h-px flex-1 bg-border" aria-hidden />
 				</div>
 				<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 					<div className="md:col-span-2">
 						<label className="block text-xs font-medium text-foreground mb-1.5">
-							商品名 <span className="text-red-500">*</span>
+							{t("productName")} <span className="text-red-500">*</span>
 						</label>
 						<input
 							type="text"
@@ -58,7 +60,7 @@ export function ProductBriefEditor({
 						/>
 					</div>
 					<div className="md:col-span-2">
-						<label className="block text-xs font-medium text-foreground mb-1.5">カテゴリ</label>
+						<label className="block text-xs font-medium text-foreground mb-1.5">{t("category")}</label>
 						<input
 							type="text"
 							value={brief.category ?? ""}
@@ -69,7 +71,7 @@ export function ProductBriefEditor({
 					</div>
 					<div className="md:col-span-2">
 						<label className="block text-xs font-medium text-foreground mb-1.5">
-							特徴・スペック <span className="text-red-500">*</span>
+							{t("description")} <span className="text-red-500">*</span>
 						</label>
 						<textarea
 							value={brief.description}
@@ -80,7 +82,7 @@ export function ProductBriefEditor({
 						/>
 						<div className="flex items-center justify-end mt-1">
 							<p className="text-[11px] text-muted-foreground tabular-nums">
-								{brief.description.length.toLocaleString()} / 16,000 文字
+								{t("charCount", { count: brief.description.length.toLocaleString() })}
 							</p>
 						</div>
 					</div>
@@ -90,14 +92,14 @@ export function ProductBriefEditor({
 			{/* 価格 */}
 			<section>
 				<div className="flex items-center gap-3 mb-3">
-					<h3 className="text-[10px] font-semibold tracking-[0.16em] uppercase text-muted-foreground">価格</h3>
+					<h3 className="text-[10px] font-semibold tracking-[0.16em] uppercase text-muted-foreground">{t("priceSection")}</h3>
 					<div className="h-px flex-1 bg-border" aria-hidden />
 				</div>
 				<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 					{([
-						["メーカー直販価格", listPrice, onListPrice],
-						["本日特別価格", salePrice, onSalePrice],
-						["送料", shippingPrice, onShippingPrice],
+						[t("listPrice"), listPrice, onListPrice],
+						[t("salePrice"), salePrice, onSalePrice],
+						[t("shipping"), shippingPrice, onShippingPrice],
 					] as const).map(([label, val, setter]) => (
 						<div key={label}>
 							<label className="block text-xs font-medium text-foreground mb-1.5">{label}</label>
@@ -120,12 +122,12 @@ export function ProductBriefEditor({
 			{/* 特典・補足 */}
 			<section>
 				<div className="flex items-center gap-3 mb-3">
-					<h3 className="text-[10px] font-semibold tracking-[0.16em] uppercase text-muted-foreground">特典・補足</h3>
+					<h3 className="text-[10px] font-semibold tracking-[0.16em] uppercase text-muted-foreground">{t("bonusSection")}</h3>
 					<div className="h-px flex-1 bg-border" aria-hidden />
 				</div>
 				<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 					<div>
-						<label className="block text-xs font-medium text-foreground mb-1.5">保証</label>
+						<label className="block text-xs font-medium text-foreground mb-1.5">{t("guarantee")}</label>
 						<input
 							type="text"
 							value={brief.guarantee ?? ""}
@@ -135,7 +137,7 @@ export function ProductBriefEditor({
 						/>
 					</div>
 					<div>
-						<label className="block text-xs font-medium text-foreground mb-1.5">ボーナス・特典 (1行1件)</label>
+						<label className="block text-xs font-medium text-foreground mb-1.5">{t("bonuses")}</label>
 						<textarea
 							value={bonusesText}
 							onChange={(e) => onBonusesChange(e.target.value)}
@@ -144,7 +146,7 @@ export function ProductBriefEditor({
 						/>
 					</div>
 					<div className="md:col-span-2">
-						<label className="block text-xs font-medium text-foreground mb-1.5">その他のメモ</label>
+						<label className="block text-xs font-medium text-foreground mb-1.5">{t("notes")}</label>
 						<textarea
 							value={brief.notes ?? ""}
 							onChange={(e) => onBriefChange({ ...brief, notes: e.target.value })}

@@ -1,5 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useRef, useState } from "react";
 import {
 	Sparkles,
@@ -73,13 +74,14 @@ function formatBytes(b: number): string {
 // ---- Stepper ----------------------------------------------------------------
 
 function Stepper({ active }: { active: Step }) {
+	const t = useTranslations("screenplay");
 	const items: { n: Step; label: string; sub: string }[] = [
-		{ n: 1, label: "ソース", sub: "Source" },
-		{ n: 2, label: "確認", sub: "Review" },
-		{ n: 3, label: "生成", sub: "Generate" },
+		{ n: 1, label: t("new.step.source"), sub: "Source" },
+		{ n: 2, label: t("new.step.review"), sub: "Review" },
+		{ n: 3, label: t("new.step.generate"), sub: "Generate" },
 	];
 	return (
-		<ol className="flex items-stretch gap-0 mb-8 select-none" aria-label="作成ステップ">
+		<ol className="flex items-stretch gap-0 mb-8 select-none" aria-label={t("a11y.createSteps")}>
 			{items.map((it, i) => {
 				const done = it.n < active;
 				const current = it.n === active;
@@ -138,6 +140,7 @@ function Stepper({ active }: { active: Step }) {
 
 export function ScreenplayCreateForm({ locale }: { locale: string }) {
 	const router = useRouter();
+	const t = useTranslations("screenplay");
 	const [mode, setMode] = useState<InputMode>("upload");
 	const [extracting, setExtracting] = useState(false);
 	const [submitting, setSubmitting] = useState(false);
@@ -191,8 +194,8 @@ export function ScreenplayCreateForm({ locale }: { locale: string }) {
 			form.append("file", selectedFile);
 			const res = await fetch("/api/screenplays/extract", { method: "POST", body: form });
 			const j = await res.json();
-			if (!res.ok) throw new Error(j.error ?? "抽出に失敗しました");
-			if (!j.brief || typeof j.brief !== "object") throw new Error("サーバーから抽出結果が返りませんでした");
+			if (!res.ok) throw new Error(j.error ?? t("errors.extractFailed"));
+			if (!j.brief || typeof j.brief !== "object") throw new Error(t("errors.noExtractResult"));
 			hydrateBrief(j.brief as ExtractedBrief);
 			setSource(j.source as SourceMeta);
 		} catch (e) {
@@ -214,8 +217,8 @@ export function ScreenplayCreateForm({ locale }: { locale: string }) {
 				body: JSON.stringify({ url: trimmed }),
 			});
 			const j = await res.json();
-			if (!res.ok) throw new Error(j.error ?? "抽出に失敗しました");
-			if (!j.brief || typeof j.brief !== "object") throw new Error("サーバーから抽出結果が返りませんでした");
+			if (!res.ok) throw new Error(j.error ?? t("errors.extractFailed"));
+			if (!j.brief || typeof j.brief !== "object") throw new Error(t("errors.noExtractResult"));
 			hydrateBrief(j.brief as ExtractedBrief);
 			setSource(j.source as SourceMeta);
 		} catch (e) {
@@ -230,7 +233,7 @@ export function ScreenplayCreateForm({ locale }: { locale: string }) {
 		const name = brief.name.trim();
 		const description = brief.description.trim();
 		if (!name || !description) {
-			setError("商品名と特徴・スペックは必須です");
+			setError(t("errors.nameDescRequired"));
 			return;
 		}
 		setSubmitting(true);
@@ -265,7 +268,7 @@ export function ScreenplayCreateForm({ locale }: { locale: string }) {
 				}),
 			});
 			const j = await res.json();
-			if (!res.ok) throw new Error(j.error ?? "作成に失敗しました");
+			if (!res.ok) throw new Error(j.error ?? t("errors.createFailed"));
 			router.push(localePath(locale, `/screenplays/${j.id}?run=${j.runId}`));
 		} catch (e) {
 			setError(e instanceof Error ? e.message : String(e));
@@ -298,7 +301,7 @@ export function ScreenplayCreateForm({ locale }: { locale: string }) {
 			{!brief && (
 				<>
 					{/* Mode picker — large, tactile cards instead of pill tabs */}
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-3" aria-label="入力方法">
+					<div className="grid grid-cols-1 md:grid-cols-2 gap-3" aria-label={t("a11y.inputMethod")}>
 						<button
 							type="button"
 							aria-pressed={mode === "upload"}
@@ -321,14 +324,14 @@ export function ScreenplayCreateForm({ locale }: { locale: string }) {
 								</div>
 								<div className="min-w-0">
 									<div className="text-sm font-semibold text-foreground flex items-center gap-2">
-										ファイルをアップロード
+										{t("new.mode.uploadTitle")}
 										{mode === "upload" && (
 											<span className="text-[10px] font-semibold tracking-[0.16em] uppercase text-blue-600">
 												Selected
 											</span>
 										)}
 									</div>
-									<div className="text-xs text-muted-foreground mt-1">PDF / Excel / 画像 を Gemini Vision が解析</div>
+									<div className="text-xs text-muted-foreground mt-1">{t("new.mode.uploadDesc")}</div>
 								</div>
 							</div>
 						</button>
@@ -355,14 +358,14 @@ export function ScreenplayCreateForm({ locale }: { locale: string }) {
 								</div>
 								<div className="min-w-0">
 									<div className="text-sm font-semibold text-foreground flex items-center gap-2">
-										商品ページURL
+										{t("new.mode.urlTitle")}
 										{mode === "url" && (
 											<span className="text-[10px] font-semibold tracking-[0.16em] uppercase text-blue-600">
 												Selected
 											</span>
 										)}
 									</div>
-									<div className="text-xs text-muted-foreground mt-1">公開URLの本文＋商品画像を自動取得</div>
+									<div className="text-xs text-muted-foreground mt-1">{t("new.mode.urlDesc")}</div>
 								</div>
 							</div>
 						</button>
@@ -373,10 +376,10 @@ export function ScreenplayCreateForm({ locale }: { locale: string }) {
 						<div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
 							<div className="px-6 pt-5 pb-3 border-b border-border">
 								<h2 className="text-base font-semibold text-foreground tracking-tight">
-									PDF / Excel / 画像をアップロード
+									{t("new.upload.heading")}
 								</h2>
 								<p className="text-xs text-muted-foreground mt-1">
-									商品資料 (PDF / 画像 / Excel) を1ファイル選択してください。Gemini が内容を読み取り、台本生成用の商品情報を抽出します。
+									{t("new.upload.desc")}
 								</p>
 							</div>
 							<div className="p-6 space-y-4">
@@ -406,7 +409,7 @@ export function ScreenplayCreateForm({ locale }: { locale: string }) {
 										<Upload size={22} className="text-blue-600" />
 									</div>
 									<div className="relative text-sm font-medium text-foreground">
-										{selectedFile ? "別のファイルに変更" : "クリックしてファイルを選択 — またはドラッグ＆ドロップ"}
+										{selectedFile ? t("new.upload.changeFile") : t("new.upload.dropHint")}
 									</div>
 									<div className="relative flex items-center gap-1.5">
 										{["PDF", "PNG/JPEG", "XLSX"].map((ext) => (
@@ -417,7 +420,7 @@ export function ScreenplayCreateForm({ locale }: { locale: string }) {
 												{ext}
 											</span>
 										))}
-										<span className="text-[11px] text-muted-foreground ml-1">最大 25MB</span>
+										<span className="text-[11px] text-muted-foreground ml-1">{t("new.upload.maxSize")}</span>
 									</div>
 									<input
 										ref={fileInputRef}
@@ -449,7 +452,7 @@ export function ScreenplayCreateForm({ locale }: { locale: string }) {
 											type="button"
 											onClick={() => { setSelectedFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
 											className="text-muted-foreground hover:text-foreground p-1.5 rounded-md hover:bg-card transition-colors"
-											aria-label="ファイルを削除"
+											aria-label={t("a11y.removeFile")}
 										>
 											<X size={14} />
 										</button>
@@ -458,7 +461,7 @@ export function ScreenplayCreateForm({ locale }: { locale: string }) {
 
 								<div className="flex items-center justify-between gap-3 pt-1">
 									<p className="text-[11px] text-muted-foreground leading-relaxed">
-										抽出した情報は次の画面で確認・編集できます。
+										{t("new.extractHint")}
 									</p>
 									<button
 										type="button"
@@ -467,7 +470,7 @@ export function ScreenplayCreateForm({ locale }: { locale: string }) {
 										className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-medium pl-4 pr-5 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shadow-blue-200/60"
 									>
 										{extracting ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />}
-										{extracting ? "抽出中..." : "Geminiで情報を抽出"}
+										{extracting ? t("new.upload.extracting") : t("new.upload.extractBtn")}
 									</button>
 								</div>
 							</div>
@@ -476,10 +479,10 @@ export function ScreenplayCreateForm({ locale }: { locale: string }) {
 						<div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
 							<div className="px-6 pt-5 pb-3 border-b border-border">
 								<h2 className="text-base font-semibold text-foreground tracking-tight">
-									商品ページのURLから読み込む
+									{t("new.url.heading")}
 								</h2>
 								<p className="text-xs text-muted-foreground mt-1">
-									公開されている商品ページのURLを入力すると、本文と主要な画像 (最大4枚) を Gemini Vision が解析して商品情報を抽出します。
+									{t("new.url.desc")}
 								</p>
 							</div>
 							<div className="p-6 space-y-4">
@@ -499,15 +502,15 @@ export function ScreenplayCreateForm({ locale }: { locale: string }) {
 								<div className="flex items-center gap-2 text-[11px] text-muted-foreground">
 									<span className="inline-flex items-center gap-1">
 										<span className="w-1 h-1 rounded-full bg-emerald-400" />
-										http / https のみ
+										{t("new.url.protocolHint")}
 									</span>
 									<span className="text-muted-foreground">·</span>
-									<span>JavaScript非依存ページに最適</span>
+									<span>{t("new.url.jsHint")}</span>
 								</div>
 
 								<div className="flex items-center justify-between gap-3 pt-1">
 									<p className="text-[11px] text-muted-foreground leading-relaxed">
-										抽出した情報は次の画面で確認・編集できます。
+										{t("new.extractHint")}
 									</p>
 									<button
 										type="button"
@@ -516,7 +519,7 @@ export function ScreenplayCreateForm({ locale }: { locale: string }) {
 										className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-medium pl-4 pr-5 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shadow-blue-200/60"
 									>
 										{extracting ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />}
-										{extracting ? "解析中..." : "URLから情報を抽出"}
+										{extracting ? t("new.url.extracting") : t("new.url.extractBtn")}
 									</button>
 								</div>
 							</div>
@@ -533,13 +536,13 @@ export function ScreenplayCreateForm({ locale }: { locale: string }) {
 							<div className="min-w-0">
 								<div className="inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.16em] uppercase text-emerald-700 dark:text-emerald-300 bg-emerald-600/10 border border-emerald-200/80 rounded-full px-2 py-0.5">
 									<CheckCircle2 size={12} />
-									抽出完了
+									{t("new.review.badge")}
 								</div>
 								<h2 className="text-base font-semibold text-foreground tracking-tight mt-2">
-									抽出結果を確認・編集
+									{t("new.review.heading")}
 								</h2>
 								<p className="text-xs text-muted-foreground mt-1 max-w-xl">
-									内容に問題なければ「台本を生成」を押してください。修正したい項目があれば自由に編集できます。
+									{t("new.review.desc")}
 								</p>
 							</div>
 							<button
@@ -548,7 +551,7 @@ export function ScreenplayCreateForm({ locale }: { locale: string }) {
 								className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground underline-offset-2 hover:underline shrink-0 transition-colors"
 							>
 								<RotateCcw size={12} />
-								別の素材で再抽出
+								{t("new.review.reextract")}
 							</button>
 						</div>
 					</div>
@@ -569,7 +572,7 @@ export function ScreenplayCreateForm({ locale }: { locale: string }) {
 							{typeof source.imageCount === "number" && source.imageCount > 0 && (
 								<span className="ml-auto inline-flex items-center gap-1 text-[10px] font-medium tracking-wide uppercase text-emerald-700 dark:text-emerald-300 bg-emerald-600/10 border border-emerald-200/80 rounded-full px-2 py-0.5 shrink-0">
 									<ImageIcon size={10} />
-									画像 {source.imageCount} 枚を解析
+									{t("new.review.imageAnalyzed", { count: source.imageCount })}
 								</span>
 							)}
 						</div>
@@ -613,13 +616,13 @@ export function ScreenplayCreateForm({ locale }: { locale: string }) {
 							</div>
 							<div className="min-w-0">
 								<div className="text-[10px] font-semibold tracking-[0.16em] uppercase text-muted-foreground">
-									生成対象
+									{t("new.submit.target")}
 								</div>
 								<div className="text-sm font-semibold text-foreground truncate mt-0.5">
-									{brief.name || "(商品名未入力)"}
+									{brief.name || t("new.submit.noName")}
 								</div>
 								<div className="text-[11px] text-muted-foreground mt-0.5">
-									生成には約2〜6分かかります。完了後にフィードバックで改稿できます。
+									{t("new.submit.note")}
 								</div>
 							</div>
 						</div>
@@ -630,7 +633,7 @@ export function ScreenplayCreateForm({ locale }: { locale: string }) {
 							className="inline-flex items-center gap-2 bg-gray-900 hover:bg-black active:bg-gray-900 text-white text-sm font-medium pl-5 pr-4 py-3 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shrink-0 shadow-sm hover:shadow-md"
 						>
 							{submitting ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-							{submitting ? "作成中..." : "台本を生成"}
+							{submitting ? t("new.submit.submitting") : t("new.submit.submitBtn")}
 							{!submitting && <ArrowRight size={14} className="opacity-70" />}
 						</button>
 					</div>

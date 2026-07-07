@@ -1,10 +1,12 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { ChevronLeft, Clapperboard } from "lucide-react";
 import { ScreenplayNewTabs } from "@/components/screenplay/ScreenplayNewTabs";
 import { localePath } from "@/lib/i18n/locale-path";
 
 export default async function NewScreenplayPage({ params }: { params: Promise<{ locale: string }> }) {
 	const { locale } = await params;
+	const t = await getTranslations("screenplay.new");
 	return (
 		<main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 			<Link
@@ -12,7 +14,7 @@ export default async function NewScreenplayPage({ params }: { params: Promise<{ 
 				className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors mb-8"
 			>
 				<ChevronLeft size={14} />
-				台本一覧に戻る
+				{t("back")}
 			</Link>
 
 			<header className="mb-10 relative">
@@ -25,10 +27,10 @@ export default async function NewScreenplayPage({ params }: { params: Promise<{ 
 							Screenplay Studio
 						</div>
 						<h1 className="text-[2rem] leading-tight font-bold text-foreground tracking-tight">
-							新しい台本を作成
+							{t("title")}
 						</h1>
 						<p className="text-sm text-muted-foreground mt-2 max-w-2xl leading-relaxed">
-							商品資料 (PDF / Excel / 画像) をアップロードするか、商品ページのURLを指定すると、Gemini が内容を読み取り、テレビ東京系「生活情報マーケット」スタイルの完成版台本を起こします。アバン → スタジオ① 〜 ④ → CTA → VTR お客様の声 → CTA の構成で出力されます。
+							{t("subtitle")}
 						</p>
 					</div>
 				</div>
