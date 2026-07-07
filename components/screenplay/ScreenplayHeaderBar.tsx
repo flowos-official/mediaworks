@@ -1,5 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Copy, Download, Check, ChevronLeft, ChevronRight, FileText } from "lucide-react";
 import { parseMarkdown } from "@/lib/screenplay/parse-markdown";
 
@@ -41,6 +42,7 @@ function formatStamp(iso?: string): string {
 }
 
 export function ScreenplayHeaderBar({ markdown, title, versionLabel, createdAt, hasPrev, hasNext, onPrev, onNext, prevLabel, nextLabel }: Props) {
+	const t = useTranslations("screenplay.workspace");
 	const [copied, setCopied] = useState(false);
 	const [docxBusy, setDocxBusy] = useState(false);
 	const chars = useMemo(() => renderedTextLength(markdown), [markdown]);
@@ -71,30 +73,30 @@ export function ScreenplayHeaderBar({ markdown, title, versionLabel, createdAt, 
 		<div className="sticky top-16 z-20 flex items-center justify-between gap-3 bg-card/95 backdrop-blur-sm border border-border rounded-xl px-3 py-2 mb-4 flex-wrap">
 			<div className="flex items-center gap-1">
 				<button type="button" onClick={onPrev} disabled={!hasPrev}
-					title={prevLabel ? `前のバージョン (第 ${prevLabel.replace("v", "")} 稿)` : "前のバージョン"}
+					title={prevLabel ? t("prevVersionWithDraft", { n: prevLabel.replace("v", "") }) : t("prevVersion")}
 					className="inline-flex items-center gap-1 px-2 py-1.5 text-xs text-foreground hover:bg-muted rounded-md disabled:text-muted-foreground disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors">
-					<ChevronLeft size={14} /> 前へ
+					<ChevronLeft size={14} /> {t("prev")}
 				</button>
 				<button type="button" onClick={onNext} disabled={!hasNext}
-					title={nextLabel ? `次のバージョン (第 ${nextLabel.replace("v", "")} 稿)` : "次のバージョン"}
+					title={nextLabel ? t("nextVersionWithDraft", { n: nextLabel.replace("v", "") }) : t("nextVersion")}
 					className="inline-flex items-center gap-1 px-2 py-1.5 text-xs text-foreground hover:bg-muted rounded-md disabled:text-muted-foreground disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors">
-					次へ <ChevronRight size={14} />
+					{t("next")} <ChevronRight size={14} />
 				</button>
 			</div>
 			<div className="flex items-baseline gap-3 text-xs text-muted-foreground min-w-0">
 				{versionLabel && <span className="font-semibold text-foreground whitespace-nowrap">{versionLabel}</span>}
 				{createdAt && <span className="tabular-nums whitespace-nowrap">{formatStamp(createdAt)}</span>}
-				<span className="tabular-nums whitespace-nowrap hidden sm:inline">{chars.toLocaleString()} 文字</span>
+				<span className="tabular-nums whitespace-nowrap hidden sm:inline">{t("chars", { n: chars.toLocaleString() })}</span>
 			</div>
 			<div className="flex items-center gap-1">
 				<button type="button" onClick={copyMd} className="inline-flex items-center gap-1 px-3 py-1.5 text-xs text-foreground hover:bg-muted rounded-md transition-colors">
-					{copied ? <Check size={12} /> : <Copy size={12} />} {copied ? "コピー済み" : "コピー"}
+					{copied ? <Check size={12} /> : <Copy size={12} />} {copied ? t("copied") : t("copy")}
 				</button>
 				<button type="button" onClick={downloadMd} className="inline-flex items-center gap-1 px-3 py-1.5 text-xs text-foreground hover:bg-muted rounded-md transition-colors">
 					<Download size={12} /> .md
 				</button>
 				<button type="button" onClick={downloadDocx} disabled={docxBusy} className="inline-flex items-center gap-1 px-3 py-1.5 text-xs text-foreground hover:bg-muted rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-					<FileText size={12} /> {docxBusy ? "生成中…" : "Word"}
+					<FileText size={12} /> {docxBusy ? t("generating") : "Word"}
 				</button>
 			</div>
 		</div>

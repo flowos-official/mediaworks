@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Sparkles, FileUp } from "lucide-react";
 import { ScreenplayCreateForm } from "./ScreenplayCreateForm";
 import { ScreenplayImportForm } from "./ScreenplayImportForm";
@@ -7,14 +8,15 @@ import { ScreenplayImportForm } from "./ScreenplayImportForm";
 type Tab = "generate" | "import";
 
 export function ScreenplayNewTabs({ locale }: { locale: string }) {
+	const t = useTranslations("screenplay");
 	const [tab, setTab] = useState<Tab>("generate");
 	const tabs: { id: Tab; label: string; sub: string; icon: typeof Sparkles }[] = [
-		{ id: "generate", label: "商品資料から生成", sub: "PDF / Excel / 画像 / URL", icon: Sparkles },
-		{ id: "import", label: "台本ドラフトを取り込む", sub: "Word (.docx)", icon: FileUp },
+		{ id: "generate", label: t("tabs.create"), sub: t("tabs.createSub"), icon: Sparkles },
+		{ id: "import", label: t("tabs.import"), sub: t("tabs.importSub"), icon: FileUp },
 	];
 	return (
 		<div className="space-y-7">
-			<div className="grid grid-cols-1 md:grid-cols-2 gap-3" role="tablist" aria-label="作成方法">
+			<div className="grid grid-cols-1 md:grid-cols-2 gap-3" role="tablist" aria-label={t("a11y.createMethod")}>
 				{tabs.map((t) => {
 					const Icon = t.icon;
 					const active = tab === t.id;

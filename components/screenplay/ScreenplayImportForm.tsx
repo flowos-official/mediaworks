@@ -1,5 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useRef, useState } from "react";
 import {
 	Upload, Loader2, FileText, X, Wand2, AlertCircle, CheckCircle2,
@@ -31,6 +32,7 @@ function formatBytes(b: number): string {
 
 export function ScreenplayImportForm({ locale }: { locale: string }) {
 	const router = useRouter();
+	const t = useTranslations("screenplay");
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const [selectedFile, setSelectedFile] = useState<File | null>(null);
 	const [extracting, setExtracting] = useState(false);
@@ -73,10 +75,10 @@ export function ScreenplayImportForm({ locale }: { locale: string }) {
 		setError(null);
 		try {
 			if (!selectedFile.name.toLowerCase().endsWith(".docx")) {
-				throw new Error("Word の .docx ファイルを選択してください（旧 .doc は非対応です）。");
+				throw new Error(t("errors.docxOnly"));
 			}
 			if (selectedFile.size > 25 * 1024 * 1024) {
-				throw new Error("ファイルサイズが大きすぎます（最大 25MB）。");
+				throw new Error(t("errors.fileTooLarge"));
 			}
 
 			// Parse the .docx to text IN THE BROWSER, then POST only the text. Large,
@@ -93,10 +95,10 @@ export function ScreenplayImportForm({ locale }: { locale: string }) {
 				const out = await extractRawText({ arrayBuffer });
 				text = (out.value ?? "").trim();
 			} catch {
-				throw new Error("Word ファイルを読み取れませんでした。ファイルが壊れているか .docx ではない可能性があります。");
+				throw new Error(t("errors.docxUnreadable"));
 			}
 			if (!text) {
-				throw new Error("Word ファイルから文章を抽出できませんでした（空の可能性があります）。");
+				throw new Error(t("errors.docxEmpty"));
 			}
 
 			const res = await fetch("/api/screenplays/import", {
@@ -108,10 +110,10 @@ export function ScreenplayImportForm({ locale }: { locale: string }) {
 			try {
 				j = await res.json();
 			} catch {
-				throw new Error(res.ok ? "サーバー応答を解釈できませんでした" : `取り込みに失敗しました (HTTP ${res.status})`);
+				throw new Error(res.ok ? t("errors.serverResponseParse") : t("errors.importFailedHttp", { status: res.status }));
 			}
-			if (!res.ok) throw new Error(j.error ?? "取り込みに失敗しました");
-			if (!j.brief || typeof j.markdown !== "string") throw new Error("サーバーから取り込み結果が返りませんでした");
+			if (!res.ok) throw new Error(j.error ?? t("errors.importFailed"));
+			if (!j.brief || typeof j.markdown !== "string") throw new Error(t("errors.noImportResult"));
 			hydrate(j.brief, j.markdown);
 		} catch (e) {
 			setError(e instanceof Error ? e.message : String(e));
@@ -125,7 +127,7 @@ export function ScreenplayImportForm({ locale }: { locale: string }) {
 		const name = brief.name.trim();
 		const description = brief.description.trim();
 		if (!name || !description) {
-			setError("商品名と特徴・スペックは必須です");
+			setError(t("errors.nameDescRequired"));
 			return;
 		}
 		setSubmitting(true);
@@ -153,7 +155,7 @@ export function ScreenplayImportForm({ locale }: { locale: string }) {
 				body: JSON.stringify({ productBrief, importedMarkdown: markdown }),
 			});
 			const j = await res.json();
-			if (!res.ok) throw new Error(j.error ?? "作成に失敗しました");
+			if (!res.ok) throw new Error(j.error ?? t("errors.createFailed"));
 			router.push(localePath(locale, `/screenplays/${j.id}?run=${j.runId}&kind=import`));
 		} catch (e) {
 			setError(e instanceof Error ? e.message : String(e));
@@ -173,9 +175,9 @@ export function ScreenplayImportForm({ locale }: { locale: string }) {
 			{!brief && (
 				<div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
 					<div className="px-6 pt-5 pb-3 border-b border-border">
-						<h2 className="text-base font-semibold text-foreground tracking-tight">台本ドラフト (Word) を取り込む</h2>
+						<h2 className="text-base font-semibold text-foreground tracking-tight">{t("import.heading")}</h2>
 						<p className="text-xs text-muted-foreground mt-1">
-							既存の台本ドラフト (.docx) をアップロードすると、当システムの様式に整形して取り込みます。文章はそのまま保持し、構造だけ整えます。取り込み後に「改稿」で磨き込み、試験結果も確認できます。旧 .doc 形式は非対応です。
+							{t("import.desc")}
 						</p>
 					</div>
 					<div className="p-6 space-y-4">
@@ -193,11 +195,11 @@ export function ScreenplayImportForm({ locale }: { locale: string }) {
 								<Upload size={22} className="text-blue-600" />
 							</div>
 							<div className="relative text-sm font-medium text-foreground">
-								{selectedFile ? "別のファイルに変更" : "クリックして .docx を選択 — またはドラッグ＆ドロップ"}
+								{selectedFile ? t("import.changeFile") : t("import.dropHint")}
 							</div>
 							<div className="relative flex items-center gap-1.5">
 								<span className="text-[10px] font-mono font-semibold tracking-wider text-muted-foreground bg-card border border-border px-1.5 py-0.5 rounded">DOCX</span>
-								<span className="text-[11px] text-muted-foreground ml-1">最大 25MB</span>
+								<span className="text-[11px] text-muted-foreground ml-1">{t("import.maxSize")}</span>
 							</div>
 							<input
 								ref={fileInputRef}
@@ -222,7 +224,7 @@ export function ScreenplayImportForm({ locale }: { locale: string }) {
 									type="button"
 									onClick={() => { setSelectedFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
 									className="text-muted-foreground hover:text-foreground p-1.5 rounded-md hover:bg-card transition-colors"
-									aria-label="ファイルを削除"
+									aria-label={t("a11y.removeFile")}
 								>
 									<X size={14} />
 								</button>
@@ -237,7 +239,7 @@ export function ScreenplayImportForm({ locale }: { locale: string }) {
 								className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-medium pl-4 pr-5 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shadow-blue-200/60"
 							>
 								{extracting ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />}
-								{extracting ? "取り込み中..." : "取り込んで整形"}
+								{extracting ? t("import.importing") : t("import.importBtn")}
 							</button>
 						</div>
 					</div>
@@ -251,11 +253,11 @@ export function ScreenplayImportForm({ locale }: { locale: string }) {
 							<div className="min-w-0">
 								<div className="inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.16em] uppercase text-emerald-700 dark:text-emerald-300 bg-emerald-600/10 border border-emerald-200/80 rounded-full px-2 py-0.5">
 									<CheckCircle2 size={12} />
-									取り込み完了
+									{t("import.doneBadge")}
 								</div>
-								<h2 className="text-base font-semibold text-foreground tracking-tight mt-2">商品情報を確認・編集</h2>
+								<h2 className="text-base font-semibold text-foreground tracking-tight mt-2">{t("import.reviewHeading")}</h2>
 								<p className="text-xs text-muted-foreground mt-1 max-w-xl">
-									この情報は試験（コンプライアンス検査）と改稿に使われます。整形後の台本は下のプレビューで確認できます。問題なければ「この台本で開始」を押してください。
+									{t("import.reviewDesc")}
 								</p>
 							</div>
 							<button
@@ -264,7 +266,7 @@ export function ScreenplayImportForm({ locale }: { locale: string }) {
 								className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:underline shrink-0 transition-colors"
 							>
 								<RotateCcw size={12} />
-								別のファイルで取り込み直す
+								{t("import.reimport")}
 							</button>
 						</div>
 					</div>
@@ -289,7 +291,7 @@ export function ScreenplayImportForm({ locale }: { locale: string }) {
 							className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
 						>
 							{showPreview ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-							整形後の台本プレビュー
+							{t("import.previewToggle")}
 						</button>
 						{showPreview && (
 							<div className="mt-3 max-h-[480px] overflow-y-auto rounded-xl border border-border bg-muted/30 p-5">
@@ -315,9 +317,9 @@ export function ScreenplayImportForm({ locale }: { locale: string }) {
 								<Sparkles size={16} className="text-white" />
 							</div>
 							<div className="min-w-0">
-								<div className="text-[10px] font-semibold tracking-[0.16em] uppercase text-muted-foreground">取り込み対象</div>
-								<div className="text-sm font-semibold text-foreground truncate mt-0.5">{brief.name || "(商品名未入力)"}</div>
-								<div className="text-[11px] text-muted-foreground mt-0.5">v1 として取り込み、自動で試験を実行します（自動修正はしません）。</div>
+								<div className="text-[10px] font-semibold tracking-[0.16em] uppercase text-muted-foreground">{t("import.target")}</div>
+								<div className="text-sm font-semibold text-foreground truncate mt-0.5">{brief.name || t("import.noName")}</div>
+								<div className="text-[11px] text-muted-foreground mt-0.5">{t("import.submitNote")}</div>
 							</div>
 						</div>
 						<button
@@ -327,7 +329,7 @@ export function ScreenplayImportForm({ locale }: { locale: string }) {
 							className="inline-flex items-center gap-2 bg-gray-900 hover:bg-black text-white text-sm font-medium pl-5 pr-4 py-3 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shrink-0 shadow-sm"
 						>
 							{submitting ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-							{submitting ? "作成中..." : "この台本で開始"}
+							{submitting ? t("import.submitting") : t("import.submitBtn")}
 							{!submitting && <ArrowRight size={14} className="opacity-70" />}
 						</button>
 					</div>

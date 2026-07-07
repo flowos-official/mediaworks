@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from "next-intl";
 import { Check, FileText } from "lucide-react";
 import type { ScreenplayVersionRow } from "@/lib/screenplay/types";
 
@@ -8,16 +9,21 @@ interface Props {
 	onSelect: (id: string) => void;
 }
 
-function relative(iso: string): string {
-	const t = new Date(iso).getTime();
-	const diff = (Date.now() - t) / 1000;
-	if (diff < 60) return "たった今";
-	if (diff < 3600) return `${Math.floor(diff / 60)}分前`;
-	if (diff < 86400) return `${Math.floor(diff / 3600)}時間前`;
-	return `${Math.floor(diff / 86400)}日前`;
+function useRelative(): (iso: string) => string {
+	const t = useTranslations("screenplay.workspace");
+	return (iso: string) => {
+		const time = new Date(iso).getTime();
+		const diff = (Date.now() - time) / 1000;
+		if (diff < 60) return t("justNow");
+		if (diff < 3600) return t("minutesAgo", { n: Math.floor(diff / 60) });
+		if (diff < 86400) return t("hoursAgo", { n: Math.floor(diff / 3600) });
+		return t("daysAgo", { n: Math.floor(diff / 86400) });
+	};
 }
 
 export function VersionTimeline({ versions, selectedId, onSelect }: Props) {
+	const t = useTranslations("screenplay.workspace");
+	const relative = useRelative();
 	const ordered = [...versions].reverse();
 	return (
 		<ol className="space-y-2">
@@ -43,7 +49,7 @@ export function VersionTimeline({ versions, selectedId, onSelect }: Props) {
 									<span className="text-[11px] text-muted-foreground">{relative(v.created_at)}</span>
 								</div>
 								<div className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-									{v.feedback ? `「${v.feedback}」` : "最初の生成"}
+									{v.feedback ? `「${v.feedback}」` : t("firstGeneration")}
 								</div>
 							</div>
 						</button>

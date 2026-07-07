@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ChevronLeft, Clapperboard } from "lucide-react";
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { ScreenplayWorkspace } from "@/components/screenplay/ScreenplayWorkspace";
 import type { ScreenplayRow, ScreenplayVersionRow } from "@/lib/screenplay/types";
 import type { ScriptCheckResult } from "@/lib/screenplay/compliance/types";
@@ -52,19 +53,21 @@ async function fetchDetail(id: string) {
 	};
 }
 
-const STATUS_BADGE: Record<ScreenplayRow["status"], { cls: string; label: string }> = {
-	pending: { cls: "bg-yellow-600/15 text-yellow-700 dark:text-yellow-300", label: "待機中" },
-	generating: { cls: "bg-blue-600/15 text-blue-700 dark:text-blue-300", label: "生成中" },
-	ready: { cls: "bg-green-600/15 text-green-700 dark:text-green-300", label: "完成" },
-	failed: { cls: "bg-red-600/15 text-red-700 dark:text-red-300", label: "失敗" },
+// Color classes only — the label is resolved via t(`status.${status}`) so
+// `screenplay.status.*` stays the single source of truth (shared with the list).
+const STATUS_BADGE: Record<ScreenplayRow["status"], string> = {
+	pending: "bg-yellow-600/15 text-yellow-700 dark:text-yellow-300",
+	generating: "bg-blue-600/15 text-blue-700 dark:text-blue-300",
+	ready: "bg-green-600/15 text-green-700 dark:text-green-300",
+	failed: "bg-red-600/15 text-red-700 dark:text-red-300",
 };
 
 export default async function ScreenplayDetailPage({ params }: { params: Promise<{ id: string; locale: string }> }) {
 	const { id, locale } = await params;
-	const data = await fetchDetail(id);
+	const [data, t] = await Promise.all([fetchDetail(id), getTranslations("screenplay")]);
 	if (!data) notFound();
 	const { screenplay, versions, latestCheck } = data;
-	const badge = STATUS_BADGE[screenplay.status];
+	const badgeCls = STATUS_BADGE[screenplay.status];
 
 	return (
 		<>
@@ -73,21 +76,21 @@ export default async function ScreenplayDetailPage({ params }: { params: Promise
 				className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-5"
 			>
 				<ChevronLeft size={14} />
-				台本一覧に戻る
+				{t("detail.back")}
 			</Link>
 
 			<header className="flex items-start justify-between gap-4 mb-6">
 				<div className="min-w-0 flex-1">
 					<div className="inline-flex items-center gap-2 bg-blue-600/10 text-blue-700 dark:text-blue-300 text-xs font-medium px-2.5 py-1 rounded-full mb-3">
 						<Clapperboard size={12} />
-						テレビショッピング台本
+						{t("detail.badge")}
 					</div>
 					<div className="flex items-center gap-3 flex-wrap">
 						<h1 className="text-2xl font-bold text-foreground">{screenplay.title}</h1>
-						<span className={`inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full ${badge.cls}`}>
-							{badge.label}
+						<span className={`inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full ${badgeCls}`}>
+							{t(`status.${screenplay.status}`)}
 						</span>
-						<span className="text-xs text-muted-foreground">改稿 {versions.length} 回</span>
+						<span className="text-xs text-muted-foreground">{t("detail.revisionsCount", { count: versions.length })}</span>
 					</div>
 				</div>
 			</header>

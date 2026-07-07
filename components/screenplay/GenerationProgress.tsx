@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Loader2, CheckCircle2, AlertTriangle, Sparkles } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { ProgressEvent } from "@/lib/screenplay/types";
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export function GenerationProgress({ runId, onComplete, variant = "generate" }: Props) {
+	const t = useTranslations("screenplay");
 	const [events, setEvents] = useState<ProgressEvent[]>([]);
 	const [error, setError] = useState<string | null>(null);
 	const [doneAt, setDoneAt] = useState<{ versionId: string; versionNumber: number } | null>(null);
@@ -21,6 +23,11 @@ export function GenerationProgress({ runId, onComplete, variant = "generate" }: 
 
 	const onCompleteRef = useRef(onComplete);
 	useEffect(() => { onCompleteRef.current = onComplete; });
+
+	// Keep the latest translator available inside the stream effect without adding
+	// it to the effect deps (which would restart the SSE connection on re-render).
+	const tRef = useRef(t);
+	useEffect(() => { tRef.current = t; });
 
 	useEffect(() => {
 		if (doneAt || error) return;
@@ -35,7 +42,7 @@ export function GenerationProgress({ runId, onComplete, variant = "generate" }: 
 		async function consume() {
 			try {
 				const res = await fetch(`/api/screenplays/run/${runId}/stream`, { signal: controller.signal });
-				if (!res.body) throw new Error("ストリームが利用できません");
+				if (!res.body) throw new Error(tRef.current("errors.streamUnavailable"));
 				const reader = res.body.getReader();
 				const decoder = new TextDecoder();
 				let buf = "";
@@ -78,13 +85,13 @@ export function GenerationProgress({ runId, onComplete, variant = "generate" }: 
 							return;
 						}
 						if (sj.status === "failed") {
-							setError("生成に失敗しました");
+							setError(tRef.current("errors.generateFailed"));
 							return;
 						}
 					}
-					setError(`接続が切れました: ${msg}`);
+					setError(tRef.current("errors.connectionLost", { msg }));
 				} catch (fallbackErr) {
-					setError(`接続エラー: ${msg} / ${String(fallbackErr)}`);
+					setError(tRef.current("errors.connectionError", { msg, detail: String(fallbackErr) }));
 				}
 			}
 		}
@@ -122,10 +129,10 @@ export function GenerationProgress({ runId, onComplete, variant = "generate" }: 
 						<div className="flex items-center justify-between gap-3">
 							<h3 className="text-sm font-semibold text-foreground">
 								{error
-									? (variant === "import" ? "取り込みに失敗しました" : "生成に失敗しました")
+									? (variant === "import" ? t("progress.failedTitleImport") : t("progress.failedTitleGenerate"))
 									: doneAt
-									? (variant === "import" ? "台本を取り込みました" : `第 ${doneAt.versionNumber} 稿を生成しました`)
-									: (variant === "import" ? "台本を取り込み中" : "台本を生成中")}
+									? (variant === "import" ? t("progress.doneTitleImport") : t("progress.doneTitleGenerate", { n: doneAt.versionNumber }))
+									: (variant === "import" ? t("progress.runningTitleImport") : t("progress.runningTitleGenerate"))}
 							</h3>
 							{!error && !doneAt && (
 								<span className="text-xs text-muted-foreground tabular-nums">
@@ -137,16 +144,16 @@ export function GenerationProgress({ runId, onComplete, variant = "generate" }: 
 							{error
 								? error
 								: doneAt
-								? "改稿フィードバックを送信すると、引き続き磨き込めます。"
+								? t("progress.doneDesc")
 								: variant === "import"
-								? "ドラフトを様式に整え、コンプライアンス試験を実行しています。"
-								: "テレ東スタイルの台本を執筆中です。深く考えながら執筆するため、約2〜6分かかります。ページを閉じても処理は継続します。"}
+								? t("progress.runningDescImport")
+								: t("progress.runningDescGenerate")}
 						</p>
 
 						{!error && !doneAt && variant === "generate" && (
 							<div className="mt-3">
 								<div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1.5">
-									<span>{chars > 0 ? `${chars.toLocaleString()} 文字を受信` : "接続中..."}</span>
+									<span>{chars > 0 ? t("progress.charsReceived", { chars: chars.toLocaleString() }) : t("progress.connecting")}</span>
 									<span className="tabular-nums">{pctTarget}%</span>
 								</div>
 								<div className="h-1.5 bg-muted rounded-full overflow-hidden">
@@ -162,8 +169,8 @@ export function GenerationProgress({ runId, onComplete, variant = "generate" }: 
 								<Loader2 size={12} className="animate-spin text-blue-600" />
 								<span>
 									{events.some((e) => e.type === "step" && e.name === "check" && e.status === "started")
-										? "試験中..."
-										: "取り込み中..."}
+										? t("progress.checking")
+										: t("progress.importing")}
 								</span>
 							</div>
 						)}

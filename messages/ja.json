@@ -476,36 +476,262 @@
   },
   "screenplay": {
     "navLabel": "台本",
-    "title": "テレビショッピング 台本",
-    "subtitle": "商品ごとに、生放送さながらの台本を生成・改稿できます。",
-    "new": "新規作成",
-    "noneYet": "まだ台本はありません。「新規作成」から始めてください。",
+    "list": {
+      "title": "台本一覧",
+      "subtitle": "商品を選んで、生放送さながらのテレビショッピング台本を作成します。フィードバックを送ると何度でも改稿できます。",
+      "new": "新しい台本を作成",
+      "empty": {
+        "title": "まだ台本がありません",
+        "body": "「新しい台本を作成」から、商品資料をアップロードするか URL を指定して生成を開始してください。"
+      },
+      "col": {
+        "title": "タイトル",
+        "status": "状態",
+        "updated": "最終更新"
+      },
+      "count": "{count} 件",
+      "revisions": "改稿 {count} 回",
+      "untitled": "（無題）",
+      "justNow": "たった今",
+      "minutesAgo": "{n}分前",
+      "hoursAgo": "{n}時間前",
+      "daysAgo": "{n}日前"
+    },
     "status": {
-      "pending": "待機",
+      "pending": "待機中",
       "generating": "生成中",
       "ready": "完成",
       "failed": "失敗"
+    },
+    "source": {
+      "upload": "ファイル",
+      "url": "URL",
+      "import": "Word取込",
+      "product": "商品",
+      "unknown": "その他"
+    },
+    "detail": {
+      "back": "台本一覧に戻る",
+      "badge": "テレビショッピング台本",
+      "revisionsCount": "改稿 {count} 回"
+    },
+    "new": {
+      "back": "台本一覧に戻る",
+      "title": "新しい台本を作成",
+      "subtitle": "商品資料 (PDF / Excel / 画像) をアップロードするか、商品ページのURLを指定すると、Gemini が内容を読み取り、テレビ東京系「生活情報マーケット」スタイルの完成版台本を起こします。アバン → スタジオ① 〜 ④ → CTA → VTR お客様の声 → CTA の構成で出力されます。",
+      "step": {
+        "source": "ソース",
+        "review": "確認",
+        "generate": "生成"
+      },
+      "mode": {
+        "uploadTitle": "ファイルをアップロード",
+        "uploadDesc": "PDF / Excel / 画像 を Gemini Vision が解析",
+        "urlTitle": "商品ページURL",
+        "urlDesc": "公開URLの本文＋商品画像を自動取得"
+      },
+      "upload": {
+        "heading": "PDF / Excel / 画像をアップロード",
+        "desc": "商品資料 (PDF / 画像 / Excel) を1ファイル選択してください。Gemini が内容を読み取り、台本生成用の商品情報を抽出します。",
+        "changeFile": "別のファイルに変更",
+        "dropHint": "クリックしてファイルを選択 — またはドラッグ＆ドロップ",
+        "maxSize": "最大 25MB",
+        "extractBtn": "Geminiで情報を抽出",
+        "extracting": "抽出中..."
+      },
+      "url": {
+        "heading": "商品ページのURLから読み込む",
+        "desc": "公開されている商品ページのURLを入力すると、本文と主要な画像 (最大4枚) を Gemini Vision が解析して商品情報を抽出します。",
+        "protocolHint": "http / https のみ",
+        "jsHint": "JavaScript非依存ページに最適",
+        "extractBtn": "URLから情報を抽出",
+        "extracting": "解析中..."
+      },
+      "extractHint": "抽出した情報は次の画面で確認・編集できます。",
+      "review": {
+        "badge": "抽出完了",
+        "heading": "抽出結果を確認・編集",
+        "desc": "内容に問題なければ「台本を生成」を押してください。修正したい項目があれば自由に編集できます。",
+        "reextract": "別の素材で再抽出",
+        "imageAnalyzed": "画像 {count} 枚を解析"
+      },
+      "submit": {
+        "target": "生成対象",
+        "noName": "(商品名未入力)",
+        "note": "生成には約2〜6分かかります。完了後にフィードバックで改稿できます。",
+        "submitBtn": "台本を生成",
+        "submitting": "作成中..."
+      }
+    },
+    "tabs": {
+      "create": "商品資料から生成",
+      "createSub": "PDF / Excel / 画像 / URL",
+      "import": "台本ドラフトを取り込む",
+      "importSub": "Word (.docx)"
+    },
+    "a11y": {
+      "createMethod": "作成方法",
+      "createSteps": "作成ステップ",
+      "inputMethod": "入力方法",
+      "removeFile": "ファイルを削除",
+      "jumpToScriptLocation": "台本の該当箇所へ移動"
+    },
+    "import": {
+      "heading": "台本ドラフト (Word) を取り込む",
+      "desc": "既存の台本ドラフト (.docx) をアップロードすると、当システムの様式に整形して取り込みます。文章はそのまま保持し、構造だけ整えます。取り込み後に「改稿」で磨き込み、試験結果も確認できます。旧 .doc 形式は非対応です。",
+      "changeFile": "別のファイルに変更",
+      "dropHint": "クリックして .docx を選択 — またはドラッグ＆ドロップ",
+      "maxSize": "最大 25MB",
+      "importBtn": "取り込んで整形",
+      "importing": "取り込み中...",
+      "doneBadge": "取り込み完了",
+      "reviewHeading": "商品情報を確認・編集",
+      "reviewDesc": "この情報は試験（コンプライアンス検査）と改稿に使われます。整形後の台本は下のプレビューで確認できます。問題なければ「この台本で開始」を押してください。",
+      "reimport": "別のファイルで取り込み直す",
+      "previewToggle": "整形後の台本プレビュー",
+      "target": "取り込み対象",
+      "noName": "(商品名未入力)",
+      "submitNote": "v1 として取り込み、自動で試験を実行します（自動修正はしません）。",
+      "submitBtn": "この台本で開始",
+      "submitting": "作成中..."
+    },
+    "progress": {
+      "failedTitleGenerate": "生成に失敗しました",
+      "failedTitleImport": "取り込みに失敗しました",
+      "doneTitleGenerate": "第 {n} 稿を生成しました",
+      "doneTitleImport": "台本を取り込みました",
+      "runningTitleGenerate": "台本を生成中",
+      "runningTitleImport": "台本を取り込み中",
+      "doneDesc": "改稿フィードバックを送信すると、引き続き磨き込めます。",
+      "runningDescImport": "ドラフトを様式に整え、コンプライアンス試験を実行しています。",
+      "runningDescGenerate": "テレ東スタイルの台本を執筆中です。深く考えながら執筆するため、約2〜6分かかります。ページを閉じても処理は継続します。",
+      "charsReceived": "{chars} 文字を受信",
+      "connecting": "接続中...",
+      "checking": "試験中...",
+      "importing": "取り込み中..."
+    },
+    "review": {
+      "checkSubtitle": "薬機法・景表法・品質チェック",
+      "recheck": "再チェック",
+      "rechecking": "確認中...",
+      "loadingCheck": "試験結果を読み込み中…",
+      "scoreSuffix": "/ 100 スコア",
+      "findingsCount": "{count}件の指摘",
+      "noFindings": "指摘なし",
+      "runCheckHint": "「再チェック」で試験を実行してください。",
+      "axisLegal": "法規",
+      "axisFacts": "ファクト",
+      "axisQuality": "品質",
+      "sevHigh": "高",
+      "sevMed": "中",
+      "sevLow": "低",
+      "prefixCitedRule": "根拠: ",
+      "prefixSuggestedRewrite": "修正案: ",
+      "reproducibilityInfo": "再現性情報",
+      "prefixVersion": "バージョン: ",
+      "prefixGrounding": "グラウンディング: ",
+      "groundingSummary": "参照{count}件 / コーパスhash {hash} / ファクト検索 {factSearch}",
+      "yes": "あり",
+      "no": "なし",
+      "prefixSearchDomains": "検索ドメイン: ",
+      "prefixAutoRemediation": "自動修正: ",
+      "remediationSummary": "{count}回 / 残り高リスク {high}件",
+      "remediationIteration": "iter{iter}: {before}→{after} (決定論{tier1} / 再生成{sections} / 未特定{unlocatable})",
+      "tabDiff": "変更点",
+      "tabRefine": "改稿",
+      "noDiffFirstDraft": "初稿のため比較対象がありません。",
+      "noOtherVersions": "比較できる他のバージョンがありません。",
+      "compareBase": "比較元",
+      "canonicalBaseSuffix": "（改稿元）",
+      "nonCanonicalNote": "改稿元以外との比較です。AIによる変更理由は表示されません。",
+      "noDiffWith": "{label} との差分はありません。",
+      "generatingReason": "理由を生成中…",
+      "styleAdjustment": "文体・表現の調整",
+      "changeLocation": "変更箇所 {n}",
+      "toBody": "本文へ"
+    },
+    "errors": {
+      "extractFailed": "抽出に失敗しました",
+      "noExtractResult": "サーバーから抽出結果が返りませんでした",
+      "nameDescRequired": "商品名と特徴・スペックは必須です",
+      "createFailed": "作成に失敗しました",
+      "docxOnly": "Word の .docx ファイルを選択してください（旧 .doc は非対応です）。",
+      "fileTooLarge": "ファイルサイズが大きすぎます（最大 25MB）。",
+      "docxUnreadable": "Word ファイルを読み取れませんでした。ファイルが壊れているか .docx ではない可能性があります。",
+      "docxEmpty": "Word ファイルから文章を抽出できませんでした（空の可能性があります）。",
+      "serverResponseParse": "サーバー応答を解釈できませんでした",
+      "importFailedHttp": "取り込みに失敗しました (HTTP {status})",
+      "importFailed": "取り込みに失敗しました",
+      "noImportResult": "サーバーから取り込み結果が返りませんでした",
+      "generateFailed": "生成に失敗しました",
+      "streamUnavailable": "ストリームが利用できません",
+      "connectionLost": "接続が切れました: {msg}",
+      "connectionError": "接続エラー: {msg} / {detail}",
+      "refineFailed": "改稿に失敗しました",
+      "checkFetchFailed": "試験結果の取得に失敗しました",
+      "recheckFailed": "再チェックに失敗しました"
     },
     "form": {
       "productName": "商品名",
       "category": "カテゴリ",
       "description": "特徴・スペック",
-      "listPrice": "メーカー直販価格 (¥)",
-      "salePrice": "本日特別価格 (¥)",
-      "submit": "台本を生成する"
+      "listPrice": "メーカー直販価格",
+      "salePrice": "本日特別価格",
+      "submit": "台本を生成する",
+      "basicInfo": "基本情報",
+      "charCount": "{count} / 16,000 文字",
+      "priceSection": "価格",
+      "shipping": "送料",
+      "bonusSection": "特典・補足",
+      "guarantee": "保証",
+      "bonuses": "ボーナス・特典 (1行1件)",
+      "notes": "その他のメモ"
     },
     "workspace": {
       "history": "改稿履歴",
       "v1": "初回生成",
       "downloadMd": ".md ダウンロード",
       "copyMd": "Markdown コピー",
-      "copied": "コピー済み"
+      "copied": "コピー済み",
+      "copy": "コピー",
+      "versionCount": "{count}件",
+      "noVersions": "まだ稿がありません",
+      "keyboardHint": "⌘← / ⌘→ で版を移動できます",
+      "noScript": "まだ台本がありません",
+      "noScriptHint": "右側のフォームから最初の台本を生成してください。",
+      "reviewPlaceholder": "最初の台本ができたら、ここで改稿できます。",
+      "prev": "前へ",
+      "next": "次へ",
+      "prevVersion": "前のバージョン",
+      "nextVersion": "次のバージョン",
+      "prevVersionWithDraft": "前のバージョン (第 {n} 稿)",
+      "nextVersionWithDraft": "次のバージョン (第 {n} 稿)",
+      "chars": "{n} 文字",
+      "generating": "生成中…",
+      "justNow": "たった今",
+      "minutesAgo": "{n}分前",
+      "hoursAgo": "{n}時間前",
+      "daysAgo": "{n}日前",
+      "firstGeneration": "最初の生成"
     },
     "feedback": {
       "label": "フィードバックを入力して改稿",
       "placeholder": "例: 実演デモを最後に入れてください。お客様の声を3人に増やして、それぞれの職業を変えてください。",
       "submit": "この内容で改稿する",
-      "sending": "送信中…"
+      "sending": "送信中...",
+      "heading": "改稿フィードバック",
+      "hint": "具体的に伝えるほど、自然に反映されます。",
+      "frequentRequests": "よく使うリクエスト",
+      "suggestions": [
+        "実演デモを最後の方に移動してください。",
+        "値段を見せる前に値引きの理由を一段重ねてください。",
+        "お客様の声を3人に増やして、年代と職業を変えてください。",
+        "この特徴説明を最後に入れてください。"
+      ]
+    },
+    "renderer": {
+      "finalScript": "完成版 台本",
+      "sceneChange": "場面転換"
     }
   },
   "auth": {

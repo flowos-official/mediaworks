@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Loader2, Lightbulb, CornerUpLeft } from "lucide-react";
 import { computeLineDiff } from "@/lib/screenplay/diff";
 import type { HunkReason } from "@/lib/screenplay/types";
@@ -59,6 +60,7 @@ export function ChangeDiffView({
 	screenplayId,
 	onJumpToLine,
 }: Props) {
+	const t = useTranslations("screenplay");
 	const candidates = useMemo(
 		() =>
 			versions
@@ -132,7 +134,7 @@ export function ChangeDiffView({
 	};
 
 	if (candidates.length === 0 || effectiveBaseId == null) {
-		return <p className="text-sm text-muted-foreground py-10 text-center">比較できる他のバージョンがありません。</p>;
+		return <p className="text-sm text-muted-foreground py-10 text-center">{t("review.noOtherVersions")}</p>;
 	}
 
 	return (
@@ -140,7 +142,7 @@ export function ChangeDiffView({
 			{/* 比較元 selector — makes the comparison target explicit (replaces the
 			    ambiguous "直前バージョン" wording for branched histories). */}
 			<div className="flex flex-wrap items-center gap-2 text-xs">
-				<label htmlFor="diff-base" className="text-muted-foreground shrink-0">比較元</label>
+				<label htmlFor="diff-base" className="text-muted-foreground shrink-0">{t("review.compareBase")}</label>
 				<select
 					id="diff-base"
 					value={effectiveBaseId}
@@ -149,7 +151,7 @@ export function ChangeDiffView({
 				>
 					{candidates.map((c) => (
 						<option key={c.id} value={c.id}>
-							第 {c.version_number} 稿{c.id === canonicalBaseId ? "（改稿元）" : ""}
+							第 {c.version_number} 稿{c.id === canonicalBaseId ? t("review.canonicalBaseSuffix") : ""}
 						</option>
 					))}
 				</select>
@@ -158,12 +160,12 @@ export function ChangeDiffView({
 
 			{!isCanonical && (
 				<p className="text-[11px] text-muted-foreground bg-muted/50 border border-border rounded-lg px-3 py-2">
-					改稿元以外との比較です。AIによる変更理由は表示されません。
+					{t("review.nonCanonicalNote")}
 				</p>
 			)}
 
 			{hunks.length === 0 ? (
-				<p className="text-sm text-muted-foreground py-10 text-center">{labelOf(effectiveBaseId)} との差分はありません。</p>
+				<p className="text-sm text-muted-foreground py-10 text-center">{t("review.noDiffWith", { label: labelOf(effectiveBaseId) })}</p>
 			) : (
 				<div className="space-y-5">
 					{hunks.map((h) => (
@@ -178,25 +180,25 @@ export function ChangeDiffView({
 									) : loading ? (
 										<span className="inline-flex items-center gap-1 text-muted-foreground">
 											<Loader2 size={11} className="animate-spin" />
-											理由を生成中…
+											{t("review.generatingReason")}
 										</span>
 									) : (
 										<>
 											<Lightbulb size={13} className="text-amber-500 shrink-0" />
-											<span className="text-muted-foreground">文体・表現の調整</span>
+											<span className="text-muted-foreground">{t("review.styleAdjustment")}</span>
 										</>
 									)
 								) : (
-									<span className="text-muted-foreground">変更箇所 {h.index + 1}</span>
+									<span className="text-muted-foreground">{t("review.changeLocation", { n: h.index + 1 })}</span>
 								)}
 								{onJumpToLine && typeof h.newStart === "number" && (
 									<button
 										type="button"
 										onClick={() => onJumpToLine(h.newStart!)}
-										title="台本の該当箇所へ移動"
+										title={t("a11y.jumpToScriptLocation")}
 										className="ml-auto inline-flex items-center gap-1 text-[11px] text-blue-600 dark:text-blue-400 hover:underline shrink-0"
 									>
-										<CornerUpLeft size={11} /> 本文へ
+										<CornerUpLeft size={11} /> {t("review.toBody")}
 									</button>
 								)}
 							</div>

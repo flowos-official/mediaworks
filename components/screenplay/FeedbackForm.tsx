@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Send, Loader2, Sparkles } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -10,14 +11,10 @@ interface Props {
 	onStart: (runId: string) => void;
 }
 
-const SUGGESTIONS = [
-	"実演デモを最後の方に移動してください。",
-	"値段を見せる前に値引きの理由を一段重ねてください。",
-	"お客様の声を3人に増やして、年代と職業を変えてください。",
-	"この特徴説明を最後に入れてください。",
-];
-
 export function FeedbackForm({ screenplayId, baseVersionId, disabled, onStart }: Props) {
+	const t = useTranslations("screenplay.feedback");
+	const tErr = useTranslations("screenplay.errors");
+	const suggestions = t.raw("suggestions") as string[];
 	const [text, setText] = useState("");
 	const [busy, setBusy] = useState(false);
 	const [err, setErr] = useState<string | null>(null);
@@ -34,7 +31,7 @@ export function FeedbackForm({ screenplayId, baseVersionId, disabled, onStart }:
 				body: JSON.stringify({ feedback, baseVersionId }),
 			});
 			const j = await res.json();
-			if (!res.ok) throw new Error(j.error ?? "改稿に失敗しました");
+			if (!res.ok) throw new Error(j.error ?? tErr("refineFailed"));
 			onStart(j.runId as string);
 			setText("");
 		} catch (e) {
@@ -52,8 +49,8 @@ export function FeedbackForm({ screenplayId, baseVersionId, disabled, onStart }:
 						<Sparkles size={16} className="text-blue-600" />
 					</div>
 					<div>
-						<h3 className="text-sm font-semibold text-foreground">改稿フィードバック</h3>
-						<p className="text-[11px] text-muted-foreground">具体的に伝えるほど、自然に反映されます。</p>
+						<h3 className="text-sm font-semibold text-foreground">{t("heading")}</h3>
+						<p className="text-[11px] text-muted-foreground">{t("hint")}</p>
 					</div>
 				</div>
 
@@ -62,14 +59,14 @@ export function FeedbackForm({ screenplayId, baseVersionId, disabled, onStart }:
 					onChange={(e) => setText(e.target.value)}
 					rows={5}
 					disabled={disabled || busy}
-					placeholder="例: 実演デモを最後に入れてください。お客様の声を3人に増やして、それぞれの職業を変えてください。"
+					placeholder={t("placeholder")}
 					className="w-full px-3 py-2.5 text-sm border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 resize-none"
 				/>
 
 				<div className="mt-3">
-					<div className="text-[11px] font-medium text-muted-foreground mb-1.5">よく使うリクエスト</div>
+					<div className="text-[11px] font-medium text-muted-foreground mb-1.5">{t("frequentRequests")}</div>
 					<div className="space-y-1.5">
-						{SUGGESTIONS.map((s) => (
+						{suggestions.map((s) => (
 							<button
 								key={s}
 								type="button"
@@ -96,7 +93,7 @@ export function FeedbackForm({ screenplayId, baseVersionId, disabled, onStart }:
 					className="mt-4 w-full inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 				>
 					{busy ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-					{busy ? "送信中..." : "この内容で改稿する"}
+					{busy ? t("sending") : t("submit")}
 				</button>
 			</CardContent>
 		</Card>
