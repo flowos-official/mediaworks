@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { Loader2, ShieldAlert, RefreshCw, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { ScriptCheckResult, Finding, Severity } from "@/lib/screenplay/compliance/types";
@@ -30,28 +31,29 @@ const SEVERITY_BADGE: Record<Severity, string> = {
 	med: "bg-yellow-600/15 text-yellow-700 dark:text-yellow-300",
 	low: "bg-blue-600/15 text-blue-700 dark:text-blue-300",
 };
-const SEVERITY_LABEL: Record<Severity, string> = {
-	high: "高",
-	med: "中",
-	low: "低",
+const SEVERITY_LABEL_KEY: Record<Severity, string> = {
+	high: "review.sevHigh",
+	med: "review.sevMed",
+	low: "review.sevLow",
 };
 
 function FindingCard({ f }: { f: Finding }) {
+	const t = useTranslations("screenplay");
 	return (
 		<div className={`rounded-lg border p-3 text-xs space-y-1 ${SEVERITY_CLS[f.severity]}`}>
 			<div className="flex items-start gap-2">
 				<span className={`inline-flex items-center shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${SEVERITY_BADGE[f.severity]}`}>
-					{SEVERITY_LABEL[f.severity]}
+					{t(SEVERITY_LABEL_KEY[f.severity])}
 				</span>
 				<span className="font-medium text-foreground break-all">{f.quote}</span>
 			</div>
 			{f.reason && <p className="text-muted-foreground pl-7">{f.reason}</p>}
 			{f.citedRule && (
-				<p className="pl-7 text-[10px] text-muted-foreground">根拠: {f.citedRule}</p>
+				<p className="pl-7 text-[10px] text-muted-foreground">{t("review.prefixCitedRule")}{f.citedRule}</p>
 			)}
 			{f.suggestedRewrite && (
 				<p className="pl-7 text-foreground/80">
-					<span className="font-medium">修正案: </span>{f.suggestedRewrite}
+					<span className="font-medium">{t("review.prefixSuggestedRewrite")}</span>{f.suggestedRewrite}
 				</p>
 			)}
 			{f.references && f.references.length > 0 && (
@@ -94,6 +96,7 @@ function scoreColor(score: number): string {
 /** Reproducibility metadata — the version stamp, grounding corpus snapshot, and
  *  auto-remediation trace persisted with each check. Collapsed by default. */
 function ReproducibilityInfo({ check }: { check: CheckWithMeta }) {
+	const t = useTranslations("screenplay");
 	const [open, setOpen] = useState(false);
 	const g = check.grounding;
 	const r = check.remediation;
@@ -107,26 +110,28 @@ function ReproducibilityInfo({ check }: { check: CheckWithMeta }) {
 				className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors"
 			>
 				<ChevronRight size={12} className={`transition-transform ${open ? "rotate-90" : ""}`} />
-				再現性情報
+				{t("review.reproducibilityInfo")}
 			</button>
 			{open && (
 				<div className="mt-2 space-y-2 text-[10px] text-muted-foreground">
 					{check.lexicon_version && (
 						<div>
-							<span className="font-medium text-foreground/70">バージョン: </span>
+							<span className="font-medium text-foreground/70">{t("review.prefixVersion")}</span>
 							<span className="break-all">{check.lexicon_version}</span>
 						</div>
 					)}
 					{g && (
 						<div className="space-y-1">
 							<div>
-								<span className="font-medium text-foreground/70">グラウンディング: </span>
-								参照{g.referenceIds?.length ?? 0}件 / コーパスhash{" "}
-								{g.corpusHash ? g.corpusHash.slice(0, 12) : "—"} / ファクト検索{" "}
-								{g.factSearch ? "あり" : "なし"}
+								<span className="font-medium text-foreground/70">{t("review.prefixGrounding")}</span>
+								{t("review.groundingSummary", {
+									count: g.referenceIds?.length ?? 0,
+									hash: g.corpusHash ? g.corpusHash.slice(0, 12) : "—",
+									factSearch: g.factSearch ? t("review.yes") : t("review.no"),
+								})}
 							</div>
 							{(g.searchDomains ?? []).length > 0 && (
-								<div className="break-all">検索ドメイン: {g.searchDomains.join(", ")}</div>
+								<div className="break-all">{t("review.prefixSearchDomains")}{g.searchDomains.join(", ")}</div>
 							)}
 							{(g.referencesSnapshot ?? []).length > 0 && (
 								<ul className="list-disc pl-4 space-y-0.5">
@@ -143,15 +148,21 @@ function ReproducibilityInfo({ check }: { check: CheckWithMeta }) {
 					{r?.enabled && (
 						<div className="space-y-1">
 							<div>
-								<span className="font-medium text-foreground/70">自動修正: </span>
-								{r.iterations.length}回 / 残り高リスク {r.finalHigh}件
+								<span className="font-medium text-foreground/70">{t("review.prefixAutoRemediation")}</span>
+								{t("review.remediationSummary", { count: r.iterations.length, high: r.finalHigh })}
 							</div>
 							{r.iterations.length > 0 && (
 								<ul className="list-disc pl-4 space-y-0.5">
 									{r.iterations.map((it) => (
 										<li key={it.iter}>
-											iter{it.iter}: {it.scoreBefore}→{it.scoreAfter} (決定論{it.tier1} / 再生成
-											{it.sections} / 未特定{it.unlocatable})
+											{t("review.remediationIteration", {
+												iter: it.iter,
+												before: it.scoreBefore,
+												after: it.scoreAfter,
+												tier1: it.tier1,
+												sections: it.sections,
+												unlocatable: it.unlocatable,
+											})}
 										</li>
 									))}
 								</ul>
@@ -165,6 +176,7 @@ function ReproducibilityInfo({ check }: { check: CheckWithMeta }) {
 }
 
 export function CheckResultPanel({ screenplayId, versionId, versionLabel, initialCheck, initialCheckVersionId, onCheckChange }: Props) {
+	const t = useTranslations("screenplay");
 	const seeded = versionId === initialCheckVersionId;
 	const [check, setCheck] = useState<CheckWithMeta | null>(seeded ? initialCheck : null);
 	const [busy, setBusy] = useState(false);
@@ -202,7 +214,7 @@ export function CheckResultPanel({ screenplayId, versionId, versionLabel, initia
 			try {
 				const res = await fetch(`/api/screenplays/${screenplayId}/versions/${versionId}/check`, { cache: "no-store" });
 				const j = (await res.json()) as { check?: CheckWithMeta | null; error?: string };
-				if (!res.ok) throw new Error(j.error ?? "試験結果の取得に失敗しました");
+				if (!res.ok) throw new Error(j.error ?? t("errors.checkFetchFailed"));
 				if (cancelled) return;
 				setCheck(j.check ?? null);
 				onCheckChange?.(j.check ?? null);
@@ -226,7 +238,7 @@ export function CheckResultPanel({ screenplayId, versionId, versionLabel, initia
 		try {
 			const res = await fetch(`/api/screenplays/${screenplayId}/versions/${versionId}/check`, { method: "POST" });
 			const j = await res.json() as { check?: CheckWithMeta; error?: string };
-			if (!res.ok) throw new Error(j.error ?? "再チェックに失敗しました");
+			if (!res.ok) throw new Error(j.error ?? t("errors.recheckFailed"));
 			// Drop the result if the user switched versions while the POST was in flight.
 			if (requestVersionId === versionRef.current) {
 				setCheck(j.check ?? null);
@@ -260,7 +272,7 @@ export function CheckResultPanel({ screenplayId, versionId, versionLabel, initia
 									</span>
 								)}
 							</div>
-							<p className="text-[11px] text-muted-foreground">薬機法・景表法・品質チェック</p>
+							<p className="text-[11px] text-muted-foreground">{t("review.checkSubtitle")}</p>
 						</div>
 					</div>
 					<button
@@ -270,7 +282,7 @@ export function CheckResultPanel({ screenplayId, versionId, versionLabel, initia
 						className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 border border-border rounded-lg hover:border-blue-200 hover:bg-blue-600/10 text-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 					>
 						{busy ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-						{busy ? "確認中..." : "再チェック"}
+						{busy ? t("review.rechecking") : t("review.recheck")}
 					</button>
 				</div>
 
@@ -282,7 +294,7 @@ export function CheckResultPanel({ screenplayId, versionId, versionLabel, initia
 
 				{loading ? (
 					<p className="text-xs text-muted-foreground py-3 text-center flex items-center justify-center gap-2">
-						<Loader2 size={12} className="animate-spin" /> 試験結果を読み込み中…
+						<Loader2 size={12} className="animate-spin" /> {t("review.loadingCheck")}
 					</p>
 				) : check ? (
 					<>
@@ -290,9 +302,9 @@ export function CheckResultPanel({ screenplayId, versionId, versionLabel, initia
 							<span className={`text-2xl font-bold ${scoreColor(check.overallScore)}`}>
 								{check.overallScore}
 							</span>
-							<span className="text-xs text-muted-foreground">/ 100 スコア</span>
+							<span className="text-xs text-muted-foreground">{t("review.scoreSuffix")}</span>
 							{totalFindings > 0 && (
-								<span className="ml-auto text-[11px] text-muted-foreground">{totalFindings}件の指摘</span>
+								<span className="ml-auto text-[11px] text-muted-foreground">{t("review.findingsCount", { count: totalFindings })}</span>
 							)}
 						</div>
 						{check.created_at && (
@@ -301,16 +313,16 @@ export function CheckResultPanel({ screenplayId, versionId, versionLabel, initia
 							</p>
 						)}
 						{totalFindings === 0 && (
-							<p className="text-xs text-muted-foreground py-2 text-center">指摘なし</p>
+							<p className="text-xs text-muted-foreground py-2 text-center">{t("review.noFindings")}</p>
 						)}
-						<AxisSection label="法規" findings={check.legal} />
-						<AxisSection label="ファクト" findings={check.facts} />
-						<AxisSection label="品質" findings={check.quality} />
+						<AxisSection label={t("review.axisLegal")} findings={check.legal} />
+						<AxisSection label={t("review.axisFacts")} findings={check.facts} />
+						<AxisSection label={t("review.axisQuality")} findings={check.quality} />
 						<ReproducibilityInfo check={check} />
 					</>
 				) : (
 					<p className="text-xs text-muted-foreground py-3 text-center">
-						「再チェック」で試験を実行してください。
+						{t("review.runCheckHint")}
 					</p>
 				)}
 			</CardContent>

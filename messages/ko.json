@@ -568,7 +568,8 @@
       "createMethod": "작성 방법",
       "createSteps": "작성 단계",
       "inputMethod": "입력 방법",
-      "removeFile": "파일 삭제"
+      "removeFile": "파일 삭제",
+      "jumpToScriptLocation": "대본의 해당 위치로 이동"
     },
     "import": {
       "heading": "대본 초안(Word) 가져오기",
@@ -604,6 +605,46 @@
       "checking": "검사 중...",
       "importing": "가져오는 중..."
     },
+    "review": {
+      "checkSubtitle": "薬機法・景表法・품질 검사",
+      "recheck": "재검사",
+      "rechecking": "확인 중...",
+      "loadingCheck": "試験結果을 불러오는 중…",
+      "scoreSuffix": "/ 100점",
+      "findingsCount": "지적 {count}건",
+      "noFindings": "지적 없음",
+      "runCheckHint": "「재검사」로 試験을 실행해주세요.",
+      "axisLegal": "법규",
+      "axisFacts": "팩트",
+      "axisQuality": "품질",
+      "sevHigh": "높음",
+      "sevMed": "중간",
+      "sevLow": "낮음",
+      "prefixCitedRule": "근거: ",
+      "prefixSuggestedRewrite": "수정안: ",
+      "reproducibilityInfo": "재현성 정보",
+      "prefixVersion": "버전: ",
+      "prefixGrounding": "그라운딩: ",
+      "groundingSummary": "참조 {count}건 / 코퍼스hash {hash} / 팩트 검색 {factSearch}",
+      "yes": "있음",
+      "no": "없음",
+      "prefixSearchDomains": "검색 도메인: ",
+      "prefixAutoRemediation": "자동 수정: ",
+      "remediationSummary": "{count}회 / 남은 고위험 {high}건",
+      "remediationIteration": "iter{iter}: {before}→{after} (결정론{tier1} / 재생성{sections} / 미특정{unlocatable})",
+      "tabDiff": "변경점",
+      "tabRefine": "개정",
+      "noDiffFirstDraft": "초고이므로 비교 대상이 없습니다.",
+      "noOtherVersions": "비교할 수 있는 다른 버전이 없습니다.",
+      "compareBase": "비교 기준",
+      "canonicalBaseSuffix": "（개정 원본）",
+      "nonCanonicalNote": "개정 원본 이외와의 비교입니다. AI에 의한 변경 이유는 표시되지 않습니다.",
+      "noDiffWith": "{label}와의 차이가 없습니다.",
+      "generatingReason": "이유를 생성 중…",
+      "styleAdjustment": "문체·표현 조정",
+      "changeLocation": "변경 위치 {n}",
+      "toBody": "본문으로"
+    },
     "errors": {
       "extractFailed": "추출에 실패했습니다",
       "noExtractResult": "서버에서 추출 결과가 반환되지 않았습니다",
@@ -621,7 +662,9 @@
       "streamUnavailable": "스트림을 사용할 수 없습니다",
       "connectionLost": "연결이 끊겼습니다: {msg}",
       "connectionError": "연결 오류: {msg} / {detail}",
-      "refineFailed": "개정에 실패했습니다"
+      "refineFailed": "개정에 실패했습니다",
+      "checkFetchFailed": "試験結果 조회에 실패했습니다",
+      "recheckFailed": "재검사에 실패했습니다"
     },
     "form": {
       "productName": "상품명",

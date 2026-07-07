@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { CheckResultPanel } from "./CheckResultPanel";
 import type { CheckWithMeta } from "./CheckResultPanel";
@@ -25,6 +26,7 @@ export function ReviewPanel({
 	screenplayId, version, versions, initialCheck, initialCheckVersionId,
 	isGenerating, activeTab, onTabChange, onRefineStart, onJumpToLine,
 }: Props) {
+	const t = useTranslations("screenplay");
 	const [findingCount, setFindingCount] = useState<number | null>(null);
 	// At least one OTHER version exists → there is something to diff against
 	// (the base it was refined from, or any earlier 稿 the operator picks).
@@ -40,8 +42,8 @@ export function ReviewPanel({
 				<TabsTrigger value="check">
 					試験結果{findingCount != null && findingCount > 0 ? ` (${findingCount})` : ""}
 				</TabsTrigger>
-				<TabsTrigger value="diff">変更点</TabsTrigger>
-				<TabsTrigger value="refine">改稿</TabsTrigger>
+				<TabsTrigger value="diff">{t("review.tabDiff")}</TabsTrigger>
+				<TabsTrigger value="refine">{t("review.tabRefine")}</TabsTrigger>
 			</TabsList>
 
 			<TabsContent value="check" keepMounted>
@@ -68,7 +70,7 @@ export function ReviewPanel({
 					/>
 				) : (
 					<div className="rounded-lg border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
-						初稿のため比較対象がありません。
+						{t("review.noDiffFirstDraft")}
 					</div>
 				)}
 			</TabsContent>
