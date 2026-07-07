@@ -598,7 +598,7 @@
     "progress": {
       "failedTitleGenerate": "생성에 실패했습니다",
       "failedTitleImport": "가져오기에 실패했습니다",
-      "doneTitleGenerate": "제 {n}고를 생성했습니다",
+      "doneTitleGenerate": "第 {n} 稿를 생성했습니다",
       "doneTitleImport": "대본을 가져왔습니다",
       "runningTitleGenerate": "대본 생성 중",
       "runningTitleImport": "대본 가져오는 중",
