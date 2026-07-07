@@ -259,7 +259,10 @@ export function ScreenplayCreateForm({ locale }: { locale: string }) {
 			const res = await fetch("/api/screenplays", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ productBrief }),
+				body: JSON.stringify({
+					productBrief,
+					sourceKind: source?.kind === "url" ? "url" : source?.kind ? "upload" : undefined,
+				}),
 			});
 			const j = await res.json();
 			if (!res.ok) throw new Error(j.error ?? "作成に失敗しました");

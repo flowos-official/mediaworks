@@ -95,6 +95,16 @@ export async function POST(request: NextRequest) {
 		importedMarkdown = val.markdown;
 	}
 
+	const rawSourceKind =
+		body && typeof body === "object" ? (body as Record<string, unknown>).sourceKind : undefined;
+	const clientSourceKind =
+		rawSourceKind === "upload" || rawSourceKind === "url" ? rawSourceKind : null;
+	const sourceKind: "upload" | "url" | "import" | "product" | null = importedMarkdown
+		? "import"
+		: v.productId
+			? "product"
+			: clientSourceKind;
+
 	const { data: inserted, error: insErr } = await supabase
 		.from("screenplays")
 		.insert({
@@ -102,6 +112,7 @@ export async function POST(request: NextRequest) {
 			title: productBrief.name,
 			product_info_snapshot: productBrief,
 			status: "generating",
+			source_kind: sourceKind,
 		})
 		.select("id")
 		.single();
