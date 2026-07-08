@@ -144,6 +144,10 @@ function composePlan(items: RevisionPlanItem[], freeBlock: string, markdown: str
 	return `${PLAN_HEADER}\n${body}${freeBlock}`;
 }
 
+/** Compose selected plan items + free feedback into one JP /refine feedback
+ *  string. Postcondition: result length <= MAX_FEEDBACK (4000). Least-severe
+ *  items are trimmed first; free feedback is preserved (truncated only if it
+ *  alone exceeds the cap). */
 export function composeRefineFeedback(
 	items: RevisionPlanItem[],
 	freeFeedback: string,
@@ -163,6 +167,6 @@ export function composeRefineFeedback(
 	const trimmedCount = items.length - included.length;
 	const feedback = included.length > 0
 		? composePlan(included, freeBlock, markdown)
-		: free; // nothing fit / nothing selected → free text only (may exceed cap; that's the user's own input)
+		: free.slice(0, MAX_FEEDBACK); // nothing fit / none selected → free text only, still capped
 	return { feedback, includedCount: included.length, trimmedCount };
 }

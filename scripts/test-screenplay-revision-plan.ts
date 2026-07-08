@@ -119,6 +119,15 @@ async function composeTests() {
 	assert.equal(r4.feedback, "自由だけ", "r4 free-only");
 	assert.equal(r4.includedCount, 0, "r4 no items");
 
+	// items present + free text alone over the cap → still capped, items all trimmed
+	const longFree = "あ".repeat(4200);
+	const r5 = composeRefineFeedback(
+		[{ axis: "legal", severity: "high", target: "", instruction: "削除" }],
+		longFree, "台本",
+	);
+	assert.ok(r5.feedback.length <= 4000, "r5 capped even with over-cap free text");
+	assert.equal(r5.trimmedCount, 1, "r5 all items trimmed when free text fills budget");
+
 	console.log("revision-plan composeRefineFeedback: OK");
 }
 
