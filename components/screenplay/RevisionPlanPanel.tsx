@@ -50,7 +50,7 @@ export function RevisionPlanPanel({ screenplayId, versionId, markdown, disabled,
 	useEffect(() => {
 		versionRef.current = versionId;
 		setItems(null); setSelected([]); setFindingCount(null); setBasedOnScore(null);
-		setPlanErr(null); setFreeText(""); setTrimmed(0); setErr(null);
+		setPlanErr(null); setFreeText(""); setTrimmed(0); setErr(null); setPlanLoading(false);
 	}, [versionId, setErr]);
 
 	async function propose() {
@@ -88,7 +88,7 @@ export function RevisionPlanPanel({ screenplayId, versionId, markdown, disabled,
 	}
 
 	const hasSelection = selected.some(Boolean);
-	const canApply = !disabled && !busy && (hasSelection || freeText.trim().length > 0);
+	const canApply = !disabled && !busy && !planLoading && (hasSelection || freeText.trim().length > 0);
 
 	return (
 		<Card className="border-border">
