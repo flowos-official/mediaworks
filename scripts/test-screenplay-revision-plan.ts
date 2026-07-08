@@ -7,6 +7,7 @@ import assert from "node:assert";
 import {
 	buildRevisionPlan,
 	fallbackPlan,
+	composeRefineFeedback,
 	type RevisionPlanItem,
 } from "../lib/screenplay/revision-plan";
 import type { Finding, ScriptCheckResult } from "../lib/screenplay/compliance/types";
@@ -73,6 +74,52 @@ async function main() {
 	assert.equal(fb.items[0].target, "a");
 	assert.equal(fb.items[0].instruction, "b");
 
+	await composeTests();
+
 	console.log("revision-plan buildRevisionPlan/fallback: OK");
 }
+
+async function composeTests() {
+	const md = "本日は業界No.1の枕をご紹介。売上3億の実績。";
+
+	// verbatim target → 「…」→ ; non-verbatim target → instruction only
+	const r1 = composeRefineFeedback(
+		[
+			{ axis: "legal", severity: "high", target: "業界No.1", instruction: "削除" },
+			{ axis: "quality", severity: "med", target: "", instruction: "実演デモを終盤へ移動" },
+		],
+		"テンポを速く", md,
+	);
+	assert.ok(r1.feedback.includes("【考査結果に基づく修正方針】"), "r1 has plan header");
+	assert.ok(r1.feedback.includes("[法規] 「業界No.1」→ 削除"), "r1 verbatim legal item");
+	assert.ok(r1.feedback.includes("[構成] 実演デモを終盤へ移動"), "r1 structural item, no quote wrap");
+	assert.ok(!r1.feedback.includes("「実演デモを終盤へ移動」"), "r1 structural not quote-wrapped");
+	assert.ok(r1.feedback.includes("【追加のご要望】") && r1.feedback.includes("テンポを速く"), "r1 free feedback appended");
+	assert.equal(r1.trimmedCount, 0, "r1 no trim");
+
+	// non-verbatim target (absent from md) → instruction only
+	const r2 = composeRefineFeedback([{ axis: "facts", severity: "low", target: "存在しない語", instruction: "緩和" }], "", md);
+	assert.ok(r2.feedback.includes("[事実] 緩和"), "r2 instruction only");
+	assert.ok(!r2.feedback.includes("「存在しない語」"), "r2 no quote for absent target");
+
+	// 4000-char cap: high-severity kept, low trimmed, free feedback preserved
+	const bigLow = (i: number): RevisionPlanItem => ({ axis: "quality", severity: "low", target: "", instruction: `低${i}`.padEnd(500, "あ") });
+	const many: RevisionPlanItem[] = [
+		...Array.from({ length: 8 }, (_, i) => bigLow(i)),
+		{ axis: "legal", severity: "high", target: "", instruction: "重要削除99" },
+	];
+	const r3 = composeRefineFeedback(many, "自由入力メモ", md);
+	assert.ok(r3.feedback.length <= 4000, "r3 within cap");
+	assert.ok(r3.feedback.includes("自由入力メモ"), "r3 free feedback preserved");
+	assert.ok(r3.feedback.includes("重要削除99"), "r3 high-severity item kept");
+	assert.ok(r3.trimmedCount > 0, "r3 some items trimmed");
+
+	// no items → free feedback only, no plan header
+	const r4 = composeRefineFeedback([], "自由だけ", md);
+	assert.equal(r4.feedback, "自由だけ", "r4 free-only");
+	assert.equal(r4.includedCount, 0, "r4 no items");
+
+	console.log("revision-plan composeRefineFeedback: OK");
+}
+
 main().then(() => process.exit(0)).catch((e) => { console.error(e); process.exit(1); });

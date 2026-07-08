@@ -111,3 +111,58 @@ export async function buildRevisionPlan(
 		return fallbackPlan(check);
 	}
 }
+
+// ── Compose: selection + free feedback → a single JP /refine feedback string ──
+// These constants are Japanese CONTENT fed to the JP generator and persisted to
+// the version's `feedback` column — intentionally NOT i18n'd.
+const AXIS_JP: Record<RevisionPlanItem["axis"], string> = {
+	legal: "法規",
+	facts: "事実",
+	quality: "構成",
+};
+const SEV_RANK: Record<RevisionPlanItem["severity"], number> = { high: 0, med: 1, low: 2 };
+const MAX_FEEDBACK = 4000; // mirror of app/api/screenplays/[id]/refine/route.ts:32
+const PLAN_HEADER = "【考査結果に基づく修正方針】";
+const FEEDBACK_HEADER = "【追加のご要望】";
+
+export interface ComposeResult {
+	feedback: string;
+	includedCount: number;
+	trimmedCount: number;
+}
+
+function renderItem(n: number, item: RevisionPlanItem, markdown: string): string {
+	const label = AXIS_JP[item.axis];
+	const verbatim = item.target.length > 0 && markdown.includes(item.target);
+	return verbatim
+		? `${n}. [${label}] 「${item.target}」→ ${item.instruction}`
+		: `${n}. [${label}] ${item.instruction}`;
+}
+
+function composePlan(items: RevisionPlanItem[], freeBlock: string, markdown: string): string {
+	const body = items.map((it, i) => renderItem(i + 1, it, markdown)).join("\n");
+	return `${PLAN_HEADER}\n${body}${freeBlock}`;
+}
+
+export function composeRefineFeedback(
+	items: RevisionPlanItem[],
+	freeFeedback: string,
+	markdown: string,
+): ComposeResult {
+	const free = freeFeedback.trim();
+	const freeBlock = free ? `\n${FEEDBACK_HEADER}\n${free}` : "";
+
+	// Trim least-severe first so a length overflow drops low before high.
+	const sorted = [...items].sort((a, b) => SEV_RANK[a.severity] - SEV_RANK[b.severity]);
+	const included: RevisionPlanItem[] = [];
+	for (const item of sorted) {
+		if (composePlan([...included, item], freeBlock, markdown).length > MAX_FEEDBACK) break;
+		included.push(item);
+	}
+
+	const trimmedCount = items.length - included.length;
+	const feedback = included.length > 0
+		? composePlan(included, freeBlock, markdown)
+		: free; // nothing fit / nothing selected → free text only (may exceed cap; that's the user's own input)
+	return { feedback, includedCount: included.length, trimmedCount };
+}
