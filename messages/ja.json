@@ -648,7 +648,19 @@
       "generatingReason": "理由を生成中…",
       "styleAdjustment": "文体・表現の調整",
       "changeLocation": "変更箇所 {n}",
-      "toBody": "本文へ"
+      "toBody": "本文へ",
+      "plan": {
+        "heading": "修正方針",
+        "proposeBtn": "試験結果から修正方針を提案",
+        "regenerate": "再提案",
+        "generating": "方針を生成中…",
+        "failed": "修正方針の生成に失敗しました",
+        "basedOnScore": "試験結果 {score}点 · 指摘 {count}件",
+        "emptyNoFindings": "指摘がないため修正方針は不要です。下に直接ご要望を書いて修正できます。",
+        "manualHeading": "個別のご要望（任意）",
+        "itemsTrimmed": "{count}件の項目が長さ制限で除外されました",
+        "applyBtn": "この方針で修正"
+      }
     },
     "errors": {
       "extractFailed": "抽出に失敗しました",

@@ -648,7 +648,19 @@
       "generatingReason": "이유를 생성 중…",
       "styleAdjustment": "문체·표현 조정",
       "changeLocation": "변경 위치 {n}",
-      "toBody": "본문으로"
+      "toBody": "본문으로",
+      "plan": {
+        "heading": "개정 방침",
+        "proposeBtn": "試験結果로 개정 방침 제안",
+        "regenerate": "다시 제안",
+        "generating": "방침 생성 중…",
+        "failed": "개정 방침 생성에 실패했습니다",
+        "basedOnScore": "試験結果 {score}점 · 지적 {count}건",
+        "emptyNoFindings": "지적이 없어 개정 방침이 필요하지 않습니다. 아래에 직접 요청을 적어 개정할 수 있습니다.",
+        "manualHeading": "직접 요청(선택)",
+        "itemsTrimmed": "{count}개 항목이 길이 제한으로 제외되었습니다",
+        "applyBtn": "이 방침으로 개정"
+      }
     },
     "errors": {
       "extractFailed": "추출에 실패했습니다",
