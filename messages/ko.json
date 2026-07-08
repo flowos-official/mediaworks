@@ -727,12 +727,8 @@
       "firstGeneration": "최초 생성"
     },
     "feedback": {
-      "label": "피드백을 입력하여 개정",
       "placeholder": "예: 실연 데모를 마지막에 넣어주세요. 고객 후기를 3명으로 늘리고, 각자의 직업을 다르게 해주세요.",
-      "submit": "이 내용으로 개정",
       "sending": "전송 중…",
-      "heading": "개정 피드백",
-      "hint": "구체적으로 전달할수록 자연스럽게 반영됩니다.",
       "frequentRequests": "자주 쓰는 요청",
       "suggestions": [
         "실연 데모를 마지막쯤으로 옮겨주세요.",
