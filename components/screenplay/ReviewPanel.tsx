@@ -5,7 +5,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { CheckResultPanel } from "./CheckResultPanel";
 import type { CheckWithMeta } from "./CheckResultPanel";
 import { ChangeDiffView } from "./ChangeDiffView";
-import { FeedbackForm } from "./FeedbackForm";
+import { RevisionPlanPanel } from "./RevisionPlanPanel";
 import type { ScreenplayVersionRow } from "@/lib/screenplay/types";
 export type ReviewTab = "check" | "diff" | "refine";
 
@@ -76,11 +76,12 @@ export function ReviewPanel({
 			</TabsContent>
 
 			<TabsContent value="refine">
-				<FeedbackForm
+				<RevisionPlanPanel
 					screenplayId={screenplayId}
-					baseVersionId={version.id}
+					versionId={version.id}
+					markdown={version.markdown}
 					disabled={isGenerating}
-					onStart={onRefineStart}
+					onRefineStart={onRefineStart}
 				/>
 			</TabsContent>
 		</Tabs>
