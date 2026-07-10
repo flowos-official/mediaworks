@@ -478,11 +478,11 @@
     "navLabel": "台本",
     "list": {
       "title": "台本一覧",
-      "subtitle": "商品を選んで、生放送さながらのテレビショッピング台本を作成します。フィードバックを送ると何度でも改稿できます。",
+      "subtitle": "商品データ、根拠、放送ルールを引き継いで台本を作成し、指摘と変更理由を確認しながら放送準備まで進めます。",
       "new": "新しい台本を作成",
       "empty": {
         "title": "まだ台本がありません",
-        "body": "「新しい台本を作成」から、商品資料をアップロードするか URL を指定して生成を開始してください。"
+        "body": "「新しい台本を作成」から、MediaWorksの商品、手元の台本、または新しい商品資料を選んで開始してください。"
       },
       "col": {
         "title": "タイトル",
@@ -500,7 +500,7 @@
     "status": {
       "pending": "待機中",
       "generating": "生成中",
-      "ready": "完成",
+      "ready": "生成済み",
       "failed": "失敗"
     },
     "source": {
@@ -518,7 +518,7 @@
     "new": {
       "back": "台本一覧に戻る",
       "title": "新しい台本を作成",
-      "subtitle": "商品資料 (PDF / Excel / 画像) をアップロードするか、商品ページのURLを指定すると、Gemini が内容を読み取り、テレビ東京系「生活情報マーケット」スタイルの完成版台本を起こします。アバン → スタジオ① 〜 ④ → CTA → VTR お客様の声 → CTA の構成で出力されます。",
+      "subtitle": "既存の商品データを引き継ぐか、手元の台本を取り込んで、根拠確認・放送考査・改稿・書き出しまで一つの流れで進めます。",
       "step": {
         "source": "ソース",
         "review": "確認",
@@ -526,22 +526,22 @@
       },
       "mode": {
         "uploadTitle": "ファイルをアップロード",
-        "uploadDesc": "PDF / Excel / 画像 を Gemini Vision が解析",
+        "uploadDesc": "PDF / Excel / 画像から商品事実を抽出",
         "urlTitle": "商品ページURL",
         "urlDesc": "公開URLの本文＋商品画像を自動取得"
       },
       "upload": {
         "heading": "PDF / Excel / 画像をアップロード",
-        "desc": "商品資料 (PDF / 画像 / Excel) を1ファイル選択してください。Gemini が内容を読み取り、台本生成用の商品情報を抽出します。",
+        "desc": "商品資料 (PDF / 画像 / Excel) を1ファイル選択してください。台本に使える商品事実を抽出し、生成前に確認できます。",
         "changeFile": "別のファイルに変更",
         "dropHint": "クリックしてファイルを選択 — またはドラッグ＆ドロップ",
         "maxSize": "最大 25MB",
-        "extractBtn": "Geminiで情報を抽出",
+        "extractBtn": "商品情報を抽出",
         "extracting": "抽出中..."
       },
       "url": {
         "heading": "商品ページのURLから読み込む",
-        "desc": "公開されている商品ページのURLを入力すると、本文と主要な画像 (最大4枚) を Gemini Vision が解析して商品情報を抽出します。",
+        "desc": "公開されている商品ページのURLを入力すると、本文と主要な画像 (最大4枚) から商品情報を抽出します。",
         "protocolHint": "http / https のみ",
         "jsHint": "JavaScript非依存ページに最適",
         "extractBtn": "URLから情報を抽出",
@@ -564,10 +564,23 @@
       }
     },
     "tabs": {
-      "create": "商品資料から生成",
-      "createSub": "PDF / Excel / 画像 / URL",
-      "import": "台本ドラフトを取り込む",
-      "importSub": "Word (.docx)"
+      "product": "既存商品から作る",
+      "productSub": "MediaWorksの調査・商品情報を継承",
+      "import": "手元の台本を仕上げる",
+      "importSub": "Word / 生成済みドラフト",
+      "external": "新しい商品資料から始める",
+      "externalSub": "PDF / Excel / 画像 / URL"
+    },
+    "productPicker": {
+      "recommended": "推奨フロー",
+      "heading": "MediaWorksの商品を選択",
+      "description": "登録済みの商品情報とリサーチ結果を台本の固定コンテキストとして引き継ぎます。毎回資料を説明し直す必要はありません。",
+      "searchLabel": "商品を検索",
+      "searchPlaceholder": "商品名・カテゴリ・特徴で検索",
+      "researchReady": "リサーチ連携済み",
+      "productFactsReady": "商品情報を利用",
+      "createFailed": "商品から台本を作成できませんでした",
+      "empty": "条件に合う商品がありません"
     },
     "a11y": {
       "createMethod": "作成方法",
@@ -578,7 +591,7 @@
     },
     "import": {
       "heading": "台本ドラフト (Word) を取り込む",
-      "desc": "既存の台本ドラフト (.docx) をアップロードすると、当システムの様式に整形して取り込みます。文章はそのまま保持し、構造だけ整えます。取り込み後に「改稿」で磨き込み、試験結果も確認できます。旧 .doc 形式は非対応です。",
+      "desc": "ChatGPT・Gemini・Wordで作った既存ドラフト (.docx) を取り込み、文章を保持したまま構造化します。その後、商品根拠と放送ルールに照らして仕上げられます。旧 .doc 形式は非対応です。",
       "changeFile": "別のファイルに変更",
       "dropHint": "クリックして .docx を選択 — またはドラッグ＆ドロップ",
       "maxSize": "最大 25MB",
@@ -738,7 +751,7 @@
       ]
     },
     "renderer": {
-      "finalScript": "完成版 台本",
+		"finalScript": "台本本文",
       "sceneChange": "場面転換"
     }
   },

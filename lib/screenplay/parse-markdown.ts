@@ -26,6 +26,13 @@ export const ROLE_LABELS: Record<string, string> = {
 export const CUE_TAGS = new Set(["テロップ", "カメラ", "BGM", "SE", "インサート", "小道具"]);
 export const SPEAKER_TAGS = new Set(["N", "高橋", "山内", "小島", "お客様"]);
 
+export function isSpeakerTag(tag: string): boolean {
+	return (
+		SPEAKER_TAGS.has(tag) ||
+		/^[^\[\]\n]{1,24}(?:先生|さん|氏|MC|ナレーター|アドバイザー|専門家|ゲスト|司会)$/.test(tag)
+	);
+}
+
 export function parseMarkdown(md: string): Block[] {
 	const blocks: Block[] = [];
 	const lines = md.split(/\r?\n/);
@@ -64,7 +71,7 @@ export function parseMarkdown(md: string): Block[] {
 					if (/^#{1,3}\s/.test(nextTrim)) break;
 					if (/^---+$/.test(nextTrim)) break;
 					const nextTag = nextTrim.match(/^\[([^\]]+)\]/);
-					if (nextTag && (CUE_TAGS.has(nextTag[1].trim()) || SPEAKER_TAGS.has(nextTag[1].trim()))) break;
+					if (nextTag && (CUE_TAGS.has(nextTag[1].trim()) || isSpeakerTag(nextTag[1].trim()))) break;
 					body.push(lines[i].replace(/^\s+/, ""));
 					i++;
 				}
@@ -72,7 +79,7 @@ export function parseMarkdown(md: string): Block[] {
 				continue;
 			}
 
-			if (SPEAKER_TAGS.has(inside)) {
+			if (isSpeakerTag(inside)) {
 				const deliveryMatch = rest.match(/^\((.*)\)\s*$/);
 				const delivery = deliveryMatch ? deliveryMatch[1] : undefined;
 				i++;

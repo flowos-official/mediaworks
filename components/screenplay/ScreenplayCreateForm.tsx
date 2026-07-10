@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { localePath } from "@/lib/i18n/locale-path";
 import { ProductBriefEditor } from "./ProductBriefEditor";
+import type { ProductBrief } from "@/lib/screenplay/types";
 
 type InputMode = "upload" | "url";
 type Step = 1 | 2 | 3;
@@ -33,6 +34,7 @@ interface ExtractedBrief {
 	bonuses?: string[];
 	guarantee?: string;
 	notes?: string;
+	customization?: ProductBrief["customization"];
 }
 
 interface SourceMeta {
@@ -256,6 +258,7 @@ export function ScreenplayCreateForm({ locale }: { locale: string }) {
 			if (brief.category?.trim()) productBrief.category = brief.category.trim();
 			if (brief.guarantee?.trim()) productBrief.guarantee = brief.guarantee.trim();
 			if (brief.notes?.trim()) productBrief.notes = brief.notes.trim();
+			if (brief.customization) productBrief.customization = brief.customization;
 			if (bonuses.length) productBrief.bonuses = bonuses;
 			if (Object.keys(price).length) productBrief.price = price;
 

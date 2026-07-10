@@ -30,6 +30,12 @@ function isRetryable(err: unknown): boolean {
   );
 }
 
+export function stripInternalNotes(markdown: string): string {
+  return markdown
+    .replace(/\n##\s+スタイル・コンプライアンス・ノート[\s\S]*$/m, "")
+    .trim();
+}
+
 async function callOnce(userPrompt: string, onChunk?: (chars: number) => void): Promise<string> {
   const controller = new AbortController();
   const hardTimer = setTimeout(
@@ -80,6 +86,7 @@ export async function generateScreenplay(
       let md = raw.trim();
       const fence = md.match(/^```(?:markdown|md)?\s*\n([\s\S]*?)\n```\s*$/i);
       if (fence) md = fence[1].trim();
+      md = stripInternalNotes(md);
       if (md.length < 1000) throw new Error(`output suspiciously short: ${md.length} chars`);
       return {
         markdown: md,

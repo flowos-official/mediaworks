@@ -1,13 +1,16 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
-import { Loader2, ShieldAlert, RefreshCw, ChevronRight } from "lucide-react";
+import { Loader2, ShieldAlert, RefreshCw, ChevronRight, CornerUpLeft, PencilLine, SearchCheck } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { ScriptCheckResult, Finding, Severity } from "@/lib/screenplay/compliance/types";
+import { READINESS_LABEL_JA, summarizeReadiness } from "@/lib/screenplay/readiness";
 
 export interface CheckWithMeta extends ScriptCheckResult {
+	id?: string;
 	created_at?: string;
 	lexicon_version?: string;
+	is_auto?: boolean;
 }
 
 interface Props {
@@ -19,6 +22,8 @@ interface Props {
 	initialCheck: CheckWithMeta | null;
 	initialCheckVersionId: string | null;
 	onCheckChange?: (check: CheckWithMeta | null) => void;
+	onJumpToQuote?: (quote: string) => void;
+	onApplyRewrite?: (quote: string, rewrite: string) => void;
 }
 
 const SEVERITY_CLS: Record<Severity, string> = {
@@ -37,17 +42,25 @@ const SEVERITY_LABEL_KEY: Record<Severity, string> = {
 	low: "review.sevLow",
 };
 
-function FindingCard({ f }: { f: Finding }) {
+function FindingCard({
+	f,
+	onJumpToQuote,
+	onApplyRewrite,
+}: {
+	f: Finding;
+	onJumpToQuote?: (quote: string) => void;
+	onApplyRewrite?: (quote: string, rewrite: string) => void;
+}) {
 	const t = useTranslations("screenplay");
 	return (
-		<div className={`rounded-lg border p-3 text-xs space-y-1 ${SEVERITY_CLS[f.severity]}`}>
+		<div className={`space-y-2 rounded-xl border p-3 text-xs ${SEVERITY_CLS[f.severity]}`}>
 			<div className="flex items-start gap-2">
 				<span className={`inline-flex items-center shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${SEVERITY_BADGE[f.severity]}`}>
 					{t(SEVERITY_LABEL_KEY[f.severity])}
 				</span>
 				<span className="font-medium text-foreground break-all">{f.quote}</span>
 			</div>
-			{f.reason && <p className="text-muted-foreground pl-7">{f.reason}</p>}
+			{f.reason && <p className="pl-7 leading-relaxed text-muted-foreground">{f.reason}</p>}
 			{f.citedRule && (
 				<p className="pl-7 text-[10px] text-muted-foreground">{t("review.prefixCitedRule")}{f.citedRule}</p>
 			)}
@@ -71,17 +84,56 @@ function FindingCard({ f }: { f: Finding }) {
 					))}
 				</div>
 			)}
+			{(onJumpToQuote || (onApplyRewrite && f.suggestedRewrite)) && (
+				<div className="flex flex-wrap items-center gap-2 border-t border-current/10 pt-2 pl-7">
+					{onJumpToQuote && (
+						<button
+							type="button"
+							onClick={() => onJumpToQuote(f.quote)}
+							className="inline-flex items-center gap-1 rounded-md border border-current/20 bg-background/70 px-2 py-1 text-[11px] font-medium text-foreground transition hover:bg-background"
+						>
+							<CornerUpLeft size={11} /> 本文へ
+						</button>
+					)}
+					{onApplyRewrite && f.suggestedRewrite && (
+						<button
+							type="button"
+							onClick={() => onApplyRewrite(f.quote, f.suggestedRewrite)}
+							className="inline-flex items-center gap-1 rounded-md bg-foreground px-2 py-1 text-[11px] font-medium text-background transition hover:opacity-85"
+						>
+							<PencilLine size={11} /> 修正案を編集に反映
+						</button>
+					)}
+				</div>
+			)}
 		</div>
 	);
 }
 
-function AxisSection({ label, findings }: { label: string; findings: Finding[] }) {
+function AxisSection({
+	label,
+	findings,
+	onJumpToQuote,
+	onApplyRewrite,
+}: {
+	label: string;
+	findings: Finding[];
+	onJumpToQuote?: (quote: string) => void;
+	onApplyRewrite?: (quote: string, rewrite: string) => void;
+}) {
 	if (findings.length === 0) return null;
 	return (
 		<div className="mt-3">
 			<div className="text-[11px] font-semibold text-muted-foreground mb-1.5">{label}</div>
 			<div className="space-y-2">
-				{findings.map((f, i) => <FindingCard key={i} f={f} />)}
+				{findings.map((f, i) => (
+					<FindingCard
+						key={`${f.quote}-${i}`}
+						f={f}
+						onJumpToQuote={onJumpToQuote}
+						onApplyRewrite={onApplyRewrite}
+					/>
+				))}
 			</div>
 		</div>
 	);
@@ -175,7 +227,16 @@ function ReproducibilityInfo({ check }: { check: CheckWithMeta }) {
 	);
 }
 
-export function CheckResultPanel({ screenplayId, versionId, versionLabel, initialCheck, initialCheckVersionId, onCheckChange }: Props) {
+export function CheckResultPanel({
+	screenplayId,
+	versionId,
+	versionLabel,
+	initialCheck,
+	initialCheckVersionId,
+	onCheckChange,
+	onJumpToQuote,
+	onApplyRewrite,
+}: Props) {
 	const t = useTranslations("screenplay");
 	const seeded = versionId === initialCheckVersionId;
 	const [check, setCheck] = useState<CheckWithMeta | null>(seeded ? initialCheck : null);
@@ -254,9 +315,16 @@ export function CheckResultPanel({ screenplayId, versionId, versionLabel, initia
 	}
 
 	const totalFindings = check ? check.legal.length + check.facts.length + check.quality.length : 0;
+	const readiness = check ? summarizeReadiness("ready", check) : null;
+	const readinessClass =
+		readiness?.state === "blocked"
+			? "border-red-500/30 bg-red-500/10"
+			: readiness?.state === "review"
+				? "border-amber-500/30 bg-amber-500/10"
+				: "border-emerald-500/30 bg-emerald-500/10";
 
 	return (
-		<Card className="border-border mt-4">
+		<Card className="mt-3 border-border">
 			<CardContent className="p-5">
 				<div className="flex items-center justify-between mb-3">
 					<div className="flex items-center gap-2">
@@ -265,7 +333,7 @@ export function CheckResultPanel({ screenplayId, versionId, versionLabel, initia
 						</div>
 						<div>
 							<div className="flex items-center gap-2">
-								<h3 className="text-sm font-semibold text-foreground">試験結果</h3>
+								<h3 className="text-sm font-semibold text-foreground">放送レビュー</h3>
 								{versionLabel && (
 									<span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground whitespace-nowrap">
 										{versionLabel}
@@ -282,7 +350,7 @@ export function CheckResultPanel({ screenplayId, versionId, versionLabel, initia
 						className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 border border-border rounded-lg hover:border-blue-200 hover:bg-blue-600/10 text-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 					>
 						{busy ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-						{busy ? t("review.rechecking") : t("review.recheck")}
+						{busy ? t("review.rechecking") : "公開情報も含めて再チェック"}
 					</button>
 				</div>
 
@@ -296,16 +364,26 @@ export function CheckResultPanel({ screenplayId, versionId, versionLabel, initia
 					<p className="text-xs text-muted-foreground py-3 text-center flex items-center justify-center gap-2">
 						<Loader2 size={12} className="animate-spin" /> {t("review.loadingCheck")}
 					</p>
-				) : check ? (
+				) : check && readiness ? (
 					<>
-						<div className="flex items-baseline gap-2 mb-1">
-							<span className={`text-2xl font-bold ${scoreColor(check.overallScore)}`}>
-								{check.overallScore}
-							</span>
-							<span className="text-xs text-muted-foreground">{t("review.scoreSuffix")}</span>
-							{totalFindings > 0 && (
-								<span className="ml-auto text-[11px] text-muted-foreground">{t("review.findingsCount", { count: totalFindings })}</span>
-							)}
+						<div className={`mb-3 rounded-xl border p-3 ${readinessClass}`}>
+							<div className="flex items-start justify-between gap-3">
+								<div>
+									<div className="text-sm font-semibold text-foreground">{READINESS_LABEL_JA[readiness.state]}</div>
+									<div className="mt-1 text-[11px] text-muted-foreground">
+										{readiness.high > 0 ? `放送不可 ${readiness.high}件` : "高リスク 0件"}
+										{" · "}要確認 {readiness.medium + readiness.low}件
+									</div>
+								</div>
+								<div className="text-right">
+									<div className={`font-mono text-lg font-semibold ${scoreColor(check.overallScore)}`}>{check.overallScore}</div>
+									<div className="text-[9px] uppercase tracking-wide text-muted-foreground">quality index</div>
+								</div>
+							</div>
+							<div className="mt-3 grid grid-cols-2 gap-2 border-t border-current/10 pt-2 text-[10px] text-muted-foreground">
+								<span className="inline-flex items-center gap-1"><ShieldAlert size={10} /> 指摘 {totalFindings}件</span>
+								<span className="inline-flex items-center gap-1"><SearchCheck size={10} /> 参照 {readiness.referenceCount}件</span>
+							</div>
 						</div>
 						{check.created_at && (
 							<p className="text-[10px] text-muted-foreground mb-2">
@@ -315,9 +393,9 @@ export function CheckResultPanel({ screenplayId, versionId, versionLabel, initia
 						{totalFindings === 0 && (
 							<p className="text-xs text-muted-foreground py-2 text-center">{t("review.noFindings")}</p>
 						)}
-						<AxisSection label={t("review.axisLegal")} findings={check.legal} />
-						<AxisSection label={t("review.axisFacts")} findings={check.facts} />
-						<AxisSection label={t("review.axisQuality")} findings={check.quality} />
+						<AxisSection label={t("review.axisLegal")} findings={check.legal} onJumpToQuote={onJumpToQuote} onApplyRewrite={onApplyRewrite} />
+						<AxisSection label={t("review.axisFacts")} findings={check.facts} onJumpToQuote={onJumpToQuote} onApplyRewrite={onApplyRewrite} />
+						<AxisSection label={t("review.axisQuality")} findings={check.quality} onJumpToQuote={onJumpToQuote} onApplyRewrite={onApplyRewrite} />
 						<ReproducibilityInfo check={check} />
 					</>
 				) : (

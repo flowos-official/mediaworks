@@ -81,12 +81,12 @@ function dataTable(b: Extract<Block, { kind: "table" }>): Table {
 	return new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows });
 }
 
-function blockToElements(b: Block): Array<Paragraph | Table> {
+function blockToElements(b: Block, documentLabel: string): Array<Paragraph | Table> {
 	switch (b.kind) {
 		case "heading": {
 			const out: Array<Paragraph | Table> = [];
 			if (b.level === 1) {
-				out.push(new Paragraph({ children: [new TextRun({ text: "完成版 台本", color: "2563EB", size: 18 })] }));
+				out.push(new Paragraph({ children: [new TextRun({ text: documentLabel, color: "2563EB", size: 18 })] }));
 			}
 			out.push(new Paragraph({ heading: headingLevel(b.level), children: [new TextRun({ text: b.text })] }));
 			return out;
@@ -114,10 +114,10 @@ function blockToElements(b: Block): Array<Paragraph | Table> {
 	}
 }
 
-function buildScreenplayDoc(markdown: string, title: string): Document {
+function buildScreenplayDoc(markdown: string, title: string, documentLabel = "台本本文"): Document {
 	const blocks = parseMarkdown(markdown);
 	const children: Array<Paragraph | Table> = [];
-	for (const b of blocks) children.push(...blockToElements(b));
+	for (const b of blocks) children.push(...blockToElements(b, documentLabel));
 	// The screenplay markdown already opens with an H1 title, so render it
 	// faithfully. Only fall back to the `title` param when the markdown is
 	// empty/whitespace, to guarantee a non-empty document.
@@ -131,8 +131,8 @@ function buildScreenplayDoc(markdown: string, title: string): Document {
 }
 
 /** Browser-side: returns a Blob suitable for download. */
-export async function buildScreenplayDocx(markdown: string, title: string): Promise<Blob> {
-	return Packer.toBlob(buildScreenplayDoc(markdown, title));
+export async function buildScreenplayDocx(markdown: string, title: string, documentLabel?: string): Promise<Blob> {
+	return Packer.toBlob(buildScreenplayDoc(markdown, title, documentLabel));
 }
 
 /** Node-side (tests): returns a Buffer. */

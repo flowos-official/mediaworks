@@ -1,22 +1,33 @@
 "use client";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Sparkles, FileUp } from "lucide-react";
+import { Database, FileUp, Files } from "lucide-react";
 import { ScreenplayCreateForm } from "./ScreenplayCreateForm";
 import { ScreenplayImportForm } from "./ScreenplayImportForm";
+import {
+	ScreenplayProductPicker,
+	type ExistingProductOption,
+} from "./ScreenplayProductPicker";
 
-type Tab = "generate" | "import";
+type Tab = "product" | "import" | "external";
 
-export function ScreenplayNewTabs({ locale }: { locale: string }) {
+export function ScreenplayNewTabs({
+	locale,
+	products,
+}: {
+	locale: string;
+	products: ExistingProductOption[];
+}) {
 	const t = useTranslations("screenplay");
-	const [tab, setTab] = useState<Tab>("generate");
-	const tabs: { id: Tab; label: string; sub: string; icon: typeof Sparkles }[] = [
-		{ id: "generate", label: t("tabs.create"), sub: t("tabs.createSub"), icon: Sparkles },
+	const [tab, setTab] = useState<Tab>("product");
+	const tabs: { id: Tab; label: string; sub: string; icon: typeof Database }[] = [
+		{ id: "product", label: t("tabs.product"), sub: t("tabs.productSub"), icon: Database },
 		{ id: "import", label: t("tabs.import"), sub: t("tabs.importSub"), icon: FileUp },
+		{ id: "external", label: t("tabs.external"), sub: t("tabs.externalSub"), icon: Files },
 	];
 	return (
 		<div className="space-y-7">
-			<div className="grid grid-cols-1 md:grid-cols-2 gap-3" role="tablist" aria-label={t("a11y.createMethod")}>
+			<div className="grid grid-cols-1 gap-3 md:grid-cols-3" role="tablist" aria-label={t("a11y.createMethod")}>
 				{tabs.map((t) => {
 					const Icon = t.icon;
 					const active = tab === t.id;
@@ -45,7 +56,9 @@ export function ScreenplayNewTabs({ locale }: { locale: string }) {
 				})}
 			</div>
 
-			{tab === "generate" ? <ScreenplayCreateForm locale={locale} /> : <ScreenplayImportForm locale={locale} />}
+			{tab === "product" && <ScreenplayProductPicker locale={locale} products={products} />}
+			{tab === "import" && <ScreenplayImportForm locale={locale} />}
+			{tab === "external" && <ScreenplayCreateForm locale={locale} />}
 		</div>
 	);
 }

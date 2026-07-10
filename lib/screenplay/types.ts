@@ -54,6 +54,7 @@ export interface ScreenplayRow {
   last_run_id: string | null;
   created_at: string;
   updated_at: string;
+  source_kind?: "upload" | "url" | "import" | "product" | null;
 }
 
 export interface ScreenplayVersionRow {

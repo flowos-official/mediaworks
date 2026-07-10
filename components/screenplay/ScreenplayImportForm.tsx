@@ -49,7 +49,7 @@ export function ScreenplayImportForm({ locale }: { locale: string }) {
 	const [showPreview, setShowPreview] = useState(false);
 
 	function hydrate(b: ExtractedBrief, md: string) {
-		setBrief({ name: b.name, category: b.category, description: b.description, guarantee: b.guarantee, notes: b.notes });
+		setBrief({ name: b.name, category: b.category, description: b.description, guarantee: b.guarantee, notes: b.notes, customization: b.customization });
 		setBonusesText((b.bonuses ?? []).join("\n"));
 		setListPrice(priceToString(b.price?.listJpy));
 		setSalePrice(priceToString(b.price?.saleJpy));
@@ -146,6 +146,7 @@ export function ScreenplayImportForm({ locale }: { locale: string }) {
 			if (brief.category?.trim()) productBrief.category = brief.category.trim();
 			if (brief.guarantee?.trim()) productBrief.guarantee = brief.guarantee.trim();
 			if (brief.notes?.trim()) productBrief.notes = brief.notes.trim();
+			if (brief.customization) productBrief.customization = brief.customization;
 			if (bonuses.length) productBrief.bonuses = bonuses;
 			if (Object.keys(price).length) productBrief.price = price;
 

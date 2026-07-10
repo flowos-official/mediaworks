@@ -1,251 +1,411 @@
 "use client";
+
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
+import { BookOpenText, FileText, ListTree, ShieldCheck } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { FileText } from "lucide-react";
+import { summarizeReadiness } from "@/lib/screenplay/readiness";
+import type { ProductBrief, ScreenplayRow, ScreenplayVersionRow } from "@/lib/screenplay/types";
+import type { ScriptCheckResult } from "@/lib/screenplay/compliance/types";
 import { GenerationProgress } from "./GenerationProgress";
-import { VersionTimeline } from "./VersionTimeline";
 import { ScreenplayHeaderBar } from "./ScreenplayHeaderBar";
 import { ScreenplayViewer } from "./ScreenplayViewer";
+import { ScreenplayEditor } from "./ScreenplayEditor";
+import { ScreenplayNavigator } from "./ScreenplayNavigator";
 import { ReviewPanel, type ReviewTab } from "./ReviewPanel";
-import type { ScreenplayRow, ScreenplayVersionRow } from "@/lib/screenplay/types";
-import type { ScriptCheckResult } from "@/lib/screenplay/compliance/types";
+import type { CheckWithMeta } from "./CheckResultPanel";
+import type { ExistingProductOption } from "./ScreenplayProductPicker";
 
 interface Props {
 	initialScreenplay: ScreenplayRow;
 	initialVersions: ScreenplayVersionRow[];
-	latestCheck?: (ScriptCheckResult & { created_at?: string; lexicon_version?: string }) | null;
+	latestCheck?: (ScriptCheckResult & { created_at?: string; lexicon_version?: string; is_auto?: boolean }) | null;
 	initialCheckVersionId?: string | null;
+	availableProducts?: ExistingProductOption[];
 }
 
-function pad(n: number, w: number): string {
-	return n.toString().padStart(w, "0");
+type MobilePane = "navigator" | "script" | "review";
+
+function pad(value: number, width: number): string {
+	return value.toString().padStart(width, "0");
 }
 
-export function ScreenplayWorkspace({ initialScreenplay, initialVersions, latestCheck, initialCheckVersionId = null }: Props) {
-	const t = useTranslations("screenplay");
+function findFlexibleQuoteRange(markdown: string, quote: string): [number, number] | null {
+	const exactStart = markdown.indexOf(quote);
+	if (exactStart >= 0) return [exactStart, exactStart + quote.length];
+
+	const ignored = new Set(["●", "○", "■", "#", "*", "_", ">"]);
+	const normalize = (value: string, withMap: boolean) => {
+		let text = "";
+		const map: number[] = [];
+		for (let index = 0; index < value.length; index++) {
+			const character = value[index];
+			if (/\s/u.test(character) || ignored.has(character)) continue;
+			text += character;
+			if (withMap) map.push(index);
+		}
+		return { text, map };
+	};
+	const source = normalize(markdown, true);
+	const target = normalize(quote, false).text;
+	if (!target) return null;
+	const normalizedStart = source.text.indexOf(target);
+	if (normalizedStart < 0) return null;
+	const start = source.map[normalizedStart];
+	const end = source.map[normalizedStart + target.length - 1];
+	return start === undefined || end === undefined ? null : [start, end + 1];
+}
+
+export function ScreenplayWorkspace({
+	initialScreenplay,
+	initialVersions,
+	latestCheck,
+	initialCheckVersionId = null,
+	availableProducts = [],
+}: Props) {
 	const router = useRouter();
 	const search = useSearchParams();
+	const [screenplay, setScreenplay] = useState(initialScreenplay);
 	const [versions, setVersions] = useState(initialVersions);
 	const [selectedId, setSelectedId] = useState<string | null>(
 		initialScreenplay.current_version_id ?? initialVersions[initialVersions.length - 1]?.id ?? null,
 	);
-	// Refresh-safe: if the URL has no ?run= but the screenplay is currently
-	// generating, reattach to the stored last_run_id so the user sees progress
-	// even after a page reload.
 	const initialRun =
 		search.get("run") ??
 		(initialScreenplay.status === "generating" && initialScreenplay.last_run_id
 			? initialScreenplay.last_run_id
 			: null);
 	const [runId, setRunId] = useState<string | null>(initialRun);
-	// Captured into state (not read from the URL each render): a later refine from
-	// the same page must NOT inherit the persistent ?kind=import.
 	const [runVariant, setRunVariant] = useState<"generate" | "import">(
 		search.get("kind") === "import" && initialRun ? "import" : "generate",
 	);
 	const [activeReviewTab, setActiveReviewTab] = useState<ReviewTab>("check");
+	const [activeCheck, setActiveCheck] = useState<CheckWithMeta | null>(
+		initialScreenplay.current_version_id === initialCheckVersionId ? latestCheck ?? null : null,
+	);
+	const [editing, setEditing] = useState(false);
+	const [draftMarkdown, setDraftMarkdown] = useState("");
+	const [saveBusy, setSaveBusy] = useState(false);
+	const [saveError, setSaveError] = useState<string | null>(null);
+	const [mobilePane, setMobilePane] = useState<MobilePane>("script");
 
-	// Belt-and-suspenders: if mounting with no runId but screenplay is still
-	// generating, poll the screenplay row briefly to pick up the run as it
-	// becomes available (race between create POST and detail page nav).
 	useEffect(() => {
 		if (runId || initialScreenplay.status !== "generating") return;
-		let stop = false;
-		(async () => {
-			for (let i = 0; i < 5 && !stop; i++) {
-				await new Promise((r) => setTimeout(r, 1500));
-				const res = await fetch(`/api/screenplays/${initialScreenplay.id}`, { cache: "no-store" });
-				if (!res.ok) continue;
-				const j = (await res.json()) as { screenplay: ScreenplayRow; versions: ScreenplayVersionRow[] };
-				if (j.screenplay.last_run_id && j.screenplay.status === "generating") {
-					setRunId(j.screenplay.last_run_id);
+		let stopped = false;
+		void (async () => {
+			for (let attempt = 0; attempt < 5 && !stopped; attempt++) {
+				await new Promise((resolve) => setTimeout(resolve, 1500));
+				const response = await fetch(`/api/screenplays/${initialScreenplay.id}`, { cache: "no-store" });
+				if (!response.ok) continue;
+				const payload = (await response.json()) as { screenplay: ScreenplayRow; versions: ScreenplayVersionRow[] };
+				setScreenplay(payload.screenplay);
+				if (payload.screenplay.last_run_id && payload.screenplay.status === "generating") {
+					setRunId(payload.screenplay.last_run_id);
 					return;
 				}
-				if (j.screenplay.status === "ready" || j.screenplay.status === "failed") {
-					setVersions(j.versions);
-					setSelectedId(j.screenplay.current_version_id ?? j.versions[j.versions.length - 1]?.id ?? null);
+				if (payload.screenplay.status === "ready" || payload.screenplay.status === "failed") {
+					setVersions(payload.versions);
+					setSelectedId(payload.screenplay.current_version_id ?? payload.versions.at(-1)?.id ?? null);
 					return;
 				}
 			}
 		})();
-		return () => { stop = true; };
+		return () => {
+			stopped = true;
+		};
 	}, [runId, initialScreenplay.id, initialScreenplay.status]);
 
-	async function refreshListReturning(newSelectedId?: string): Promise<ScreenplayVersionRow[]> {
-		const res = await fetch(`/api/screenplays/${initialScreenplay.id}`, { cache: "no-store" });
-		if (!res.ok) return versions;
-		const j = (await res.json()) as { screenplay: ScreenplayRow; versions: ScreenplayVersionRow[] };
-		setVersions(j.versions);
-		setSelectedId(newSelectedId ?? j.screenplay.current_version_id ?? j.versions[j.versions.length - 1]?.id ?? null);
-		return j.versions;
+	async function refreshDetail(newSelectedId?: string): Promise<{
+		screenplay: ScreenplayRow;
+		versions: ScreenplayVersionRow[];
+	} | null> {
+		const response = await fetch(`/api/screenplays/${initialScreenplay.id}`, { cache: "no-store" });
+		if (!response.ok) return null;
+		const payload = (await response.json()) as { screenplay: ScreenplayRow; versions: ScreenplayVersionRow[] };
+		setScreenplay(payload.screenplay);
+		setVersions(payload.versions);
+		setSelectedId(
+			newSelectedId ?? payload.screenplay.current_version_id ?? payload.versions.at(-1)?.id ?? null,
+		);
+		return payload;
 	}
 
 	async function handleComplete(versionId: string) {
 		setRunId(null);
-		const list = await refreshListReturning(versionId);
-		const v = list.find((x) => x.id === versionId);
-		setActiveReviewTab(v?.base_version_id ? "diff" : "check");
+		const payload = await refreshDetail(versionId);
+		const version = payload?.versions.find((item) => item.id === versionId);
+		setActiveCheck(null);
+		setActiveReviewTab(version?.base_version_id ? "diff" : "check");
+		setEditing(false);
 		const params = new URLSearchParams(search);
 		params.delete("run");
 		params.delete("kind");
-		router.replace(`?${params.toString()}`);
+		router.replace(params.size > 0 ? `?${params.toString()}` : "?");
 	}
 
 	function handleRefineStart(newRunId: string) {
 		setRunVariant("generate");
 		setRunId(newRunId);
+		setEditing(false);
 	}
 
-	const sorted = versions;
-	const selectedIndex = sorted.findIndex((v) => v.id === selectedId);
-	const selected = selectedIndex >= 0 ? sorted[selectedIndex] : null;
-	const prev = selectedIndex > 0 ? sorted[selectedIndex - 1] : null;
-	const next = selectedIndex < sorted.length - 1 && selectedIndex >= 0 ? sorted[selectedIndex + 1] : null;
-	const isGenerating = !!runId;
+	const selectedIndex = versions.findIndex((version) => version.id === selectedId);
+	const selected = selectedIndex >= 0 ? versions[selectedIndex] : null;
+	const previous = selectedIndex > 0 ? versions[selectedIndex - 1] : null;
+	const next = selectedIndex >= 0 && selectedIndex < versions.length - 1 ? versions[selectedIndex + 1] : null;
+	const isGenerating = Boolean(runId);
+	const readiness = summarizeReadiness(screenplay.status, activeCheck);
+	const selectVersion = useCallback((versionId: string) => {
+		setEditing(false);
+		setSaveError(null);
+		setSelectedId(versionId);
+	}, []);
 
-	const goPrev = useCallback(() => {
-		if (prev) setSelectedId(prev.id);
-	}, [prev]);
+	const goPrevious = useCallback(() => {
+		if (previous) selectVersion(previous.id);
+	}, [previous, selectVersion]);
 	const goNext = useCallback(() => {
-		if (next) setSelectedId(next.id);
-	}, [next]);
+		if (next) selectVersion(next.id);
+	}, [next, selectVersion]);
 
 	useEffect(() => {
-		function onKey(e: KeyboardEvent) {
-			const t = e.target as HTMLElement | null;
-			const tag = t?.tagName;
-			if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || t?.isContentEditable) return;
-			if (!(e.metaKey || e.ctrlKey)) return;
-			if (e.key === "ArrowLeft") { e.preventDefault(); goPrev(); }
-			else if (e.key === "ArrowRight") { e.preventDefault(); goNext(); }
+		function onKey(event: KeyboardEvent) {
+			const target = event.target as HTMLElement | null;
+			const tag = target?.tagName;
+			if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target?.isContentEditable) return;
+			if (!(event.metaKey || event.ctrlKey)) return;
+			if (event.key === "ArrowLeft") {
+				event.preventDefault();
+				goPrevious();
+			} else if (event.key === "ArrowRight") {
+				event.preventDefault();
+				goNext();
+			}
 		}
 		window.addEventListener("keydown", onKey);
 		return () => window.removeEventListener("keydown", onKey);
-	}, [goPrev, goNext]);
+	}, [goNext, goPrevious]);
 
-	// Hunk → script jump: scroll the left pane to the block whose source line
-	// best matches the hunk's start, then flash it. Blocks carry data-md-line
-	// (0-based source line, set by the markdown renderer).
 	const scriptRef = useRef<HTMLElement>(null);
 	const jumpToLine = useCallback((line: number) => {
-		const root = scriptRef.current;
-		if (!root) return;
-		const nodes = Array.from(root.querySelectorAll<HTMLElement>("[data-md-line]"));
-		if (nodes.length === 0) return;
-		let best: HTMLElement | null = null;
-		for (const n of nodes) {
-			const l = Number(n.dataset.mdLine);
-			if (Number.isNaN(l)) continue;
-			if (l <= line) best = n;
-			else break;
-		}
-		const target = best ?? nodes[0];
-		target.scrollIntoView({ behavior: "smooth", block: "center" });
-		target.animate(
-			[{ backgroundColor: "rgba(37,99,235,0.16)" }, { backgroundColor: "transparent" }],
-			{ duration: 1400, easing: "ease-out" },
-		);
+		setMobilePane("script");
+		requestAnimationFrame(() => {
+			const root = scriptRef.current;
+			if (!root) return;
+			const nodes = Array.from(root.querySelectorAll<HTMLElement>("[data-md-line]"));
+			let best: HTMLElement | null = null;
+			for (const node of nodes) {
+				const currentLine = Number(node.dataset.mdLine);
+				if (Number.isNaN(currentLine)) continue;
+				if (currentLine <= line) best = node;
+				else break;
+			}
+			const target = best ?? nodes[0];
+			if (!target) return;
+			target.scrollIntoView({ behavior: "smooth", block: "center" });
+			target.animate(
+				[
+					{ backgroundColor: "rgba(220,38,38,0.16)", outline: "2px solid rgba(220,38,38,0.35)" },
+					{ backgroundColor: "transparent", outline: "2px solid transparent" },
+				],
+				{ duration: 1600, easing: "ease-out" },
+			);
+		});
 	}, []);
+
+	const jumpToQuote = useCallback(
+		(quote: string) => {
+			if (!selected) return;
+			const range = findFlexibleQuoteRange(selected.markdown, quote);
+			const position = range?.[0] ?? 0;
+			const line = selected.markdown.slice(0, position).split(/\r?\n/).length - 1;
+			jumpToLine(line);
+		},
+		[jumpToLine, selected],
+	);
+
+	function startEditing(markdown?: string, notice?: string) {
+		if (!selected) return;
+		setMobilePane("script");
+		setDraftMarkdown(markdown ?? selected.markdown);
+		setSaveError(notice ?? null);
+		setEditing(true);
+	}
+
+	function applySuggestedRewrite(quote: string, rewrite: string) {
+		if (!selected) return;
+		const range = findFlexibleQuoteRange(selected.markdown, quote);
+		if (!range) {
+			startEditing(
+				selected.markdown,
+				"指摘箇所を一意に特定できませんでした。右の修正案を確認し、本文へ手動で反映してください。",
+			);
+			return;
+		}
+		const [start, end] = range;
+		const updated =
+			selected.markdown.slice(0, start) +
+			rewrite +
+			selected.markdown.slice(end);
+		startEditing(updated);
+		requestAnimationFrame(() => scriptRef.current?.scrollTo({ top: 0, behavior: "smooth" }));
+	}
+
+	async function saveManualVersion() {
+		if (!selected) return;
+		setSaveBusy(true);
+		setSaveError(null);
+		try {
+			const response = await fetch(`/api/screenplays/${screenplay.id}/versions`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					markdown: draftMarkdown,
+					baseVersionId: selected.id,
+					feedback: "本文を直接編集",
+				}),
+			});
+			const payload = (await response.json()) as { versionId?: string; error?: string };
+			if (!response.ok || !payload.versionId) {
+				throw new Error(payload.error ?? "保存できませんでした");
+			}
+			await refreshDetail(payload.versionId);
+			setActiveCheck(null);
+			setActiveReviewTab("check");
+			setEditing(false);
+		} catch (cause) {
+			setSaveError(cause instanceof Error ? cause.message : "保存できませんでした");
+		} finally {
+			setSaveBusy(false);
+		}
+	}
+
+	function handleProductLinked(productId: string, brief: ProductBrief) {
+		setScreenplay((current) => ({
+			...current,
+			product_id: productId,
+			product_info_snapshot: brief,
+		}));
+		setActiveCheck(null);
+		setActiveReviewTab("check");
+	}
 
 	return (
 		<div>
 			{selected && (
 				<ScreenplayHeaderBar
 					markdown={selected.markdown}
-					title={initialScreenplay.title}
+					title={screenplay.title}
 					versionLabel={`第 ${selected.version_number} 稿`}
 					createdAt={selected.created_at}
-					hasPrev={!!prev}
-					hasNext={!!next}
-					onPrev={goPrev}
+					hasPrev={Boolean(previous)}
+					hasNext={Boolean(next)}
+					onPrev={goPrevious}
 					onNext={goNext}
-					prevLabel={prev ? `v${pad(prev.version_number, 2)}` : undefined}
+					prevLabel={previous ? `v${pad(previous.version_number, 2)}` : undefined}
 					nextLabel={next ? `v${pad(next.version_number, 2)}` : undefined}
+					readiness={readiness}
+					onEdit={() => (editing ? setEditing(false) : startEditing())}
+					editing={editing}
 				/>
 			)}
 
-			{/* HISTORY — lg/sm dropdown (hidden at xl), sits above the grid */}
-			{versions.length > 1 && (
-				<div className="xl:hidden mb-4">
-					<label htmlFor="screenplay-version-select" className="text-[11px] font-medium text-muted-foreground mr-2">{t("workspace.history")}</label>
-					<select
-						id="screenplay-version-select"
-						value={selectedId ?? ""}
-						onChange={(e) => setSelectedId(e.target.value)}
-						className="text-sm border border-border rounded-lg px-2 py-1.5 bg-card"
-					>
-						{versions.map((v) => (
-							<option key={v.id} value={v.id}>第 {v.version_number} 稿{v.feedback ? ` — ${v.feedback.slice(0, 24)}` : ""}</option>
-						))}
-					</select>
-				</div>
-			)}
+			<div className="sticky top-16 z-20 mb-3 grid grid-cols-3 gap-1 rounded-xl border border-border bg-background/95 p-1 shadow-sm backdrop-blur lg:hidden">
+				{([
+					{ id: "navigator" as const, label: "構成・根拠", icon: ListTree },
+					{ id: "script" as const, label: "台本", icon: BookOpenText },
+					{ id: "review" as const, label: `考査${readiness.total ? ` ${readiness.total}` : ""}`, icon: ShieldCheck },
+				]).map((item) => {
+					const Icon = item.icon;
+					const active = mobilePane === item.id;
+					return (
+						<button
+							key={item.id}
+							type="button"
+							onClick={() => setMobilePane(item.id)}
+							className={`inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-medium transition ${active ? "bg-blue-600 text-white shadow-sm" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
+						>
+							<Icon size={13} /> {item.label}
+						</button>
+					);
+				})}
+			</div>
 
-			<div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(360px,420px)] xl:grid-cols-[220px_minmax(0,1fr)_minmax(380px,440px)] gap-6">
-				{/* HISTORY — xl rail */}
-				<aside className="hidden xl:block xl:sticky xl:top-[7rem] self-start xl:max-h-[calc(100vh-8rem)] xl:overflow-y-auto">
-					<Card className="border-border">
-						<CardContent className="p-4">
-							<div className="flex items-center justify-between mb-3">
-								<h2 className="text-sm font-semibold text-foreground">{t("workspace.history")}</h2>
-								<span className="text-[11px] text-muted-foreground">{t("workspace.versionCount", { count: versions.length })}</span>
-							</div>
-							{versions.length > 0 ? (
-								<VersionTimeline
-									versions={versions.map((v) => ({ id: v.id, version_number: v.version_number, feedback: v.feedback, created_at: v.created_at }))}
-									selectedId={selectedId}
-									onSelect={setSelectedId}
-								/>
-							) : (
-								<p className="text-xs text-muted-foreground py-4 text-center">{t("workspace.noVersions")}</p>
-							)}
-							<div className="text-[11px] text-muted-foreground mt-4 pt-3 border-t border-border leading-relaxed">{t("workspace.keyboardHint")}</div>
-						</CardContent>
-					</Card>
+			<div className="grid grid-cols-1 gap-4 lg:grid-cols-[210px_minmax(0,1fr)_minmax(360px,410px)] xl:grid-cols-[225px_minmax(0,1fr)_minmax(390px,430px)]">
+				<aside className={`${mobilePane === "navigator" ? "block" : "hidden"} self-start lg:sticky lg:top-[9.75rem] lg:block lg:max-h-[calc(100vh-10.5rem)] lg:overflow-y-auto`}>
+					{selected && (
+						<ScreenplayNavigator
+							screenplayId={screenplay.id}
+							markdown={selected.markdown}
+							brief={screenplay.product_info_snapshot}
+							productId={screenplay.product_id}
+							products={availableProducts}
+							versions={versions}
+							selectedId={selectedId}
+							check={activeCheck}
+							onSelectVersion={selectVersion}
+							onJumpToLine={jumpToLine}
+							onProductLinked={handleProductLinked}
+						/>
+					)}
 				</aside>
 
-				{/* CENTER — SCRIPT */}
-				<section ref={scriptRef} className="min-w-0 lg:sticky lg:top-[7rem] self-start lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto min-h-0">
+				<section ref={scriptRef} className={`${mobilePane === "script" ? "block" : "hidden"} min-w-0 self-start lg:sticky lg:top-[9.75rem] lg:block lg:max-h-[calc(100vh-10.5rem)] lg:overflow-y-auto`}>
 					{isGenerating && runId && (
 						<div className="mb-4">
-							<GenerationProgress runId={runId} onComplete={(versionId) => handleComplete(versionId)} variant={runVariant} />
+							<GenerationProgress
+								runId={runId}
+								onComplete={(versionId) => void handleComplete(versionId)}
+								variant={runVariant}
+							/>
 						</div>
 					)}
 					{selected ? (
-						<ScreenplayViewer markdown={selected.markdown} />
+						editing ? (
+							<ScreenplayEditor
+								value={draftMarkdown}
+								onChange={setDraftMarkdown}
+								onSave={() => void saveManualVersion()}
+								onCancel={() => setEditing(false)}
+								busy={saveBusy}
+								error={saveError}
+							/>
+						) : (
+							<ScreenplayViewer markdown={selected.markdown} />
+						)
 					) : !isGenerating ? (
-						<Card className="border-border border-dashed">
-							<CardContent className="py-16 flex flex-col items-center justify-center text-center">
-								<div className="w-14 h-14 bg-muted rounded-full flex items-center justify-center mb-3">
-									<FileText size={24} className="text-muted-foreground" />
-								</div>
-								<p className="text-sm text-foreground font-medium">{t("workspace.noScript")}</p>
-								<p className="text-xs text-muted-foreground mt-1">{t("workspace.noScriptHint")}</p>
+						<Card className="border-dashed border-border">
+							<CardContent className="flex flex-col items-center justify-center py-16 text-center">
+								<FileText size={24} className="mb-3 text-muted-foreground" />
+								<p className="text-sm font-medium text-foreground">まだ台本がありません</p>
 							</CardContent>
 						</Card>
 					) : null}
 				</section>
 
-				{/* RIGHT — REVIEW PANEL */}
-				<aside className="lg:sticky lg:top-[7rem] self-start lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto min-h-0">
+				<aside className={`${mobilePane === "review" ? "block" : "hidden"} min-h-0 self-start lg:sticky lg:top-[9.75rem] lg:block lg:max-h-[calc(100vh-10.5rem)] lg:overflow-y-auto`}>
 					{selected ? (
 						<ReviewPanel
-							screenplayId={initialScreenplay.id}
+							key={`${selected.id}-${screenplay.product_id ?? "unlinked"}`}
+							screenplayId={screenplay.id}
 							version={selected}
 							versions={versions}
-							initialCheck={latestCheck ?? null}
-							initialCheckVersionId={initialCheckVersionId}
+							initialCheck={screenplay.product_id === initialScreenplay.product_id ? latestCheck ?? null : null}
+							initialCheckVersionId={screenplay.product_id === initialScreenplay.product_id ? initialCheckVersionId : null}
 							isGenerating={isGenerating}
 							activeTab={activeReviewTab}
 							onTabChange={setActiveReviewTab}
 							onRefineStart={handleRefineStart}
 							onJumpToLine={jumpToLine}
+							onCheckChange={setActiveCheck}
+							onJumpToQuote={jumpToQuote}
+							onApplyRewrite={applySuggestedRewrite}
 						/>
 					) : (
 						<Card className="border-border">
-							<CardContent className="p-5 text-center text-xs text-muted-foreground">{t("workspace.reviewPlaceholder")}</CardContent>
+							<CardContent className="p-5 text-center text-xs text-muted-foreground">
+								台本ができると放送レビューが表示されます
+							</CardContent>
 						</Card>
 					)}
 				</aside>

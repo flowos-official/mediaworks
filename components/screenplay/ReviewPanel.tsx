@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { CheckResultPanel } from "./CheckResultPanel";
 import type { CheckWithMeta } from "./CheckResultPanel";
 import { ChangeDiffView } from "./ChangeDiffView";
@@ -20,33 +19,54 @@ interface Props {
 	onTabChange: (t: ReviewTab) => void;
 	onRefineStart: (runId: string) => void;
 	onJumpToLine?: (line: number) => void;
+	onCheckChange?: (check: CheckWithMeta | null) => void;
+	onJumpToQuote?: (quote: string) => void;
+	onApplyRewrite?: (quote: string, rewrite: string) => void;
 }
 
 export function ReviewPanel({
 	screenplayId, version, versions, initialCheck, initialCheckVersionId,
 	isGenerating, activeTab, onTabChange, onRefineStart, onJumpToLine,
+	onCheckChange, onJumpToQuote, onApplyRewrite,
 }: Props) {
 	const t = useTranslations("screenplay");
-	const [findingCount, setFindingCount] = useState<number | null>(null);
+	const [findingCount, setFindingCount] = useState<number | null>(() =>
+		initialCheck
+			? initialCheck.legal.length + initialCheck.facts.length + initialCheck.quality.length
+			: null,
+	);
 	// At least one OTHER version exists → there is something to diff against
 	// (the base it was refined from, or any earlier 稿 the operator picks).
 	const canDiff = versions.some((v) => v.id !== version.id);
 
 	function handleCheckChange(c: CheckWithMeta | null) {
 		setFindingCount(c ? c.legal.length + c.facts.length + c.quality.length : null);
+		onCheckChange?.(c);
 	}
+	const tabs: { id: ReviewTab; label: string }[] = [
+		{ id: "check", label: `放送レビュー${findingCount != null && findingCount > 0 ? ` (${findingCount})` : ""}` },
+		{ id: "diff", label: "変更内容" },
+		{ id: "refine", label: "変更を依頼" },
+	];
 
 	return (
-		<Tabs value={activeTab} onValueChange={(v) => onTabChange(v as ReviewTab)} className="gap-3">
-			<TabsList className="w-full sticky top-0 z-10">
-				<TabsTrigger value="check">
-					試験結果{findingCount != null && findingCount > 0 ? ` (${findingCount})` : ""}
-				</TabsTrigger>
-				<TabsTrigger value="diff">{t("review.tabDiff")}</TabsTrigger>
-				<TabsTrigger value="refine">{t("review.tabRefine")}</TabsTrigger>
-			</TabsList>
+		<div className="flex flex-col gap-3">
+			<div role="tablist" aria-label="台本レビュー" className="sticky top-0 z-10 grid h-8 w-full grid-cols-3 items-center rounded-lg bg-muted p-[3px] text-muted-foreground">
+				{tabs.map((tab) => (
+					<button
+						key={tab.id}
+						type="button"
+						role="tab"
+						aria-selected={activeTab === tab.id}
+						onClick={() => onTabChange(tab.id)}
+						className={`h-full rounded-md border border-transparent px-1.5 text-xs font-medium whitespace-nowrap transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${activeTab === tab.id ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+					>
+						{tab.label}
+					</button>
+				))}
+			</div>
 
-			<TabsContent value="check" keepMounted>
+			<div role="tabpanel" hidden={activeTab !== "check"}>
 				<CheckResultPanel
 					screenplayId={screenplayId}
 					versionId={version.id}
@@ -54,10 +74,12 @@ export function ReviewPanel({
 					initialCheck={initialCheck}
 					initialCheckVersionId={initialCheckVersionId}
 					onCheckChange={handleCheckChange}
+					onJumpToQuote={onJumpToQuote}
+					onApplyRewrite={onApplyRewrite}
 				/>
-			</TabsContent>
+			</div>
 
-			<TabsContent value="diff">
+			{activeTab === "diff" && <div role="tabpanel">
 				{canDiff ? (
 					<ChangeDiffView
 						key={version.id}
@@ -73,9 +95,9 @@ export function ReviewPanel({
 						{t("review.noDiffFirstDraft")}
 					</div>
 				)}
-			</TabsContent>
+			</div>}
 
-			<TabsContent value="refine">
+			{activeTab === "refine" && <div role="tabpanel">
 				<RevisionPlanPanel
 					screenplayId={screenplayId}
 					versionId={version.id}
@@ -83,7 +105,7 @@ export function ReviewPanel({
 					disabled={isGenerating}
 					onRefineStart={onRefineStart}
 				/>
-			</TabsContent>
-		</Tabs>
+			</div>}
+		</div>
 	);
 }

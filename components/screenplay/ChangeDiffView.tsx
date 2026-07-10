@@ -92,6 +92,20 @@ export function ChangeDiffView({
 		() => computeLineDiff(baseMarkdown, currentMarkdown),
 		[baseMarkdown, currentMarkdown],
 	);
+	const diffStats = useMemo(
+		() =>
+			hunks.reduce(
+				(stats, hunk) => {
+					for (const line of hunk.lines) {
+						if (line.type === "added") stats.added += 1;
+						if (line.type === "removed") stats.removed += 1;
+					}
+					return stats;
+				},
+				{ added: 0, removed: 0 },
+			),
+		[hunks],
+	);
 
 	const [reasons, setReasons] = useState<Record<number, string>>({});
 	const [loading, setLoading] = useState(false);
@@ -157,6 +171,23 @@ export function ChangeDiffView({
 				</select>
 				<span className="text-muted-foreground whitespace-nowrap">→ {labelOf(currentVersionId)}</span>
 			</div>
+
+			{hunks.length > 0 && (
+				<div className="grid grid-cols-3 gap-2 rounded-xl border border-border bg-muted/30 p-2.5 text-center">
+					<div>
+						<div className="font-mono text-base font-semibold text-foreground">{hunks.length}</div>
+						<div className="text-[10px] text-muted-foreground">変更箇所</div>
+					</div>
+					<div>
+						<div className="font-mono text-base font-semibold text-emerald-600">+{diffStats.added}</div>
+						<div className="text-[10px] text-muted-foreground">追加</div>
+					</div>
+					<div>
+						<div className="font-mono text-base font-semibold text-red-600">−{diffStats.removed}</div>
+						<div className="text-[10px] text-muted-foreground">削除</div>
+					</div>
+				</div>
+			)}
 
 			{!isCanonical && (
 				<p className="text-[11px] text-muted-foreground bg-muted/50 border border-border rounded-lg px-3 py-2">

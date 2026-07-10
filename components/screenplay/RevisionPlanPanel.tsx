@@ -1,9 +1,10 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Loader2, Send, Sparkles, Wand2, ShieldCheck } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { composeRefineFeedback, type RevisionPlanItem } from "@/lib/screenplay/revision-plan";
+import { parseMarkdown } from "@/lib/screenplay/parse-markdown";
 import { useRefineSubmit } from "./use-refine-submit";
 
 interface Props {
@@ -33,7 +34,7 @@ const SEV_CLS: Record<RevisionPlanItem["severity"], string> = {
 export function RevisionPlanPanel({ screenplayId, versionId, markdown, disabled, onRefineStart }: Props) {
 	const t = useTranslations("screenplay");
 	const suggestions = t.raw("feedback.suggestions") as string[];
-	const { submit, busy, err, setErr } = useRefineSubmit(screenplayId, versionId, onRefineStart);
+	const { submit, busy, err } = useRefineSubmit(screenplayId, versionId, onRefineStart);
 
 	const [items, setItems] = useState<RevisionPlanItem[] | null>(null);
 	const [selected, setSelected] = useState<boolean[]>([]);
@@ -43,18 +44,20 @@ export function RevisionPlanPanel({ screenplayId, versionId, markdown, disabled,
 	const [planErr, setPlanErr] = useState<string | null>(null);
 	const [freeText, setFreeText] = useState("");
 	const [trimmed, setTrimmed] = useState(0);
-
-	// Stale-drop: clear plan state on version switch; drop in-flight responses
-	// so a plan generated for 第N稿 can't be composed against a switched-to base.
-	const versionRef = useRef(versionId);
-	useEffect(() => {
-		versionRef.current = versionId;
-		setItems(null); setSelected([]); setFindingCount(null); setBasedOnScore(null);
-		setPlanErr(null); setFreeText(""); setTrimmed(0); setErr(null); setPlanLoading(false);
-	}, [versionId, setErr]);
+	const [scope, setScope] = useState("全文");
+	const [lockProductFacts, setLockProductFacts] = useState(true);
+	const [lockPrice, setLockPrice] = useState(true);
+	const [lockNotices, setLockNotices] = useState(true);
+	const sections = useMemo(
+		() =>
+			parseMarkdown(markdown)
+				.filter((block) => block.kind === "heading" && block.level === 3)
+				.map((block) => (block.kind === "heading" ? block.text.replace(/^■/, "") : ""))
+				.slice(0, 16),
+		[markdown],
+	);
 
 	async function propose() {
-		const reqVersion = versionId;
 		setPlanLoading(true);
 		setPlanErr(null);
 		setTrimmed(0);
@@ -62,16 +65,15 @@ export function RevisionPlanPanel({ screenplayId, versionId, markdown, disabled,
 			const res = await fetch(`/api/screenplays/${screenplayId}/versions/${versionId}/revision-plan`, { method: "POST" });
 			const j = (await res.json()) as { plan?: { items: RevisionPlanItem[] }; basedOnScore?: number; findingCount?: number; error?: string };
 			if (!res.ok) throw new Error(j.error ?? t("review.plan.failed"));
-			if (reqVersion !== versionRef.current) return;
 			const its = j.plan?.items ?? [];
 			setItems(its);
 			setSelected(its.map(() => true));
 			setFindingCount(j.findingCount ?? 0);
 			setBasedOnScore(j.basedOnScore ?? null);
 		} catch (e) {
-			if (reqVersion === versionRef.current) setPlanErr(e instanceof Error ? e.message : String(e));
+			setPlanErr(e instanceof Error ? e.message : String(e));
 		} finally {
-			if (reqVersion === versionRef.current) setPlanLoading(false);
+			setPlanLoading(false);
 		}
 	}
 
@@ -81,7 +83,19 @@ export function RevisionPlanPanel({ screenplayId, versionId, markdown, disabled,
 
 	function onApply() {
 		const chosen = (items ?? []).filter((_, i) => selected[i]);
-		const { feedback, trimmedCount } = composeRefineFeedback(chosen, freeText, markdown);
+		const protectedItems = [
+			lockProductFacts ? "商品名・仕様・数値は根拠にない変更をしない" : "",
+			lockPrice ? "価格・割引・送料・特典は変更しない" : "",
+			lockNotices ? "必須注記・打消し表示を削除しない" : "",
+		].filter(Boolean);
+		const structuredRequest = [
+			`【変更範囲】${scope}`,
+			protectedItems.length ? `【保護する内容】\n- ${protectedItems.join("\n- ")}` : "",
+			freeText.trim() ? `【ディレクターの要望】\n${freeText.trim()}` : "",
+		]
+			.filter(Boolean)
+			.join("\n\n");
+		const { feedback, trimmedCount } = composeRefineFeedback(chosen, structuredRequest, markdown);
 		setTrimmed(trimmedCount);
 		if (!feedback.trim()) return;
 		void submit(feedback);
@@ -147,6 +161,24 @@ export function RevisionPlanPanel({ screenplayId, versionId, markdown, disabled,
 
 				{/* Manual feedback */}
 				<div className="border-t border-border pt-4">
+					<div className="mb-4 rounded-xl border border-border bg-muted/30 p-3">
+						<div className="mb-2 text-xs font-semibold text-foreground">変更のガードレール</div>
+						<label className="block text-[11px] font-medium text-muted-foreground" htmlFor="revision-scope">変更範囲</label>
+						<select
+							id="revision-scope"
+							value={scope}
+							onChange={(event) => setScope(event.target.value)}
+							className="mt-1 h-9 w-full rounded-lg border border-border bg-background px-2 text-xs text-foreground"
+						>
+							<option value="全文">全文</option>
+							{sections.map((section) => <option key={section} value={section}>{section}</option>)}
+						</select>
+						<div className="mt-3 space-y-2 text-[11px] text-foreground">
+							<label className="flex items-start gap-2"><input type="checkbox" className="mt-0.5" checked={lockProductFacts} onChange={(event) => setLockProductFacts(event.target.checked)} />商品仕様・数値をロック</label>
+							<label className="flex items-start gap-2"><input type="checkbox" className="mt-0.5" checked={lockPrice} onChange={(event) => setLockPrice(event.target.checked)} />価格・送料・特典をロック</label>
+							<label className="flex items-start gap-2"><input type="checkbox" className="mt-0.5" checked={lockNotices} onChange={(event) => setLockNotices(event.target.checked)} />必須注記をロック</label>
+						</div>
+					</div>
 					<div className="flex items-center gap-2 mb-2">
 						<Sparkles size={14} className="text-blue-600" />
 						<h4 className="text-sm font-semibold text-foreground">{t("review.plan.manualHeading")}</h4>
@@ -190,7 +222,7 @@ export function RevisionPlanPanel({ screenplayId, versionId, markdown, disabled,
 					className="w-full inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 				>
 					{busy ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-					{busy ? t("feedback.sending") : t("review.plan.applyBtn")}
+					{busy ? t("feedback.sending") : "この変更プランで改稿"}
 				</button>
 			</CardContent>
 		</Card>
