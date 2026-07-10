@@ -32,10 +32,6 @@ interface Props {
 	editing?: boolean;
 }
 
-function pad(n: number, w: number): string {
-	return n.toString().padStart(w, "0");
-}
-
 function renderedTextLength(md: string): number {
 	const strip = (value: string) => value.replace(/\s/g, "").length;
 	let count = 0;
@@ -53,7 +49,18 @@ function renderedTextLength(md: string): number {
 function formatStamp(iso?: string): string {
 	if (!iso) return "";
 	const date = new Date(iso);
-	return `${date.getFullYear()}/${pad(date.getMonth() + 1, 2)}/${pad(date.getDate(), 2)} ${pad(date.getHours(), 2)}:${pad(date.getMinutes(), 2)}`;
+	const parts = new Intl.DateTimeFormat("en-CA", {
+		timeZone: "Asia/Tokyo",
+		year: "numeric",
+		month: "2-digit",
+		day: "2-digit",
+		hour: "2-digit",
+		minute: "2-digit",
+		hourCycle: "h23",
+	}).formatToParts(date);
+	const value = (type: Intl.DateTimeFormatPartTypes) =>
+		parts.find((part) => part.type === type)?.value ?? "";
+	return `${value("year")}/${value("month")}/${value("day")} ${value("hour")}:${value("minute")}`;
 }
 
 export function ScreenplayHeaderBar({
