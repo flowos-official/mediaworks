@@ -62,10 +62,13 @@ export default async function ArchiveStatusPage({ params }: PageProps) {
 	const gateColor = (c: number) => (c < redAt ? "#dc2626" : c < amberAt ? "#d97706" : "#16a34a");
 
 	return (
-		<div className="max-w-5xl mx-auto p-6">
-			<h1 className="text-2xl font-semibold mb-4">{t("title")}</h1>
+		<div className="space-y-5">
+			<header className="mw-panel px-4 py-4 sm:px-5">
+				<div className="mw-kicker mb-1">Media retention</div>
+				<h2 className="text-xl font-bold tracking-[-0.02em]">{t("title")}</h2>
+			</header>
 			{run && (
-				<section className="mb-8 border rounded p-4">
+				<section className="mw-panel p-4">
 					<h2 className="text-lg font-semibold mb-2">
 						{t("reconciliation.heading")} <span className="text-xs text-muted-foreground">({new Date(run.ran_at).toLocaleString("ja-JP")})</span>
 					</h2>
@@ -92,21 +95,21 @@ export default async function ArchiveStatusPage({ params }: PageProps) {
 					)}
 				</section>
 			)}
-			<div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+			<div className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-5">
 				{[...counts.entries()].map(([k, v]) => (
-					<div key={k} className="border rounded p-3">
-						<div className="text-xs text-muted-foreground">{statusLabel(k)}</div>
-						<div className="text-2xl font-semibold">{v.toLocaleString("ja-JP")}</div>
+					<div key={k} className="mw-panel p-3">
+						<div className="mw-data-label">{statusLabel(k)}</div>
+						<div className="mw-data-value mt-1">{v.toLocaleString("ja-JP")}</div>
 					</div>
 				))}
-				<div className="border rounded p-3 bg-muted">
+				<div className="mw-panel bg-muted/35 p-3">
 					<div className="text-xs text-muted-foreground">{t("totalArchivedBytes")}</div>
 					<div className="text-lg font-semibold">{(totalBytes / 1e9).toFixed(2)} GB</div>
 					<div className="text-xs text-muted-foreground">{t("perMonth", { cost: r2CostUsd })}</div>
 				</div>
 			</div>
-			<h2 className="text-lg font-semibold mb-2">{t("recentFailures")}</h2>
-			<table className="w-full text-sm">
+			<h2 className="mw-section-title">{t("recentFailures")}</h2>
+			<div className="mw-table-shell overflow-x-auto"><table className="w-full text-sm">
 				<thead className="bg-muted border-b">
 					<tr>
 						<th className="text-left px-3 py-2">{t("col.date")}</th>
@@ -131,7 +134,7 @@ export default async function ArchiveStatusPage({ params }: PageProps) {
 						</tr>
 					))}
 				</tbody>
-			</table>
+			</table></div>
 		</div>
 	);
 }

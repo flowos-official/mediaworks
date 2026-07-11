@@ -57,15 +57,18 @@ export default async function DiscoveryCalibrationPage({ params }: PageProps) {
 	}
 
 	return (
-		<div className="max-w-5xl mx-auto p-6">
-			<h1 className="text-2xl font-semibold mb-2">{t("title")}</h1>
-			<p className="text-sm text-muted-foreground mb-6">
+		<div className="space-y-5">
+			<header className="mw-panel px-4 py-4 sm:px-5">
+				<div className="mw-kicker mb-1">Scoring quality</div>
+				<h2 className="text-xl font-bold tracking-[-0.02em]">{t("title")}</h2>
+				<p className="mt-1 text-sm text-muted-foreground">
 				{t.rich("description", {
 					min: MIN_BAND_SAMPLE,
 					code: (chunks) => <code>{chunks}</code>,
 					strong: (chunks) => <strong>{chunks}</strong>,
 				})}
-			</p>
+				</p>
+			</header>
 
 			{error ? (
 				<p className="text-sm text-red-600">{t("queryFailed", { message: error.message })}</p>
@@ -73,9 +76,9 @@ export default async function DiscoveryCalibrationPage({ params }: PageProps) {
 				<p className="text-sm text-muted-foreground">{t("noData")}</p>
 			) : (
 				[...byContext.entries()].map(([context, list]) => (
-					<div key={context} className="mb-8">
-						<h2 className="text-lg font-semibold mb-2">{context}</h2>
-						<table className="w-full text-sm">
+					<section key={context} className="space-y-2">
+						<h2 className="mw-section-title">{context}</h2>
+						<div className="mw-table-shell overflow-x-auto"><table className="w-full text-sm">
 							<thead className="bg-muted border-b">
 								<tr>
 									<th className="text-left px-3 py-2">{t("col.scoreBand")}</th>
@@ -100,8 +103,8 @@ export default async function DiscoveryCalibrationPage({ params }: PageProps) {
 									</tr>
 								))}
 							</tbody>
-						</table>
-					</div>
+						</table></div>
+					</section>
 				))
 			)}
 		</div>

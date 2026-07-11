@@ -25,7 +25,7 @@ export function DiscoveryHeader({
 
 	if (!session) {
 		return (
-			<div className="bg-yellow-600/10 border border-yellow-200 dark:border-yellow-900/40 rounded-lg px-4 py-3 text-yellow-800 dark:text-yellow-200 text-sm">
+			<div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
 				{t("noSession")}
 			</div>
 		);
@@ -50,26 +50,29 @@ export function DiscoveryHeader({
 			: t("sessionRunning");
 
 	return (
-		<div className="bg-card border border-border rounded-lg px-4 py-3 mb-4 flex flex-wrap items-center gap-3">
-			<span className={`inline-flex items-center px-3 py-1 rounded-full border text-xs font-medium ${statusColor}`}>
+		<div className="mw-panel mb-4 flex flex-wrap items-center gap-3 px-4 py-3">
+			<div className="mr-1">
+				<div className="mw-kicker">Latest discovery run</div>
+				<span className="font-mono text-[10px] text-muted-foreground">
+					{new Intl.DateTimeFormat('ja-JP', { timeZone: 'Asia/Tokyo', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(session.run_at))}
+				</span>
+			</div>
+			<span className={`inline-flex items-center rounded-md border px-2.5 py-1 font-mono text-[10px] font-semibold ${statusColor}`}>
 				{statusLabel}
 			</span>
-			<span className="text-sm text-muted-foreground">
-				{new Date(session.run_at).toLocaleString("ja-JP")}
-			</span>
-			<span className="text-sm text-foreground font-medium">
+			<span className="font-mono text-sm font-semibold tabular-nums text-foreground">
 				{totalCount}/{session.target_count} 件
 			</span>
-			<div className="flex gap-2 text-xs">
-				<span className="px-2 py-0.5 rounded bg-muted text-muted-foreground">
+			<div className="flex gap-2 text-[10px]">
+				<span className="rounded-md bg-muted px-2 py-1 text-muted-foreground">
 					{t("filterUncategorized")}: <strong>{uncategorizedCount}</strong>
 				</span>
-				<span className="px-2 py-0.5 rounded bg-green-600/15 text-green-700 dark:text-green-300">
+				<span className="rounded-md bg-emerald-600/12 px-2 py-1 text-emerald-700 dark:text-emerald-300">
 					{t("filterSourced")}: <strong>{sourcedCount}</strong>
 				</span>
 			</div>
 			{session.iterations > 0 && (
-				<span className="text-xs text-muted-foreground ml-auto">iter: {session.iterations}</span>
+				<span className="ml-auto font-mono text-[10px] text-muted-foreground">iter: {session.iterations}</span>
 			)}
 		</div>
 	);

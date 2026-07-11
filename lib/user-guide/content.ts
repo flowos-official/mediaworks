@@ -232,7 +232,7 @@ const guideImagePath = (file: string) => `/guide/ja/${file}`;
 
 const ja: GuideContent = {
 	badge: "MediaWorks 利用ガイド",
-	heroTitle: "MediaWorks の使い方 — 画面で覚えるマニュアル",
+	heroTitle: "推薦システムを業務で使う方法",
 	heroDescription:
 		"このマニュアルは、開発知識がなくても MediaWorks の各画面を業務で使いこなせるように、毎日触る順番にスクリーンショット付きで説明します。クイックリンクから直接画面を開きながら、各セクションの手順を上から順に試してください。",
 	workflowTitle: "役割別の使い方",
@@ -348,7 +348,7 @@ const ja: GuideContent = {
 			],
 		},
 		{
-			title: "新規商品発掘 — 候補を捌く",
+			title: "新規商品発掘",
 			summary: "毎朝自動発掘された30件のホームショッピング候補（とライブコマース候補30件）を、画面の左上から順番に処理します。",
 			items: [
 				{
@@ -429,7 +429,7 @@ const ja: GuideContent = {
 			],
 		},
 		{
-			title: "MD戦略を作る — 拡大戦略 (7-Skill AI)",
+			title: "MD戦略と商品推薦",
 			summary: "自社の販売実績と発掘候補を合わせて、7つの専門スキル（目標分析→商品選定→チャネル戦略→価格設計→マーケ計画→収益予測→リスク対策）を一気通貫で生成します。",
 			items: [
 				{
@@ -495,7 +495,7 @@ const ja: GuideContent = {
 			],
 		},
 		{
-			title: "番組台本を作る",
+			title: "番組台本制作",
 			summary: "リサーチ完了商品から全編台本を自動生成し、台本と検証パネルを左右に並べて読み比べながら改稿します。",
 			items: [
 				{

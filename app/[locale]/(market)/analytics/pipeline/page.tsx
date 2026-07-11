@@ -50,14 +50,15 @@ export default async function PipelinePage() {
   const canWrite = auth.role !== "viewer";
 
   return (
-    <main className="flex-1 p-6">
-      <header className="mb-6">
-        <h1 className="text-2xl font-bold">{t("title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
+    <section className="space-y-4">
+      <header className="mw-panel px-4 py-4 sm:px-5">
+        <div className="mw-kicker mb-1">Selection operations</div>
+        <h2 className="text-xl font-bold tracking-[-0.02em]">{t("title")}</h2>
+        <p className="mt-1 text-xs text-muted-foreground sm:text-sm">{t("subtitle")}</p>
       </header>
       <Suspense>
         <KanbanBoard initialBoard={board} canWrite={canWrite} />
       </Suspense>
-    </main>
+    </section>
   );
 }

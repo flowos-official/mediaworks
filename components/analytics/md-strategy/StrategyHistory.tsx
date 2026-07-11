@@ -37,7 +37,8 @@ export default function StrategyHistory({ onView, refreshKey }: Props) {
 	}, []);
 
 	useEffect(() => {
-		fetchList();
+		const timer = window.setTimeout(() => void fetchList(), 0);
+		return () => window.clearTimeout(timer);
 	}, [fetchList, refreshKey]);
 
 	const handleDelete = async (id: string) => {
@@ -107,9 +108,11 @@ export default function StrategyHistory({ onView, refreshKey }: Props) {
 								</button>
 								<button
 									type="button"
+									aria-label="戦略を削除"
+									title="戦略を削除"
 									onClick={() => handleDelete(s.id)}
 									disabled={deleting === s.id}
-									className="flex items-center gap-1 px-2 py-1.5 text-xs text-red-500 dark:text-red-400 hover:bg-red-600/10 rounded-lg transition-colors disabled:opacity-50"
+									className="flex size-9 items-center justify-center rounded-lg text-xs text-red-500 transition-colors hover:bg-red-600/10 disabled:opacity-50 dark:text-red-400"
 								>
 									{deleting === s.id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
 								</button>

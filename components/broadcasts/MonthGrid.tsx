@@ -6,6 +6,7 @@ import { getTodayISOJST } from "@/lib/broadcasts/jst-date";
 interface Props {
 	year: number;
 	month: number;
+	view: "month" | "week";
 	countsByDate: Record<string, Record<string, number>>;
 	selectedDate: string | null;
 	onDateClick: (iso: string) => void;
@@ -64,24 +65,38 @@ const EMPTY_COUNTS: Record<string, number> = {};
 export default function MonthGrid({
 	year,
 	month,
+	view,
 	countsByDate,
 	selectedDate,
 	onDateClick,
 }: Props) {
-	const cells = buildGrid(year, month);
+	const allCells = buildGrid(year, month);
 	const todayIso = getTodayISOJST();
+	const anchorIso = selectedDate ?? todayIso;
+	const anchorIndex = allCells.findIndex((cell) => cell.iso === anchorIso);
+	const weekStart = anchorIndex >= 0 ? Math.floor(anchorIndex / 7) * 7 : 0;
+	const cells = view === "week" ? allCells.slice(weekStart, weekStart + 7) : allCells;
 	const headers = ["月", "火", "水", "木", "金", "土", "日"];
 
+	const moveFocus = (iso: string, offset: number) => {
+		const [y, m, d] = iso.split("-").map(Number);
+		const target = new Date(Date.UTC(y, m - 1, d + offset)).toISOString().slice(0, 10);
+		onDateClick(target);
+		window.requestAnimationFrame(() => {
+			document.querySelector<HTMLButtonElement>(`[data-calendar-date="${target}"]`)?.focus();
+		});
+	};
+
 	return (
-		<div>
-			<div className="grid grid-cols-7 gap-1 mb-1 text-xs text-muted-foreground">
+		<div role="group" aria-label={`${year}年${month}月の放送カレンダー`}>
+			<div className="grid grid-cols-[repeat(7,minmax(0,1fr))] gap-1 mb-1 text-xs text-muted-foreground">
 				{headers.map((h) => (
 					<div key={h} className="text-center py-1">
 						{h}
 					</div>
 				))}
 			</div>
-			<div className="grid grid-cols-7 gap-1">
+			<div className="grid grid-cols-[repeat(7,minmax(0,1fr))] gap-1">
 				{cells.map((c) => (
 					<DateCell
 						key={c.iso}
@@ -90,8 +105,21 @@ export default function MonthGrid({
 						isCurrentMonth={c.inMonth}
 						isToday={c.iso === todayIso}
 						isSelected={c.iso === selectedDate}
+						view={view}
 						channelCounts={countsByDate[c.iso] ?? EMPTY_COUNTS}
 						onClick={onDateClick}
+						onKeyDown={(event) => {
+							const offsets: Record<string, number> = {
+								ArrowLeft: -1,
+								ArrowRight: 1,
+								ArrowUp: -7,
+								ArrowDown: 7,
+							};
+							if (event.key in offsets) {
+								event.preventDefault();
+								moveFocus(c.iso, offsets[event.key]);
+							}
+						}}
 					/>
 				))}
 			</div>

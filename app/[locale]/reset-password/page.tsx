@@ -87,11 +87,14 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-muted">
-      <Card className="w-full max-w-md p-8 space-y-4">
-        <h1 className="text-xl font-bold">
+    <main className="flex min-h-screen items-center justify-center p-4 sm:p-6">
+      <Card className="w-full max-w-lg space-y-5 p-6 sm:p-8">
+        <div>
+          <div className="mw-kicker mb-1">Account recovery</div>
+          <h1 className="text-xl font-bold tracking-[-0.02em]">
           {mode === 'request' ? t('requestTitle') : t('confirmTitle')}
-        </h1>
+          </h1>
+        </div>
         {forced && mode === 'confirm' && (
           <p className="text-sm text-amber-900 dark:text-amber-100 bg-amber-600/10 border border-amber-300 dark:border-amber-800/40 rounded p-3">
             {tUsers('banner')}
@@ -99,29 +102,33 @@ export default function ResetPasswordPage() {
         )}
         {mode === 'request' ? (
           <form onSubmit={requestReset} className="space-y-3">
+            <label htmlFor="recovery-email" className="block text-xs font-medium text-foreground">Email</label>
             <input
+              id="recovery-email"
               type="email" required value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full border rounded px-3 py-2"
+              className="h-11 w-full rounded-lg border border-border bg-background px-3"
               autoComplete="email"
             />
-            <Button type="submit" className="w-full">{t('requestSubmit')}</Button>
+            <Button type="submit" className="h-11 w-full">{t('requestSubmit')}</Button>
           </form>
         ) : (
           <form onSubmit={confirmReset} className="space-y-3">
+            <label htmlFor="recovery-password" className="block text-xs font-medium text-foreground">{t('newPassword')}</label>
             <input
+              id="recovery-password"
               type="password" required value={password} minLength={8}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full border rounded px-3 py-2"
+              className="h-11 w-full rounded-lg border border-border bg-background px-3"
               autoComplete="new-password"
               placeholder={t('newPassword')}
             />
-            <Button type="submit" className="w-full">{t('confirmSubmit')}</Button>
+            <Button type="submit" className="h-11 w-full">{t('confirmSubmit')}</Button>
           </form>
         )}
         {err && <p className="text-sm text-red-600">{err}</p>}
         {done && <p className="text-sm text-green-700 dark:text-green-300">{done}</p>}
       </Card>
-    </div>
+    </main>
   );
 }

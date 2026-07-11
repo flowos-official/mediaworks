@@ -116,6 +116,7 @@ export default function RevenueTrendChart({
                 wrapperStyle={{ fontSize: 12 }}
               />
               <Area
+                isAnimationActive={false}
                 type="monotone"
                 dataKey="revenue"
                 stroke="#3b82f6"
@@ -124,6 +125,7 @@ export default function RevenueTrendChart({
               />
               {showProfit && (
                 <Area
+                  isAnimationActive={false}
                   type="monotone"
                   dataKey="profit"
                   stroke="#22c55e"
@@ -133,6 +135,7 @@ export default function RevenueTrendChart({
               )}
               {showCost && (
                 <Area
+                  isAnimationActive={false}
                   type="monotone"
                   dataKey="cost"
                   stroke="#f97316"

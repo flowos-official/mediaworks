@@ -4,6 +4,21 @@
   },
   "nav": {
     "guide": "利用ガイド",
+    "quickNav": {
+      "open": "画面をすばやく開く",
+      "title": "画面を検索",
+      "placeholder": "画面名または業務領域で検索…",
+      "close": "画面検索を閉じる",
+      "empty": "一致する画面がありません",
+      "resultCount": "{count}画面",
+      "hint": "↑↓ で移動 · Enter で開く · Esc で閉じる",
+      "support": "サポート"
+    },
+    "sidebar": {
+      "collapse": "サイドバーを折りたたむ",
+      "expand": "サイドバーを広げる",
+      "online": "ワークスペース接続中"
+    },
     "groups": {
       "firm": "自社",
       "market": "市場",
@@ -243,6 +258,8 @@
     "allSheets": "全シート",
     "close": "閉じる",
     "loadError": "読み込みに失敗しました",
+    "retry": "再試行",
+    "resultCount": "{count}商品",
     "lightboxLabel": "画像プレビュー",
     "lightboxClose": "閉じる",
     "lightboxPrev": "前の画像",
@@ -279,20 +296,66 @@
     "downloadPdf": "PDF戦略書ダウンロード"
   },
   "pipeline": {
+    "emptyTitle": "パイプラインはまだ空です",
+    "emptyHint": "新規発掘で候補商品を選定すると、仕入れ・放送予定・終了までここで追跡できます。",
+    "emptyViewerHint": "担当の商品が追加されると、ここに進行状況が表示されます。",
+    "emptyAction": "候補商品を選ぶ",
+    "refreshFailed": "パイプラインを更新できませんでした: {error}",
     "title": "商品選定パイプライン",
-    "subtitle": "選択 → 仕入れ → 放送予定 → 終了の流れを確認します"
+    "subtitle": "選択 → 仕入れ → 放送予定 → 終了の流れを確認します",
+    "status": {
+      "selected": "選択済み",
+      "sourcing": "仕入れ中",
+      "scheduled": "放送予定",
+      "closed": "終了",
+      "closedRecent": "終了（直近7日）"
+    },
+    "empty": "この段階の商品はありません",
+    "readOnly": "閲覧のみ",
+    "manualEntry": "手動登録",
+    "aired": "放送完了",
+    "dropped": "見送り",
+    "postponed": "保留",
+    "closed": "終了",
+    "moveFailed": "移動できませんでした: {error}",
+    "moveNotAllowed": "{from} から {to} には移動できません",
+    "closePrompt": "終了理由を入力してください (aired / dropped / postponed)",
+    "cardMenu": "商品操作",
+    "history": "履歴を見る",
+    "sourceProduct": "元の商品を見る",
+    "reopen": "仕入れ中に戻す",
+    "close": "終了にする",
+    "historyTitle": "変更履歴",
+    "historyLoading": "履歴を読み込み中…",
+    "historyEmpty": "履歴はありません",
+    "matchTitle": "放送枠を関連付ける",
+    "channel": "チャネル",
+    "allChannels": "すべて",
+    "searching": "候補を検索中…",
+    "suggestions": "おすすめ候補",
+    "allResults": "すべての結果 ({count})",
+    "manualSlot": "一覧にない放送枠を手動で登録する",
+    "manualPlaceholder": "チャネル、日時、補足情報を入力してください",
+    "cancel": "キャンセル",
+    "confirm": "関連付ける",
+    "dragInstructions": "スペースキーで商品を持ち上げ、矢印キーで移動し、もう一度スペースキーで配置します。",
+    "mobileScrollHint": "横にスクロールして各段階を確認できます"
   },
   "language": {
     "ja": "日本語",
     "ko": "한국어"
   },
   "discovery": {
+    "loadFailed": "候補商品を取得できませんでした。接続を確認して再試行してください。",
+    "retry": "再試行",
+    "showMoreProducts": "さらに {count}商品を表示",
     "title": "本日の発掘",
     "subtitle": "毎日自動発掘される30商品の一覧",
     "loading": "読み込み中...",
     "selectionSelected": "{count}件選択中",
     "selectionClear": "クリア",
     "selectionOpenStrategy": "選択した{count}件で戦略立案",
+    "selectionSelect": "戦略候補に追加",
     "noSession": "まだセッションがありません。cronを手動実行してください。",
     "sessionRunning": "実行中...",
     "sessionFailed": "実行失敗",
@@ -376,6 +439,15 @@
     "subTabInsights": "インサイト",
     "insightsSelectionTab": "選別",
     "insightsStatsTab": "統計",
+    "insightsResultsTitle": "選別結果",
+    "statusFilterLabel": "判定状態",
+    "contextFilterLabel": "用途",
+    "periodFilterLabel": "期間",
+    "loadingResults": "候補を読み込み中…",
+    "sessionProductsTitle": "この実行で見つかった候補",
+    "sessionLabel": "実行ID",
+    "sessionEmpty": "この実行には候補がありません",
+    "candidateList": "候補一覧 ({count})",
     "kpiSourcedThisWeek": "今週のソーシング",
     "kpiRejectedThisWeek": "今週の却下",
     "kpiExplorationRatio": "探索比率",
@@ -426,13 +498,44 @@
     "unified": {
       "timedSection": "時間順 (QVC + ShopCh)",
       "oaSection": "OA チャネル (時間情報なし)",
+      "timedShort": "時間枠",
+      "oaShort": "OA",
       "fetchFailed": "取得失敗",
       "partialFetchFailed": "一部の番組データを取得できませんでした。表示されている件数は不完全な可能性があります。"
     },
     "loading": "読み込み中…",
+    "calendar": {
+      "subtitle": "放送密度を確認して日付を選択",
+      "viewLabel": "カレンダー表示",
+      "views": {
+        "month": "月",
+        "week": "週"
+      },
+      "today": "今日",
+      "jumpToMonth": "表示する月を選択",
+      "legend": "チャンネル凡例",
+      "metrics": {
+        "slots": "月間放送枠",
+        "activeDays": "放送日",
+        "peak": "最多日・件数"
+      },
+      "dayCount": "{count}日",
+      "peakValue": "{day}日 · {count}",
+      "resultsSummary": "{total}件中 {shown}件を表示",
+      "searchPlaceholder": "商品・番組・出演者を絞り込み…",
+      "searchLabel": "選択日の番組を検索",
+      "clearSearch": "検索をクリア",
+      "filteredCount": "条件に一致する番組 {count}件",
+      "resetFilters": "条件をリセット",
+      "showMore": "さらに {count}件を表示"
+    },
     "monthNav": {
       "prev": "前月",
       "next": "翌月"
+    },
+    "weekNav": {
+      "prev": "前週",
+      "next": "翌週"
     },
     "openSource": "原本を見る",
     "playArchive": "アーカイブを再生",
@@ -713,6 +816,41 @@
       "notes": "その他のメモ"
     },
     "workspace": {
+      "enterFocus": "台本に集中",
+      "exitFocus": "通常表示",
+      "scriptRegion": "台本本文",
+      "unifiedTitle": "台本を見ながら、その場で変更",
+      "unifiedHint": "本文を選択して、画面下のAI編集バーに変更内容を入力してください",
+      "openNavigator": "構成・根拠・履歴",
+      "openReview": "考査・変更内容",
+      "inspectorLabel": "CONTEXT INSPECTOR",
+      "inspectorContext": "構成・根拠・履歴",
+      "inspectorReview": "考査・変更内容",
+      "closeInspector": "インスペクターを閉じる",
+      "aiEditor": {
+        "title": "AI台本エディター",
+        "selected": "選択中",
+        "noSelection": "本文を選択すると、その箇所だけ変更できます",
+        "clearSelection": "選択範囲を解除",
+        "selectionScope": "選択部分",
+        "documentScope": "全文",
+        "selectionPlaceholder": "この部分をどう変更しますか？",
+        "documentPlaceholder": "台本全体をどう変更しますか？",
+        "send": "AIに変更を依頼",
+        "revising": "AIが改稿中",
+        "direct": "選択部分を直接編集",
+        "directPlaceholder": "選択部分の置き換え内容",
+        "directHint": "保存すると新しい稿になり、元の稿は履歴に残ります",
+        "cancelDirect": "取消",
+        "replace": "この内容で置換",
+        "replacing": "保存中…",
+        "quickShorter": "もっと短く、テンポよく",
+        "quickNatural": "自然な会話にする",
+        "quickPersuasive": "訴求を強くする",
+        "quickCompliant": "考査に配慮して修正",
+        "selectionNotFound": "選択箇所を台本内で特定できませんでした。もう一度、本文だけを選択してください。",
+        "replaceFailed": "選択箇所を保存できませんでした"
+      },
       "history": "改稿履歴",
       "v1": "初回生成",
       "downloadMd": ".md ダウンロード",
@@ -854,6 +992,10 @@
       }
     },
     "complianceRules": {
+      "pagination": {
+        "prev": "前へ",
+        "next": "次へ"
+      },
       "title": "考査ルール（薬機法・景表法）",
       "subtitle": "台本チェックツールが使うNG表現・許容表現の辞書。ここでの変更は次回チェックから即反映されます。",
       "addButton": "+ ルール追加",

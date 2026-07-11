@@ -39,18 +39,19 @@ export default function DiscoveryHistoryPage() {
 	}, [contextFilter, month]);
 
 	return (
-		<div>
+		<div className="space-y-4">
 			<ContextSubTabs />
 
-			<div className="flex items-center gap-2 mb-4 flex-wrap">
-				<span className="text-xs text-muted-foreground">Context:</span>
+			<div className="mw-toolbar !flex-row !items-center">
+				<span className="mw-data-label">{t("contextFilterLabel")}</span>
 				{(["all", "home_shopping", "live_commerce"] as FilterContext[]).map((c) => (
 					<button
+						type="button"
 						key={c}
 						onClick={() => setContextFilter(c)}
-						className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+						className={`min-h-8 rounded-lg border px-3 text-xs font-medium transition-colors ${
 							contextFilter === c
-								? "bg-amber-500 text-white border-amber-500"
+								? "border-primary bg-primary text-primary-foreground"
 								: "bg-card text-foreground border-border hover:bg-muted"
 						}`}
 					>
@@ -59,8 +60,10 @@ export default function DiscoveryHistoryPage() {
 				))}
 				<div className="ml-auto flex items-center gap-2">
 					<button
+						type="button"
+						aria-label="前月"
 						onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}
-						className="px-2 py-1 text-xs bg-card border border-border rounded hover:bg-muted"
+						className="inline-flex size-8 items-center justify-center rounded-lg border border-border bg-background text-xs hover:bg-muted"
 					>
 						←
 					</button>
@@ -68,8 +71,10 @@ export default function DiscoveryHistoryPage() {
 						{month.getFullYear()}-{String(month.getMonth() + 1).padStart(2, "0")}
 					</span>
 					<button
+						type="button"
+						aria-label="翌月"
 						onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}
-						className="px-2 py-1 text-xs bg-card border border-border rounded hover:bg-muted"
+						className="inline-flex size-8 items-center justify-center rounded-lg border border-border bg-background text-xs hover:bg-muted"
 					>
 						→
 					</button>
@@ -77,7 +82,7 @@ export default function DiscoveryHistoryPage() {
 			</div>
 
 			{loading ? (
-				<div className="py-20 text-center text-sm text-muted-foreground">Loading...</div>
+				<div className="mw-empty-state" role="status">{t("loadingResults")}</div>
 			) : (
 				<SessionCalendar sessions={sessions} month={month} />
 			)}

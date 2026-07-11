@@ -24,9 +24,9 @@ export default async function AdminLayout({
 
   const t = await getTranslations('nav.groupHeader.admin');
   return (
-    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <PageHeader icon={Settings} title={t('title')} subtitle={t('subtitle')} />
-      <div className="space-y-6">
+    <main className="mw-page">
+      <PageHeader icon={Settings} title={t('title')} subtitle={t('subtitle')} eyebrow="System control" />
+      <div className="mw-page-stack">
         <GroupSubNav groupKey="admin" role={auth.role} />
         {children}
       </div>

@@ -65,12 +65,16 @@ export default async function Page({ params, searchParams }: PageProps) {
 
 	return (
 		<>
-			<div className="flex justify-end mb-6">
+			<div className="mw-toolbar">
+				<div>
+					<div className="mw-kicker mb-1">Broadcast monitor</div>
+					<p className="text-xs text-muted-foreground">日付ごとの放送枠と競合商品を横断して確認します</p>
+				</div>
 				<BroadcastSearchOverlay channelCounts={channelCounts} />
 			</div>
 
 			{!hasAny ? (
-				<div className="text-sm text-muted-foreground p-12 text-center border border-dashed border-border rounded-lg">
+				<div className="mw-empty-state">
 					{t("empty.all")}
 				</div>
 			) : (

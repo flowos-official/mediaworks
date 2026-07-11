@@ -4,6 +4,21 @@
   },
   "nav": {
     "guide": "사용 가이드",
+    "quickNav": {
+      "open": "화면 빠르게 열기",
+      "title": "화면 검색",
+      "placeholder": "화면 이름 또는 업무 영역 검색…",
+      "close": "화면 검색 닫기",
+      "empty": "일치하는 화면이 없습니다",
+      "resultCount": "화면 {count}개",
+      "hint": "↑↓ 이동 · Enter 열기 · Esc 닫기",
+      "support": "지원"
+    },
+    "sidebar": {
+      "collapse": "사이드바 접기",
+      "expand": "사이드바 펼치기",
+      "online": "워크스페이스 연결됨"
+    },
     "groups": {
       "firm": "자사",
       "market": "시장",
@@ -243,6 +258,8 @@
     "allSheets": "전체 시트",
     "close": "닫기",
     "loadError": "불러오기에 실패했습니다",
+    "retry": "다시 시도",
+    "resultCount": "상품 {count}개",
     "lightboxLabel": "이미지 미리보기",
     "lightboxClose": "닫기",
     "lightboxPrev": "이전 이미지",
@@ -279,20 +296,66 @@
     "downloadPdf": "PDF 전략서 다운로드"
   },
   "pipeline": {
+    "emptyTitle": "파이프라인이 아직 비어 있습니다",
+    "emptyHint": "신규 상품 발굴에서 후보를 선택하면 소싱, 방송 예정, 종료까지 여기서 추적할 수 있습니다.",
+    "emptyViewerHint": "담당 상품이 추가되면 진행 상태가 여기에 표시됩니다.",
+    "emptyAction": "후보 상품 선택",
+    "refreshFailed": "파이프라인을 새로 고치지 못했습니다: {error}",
     "title": "상품 선정 파이프라인",
-    "subtitle": "선택 → 소싱 → 방송예정 → 종료 흐름을 확인합니다"
+    "subtitle": "선택 → 소싱 → 방송예정 → 종료 흐름을 확인합니다",
+    "status": {
+      "selected": "선택됨",
+      "sourcing": "소싱 중",
+      "scheduled": "방송 예정",
+      "closed": "종료",
+      "closedRecent": "종료 (최근 7일)"
+    },
+    "empty": "이 단계의 상품이 없습니다",
+    "readOnly": "읽기 전용",
+    "manualEntry": "수동 입력",
+    "aired": "방송 완료",
+    "dropped": "드롭",
+    "postponed": "보류",
+    "closed": "종료",
+    "moveFailed": "이동하지 못했습니다: {error}",
+    "moveNotAllowed": "{from}에서 {to}(으)로 이동할 수 없습니다",
+    "closePrompt": "종료 사유를 입력하세요 (aired / dropped / postponed)",
+    "cardMenu": "상품 작업",
+    "history": "이력 보기",
+    "sourceProduct": "원본 상품 보기",
+    "reopen": "소싱 중으로 되돌리기",
+    "close": "종료 처리",
+    "historyTitle": "변경 이력",
+    "historyLoading": "이력을 불러오는 중…",
+    "historyEmpty": "이력이 없습니다",
+    "matchTitle": "방송 슬롯 연결",
+    "channel": "채널",
+    "allChannels": "전체",
+    "searching": "후보 검색 중…",
+    "suggestions": "추천 후보",
+    "allResults": "전체 결과 ({count})",
+    "manualSlot": "목록에 없는 방송 슬롯을 수동 입력",
+    "manualPlaceholder": "채널, 일시, 메모를 입력하세요",
+    "cancel": "취소",
+    "confirm": "연결",
+    "dragInstructions": "스페이스 키로 상품을 들어 올리고, 화살표 키로 이동한 다음 스페이스 키로 배치합니다.",
+    "mobileScrollHint": "좌우로 스크롤하여 각 단계를 확인할 수 있습니다"
   },
   "language": {
     "ja": "日本語",
     "ko": "한국어"
   },
   "discovery": {
+    "loadFailed": "후보 상품을 불러오지 못했습니다. 연결을 확인하고 다시 시도하세요.",
+    "retry": "다시 시도",
+    "showMoreProducts": "상품 {count}개 더 보기",
     "title": "오늘의 발굴",
     "subtitle": "매일 자동 발굴되는 30개 상품 목록",
     "loading": "불러오는 중...",
     "selectionSelected": "{count}건 선택",
     "selectionClear": "지우기",
     "selectionOpenStrategy": "선택한 {count}건으로 전략 수립",
+    "selectionSelect": "전략 후보에 추가",
     "noSession": "아직 세션이 없습니다. cron을 수동 실행해주세요.",
     "sessionRunning": "실행 중...",
     "sessionFailed": "실행 실패",
@@ -376,6 +439,15 @@
     "subTabInsights": "인사이트",
     "insightsSelectionTab": "선별",
     "insightsStatsTab": "통계",
+    "insightsResultsTitle": "선별 결과",
+    "statusFilterLabel": "판정 상태",
+    "contextFilterLabel": "용도",
+    "periodFilterLabel": "기간",
+    "loadingResults": "후보를 불러오는 중…",
+    "sessionProductsTitle": "이 실행에서 찾은 후보",
+    "sessionLabel": "실행 ID",
+    "sessionEmpty": "이 실행에는 후보가 없습니다",
+    "candidateList": "후보 목록 ({count})",
     "kpiSourcedThisWeek": "이번 주 소싱",
     "kpiRejectedThisWeek": "이번 주 기각",
     "kpiExplorationRatio": "탐색 비율",
@@ -426,13 +498,44 @@
     "unified": {
       "timedSection": "시간순 (QVC + ShopCh)",
       "oaSection": "OA 채널 (시간 정보 없음)",
+      "timedShort": "시간 슬롯",
+      "oaShort": "OA",
       "fetchFailed": "가져오기 실패",
       "partialFetchFailed": "일부 방송 데이터를 가져오지 못했습니다. 표시된 건수는 불완전할 수 있습니다."
     },
     "loading": "로딩 중…",
+    "calendar": {
+      "subtitle": "방송 밀도를 확인하고 날짜를 선택하세요",
+      "viewLabel": "캘린더 보기",
+      "views": {
+        "month": "월",
+        "week": "주"
+      },
+      "today": "오늘",
+      "jumpToMonth": "표시할 달 선택",
+      "legend": "채널 범례",
+      "metrics": {
+        "slots": "월간 방송 슬롯",
+        "activeDays": "방송일",
+        "peak": "최다 일자·건수"
+      },
+      "dayCount": "{count}일",
+      "peakValue": "{day}일 · {count}",
+      "resultsSummary": "{total}건 중 {shown}건 표시",
+      "searchPlaceholder": "상품·프로그램·출연자 필터…",
+      "searchLabel": "선택한 날짜의 방송 검색",
+      "clearSearch": "검색 지우기",
+      "filteredCount": "조건에 맞는 방송 {count}건",
+      "resetFilters": "조건 초기화",
+      "showMore": "{count}건 더 보기"
+    },
     "monthNav": {
       "prev": "이전 달",
       "next": "다음 달"
+    },
+    "weekNav": {
+      "prev": "이전 주",
+      "next": "다음 주"
     },
     "openSource": "원본 보기",
     "playArchive": "아카이브 재생",
@@ -713,6 +816,41 @@
       "notes": "기타 메모"
     },
     "workspace": {
+      "enterFocus": "대본에 집중",
+      "exitFocus": "일반 보기",
+      "scriptRegion": "대본 본문",
+      "unifiedTitle": "대본을 보면서 바로 수정",
+      "unifiedHint": "본문을 선택한 뒤 화면 아래 AI 편집 바에 변경 내용을 입력하세요",
+      "openNavigator": "구성·근거·이력",
+      "openReview": "심의·변경 내용",
+      "inspectorLabel": "CONTEXT INSPECTOR",
+      "inspectorContext": "구성·근거·이력",
+      "inspectorReview": "심의·변경 내용",
+      "closeInspector": "인스펙터 닫기",
+      "aiEditor": {
+        "title": "AI 대본 에디터",
+        "selected": "선택됨",
+        "noSelection": "본문을 선택하면 해당 부분만 변경할 수 있습니다",
+        "clearSelection": "선택 해제",
+        "selectionScope": "선택 부분",
+        "documentScope": "전체",
+        "selectionPlaceholder": "이 부분을 어떻게 바꿀까요?",
+        "documentPlaceholder": "대본 전체를 어떻게 바꿀까요?",
+        "send": "AI에 변경 요청",
+        "revising": "AI가 수정 중",
+        "direct": "선택 부분 직접 편집",
+        "directPlaceholder": "선택 부분을 대체할 내용",
+        "directHint": "저장하면 새 원고가 되며 기존 원고는 이력에 남습니다",
+        "cancelDirect": "취소",
+        "replace": "이 내용으로 교체",
+        "replacing": "저장 중…",
+        "quickShorter": "더 짧고 빠르게",
+        "quickNatural": "자연스러운 대화로",
+        "quickPersuasive": "소구력을 강화",
+        "quickCompliant": "심의를 고려해 수정",
+        "selectionNotFound": "선택한 부분을 대본에서 찾을 수 없습니다. 본문만 다시 선택해주세요.",
+        "replaceFailed": "선택 부분을 저장하지 못했습니다"
+      },
       "history": "개정 이력",
       "v1": "초안",
       "downloadMd": ".md 다운로드",
@@ -854,6 +992,10 @@
       }
     },
     "complianceRules": {
+      "pagination": {
+        "prev": "이전",
+        "next": "다음"
+      },
       "title": "심의 룰 (薬機法·景表法)",
       "subtitle": "대본 체크 도구가 사용하는 NG 표현·허용 표현 사전. 여기서 변경하면 다음 체크부터 즉시 반영됩니다.",
       "addButton": "+ 룰 추가",

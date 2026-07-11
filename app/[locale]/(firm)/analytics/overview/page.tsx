@@ -47,8 +47,11 @@ export default function OverviewPage() {
 
   useEffect(() => {
     const ctrl = new AbortController();
-    fetchData(ctrl.signal);
-    return () => ctrl.abort();
+    const timer = window.setTimeout(() => void fetchData(ctrl.signal), 0);
+    return () => {
+      window.clearTimeout(timer);
+      ctrl.abort();
+    };
   }, [fetchData]);
 
   return (

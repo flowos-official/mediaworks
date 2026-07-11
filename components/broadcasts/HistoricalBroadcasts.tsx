@@ -173,8 +173,14 @@ export default function HistoricalBroadcasts({ channelCounts }: Props) {
 			return;
 		}
 		const ctrl = new AbortController();
-		void fetchPage(channel, search, offset, ctrl.signal);
-		return () => ctrl.abort();
+		const timer = window.setTimeout(
+			() => void fetchPage(channel, search, offset, ctrl.signal),
+			0,
+		);
+		return () => {
+			window.clearTimeout(timer);
+			ctrl.abort();
+		};
 	}, [channel, search, offset, fetchPage]);
 
 	const handleChannelClick = (slug: string) => {

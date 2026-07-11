@@ -15,8 +15,8 @@ export function ExplorationTrendChart({ data }: { data: TrendItem[] }) {
 				<YAxis domain={[0, 1]} tickFormatter={(v) => `${Math.round(v * 100)}%`} tick={{ fontSize: 10 }} />
 				<Tooltip formatter={(v) => typeof v === "number" ? `${Math.round(v * 100)}%` : v} contentStyle={{ fontSize: 11, borderRadius: 8 }} />
 				<Legend wrapperStyle={{ fontSize: 10 }} />
-				<Line type="monotone" dataKey="home" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />
-				<Line type="monotone" dataKey="live" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 3 }} />
+				<Line isAnimationActive={false} type="monotone" dataKey="home" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />
+				<Line isAnimationActive={false} type="monotone" dataKey="live" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 3 }} />
 			</LineChart>
 		</ResponsiveContainer>
 	);

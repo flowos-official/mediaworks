@@ -28,20 +28,20 @@ export default function DateRangeFilter({
   };
 
   return (
-    <div className="flex items-center gap-4 flex-wrap">
+    <div className="flex flex-wrap items-center gap-3">
       <div className="flex items-center gap-1.5">
         <Calendar size={14} className="text-muted-foreground" />
-        <span className="text-xs font-medium text-muted-foreground">期間:</span>
+        <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">期間</span>
         <div className="flex gap-1">
           {years.map((y) => (
             <button
               key={y}
               type="button"
               onClick={() => toggleYear(y)}
-              className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
+              className={`min-h-8 rounded-lg border px-2.5 font-mono text-[10px] font-semibold transition-colors ${
                 selectedYears.includes(y)
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-muted text-muted-foreground hover:bg-accent'
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'border-border bg-background text-muted-foreground hover:bg-accent'
               }`}
             >
               {y}
@@ -50,13 +50,13 @@ export default function DateRangeFilter({
         </div>
       </div>
 
-      <div className="flex gap-1 p-0.5 bg-muted rounded-lg">
+      <div className="flex gap-1 rounded-lg bg-muted p-0.5">
         {(['weekly', 'monthly'] as const).map((p) => (
           <button
             key={p}
             type="button"
             onClick={() => onPeriodChange(p)}
-            className={`text-xs px-3 py-1 rounded-md transition-colors ${
+            className={`min-h-8 rounded-md px-3 text-xs font-medium transition-colors ${
               period === p ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
             }`}
           >

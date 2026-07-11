@@ -11,7 +11,7 @@ interface Props {
   research: ResearchResult;
 }
 
-export default function PdfDownload({ product, research }: Props) {
+export default function PdfDownload({ product }: Props) {
   const t = useTranslations('report');
   const [loading, setLoading] = useState(false);
 
@@ -141,6 +141,7 @@ export default function PdfDownload({ product, research }: Props) {
 
   return (
     <button
+      type="button"
       onClick={handleDownload}
       disabled={loading}
       className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium px-5 py-2.5 rounded-lg transition-colors"

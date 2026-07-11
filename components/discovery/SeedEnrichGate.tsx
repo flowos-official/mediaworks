@@ -1,8 +1,9 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslations } from "next-intl";
 import { Loader2, Sparkles, X, AlertTriangle } from "lucide-react";
+import { useDialogBehavior } from "@/components/ui/use-dialog-behavior";
 
 interface Props {
 	open: boolean;
@@ -23,6 +24,8 @@ export function SeedEnrichGateModal({
 	const [mounted, setMounted] = useState(false);
 	const [running, setRunning] = useState(false);
 	const [failed, setFailed] = useState(false);
+	const dialogRef = useRef<HTMLDivElement>(null);
+	useDialogBehavior(open && mounted, onClose, dialogRef, { closeOnEscape: !running });
 
 	useEffect(() => {
 		// eslint-disable-next-line react-hooks/set-state-in-effect -- portal mount guard, runs once on mount
@@ -76,17 +79,24 @@ export function SeedEnrichGateModal({
 			onClick={() => !running && onClose()}
 		>
 			<div
+				ref={dialogRef}
+				role="dialog"
+				aria-modal="true"
+				aria-labelledby="seed-enrich-title"
+				tabIndex={-1}
 				className="bg-card rounded-lg shadow-lg p-5 w-full max-w-md mx-4"
 				onClick={(e) => e.stopPropagation()}
 			>
 				<div className="flex items-center justify-between mb-3">
-					<h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+					<h3 id="seed-enrich-title" className="text-sm font-semibold text-foreground flex items-center gap-2">
 						<AlertTriangle size={14} className="text-amber-500" />
 						{t("seedGateTitle")}
 					</h3>
 					{!running && (
 						<button
+							data-dialog-autofocus
 							type="button"
+							aria-label={t("cancel")}
 							onClick={onClose}
 							className="text-muted-foreground hover:text-foreground"
 						>

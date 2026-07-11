@@ -24,9 +24,9 @@ export default async function ProduceLayout({
 
   const t = await getTranslations('nav.groupHeader.produce');
   return (
-    <main className="mx-auto max-w-[1536px] px-4 py-5 sm:px-6 lg:px-8">
-      <PageHeader icon={Clapperboard} title={t('title')} subtitle={t('subtitle')} />
-      <div className="space-y-4">
+    <main className="mw-page">
+      <PageHeader icon={Clapperboard} title={t('title')} subtitle={t('subtitle')} eyebrow="Production operations" />
+      <div className="mw-page-stack">
         <GroupSubNav groupKey="produce" role={auth.role} />
         {children}
       </div>

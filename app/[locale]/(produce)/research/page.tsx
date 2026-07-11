@@ -17,8 +17,13 @@ export default function ResearchPage() {
     <>
       <FileUpload onUploadComplete={handleUploadComplete} />
 
-      <section>
-        <h2 className="text-xl font-semibold text-foreground mb-6">{t('recentProducts')}</h2>
+      <section className="space-y-3">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <div className="mw-kicker mb-1">Research queue</div>
+            <h2 className="mw-section-title">{t('recentProducts')}</h2>
+          </div>
+        </div>
         <ProductList refreshTrigger={refreshTrigger} />
       </section>
     </>

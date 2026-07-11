@@ -140,7 +140,7 @@ function ProductCard({ p }: { p: QvcProduct }) {
         <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground">
           <span className="font-mono">#{p.id}</span>
           {p.video_url && (
-            <span className="inline-flex items-center gap-0.5 text-violet-600">
+            <span className="inline-flex items-center gap-0.5 text-violet-700 dark:text-violet-300">
               <PlayCircle size={10} /> video
             </span>
           )}
@@ -213,7 +213,7 @@ export default function BroadcastListItem({ broadcast, onPlayVideo }: Props) {
             href={b.source_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 dark:hover:text-blue-300"
+            className="flex items-center gap-1 text-xs text-blue-700 hover:text-blue-900 dark:text-blue-300 dark:hover:text-blue-200"
           >
             <ExternalLink size={12} />
             {t("openSource")}

@@ -189,7 +189,8 @@ function LCHistory({ onView, refreshKey }: { onView: (id: string) => void; refre
 	}, []);
 
 	useEffect(() => {
-		fetchList();
+		const timer = window.setTimeout(() => void fetchList(), 0);
+		return () => window.clearTimeout(timer);
 	}, [fetchList, refreshKey]);
 
 	const handleDelete = async (id: string) => {
@@ -402,7 +403,7 @@ function LCDetailView({ initialData, backHref }: { initialData: SavedLCData; bac
 		<div className="space-y-6">
 			<div className="flex items-center gap-2">
 				<Radio size={18} className="text-pink-600" />
-				<h3 className="text-lg font-semibold text-foreground">ライブコマース戦略</h3>
+				<h2 className="text-lg font-semibold text-foreground">ライブコマース戦略</h2>
 				<span className="text-[10px] px-2 py-0.5 rounded-full bg-pink-600/15 text-pink-700 dark:text-pink-300 font-medium">6-Skill AI</span>
 			</div>
 
@@ -595,17 +596,18 @@ function LCListView({ locale, router }: { locale: string; router: ReturnType<typ
 		<div className="space-y-6">
 			<div className="flex items-center gap-2">
 				<Radio size={18} className="text-pink-600" />
-				<h3 className="text-lg font-semibold text-foreground">ライブコマース戦略</h3>
+				<h2 className="text-lg font-semibold text-foreground">ライブコマース戦略</h2>
 				<span className="text-[10px] px-2 py-0.5 rounded-full bg-pink-600/15 text-pink-700 dark:text-pink-300 font-medium">6-Skill AI</span>
 			</div>
 
 			<Card className="border-border">
 				<CardContent className="p-4 space-y-3">
 					<div>
-						<label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">
+						<label htmlFor="live-commerce-goal" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">
 							ライブコマースの目標・方向性 (任意)
 						</label>
 						<textarea
+							id="live-commerce-goal"
 							value={userGoal}
 							onChange={(e) => setUserGoal(e.target.value)}
 							placeholder="例: TikTok Liveを中心に月商1000万円を目指したい / Instagram Liveで美容商品の販売を始めたい"
@@ -638,7 +640,7 @@ function LCListView({ locale, router }: { locale: string; router: ReturnType<typ
 						</div>
 					</div>
 
-					<div className="flex items-center justify-between pt-1">
+					<div className="flex flex-col gap-3 pt-1 sm:flex-row sm:items-center sm:justify-between">
 						<p className="text-[10px] text-muted-foreground">
 							6つの専門スキル（目標分析→市場調査→プラットフォーム分析→コンテンツ戦略→実行計画→リスク分析）が順次分析します
 						</p>
@@ -646,7 +648,7 @@ function LCListView({ locale, router }: { locale: string; router: ReturnType<typ
 							type="button"
 							onClick={handleGenerate}
 							disabled={isRunning}
-							className="flex items-center gap-2 px-5 py-2 bg-pink-600 hover:bg-pink-700 text-white text-sm font-semibold rounded-lg transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+							className="flex min-h-10 w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-pink-600 px-5 text-sm font-semibold text-white transition-colors hover:bg-pink-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
 						>
 							{isRunning ? <Loader2 size={14} className="animate-spin" /> : <Radio size={14} />}
 							{isRunning ? '分析中...' : 'ライブコマース戦略を分析'}

@@ -1,7 +1,6 @@
 import { useTranslations, useLocale } from 'next-intl';
 import { TrendingUp, AlertTriangle, Clock, BarChart2, ShieldAlert } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 
 interface Competitor {
   name: string;

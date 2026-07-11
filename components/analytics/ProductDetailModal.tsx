@@ -1,10 +1,13 @@
 'use client';
 
+/* eslint-disable @next/next/no-img-element -- Product evidence uses signed, dynamic S3 URLs and preserves native loading/error behavior. */
+
 import { useState, useEffect, useRef } from 'react';
 import { X, Loader2, Package, Truck, ShieldCheck, BarChart3, HelpCircle, Tag, FileText, ImageIcon, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { useDialogBehavior } from '@/components/ui/use-dialog-behavior';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
@@ -149,13 +152,8 @@ export default function ProductDetailModal({
   } | null>(null);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const lightboxRef = useRef<HTMLDivElement | null>(null);
-
-  // Lock body scroll while modal is open
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
-  }, []);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  useDialogBehavior(true, onClose, dialogRef, { closeOnEscape: lightboxIndex === null });
 
   // Focus the lightbox dialog when it opens (a11y).
   useEffect(() => {
@@ -227,13 +225,13 @@ export default function ProductDetailModal({
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-6 pb-6">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
 
-      <div className="relative bg-card rounded-2xl shadow-2xl w-full max-w-4xl max-h-[calc(100vh-3rem)] overflow-y-auto mx-4">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="product-detail-title" tabIndex={-1} className="relative bg-card rounded-2xl shadow-2xl w-full max-w-4xl max-h-[calc(100vh-3rem)] overflow-y-auto mx-4">
         {/* Header */}
         <div className="sticky top-0 bg-card border-b border-border px-6 py-4 rounded-t-2xl z-10">
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-foreground">{data?.name ?? productCode}</h2>
+                <h2 id="product-detail-title" className="text-lg font-bold text-foreground">{data?.name ?? productCode}</h2>
                 {d?.product_name_kana && (
                   <span className="text-xs text-muted-foreground">({d.product_name_kana})</span>
                 )}
@@ -247,7 +245,7 @@ export default function ProductDetailModal({
                 <span className="text-xs text-muted-foreground font-mono">{productCode}</span>
               </div>
             </div>
-            <button type="button" onClick={onClose} className="p-1.5 hover:bg-muted rounded-lg">
+            <button data-dialog-autofocus type="button" aria-label={t('lightboxClose')} onClick={onClose} className="inline-flex size-9 items-center justify-center rounded-lg hover:bg-muted">
               <X size={18} className="text-muted-foreground" />
             </button>
           </div>
@@ -360,7 +358,7 @@ export default function ProductDetailModal({
                               formatter={(value: unknown) => [`¥${Number(value).toLocaleString()}`, t('chartTooltipRevenue')]}
                               contentStyle={{ fontSize: 11, borderRadius: 8 }}
                             />
-                            <Area type="monotone" dataKey="revenue" stroke="#3b82f6" fill="url(#modalRevGrad)" strokeWidth={2} />
+                            <Area isAnimationActive={false} type="monotone" dataKey="revenue" stroke="#3b82f6" fill="url(#modalRevGrad)" strokeWidth={2} />
                           </AreaChart>
                         </ResponsiveContainer>
                       </div>

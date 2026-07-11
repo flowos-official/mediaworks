@@ -39,7 +39,7 @@ export default async function NewScreenplayPage({ params }: { params: Promise<{ 
 		fetchExistingProducts(),
 	]);
 	return (
-		<main className="mx-auto max-w-6xl px-0 py-2 sm:px-2">
+		<div className="mx-auto max-w-6xl px-0 py-2 sm:px-2">
 			<Link
 				href={localePath(locale, "/screenplays")}
 				className="mb-5 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
@@ -57,9 +57,9 @@ export default async function NewScreenplayPage({ params }: { params: Promise<{ 
 						<div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-600/80">
 							Broadcast proof desk
 						</div>
-						<h1 className="text-2xl font-bold leading-tight tracking-tight text-foreground sm:text-[1.75rem]">
+						<h2 className="text-2xl font-bold leading-tight tracking-tight text-foreground sm:text-[1.75rem]">
 							{t("title")}
-						</h1>
+						</h2>
 						<p className="text-sm text-muted-foreground mt-2 max-w-2xl leading-relaxed">
 							{t("subtitle")}
 						</p>
@@ -68,6 +68,6 @@ export default async function NewScreenplayPage({ params }: { params: Promise<{ 
 			</header>
 
 			<ScreenplayNewTabs locale={locale} products={products} />
-		</main>
+		</div>
 	);
 }

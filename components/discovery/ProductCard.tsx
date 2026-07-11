@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element -- Discovery sources provide arbitrary remote image hosts at runtime. */
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Sparkles, Star, TrendingUp, ShoppingBag, Tv, Compass, ChevronDown } from "lucide-react";
@@ -180,26 +182,27 @@ export function ProductCard({
 
 	return (
 		<article
-			className={`relative bg-card border border-amber-200 dark:border-amber-900/40 rounded-xl p-4 shadow-sm flex flex-col hover:shadow-md transition-all ${
-				isDimmed ? "opacity-60" : ""
+			className={`relative flex flex-col rounded-xl border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md ${
+				isDimmed ? "border-border opacity-60" : isSelected ? "border-primary/50 ring-2 ring-primary/12" : "border-border"
 			}`}
 			title={isRejected && feedbackReason ? `却下理由: ${feedbackReason}` : undefined}
 		>
 			{onToggleSelect && (
-				<input
-					type="checkbox"
-					checked={!!isSelected}
-					onChange={() => onToggleSelect(product.id)}
-					onClick={(e) => e.stopPropagation()}
-					aria-label="Select for strategy"
-					className="absolute top-2 left-2 z-10 w-4 h-4 accent-indigo-600 cursor-pointer"
-				/>
+				<label onClick={(event) => event.stopPropagation()} className="absolute left-1 top-1 z-10 flex size-10 cursor-pointer items-center justify-center rounded-lg bg-card/85 shadow-sm backdrop-blur">
+					<input
+						type="checkbox"
+						checked={!!isSelected}
+						onChange={() => onToggleSelect(product.id)}
+						aria-label={t("selectionSelect")}
+						className="size-5 cursor-pointer accent-primary"
+					/>
+				</label>
 			)}
 			{/* Header: source badge + name + score */}
 			<div className="flex items-start justify-between gap-2 mb-2">
 				<div className="flex items-center gap-2 flex-1 min-w-0">
 					<span
-						className={`text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0 ${
+						className={`shrink-0 rounded-md px-2 py-0.5 font-mono text-[9px] font-bold ${
 							product.source === "rakuten"
 								? "bg-red-600/15 text-red-700 dark:text-red-300"
 								: product.source === "tv_channel"
@@ -219,12 +222,12 @@ export function ProductCard({
 							stage={product.active_selection.status as "selected" | "sourcing" | "scheduled" | "closed"}
 						/>
 					)}
-					<h3 className="font-bold text-sm text-foreground line-clamp-2" title={product.name}>
+					<h3 className="line-clamp-2 text-sm font-semibold leading-relaxed text-foreground" title={product.name}>
 						{product.name}
 					</h3>
 				</div>
 				<span
-					className={`text-xs font-bold px-2 py-0.5 rounded-full border shrink-0 ${scoreColor(score)}`}
+					className={`shrink-0 rounded-md border px-2 py-0.5 font-mono text-xs font-bold ${scoreColor(score)}`}
 				>
 					{score}
 				</span>
@@ -232,7 +235,7 @@ export function ProductCard({
 
 			{/* Thumbnail + metadata row */}
 			<div className="flex gap-3 mb-3">
-				<div className="flex-shrink-0 w-20 h-20 bg-muted rounded-lg overflow-hidden border border-border">
+				<div className="size-[72px] flex-shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
 					{product.thumbnail_url ? (
 						<img
 							src={product.thumbnail_url}
@@ -336,11 +339,11 @@ export function ProductCard({
 
 			{/* TV fit reason + score breakdown toggle */}
 			{(product.tv_fit_reason || product.score_breakdown) && (
-				<div className="bg-amber-600/10 border border-amber-200 dark:border-amber-900/40 rounded px-3 py-2 mb-3">
+				<div className="mb-3 rounded-lg border border-primary/15 bg-primary/[0.055] px-3 py-2">
 					<div className="flex items-center justify-between gap-2 mb-0.5">
 						<div className="flex items-center gap-1">
-							<TrendingUp size={11} className="text-amber-600" />
-							<span className="text-[10px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wide">
+							<TrendingUp size={11} className="text-primary" />
+							<span className="font-mono text-[9px] font-bold uppercase tracking-[0.08em] text-primary">
 								TV適合性
 							</span>
 						</div>
@@ -348,7 +351,7 @@ export function ProductCard({
 							<button
 								type="button"
 								onClick={() => setShowBreakdown((v) => !v)}
-								className="flex items-center gap-0.5 text-[10px] text-amber-700 dark:text-amber-300 hover:text-amber-900 font-semibold"
+								className="flex min-h-9 items-center gap-0.5 rounded-md px-2 text-[10px] font-semibold text-primary hover:bg-primary/10 hover:text-primary/75"
 								aria-expanded={showBreakdown}
 							>
 								内訳
@@ -379,7 +382,7 @@ export function ProductCard({
 					href={product.product_url}
 					target="_blank"
 					rel="noopener noreferrer"
-					className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium"
+					className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80"
 				>
 					<Sparkles size={11} />
 					{t("goLive")} →

@@ -1,13 +1,15 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { useDialogBehavior } from "@/components/ui/use-dialog-behavior";
 import type { ComplianceRule, ComplianceLaw, Severity } from "@/lib/screenplay/compliance/types";
 
 const LAWS: ComplianceLaw[] = ["yakkiho", "keihyo", "kenzo", "shokuhin", "tokushoho"];
 const SEVS: Severity[] = ["high", "med", "low"];
+const PAGE_SIZE = 25;
 
 type Draft = {
 	id: string | null;
@@ -50,9 +52,13 @@ export default function ComplianceRulesTable({ initial }: { initial: ComplianceR
 	const [busy, setBusy] = useState<string | null>(null);
 	const [filterLaw, setFilterLaw] = useState<"" | ComplianceLaw>("");
 	const [search, setSearch] = useState("");
+	const [page, setPage] = useState(0);
+	const [tableError, setTableError] = useState<string | null>(null);
 	const [draft, setDraft] = useState<Draft | null>(null);
 	const [modalErr, setModalErr] = useState<string | null>(null);
 	const [saving, setSaving] = useState(false);
+	const dialogRef = useRef<HTMLDivElement>(null);
+	useDialogBehavior(!!draft, () => { if (!saving) { setDraft(null); setModalErr(null); } }, dialogRef, { closeOnEscape: !saving });
 
 	const visible = useMemo(() => {
 		const q = search.trim();
@@ -62,6 +68,9 @@ export default function ComplianceRulesTable({ initial }: { initial: ComplianceR
 			return true;
 		});
 	}, [rows, filterLaw, search]);
+	const pageCount = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
+	const safePage = Math.min(page, pageCount - 1);
+	const pagedVisible = visible.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
 
 	function openCreate() { setModalErr(null); setDraft(emptyDraft()); }
 	function openEdit(r: ComplianceRule) { setModalErr(null); setDraft(toDraft(r)); }
@@ -85,83 +94,102 @@ export default function ComplianceRulesTable({ initial }: { initial: ComplianceR
 			active: draft.active,
 		};
 		const isEdit = !!draft.id;
-		const r = await fetch(isEdit ? `/api/admin/compliance-rules/${draft.id}` : "/api/admin/compliance-rules", {
-			method: isEdit ? "PATCH" : "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify(payload),
-		});
-		setSaving(false);
-		if (!r.ok) {
-			const j = await r.json().catch(() => ({}));
-			if (r.status === 409) setModalErr(t("err.duplicate"));
-			else if (r.status === 400) setModalErr((j as { error?: string }).error ?? t("err.validation"));
-			else setModalErr((j as { error?: string }).error ?? t("err.generic"));
-			return;
+		try {
+			const response = await fetch(isEdit ? `/api/admin/compliance-rules/${draft.id}` : "/api/admin/compliance-rules", {
+				method: isEdit ? "PATCH" : "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(payload),
+			});
+			if (!response.ok) {
+				const json = await response.json().catch(() => ({}));
+				if (response.status === 409) setModalErr(t("err.duplicate"));
+				else if (response.status === 400) setModalErr((json as { error?: string }).error ?? t("err.validation"));
+				else setModalErr((json as { error?: string }).error ?? t("err.generic"));
+				return;
+			}
+			const { rule } = (await response.json()) as { rule: ComplianceRule };
+			setRows((prev) => (isEdit ? prev.map((x) => (x.id === rule.id ? rule : x)) : [...prev, rule]));
+			setDraft(null);
+		} catch {
+			setModalErr(t("err.generic"));
+		} finally {
+			setSaving(false);
 		}
-		const { rule } = (await r.json()) as { rule: ComplianceRule };
-		setRows((prev) => (isEdit ? prev.map((x) => (x.id === rule.id ? rule : x)) : [...prev, rule]));
-		setDraft(null);
 	}
 
 	async function toggleActive(r: ComplianceRule) {
 		setBusy(r.id);
-		const res = await fetch(`/api/admin/compliance-rules/${r.id}`, {
-			method: "PATCH",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ active: !r.active }),
-		});
-		setBusy(null);
-		if (res.ok) {
+		setTableError(null);
+		try {
+			const res = await fetch(`/api/admin/compliance-rules/${r.id}`, {
+				method: "PATCH",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ active: !r.active }),
+			});
+			if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error ?? t("err.generic"));
 			const { rule } = (await res.json()) as { rule: ComplianceRule };
 			setRows((prev) => prev.map((x) => (x.id === rule.id ? rule : x)));
-		} else {
-			const j = await res.json().catch(() => ({}));
-			alert((j as { error?: string }).error ?? t("err.generic"));
+		} catch (error) {
+			setTableError(error instanceof Error && error.message !== "Failed to fetch" ? error.message : t("err.generic"));
+		} finally {
+			setBusy(null);
 		}
 	}
 
 	async function remove(r: ComplianceRule) {
 		if (!confirm(t("confirmDelete"))) return;
 		setBusy(r.id);
-		const res = await fetch(`/api/admin/compliance-rules/${r.id}`, { method: "DELETE" });
-		setBusy(null);
-		if (res.ok) setRows((prev) => prev.filter((x) => x.id !== r.id));
-		else {
-			const j = await res.json().catch(() => ({}));
-			alert((j as { error?: string }).error ?? t("err.generic"));
+		setTableError(null);
+		try {
+			const res = await fetch(`/api/admin/compliance-rules/${r.id}`, { method: "DELETE" });
+			if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error ?? t("err.generic"));
+			setRows((prev) => prev.filter((x) => x.id !== r.id));
+		} catch (error) {
+			setTableError(error instanceof Error && error.message !== "Failed to fetch" ? error.message : t("err.generic"));
+		} finally {
+			setBusy(null);
 		}
 	}
 
 	return (
 		<div className="space-y-4">
-			<div>
-				<h2 className="text-lg font-bold">{t("title")}</h2>
-				<p className="text-xs text-muted-foreground mt-1">{t("subtitle")}</p>
+			<div className="mw-panel px-4 py-4 sm:px-5">
+				<div className="mw-kicker mb-1">Broadcast compliance lexicon</div>
+				<h2 className="text-lg font-bold tracking-[-0.015em]">{t("title")}</h2>
+				<p className="mt-1 text-xs text-muted-foreground">{t("subtitle")}</p>
 			</div>
 
-			<div className="flex flex-wrap items-center gap-2 justify-between">
+			<div className="mw-toolbar">
 				<div className="flex flex-wrap items-center gap-2">
 					<select
+						aria-label={t("filterAllLaws")}
 						value={filterLaw}
-						onChange={(e) => setFilterLaw(e.target.value as "" | ComplianceLaw)}
-						className="border rounded px-2 py-1.5 text-sm"
+						onChange={(e) => { setFilterLaw(e.target.value as "" | ComplianceLaw); setPage(0); }}
+						className="h-9 rounded-lg border border-border bg-background px-2 text-sm"
 					>
 						<option value="">{t("filterAllLaws")}</option>
 						{LAWS.map((l) => <option key={l} value={l}>{t(`laws.${l}`)}</option>)}
 					</select>
 					<input
+						aria-label={t("searchPlaceholder")}
 						type="text" value={search}
-						onChange={(e) => setSearch(e.target.value)}
+						onChange={(e) => { setSearch(e.target.value); setPage(0); }}
 						placeholder={t("searchPlaceholder")}
-						className="border rounded px-3 py-1.5 text-sm w-56"
+						className="h-9 w-64 max-w-full rounded-lg border border-border bg-background px-3 text-sm"
 					/>
 					<span className="text-xs text-muted-foreground">{t("count", { n: visible.length })}</span>
 				</div>
 				<Button onClick={openCreate}>{t("addButton")}</Button>
 			</div>
+			{tableError && (
+				<div role="alert" className="flex items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:border-red-900/50 dark:text-red-300">
+					<span>{tableError}</span>
+					<button type="button" onClick={() => setTableError(null)} className="font-medium underline">OK</button>
+				</div>
+			)}
 
-			<div className="border rounded overflow-x-auto">
-				<table className="w-full border-collapse text-sm">
+			<div className="mw-table-shell overflow-x-auto">
+				<table className="w-full min-w-[1080px] text-sm">
 					<thead className="bg-muted">
 						<tr className="border-b text-foreground">
 							<th className="text-left p-2 font-medium">{t("col.law")}</th>
@@ -175,7 +203,7 @@ export default function ComplianceRulesTable({ initial }: { initial: ComplianceR
 						</tr>
 					</thead>
 					<tbody>
-						{visible.map((r) => (
+						{pagedVisible.map((r) => (
 							<tr key={r.id} className={`border-b hover:bg-muted/50 ${r.active ? "" : "opacity-50"}`}>
 								<td className="p-2 whitespace-nowrap">{t(`laws.${r.law}`)}</td>
 								<td className="p-2 text-xs text-muted-foreground">
@@ -196,9 +224,10 @@ export default function ComplianceRulesTable({ initial }: { initial: ComplianceR
 								<td className="p-2 text-xs max-w-[20rem]">{r.reason}</td>
 								<td className="p-2">
 									<button
+										type="button"
 										onClick={() => toggleActive(r)}
 										disabled={busy === r.id}
-										className="text-xs underline-offset-2 hover:underline disabled:opacity-50"
+										className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-md px-2 text-xs underline-offset-2 hover:bg-muted hover:underline disabled:opacity-50"
 									>
 										{r.active ? t("activeYes") : t("activeNo")}
 									</button>
@@ -215,14 +244,24 @@ export default function ComplianceRulesTable({ initial }: { initial: ComplianceR
 					</tbody>
 				</table>
 			</div>
+			{visible.length > PAGE_SIZE && (
+				<div className="mw-toolbar py-2.5">
+					<span className="text-xs text-muted-foreground">{safePage * PAGE_SIZE + 1}–{Math.min((safePage + 1) * PAGE_SIZE, visible.length)} / {visible.length}</span>
+					<div className="flex items-center gap-1.5">
+						<button type="button" disabled={safePage === 0} onClick={() => setPage((current) => Math.max(0, current - 1))} className="min-h-9 rounded-lg border border-border px-3 text-xs font-medium hover:bg-muted disabled:opacity-35">{t("pagination.prev")}</button>
+						<span className="min-w-16 text-center font-mono text-xs text-muted-foreground">{safePage + 1} / {pageCount}</span>
+						<button type="button" disabled={safePage >= pageCount - 1} onClick={() => setPage((current) => Math.min(pageCount - 1, current + 1))} className="min-h-9 rounded-lg border border-border px-3 text-xs font-medium hover:bg-muted disabled:opacity-35">{t("pagination.next")}</button>
+					</div>
+				</div>
+			)}
 
 			{draft && (
 				<div
 					className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
 					onClick={(e) => { if (e.target === e.currentTarget) closeModal(); }}
 				>
-					<Card className="w-full max-w-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-						<h3 className="font-bold text-lg">{draft.id ? t("form.editHeading") : t("form.createHeading")}</h3>
+					<Card ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="compliance-rule-dialog-title" tabIndex={-1} className="max-h-[90dvh] w-full max-w-2xl space-y-4 overflow-y-auto p-5 sm:p-6">
+						<h3 id="compliance-rule-dialog-title" className="font-bold text-lg">{draft.id ? t("form.editHeading") : t("form.createHeading")}</h3>
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 							<label className="block">
 								<span className="text-xs text-foreground">{t("form.law")}</span>

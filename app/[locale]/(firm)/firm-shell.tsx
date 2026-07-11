@@ -38,14 +38,15 @@ export default function FirmShell({ role, title, subtitle, children }: FirmShell
   const showDateFilter = !NO_DATE_FILTER_PATHS.some((p) => pathname.includes(p));
   return (
     <FirmFilterProvider>
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="mw-page">
         <PageHeader
           icon={BarChart3}
           title={title}
           subtitle={subtitle}
           action={showFullChrome && showDateFilter ? <FilterAction /> : undefined}
+          eyebrow="First-party performance"
         />
-        <div className="space-y-6">
+        <div className="mw-page-stack">
           {showFullChrome && <GroupSubNav groupKey="firm" role={role} />}
           {children}
         </div>

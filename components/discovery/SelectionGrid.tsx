@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { ProductCard, type DiscoveredProductRow } from "./ProductCard";
 
@@ -16,8 +16,6 @@ export function SelectionGrid() {
 	const [products, setProducts] = useState<DiscoveredProductRow[]>([]);
 	const [total, setTotal] = useState(0);
 	const [loading, setLoading] = useState(false);
-
-	const queryKey = useMemo(() => `${status}-${context}-${days}`, [status, context, days]);
 
 	useEffect(() => {
 		// eslint-disable-next-line react-hooks/set-state-in-effect -- initial load flag set synchronously before async fetch
@@ -38,7 +36,7 @@ export function SelectionGrid() {
 				setLoading(false);
 			})
 			.catch(() => setLoading(false));
-	}, [queryKey, page]);
+	}, [status, context, days, page]);
 
 	function updateStatus(s: Status) {
 		setStatus(s);
@@ -55,58 +53,44 @@ export function SelectionGrid() {
 
 	return (
 		<div>
-			<div className="flex flex-wrap items-center gap-2 mb-4">
-				<span className="text-xs text-muted-foreground">Status:</span>
-				{(["all", "sourced", "interested", "rejected", "duplicate"] as Status[]).map((s) => (
-					<button
-						key={s}
-						onClick={() => updateStatus(s)}
-						className={`px-3 py-1 text-xs rounded-full border transition-colors ${
-							status === s
-								? "bg-amber-500 text-white border-amber-500"
-								: "bg-card text-foreground border-border hover:bg-muted"
-						}`}
-					>
-						{s === "all"
-							? t("allStatuses")
-							: s === "sourced"
-							? t("filterSourced")
-							: s === "interested"
-							? t("filterInterested")
-							: s === "rejected"
-							? t("filterRejected")
-							: t("duplicateButton")}
-					</button>
-				))}
-				<span className="text-xs text-muted-foreground ml-2">Context:</span>
-				{(["all", "home_shopping", "live_commerce"] as ContextFilter[]).map((c) => (
-					<button
-						key={c}
-						onClick={() => updateContext(c)}
-						className={`px-3 py-1 text-xs rounded-full border transition-colors ${
-							context === c
-								? "bg-blue-500 text-white border-blue-500"
-								: "bg-card text-foreground border-border hover:bg-muted"
-						}`}
-					>
-						{c === "all" ? t("allStatuses") : c === "home_shopping" ? "ホーム" : "ライブ"}
-					</button>
-				))}
-				<span className="text-xs text-muted-foreground ml-2">Period:</span>
-				{([7, 30, 90] as Period[]).map((d) => (
-					<button
-						key={d}
-						onClick={() => updateDays(d)}
-						className={`px-3 py-1 text-xs rounded-full border transition-colors ${
-							days === d
-								? "bg-gray-600 text-white border-gray-600"
-								: "bg-card text-foreground border-border hover:bg-muted"
-						}`}
-					>
-						{t(d === 7 ? "periodFilter7" : d === 30 ? "periodFilter30" : "periodFilter90")}
-					</button>
-				))}
-				<span className="ml-auto text-xs text-muted-foreground">{products.length}/{total}</span>
+			<div className="mb-3 flex items-end justify-between gap-3">
+				<div>
+					<div className="mw-kicker mb-1">Discovery decisions</div>
+					<h2 className="mw-section-title">{t("insightsResultsTitle")}</h2>
+				</div>
+				<span className="font-mono text-[10px] text-muted-foreground">{products.length}/{total}</span>
+			</div>
+
+			<div className="mw-toolbar mb-4 items-start">
+				<fieldset className="flex min-w-0 flex-wrap gap-1.5">
+					<legend className="mb-1 w-full text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{t("statusFilterLabel")}</legend>
+					{(["all", "sourced", "interested", "rejected", "duplicate"] as Status[]).map((s) => (
+						<button
+							type="button"
+							key={s}
+							onClick={() => updateStatus(s)}
+							className={`min-h-9 rounded-lg border px-3 text-xs font-medium transition-colors ${status === s ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-foreground hover:bg-muted"}`}
+						>
+							{s === "all" ? t("allStatuses") : s === "sourced" ? t("filterSourced") : s === "interested" ? t("filterInterested") : s === "rejected" ? t("filterRejected") : t("duplicateButton")}
+						</button>
+					))}
+				</fieldset>
+				<fieldset className="flex min-w-0 flex-wrap gap-1.5">
+					<legend className="mb-1 w-full text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{t("contextFilterLabel")}</legend>
+					{(["all", "home_shopping", "live_commerce"] as ContextFilter[]).map((c) => (
+						<button type="button" key={c} onClick={() => updateContext(c)} className={`min-h-9 rounded-lg border px-3 text-xs font-medium transition-colors ${context === c ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-foreground hover:bg-muted"}`}>
+							{c === "all" ? t("allStatuses") : c === "home_shopping" ? "ホーム" : "ライブ"}
+						</button>
+					))}
+				</fieldset>
+				<fieldset className="flex min-w-0 flex-wrap gap-1.5">
+					<legend className="mb-1 w-full text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{t("periodFilterLabel")}</legend>
+					{([7, 30, 90] as Period[]).map((d) => (
+						<button type="button" key={d} onClick={() => updateDays(d)} className={`min-h-9 rounded-lg border px-3 text-xs font-medium transition-colors ${days === d ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-foreground hover:bg-muted"}`}>
+							{t(d === 7 ? "periodFilter7" : d === 30 ? "periodFilter30" : "periodFilter90")}
+						</button>
+					))}
+				</fieldset>
 			</div>
 
 			<div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
@@ -120,11 +104,12 @@ export function SelectionGrid() {
 				)}
 			</div>
 
-			{loading && <div className="py-8 text-center text-sm text-muted-foreground">Loading...</div>}
+			{loading && <div className="py-8 text-center text-sm text-muted-foreground" role="status">{t("loadingResults")}</div>}
 
 			{!loading && products.length < total && (
 				<div className="py-4 text-center">
 					<button
+						type="button"
 						onClick={() => setPage((p) => p + 1)}
 						className="px-6 py-2 text-xs border border-border rounded hover:bg-muted"
 					>

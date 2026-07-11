@@ -22,6 +22,7 @@ export default function LanguageSwitcher() {
       <Globe size={14} className="text-muted-foreground ml-1" />
       {['ja', 'ko'].map((loc) => (
         <button
+          type="button"
           key={loc}
           onClick={() => switchLocale(loc)}
           className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${

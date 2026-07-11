@@ -2,17 +2,19 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { BookOpenText, FileText, ListTree, ShieldCheck } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { FileText } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { summarizeReadiness } from "@/lib/screenplay/readiness";
 import type { ProductBrief, ScreenplayRow, ScreenplayVersionRow } from "@/lib/screenplay/types";
 import type { ScriptCheckResult } from "@/lib/screenplay/compliance/types";
 import { GenerationProgress } from "./GenerationProgress";
 import { ScreenplayHeaderBar } from "./ScreenplayHeaderBar";
-import { ScreenplayViewer } from "./ScreenplayViewer";
+import { ScreenplayViewer, type ScriptSelection } from "./ScreenplayViewer";
 import { ScreenplayEditor } from "./ScreenplayEditor";
 import { ScreenplayNavigator } from "./ScreenplayNavigator";
 import { ReviewPanel, type ReviewTab } from "./ReviewPanel";
+import { InlineAiEditor } from "./InlineAiEditor";
 import type { CheckWithMeta } from "./CheckResultPanel";
 import type { ExistingProductOption } from "./ScreenplayProductPicker";
 
@@ -23,8 +25,6 @@ interface Props {
 	initialCheckVersionId?: string | null;
 	availableProducts?: ExistingProductOption[];
 }
-
-type MobilePane = "navigator" | "script" | "review";
 
 function pad(value: number, width: number): string {
 	return value.toString().padStart(width, "0");
@@ -63,6 +63,7 @@ export function ScreenplayWorkspace({
 	initialCheckVersionId = null,
 	availableProducts = [],
 }: Props) {
+	const t = useTranslations("screenplay.workspace");
 	const router = useRouter();
 	const search = useSearchParams();
 	const [screenplay, setScreenplay] = useState(initialScreenplay);
@@ -87,7 +88,11 @@ export function ScreenplayWorkspace({
 	const [draftMarkdown, setDraftMarkdown] = useState("");
 	const [saveBusy, setSaveBusy] = useState(false);
 	const [saveError, setSaveError] = useState<string | null>(null);
-	const [mobilePane, setMobilePane] = useState<MobilePane>("script");
+	const [scriptSelection, setScriptSelection] = useState<ScriptSelection | null>(null);
+	const [inlineSaveBusy, setInlineSaveBusy] = useState(false);
+	const [inlineSaveError, setInlineSaveError] = useState<string | null>(null);
+	const [focusMode, setFocusMode] = useState(false);
+	const scriptRef = useRef<HTMLElement>(null);
 
 	useEffect(() => {
 		if (runId || initialScreenplay.status !== "generating") return;
@@ -137,6 +142,7 @@ export function ScreenplayWorkspace({
 		setActiveCheck(null);
 		setActiveReviewTab(version?.base_version_id ? "diff" : "check");
 		setEditing(false);
+		setScriptSelection(null);
 		const params = new URLSearchParams(search);
 		params.delete("run");
 		params.delete("kind");
@@ -147,6 +153,7 @@ export function ScreenplayWorkspace({
 		setRunVariant("generate");
 		setRunId(newRunId);
 		setEditing(false);
+		setScriptSelection(null);
 	}
 
 	const selectedIndex = versions.findIndex((version) => version.id === selectedId);
@@ -173,7 +180,17 @@ export function ScreenplayWorkspace({
 			const target = event.target as HTMLElement | null;
 			const tag = target?.tagName;
 			if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target?.isContentEditable) return;
+			if (event.key === "Escape" && focusMode) {
+				event.preventDefault();
+				setFocusMode(false);
+				return;
+			}
 			if (!(event.metaKey || event.ctrlKey)) return;
+			if (event.shiftKey && event.key.toLowerCase() === "f") {
+				event.preventDefault();
+				setFocusMode((current) => !current);
+				return;
+			}
 			if (event.key === "ArrowLeft") {
 				event.preventDefault();
 				goPrevious();
@@ -184,11 +201,17 @@ export function ScreenplayWorkspace({
 		}
 		window.addEventListener("keydown", onKey);
 		return () => window.removeEventListener("keydown", onKey);
-	}, [goNext, goPrevious]);
+	}, [focusMode, goNext, goPrevious]);
 
-	const scriptRef = useRef<HTMLElement>(null);
+	useEffect(() => {
+		if (!focusMode) return;
+		const frame = requestAnimationFrame(() => {
+			scriptRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+		});
+		return () => cancelAnimationFrame(frame);
+	}, [focusMode]);
+
 	const jumpToLine = useCallback((line: number) => {
-		setMobilePane("script");
 		requestAnimationFrame(() => {
 			const root = scriptRef.current;
 			if (!root) return;
@@ -226,7 +249,6 @@ export function ScreenplayWorkspace({
 
 	function startEditing(markdown?: string, notice?: string) {
 		if (!selected) return;
-		setMobilePane("script");
 		setDraftMarkdown(markdown ?? selected.markdown);
 		setSaveError(notice ?? null);
 		setEditing(true);
@@ -280,6 +302,38 @@ export function ScreenplayWorkspace({
 		}
 	}
 
+	async function replaceSelectedText(replacement: string) {
+		if (!selected || !scriptSelection) return;
+		setInlineSaveBusy(true);
+		setInlineSaveError(null);
+		try {
+			const range = findFlexibleQuoteRange(selected.markdown, scriptSelection.text);
+			if (!range) throw new Error(t("aiEditor.selectionNotFound"));
+			const [start, end] = range;
+			const markdown = selected.markdown.slice(0, start) + replacement + selected.markdown.slice(end);
+			const response = await fetch(`/api/screenplays/${screenplay.id}/versions`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					markdown,
+					baseVersionId: selected.id,
+					feedback: `選択箇所を直接編集: ${scriptSelection.text.slice(0, 120)}`,
+				}),
+			});
+			const payload = (await response.json()) as { versionId?: string; error?: string };
+			if (!response.ok || !payload.versionId) throw new Error(payload.error ?? t("aiEditor.replaceFailed"));
+			await refreshDetail(payload.versionId);
+			setActiveCheck(null);
+			setActiveReviewTab("check");
+			setScriptSelection(null);
+		} catch (cause) {
+			setInlineSaveError(cause instanceof Error ? cause.message : t("aiEditor.replaceFailed"));
+			throw cause;
+		} finally {
+			setInlineSaveBusy(false);
+		}
+	}
+
 	function handleProductLinked(productId: string, brief: ProductBrief) {
 		setScreenplay((current) => ({
 			...current,
@@ -291,7 +345,7 @@ export function ScreenplayWorkspace({
 	}
 
 	return (
-		<div>
+		<div className="screenplay-workspace">
 			{selected && (
 				<ScreenplayHeaderBar
 					markdown={selected.markdown}
@@ -307,32 +361,15 @@ export function ScreenplayWorkspace({
 					readiness={readiness}
 					onEdit={() => (editing ? setEditing(false) : startEditing())}
 					editing={editing}
+					focusMode={focusMode}
+					onToggleFocus={() => {
+						setFocusMode((current) => !current);
+					}}
 				/>
 			)}
 
-			<div className="sticky top-16 z-20 mb-3 grid grid-cols-3 gap-1 rounded-xl border border-border bg-background/95 p-1 shadow-sm backdrop-blur lg:hidden">
-				{([
-					{ id: "navigator" as const, label: "構成・根拠", icon: ListTree },
-					{ id: "script" as const, label: "台本", icon: BookOpenText },
-					{ id: "review" as const, label: `考査${readiness.total ? ` ${readiness.total}` : ""}`, icon: ShieldCheck },
-				]).map((item) => {
-					const Icon = item.icon;
-					const active = mobilePane === item.id;
-					return (
-						<button
-							key={item.id}
-							type="button"
-							onClick={() => setMobilePane(item.id)}
-							className={`inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-medium transition ${active ? "bg-blue-600 text-white shadow-sm" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
-						>
-							<Icon size={13} /> {item.label}
-						</button>
-					);
-				})}
-			</div>
-
-			<div className="grid grid-cols-1 gap-4 lg:grid-cols-[210px_minmax(0,1fr)_minmax(360px,410px)] xl:grid-cols-[225px_minmax(0,1fr)_minmax(390px,430px)]">
-				<aside className={`${mobilePane === "navigator" ? "block" : "hidden"} self-start lg:sticky lg:top-[9.75rem] lg:block lg:max-h-[calc(100vh-10.5rem)] lg:overflow-y-auto`}>
+			<div className={`screenplay-workspace-grid grid grid-cols-1 gap-4 ${focusMode ? "screenplay-focus-grid xl:justify-items-center" : "xl:grid-cols-[210px_minmax(0,1fr)_minmax(380px,410px)] min-[1700px]:grid-cols-[225px_minmax(0,1fr)_minmax(400px,430px)]"}`}>
+				<aside className={`screenplay-context-column order-3 min-w-0 self-start ${focusMode ? "xl:hidden" : "xl:order-1 xl:sticky xl:top-[9.75rem] xl:max-h-[calc(100vh-10.5rem)] xl:overflow-y-auto"}`} aria-label={t("inspectorContext")}>
 					{selected && (
 						<ScreenplayNavigator
 							screenplayId={screenplay.id}
@@ -350,7 +387,7 @@ export function ScreenplayWorkspace({
 					)}
 				</aside>
 
-				<section ref={scriptRef} className={`${mobilePane === "script" ? "block" : "hidden"} min-w-0 self-start lg:sticky lg:top-[9.75rem] lg:block lg:max-h-[calc(100vh-10.5rem)] lg:overflow-y-auto`}>
+				<section ref={scriptRef} aria-label={t("scriptRegion")} className={`screenplay-script-column order-1 mx-auto max-h-[72vh] min-w-0 w-full max-w-[920px] overflow-y-auto scroll-mt-36 ${focusMode ? "xl:order-1" : "xl:order-2 xl:sticky xl:top-[9.75rem] xl:max-h-[calc(100vh-10.5rem)]"}`}>
 					{isGenerating && runId && (
 						<div className="mb-4">
 							<GenerationProgress
@@ -371,7 +408,14 @@ export function ScreenplayWorkspace({
 								error={saveError}
 							/>
 						) : (
-							<ScreenplayViewer markdown={selected.markdown} />
+							<ScreenplayViewer
+								markdown={selected.markdown}
+								focusMode={focusMode}
+								onTextSelection={(selection) => {
+									setInlineSaveError(null);
+									setScriptSelection(selection);
+								}}
+							/>
 						)
 					) : !isGenerating ? (
 						<Card className="border-dashed border-border">
@@ -383,30 +427,42 @@ export function ScreenplayWorkspace({
 					) : null}
 				</section>
 
-				<aside className={`${mobilePane === "review" ? "block" : "hidden"} min-h-0 self-start lg:sticky lg:top-[9.75rem] lg:block lg:max-h-[calc(100vh-10.5rem)] lg:overflow-y-auto`}>
+				<aside className={`screenplay-review-column order-2 min-w-0 self-start space-y-3 ${focusMode ? "xl:hidden" : "xl:order-3 xl:sticky xl:top-[9.75rem] xl:max-h-[calc(100vh-10.5rem)] xl:overflow-y-auto"}`} aria-label={t("inspectorReview")}>
+					{selected && !editing && (
+						<InlineAiEditor
+							key={`${selected.id}-${scriptSelection?.line ?? "document"}-${scriptSelection?.text.slice(0, 24) ?? ""}`}
+							screenplayId={screenplay.id}
+							versionId={selected.id}
+							selectedText={scriptSelection?.text ?? null}
+							selectedLine={scriptSelection?.line ?? null}
+							disabled={isGenerating}
+							onRefineStart={handleRefineStart}
+							onClearSelection={() => setScriptSelection(null)}
+							onDirectReplace={replaceSelectedText}
+							directBusy={inlineSaveBusy}
+							directError={inlineSaveError}
+						/>
+					)}
 					{selected ? (
 						<ReviewPanel
-							key={`${selected.id}-${screenplay.product_id ?? "unlinked"}`}
-							screenplayId={screenplay.id}
-							version={selected}
-							versions={versions}
-							initialCheck={screenplay.product_id === initialScreenplay.product_id ? latestCheck ?? null : null}
-							initialCheckVersionId={screenplay.product_id === initialScreenplay.product_id ? initialCheckVersionId : null}
-							isGenerating={isGenerating}
-							activeTab={activeReviewTab}
-							onTabChange={setActiveReviewTab}
-							onRefineStart={handleRefineStart}
-							onJumpToLine={jumpToLine}
-							onCheckChange={setActiveCheck}
-							onJumpToQuote={jumpToQuote}
-							onApplyRewrite={applySuggestedRewrite}
+								key={`${selected.id}-${screenplay.product_id ?? "unlinked"}`}
+								screenplayId={screenplay.id}
+								version={selected}
+								versions={versions}
+								initialCheck={screenplay.product_id === initialScreenplay.product_id ? latestCheck ?? null : null}
+								initialCheckVersionId={screenplay.product_id === initialScreenplay.product_id ? initialCheckVersionId : null}
+								isGenerating={isGenerating}
+								activeTab={activeReviewTab}
+								onTabChange={setActiveReviewTab}
+								onRefineStart={handleRefineStart}
+								onJumpToLine={jumpToLine}
+								onCheckChange={setActiveCheck}
+								onJumpToQuote={jumpToQuote}
+								onApplyRewrite={applySuggestedRewrite}
+								showRefineTab={false}
 						/>
 					) : (
-						<Card className="border-border">
-							<CardContent className="p-5 text-center text-xs text-muted-foreground">
-								台本ができると放送レビューが表示されます
-							</CardContent>
-						</Card>
+						<Card className="border-border"><CardContent className="p-5 text-center text-xs text-muted-foreground">台本ができると放送レビューが表示されます</CardContent></Card>
 					)}
 				</aside>
 			</div>

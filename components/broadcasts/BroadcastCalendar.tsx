@@ -3,9 +3,10 @@
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Loader2, Radio } from "lucide-react";
 import UnifiedDayDetailPanel from "./UnifiedDayDetailPanel";
 import MonthGrid from "./MonthGrid";
+import { getTodayISOJST } from "@/lib/broadcasts/jst-date";
 import {
 	ALL_CHANNELS,
 	CHANNEL_BADGE,
@@ -39,6 +40,18 @@ function gridBounds(y: number, m: number): { from: string; to: string } {
 }
 
 const EMPTY_COUNTS: CountsByDate = {};
+type CalendarView = "month" | "week";
+
+function shiftISODate(iso: string, days: number): string {
+	const [y, m, d] = iso.split("-").map(Number);
+	const date = new Date(Date.UTC(y, m - 1, d + days));
+	return date.toISOString().slice(0, 10);
+}
+
+function dateForMonth(year: number, month: number, preferredDay: number): string {
+	const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+	return `${year}-${String(month).padStart(2, "0")}-${String(Math.min(preferredDay, lastDay)).padStart(2, "0")}`;
+}
 
 export default function BroadcastCalendar({
 	initialYear,
@@ -52,6 +65,7 @@ export default function BroadcastCalendar({
 	const [year, setYear] = useState(initialYear);
 	const [month, setMonth] = useState(initialMonth);
 	const [selectedDate, setSelectedDate] = useState<string | null>(initialDate);
+	const [view, setView] = useState<CalendarView>("month");
 
 	const initialKey = monthKey(initialYear, initialMonth);
 	const [cache, setCache] = useState<Map<string, CountsByDate>>(
@@ -117,52 +131,107 @@ export default function BroadcastCalendar({
 		[year, month, syncUrl],
 	);
 
-	// Month nav stays purely client-side — useEffect above auto-fetches the
-	// new month's counts via `/api/broadcasts/calendar-counts` when it's
-	// missing from cache.
-	const goPrev = useCallback(() => {
-		if (month === 1) {
-			setYear(year - 1);
-			setMonth(12);
-		} else {
-			setMonth(month - 1);
+	const navigate = useCallback((direction: -1 | 1) => {
+		if (view === "week") {
+			const anchor = selectedDate ?? dateForMonth(year, month, 1);
+			handleDateClick(shiftISODate(anchor, direction * 7));
+			return;
 		}
-		setSelectedDate(null);
-	}, [year, month]);
 
-	const goNext = useCallback(() => {
-		if (month === 12) {
-			setYear(year + 1);
-			setMonth(1);
-		} else {
-			setMonth(month + 1);
-		}
-		setSelectedDate(null);
-	}, [year, month]);
+		const nextMonthIndex = year * 12 + (month - 1) + direction;
+		const nextYear = Math.floor(nextMonthIndex / 12);
+		const nextMonth = (nextMonthIndex % 12 + 12) % 12 + 1;
+		const preferredDay = selectedDate ? Number(selectedDate.slice(8, 10)) : 1;
+		handleDateClick(dateForMonth(nextYear, nextMonth, preferredDay));
+	}, [handleDateClick, month, selectedDate, view, year]);
+
+	const goToday = useCallback(() => handleDateClick(getTodayISOJST()), [handleDateClick]);
+
+	const handleMonthJump = useCallback((value: string) => {
+		if (!/^\d{4}-\d{2}$/.test(value)) return;
+		const [nextYear, nextMonth] = value.split("-").map(Number);
+		const preferredDay = selectedDate ? Number(selectedDate.slice(8, 10)) : 1;
+		handleDateClick(dateForMonth(nextYear, nextMonth, preferredDay));
+	}, [handleDateClick, selectedDate]);
 
 	const monthLabel = `${year}年 ${month}月`;
+	const monthSummary = useMemo(() => {
+		const entries = Object.entries(currentMonthCounts).filter(([iso]) => iso.startsWith(`${currentKey}-`));
+		const totals = entries.map(([iso, channels]) => ({
+			iso,
+			total: Object.values(channels).reduce((sum, count) => sum + count, 0),
+		}));
+		const busiest = totals.reduce<{ iso: string; total: number } | null>(
+			(best, item) => !best || item.total > best.total ? item : best,
+			null,
+		);
+		return {
+			activeDays: totals.filter((item) => item.total > 0).length,
+			total: totals.reduce((sum, item) => sum + item.total, 0),
+			busiest,
+		};
+	}, [currentKey, currentMonthCounts]);
 
 	return (
-		<div className="grid md:grid-cols-2 gap-6">
-			<div>
-				<div className="flex items-center justify-between mb-3">
+		<div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(470px,0.9fr)_minmax(0,1.1fr)]">
+			<section className="mw-panel min-w-0 p-3 sm:p-4">
+				<div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+					<div>
+						<div className="mw-kicker mb-1 inline-flex items-center gap-1.5"><Radio size={12} /> Calendar signal</div>
+						<h2 className="text-lg font-semibold text-foreground">{monthLabel}</h2>
+						<p className="text-[11px] text-muted-foreground">{t("calendar.subtitle")}</p>
+					</div>
+					<div className="inline-flex rounded-lg border border-border bg-muted/70 p-0.5" aria-label={t("calendar.viewLabel")}>
+						{(["month", "week"] as const).map((mode) => (
+							<button
+								key={mode}
+								type="button"
+								onClick={() => setView(mode)}
+								aria-pressed={view === mode}
+								className={`min-h-8 rounded-md px-3 text-xs font-medium transition-colors ${view === mode ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+							>
+								{t(`calendar.views.${mode}`)}
+							</button>
+						))}
+					</div>
+				</div>
+
+				<div className="mb-3 flex items-center gap-2 rounded-xl border border-border bg-muted/35 p-1.5">
 					<button
 						type="button"
-						onClick={goPrev}
-						className="p-1.5 rounded hover:bg-muted"
-						aria-label={t("monthNav.prev")}
+						onClick={() => navigate(-1)}
+						className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-card hover:text-foreground"
+						aria-label={view === "month" ? t("monthNav.prev") : t("weekNav.prev")}
 					>
 						<ChevronLeft size={18} />
 					</button>
-					<h2 className="text-lg font-semibold text-foreground">{monthLabel}</h2>
+					<button type="button" onClick={goToday} className="min-h-9 shrink-0 rounded-lg border border-border bg-card px-3 text-xs font-semibold text-foreground hover:border-primary/50">
+						{t("calendar.today")}
+					</button>
+					<label className="relative min-w-0 flex-1">
+						<span className="sr-only">{t("calendar.jumpToMonth")}</span>
+						<CalendarDays size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+						<input
+							type="month"
+							value={`${year}-${String(month).padStart(2, "0")}`}
+							onChange={(event) => handleMonthJump(event.target.value)}
+							className="h-9 w-full min-w-0 rounded-lg border border-border bg-card pl-8 pr-2 text-xs font-medium text-foreground"
+						/>
+					</label>
 					<button
 						type="button"
-						onClick={goNext}
-						className="p-1.5 rounded hover:bg-muted"
-						aria-label={t("monthNav.next")}
+						onClick={() => navigate(1)}
+						className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-card hover:text-foreground"
+						aria-label={view === "month" ? t("monthNav.next") : t("weekNav.next")}
 					>
 						<ChevronRight size={18} />
 					</button>
+				</div>
+
+				<div className="mb-3 grid grid-cols-3 divide-x divide-border rounded-xl border border-border bg-card">
+					<CalendarMetric label={t("calendar.metrics.slots")} value={monthSummary.total.toLocaleString()} />
+					<CalendarMetric label={t("calendar.metrics.activeDays")} value={t("calendar.dayCount", { count: monthSummary.activeDays })} />
+					<CalendarMetric label={t("calendar.metrics.peak")} value={monthSummary.busiest ? t("calendar.peakValue", { day: Number(monthSummary.busiest.iso.slice(8)), count: monthSummary.busiest.total }) : "—"} />
 				</div>
 				{loading && (
 					<div className="inline-flex items-center gap-1.5 text-sm text-foreground/80 mb-2">
@@ -178,33 +247,47 @@ export default function BroadcastCalendar({
 				<MonthGrid
 					year={year}
 					month={month}
+					view={view}
 					countsByDate={currentMonthCounts}
 					selectedDate={selectedDate}
 					onDateClick={handleDateClick}
 				/>
-				<CalendarLegend />
-			</div>
+				<CalendarLegend label={t("calendar.legend")} />
+			</section>
 
-			<div className="md:max-h-[calc(100vh-12rem)] md:overflow-y-auto md:sticky md:top-4 pr-1">
+			<aside className="mw-panel mw-scrollbar min-w-0 min-h-[32rem] p-3 sm:p-4 xl:sticky xl:top-5 xl:max-h-[calc(100vh-2.5rem)] xl:overflow-y-auto">
 				<UnifiedDayDetailPanel date={selectedDate} />
-			</div>
+			</aside>
 		</div>
 	);
 }
 
-function CalendarLegend() {
+function CalendarMetric({ label, value }: { label: string; value: string }) {
 	return (
-		<div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
-			{ALL_CHANNELS.map(({ slug, name }) => (
-				<span key={slug} className="inline-flex items-center gap-1">
-					<span
-						className={`inline-flex items-center justify-center w-3.5 h-3.5 rounded-[3px] text-[9px] font-semibold border ${CHANNEL_BADGE[slug]}`}
-					>
-						{CHANNEL_SHORT[slug]}
-					</span>
-					{name}
-				</span>
-			))}
+		<div className="min-w-0 px-2 py-2.5 text-center">
+			<div className="truncate font-mono text-sm font-semibold tabular-nums text-foreground">{value}</div>
+			<div className="mt-0.5 truncate text-[9px] uppercase tracking-wide text-muted-foreground">{label}</div>
 		</div>
+	);
+}
+
+function CalendarLegend({ label }: { label: string }) {
+	return (
+		<details className="group mt-3 border-t border-border pt-3 text-[10px] text-muted-foreground">
+			<summary className="flex min-h-8 cursor-pointer list-none items-center justify-between rounded-md px-1 font-medium text-foreground hover:bg-muted">
+				<span>{label}</span>
+				<ChevronRight size={13} className="transition-transform group-open:rotate-90" />
+			</summary>
+			<div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 px-1">
+				{ALL_CHANNELS.map(({ slug, name }) => (
+					<span key={slug} className="inline-flex items-center gap-1">
+						<span className={`inline-flex size-4 items-center justify-center rounded-[3px] border text-[9px] font-semibold ${CHANNEL_BADGE[slug]}`}>
+							{CHANNEL_SHORT[slug]}
+						</span>
+						{name}
+					</span>
+				))}
+			</div>
+		</details>
 	);
 }

@@ -149,7 +149,7 @@ function SessionRowInline({
 
 export function SessionCalendar({ sessions, month }: { sessions: SessionRow[]; month?: Date }) {
 	const { locale } = useParams<{ locale: string }>();
-	const base = month ?? new Date();
+	const base = useMemo(() => month ?? new Date(), [month]);
 	const year = base.getFullYear();
 	const mon = base.getMonth();
 	const firstDay = new Date(year, mon, 1);

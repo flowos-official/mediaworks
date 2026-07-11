@@ -247,16 +247,17 @@ export default function ExpansionAnalysis() {
       <div>
         <div className="flex items-center gap-2 mb-3">
           <Target size={18} className="text-blue-600" />
-          <h3 className="text-lg font-semibold text-foreground">チャネル拡大戦略</h3>
+          <h2 className="text-lg font-semibold text-foreground">チャネル拡大戦略</h2>
         </div>
 
         {/* User goal textarea */}
         <Card className="border-border mb-4">
           <CardContent className="p-4">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 block">
+            <label htmlFor="expansion-analysis-goal" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 block">
               拡大の目標・方向性 (任意)
             </label>
             <textarea
+              id="expansion-analysis-goal"
               value={userGoal}
               onChange={(e) => setUserGoal(e.target.value)}
               placeholder="例: 楽天やAmazonでEC販売を始めたい / 韓国市場に進出したい / 若い世代向けにTikTokで展開したい / 自社ECサイトを立ち上げたい"

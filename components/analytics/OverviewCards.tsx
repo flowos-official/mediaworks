@@ -70,17 +70,17 @@ export default function OverviewCards({ data }: { data: KpiData }) {
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       {cards.map((card) => (
-        <Card key={card.label} className="border-border">
+        <Card key={card.label} className="relative overflow-hidden">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-muted-foreground">{card.label}</span>
+              <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{card.label}</span>
               <div className={`p-1.5 rounded-lg ${card.color}`}>
                 <card.icon size={14} />
               </div>
             </div>
-            <div className="text-xl font-bold text-foreground">{card.value}</div>
+            <div className="font-mono text-xl font-semibold tracking-[-0.04em] tabular-nums text-foreground sm:text-2xl">{card.value}</div>
             {card.yoy && <YoyChange current={card.yoy.current} previous={card.yoy.previous} />}
           </CardContent>
         </Card>

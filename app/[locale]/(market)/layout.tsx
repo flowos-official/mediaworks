@@ -25,9 +25,9 @@ export default async function MarketLayout({
 
   const t = await getTranslations('nav.groupHeader.market');
   return (
-    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <PageHeader icon={Globe2} title={t('title')} subtitle={t('subtitle')} />
-      <div className="space-y-6">
+    <main className="mw-page">
+      <PageHeader icon={Globe2} title={t('title')} subtitle={t('subtitle')} eyebrow="Market intelligence" />
+      <div className="mw-page-stack">
         <GroupSubNav groupKey="market" role={auth.role} />
         {children}
       </div>

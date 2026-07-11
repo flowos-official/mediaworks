@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
-import { Upload, FileText, Image, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Upload, FileText, ImageIcon, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface FileUploadProps {
@@ -136,16 +136,17 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
           }
         }}
         className={cn(
-          'relative border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all duration-200',
+          'relative overflow-hidden rounded-2xl border border-dashed p-5 text-left cursor-pointer transition-all duration-200 sm:p-6',
           isDragging
-            ? 'border-blue-400 bg-blue-600/10'
-            : 'border-border bg-card hover:border-blue-400 hover:bg-blue-600/10',
+            ? 'border-primary bg-primary/10 shadow-[inset_0_0_0_1px_rgba(37,99,235,0.12)]'
+            : 'border-border bg-card hover:border-primary/45 hover:bg-primary/[0.035]',
           uploading && 'cursor-not-allowed opacity-70'
         )}
       >
         <input
           ref={fileInputRef}
           type="file"
+          aria-label={locale === 'ja' ? 'アップロードするファイルを選択' : 'Choose files to upload'}
           multiple
           className="hidden"
           accept=".pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.webp"
@@ -153,19 +154,21 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
           disabled={uploading}
         />
 
-        <div className="flex flex-col items-center gap-4">
+        <span className="absolute inset-y-0 left-0 w-1 bg-primary" aria-hidden="true" />
+        <div className="grid items-center gap-4 sm:grid-cols-[auto_1fr_auto] sm:gap-5">
           {uploading ? (
-            <div className="w-16 h-16 bg-blue-600/15 rounded-full flex items-center justify-center">
-              <Loader2 size={32} className="text-blue-600 animate-spin" />
+            <div className="flex size-12 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
+              <Loader2 size={22} className="animate-spin text-primary" />
             </div>
           ) : (
-            <div className="w-16 h-16 bg-blue-600/10 rounded-full flex items-center justify-center">
-              <Upload size={32} className="text-blue-600" />
+            <div className="flex size-12 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
+              <Upload size={22} className="text-primary" />
             </div>
           )}
 
-          <div>
-            <p className="text-lg font-semibold text-foreground">
+          <div className="min-w-0">
+            <div className="mw-kicker mb-1">Research intake</div>
+            <p className="text-base font-semibold tracking-[-0.01em] text-foreground sm:text-lg">
               {uploading
                 ? locale === 'ja'
                   ? `${uploadCount}件のファイルをアップロード中...`
@@ -173,17 +176,20 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
                 : t('uploadTitle')}
             </p>
             {!uploading && (
-              <p className="text-sm text-muted-foreground mt-1">{t('uploadDescription')}</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground sm:text-sm">{t('uploadDescription')}</p>
             )}
           </div>
 
           {!uploading && (
-            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground sm:justify-end">
               <span className="flex items-center gap-1">
-                <FileText size={12} /> PDF, PPT, DOCX, XLS
+                <FileText size={11} /> PDF · PPT · DOCX · XLS
               </span>
               <span className="flex items-center gap-1">
-                <Image size={12} /> JPG, PNG
+                <ImageIcon size={11} /> JPG · PNG
+              </span>
+              <span className="w-full rounded-lg border border-border bg-background px-3 py-2 text-center text-xs font-semibold text-foreground sm:w-auto">
+                {locale === 'ja' ? 'ファイルを選択' : 'Choose files'}
               </span>
             </div>
           )}
@@ -191,13 +197,13 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
       </div>
 
       {status === 'success' && (
-        <div className="mt-3 flex items-center gap-2 text-green-600 text-sm bg-green-600/10 px-4 py-2 rounded-lg">
+        <div className="mt-3 flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-700 dark:text-emerald-300">
           <CheckCircle size={16} />
           {statusMsg}
         </div>
       )}
       {status === 'error' && (
-        <div className="mt-3 flex items-center gap-2 text-red-600 text-sm bg-red-600/10 px-4 py-2 rounded-lg">
+        <div className="mt-3 flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2 text-sm text-red-700 dark:text-red-300">
           <AlertCircle size={16} />
           {statusMsg}
         </div>

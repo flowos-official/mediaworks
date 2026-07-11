@@ -27,11 +27,6 @@ interface SkillVersionRow {
 	published_at: string;
 }
 
-interface SkillVersionCountRow {
-	skill_id: string;
-	count: number;
-}
-
 const CATEGORY_COLOR: Record<string, string> = {
 	analysis: "bg-blue-600/15 text-blue-700 dark:text-blue-300",
 	curation: "bg-emerald-600/15 text-emerald-700 dark:text-emerald-300",
@@ -110,8 +105,9 @@ export default async function RegistryListPage({
 
 	return (
 		<>
-			<header className="mb-6">
-				<h1 className="text-2xl font-semibold text-foreground">{t("title")}</h1>
+			<header className="mw-panel mb-5 px-4 py-4 sm:px-5">
+				<div className="mw-kicker mb-1">Agent capability control</div>
+				<h2 className="text-xl font-bold tracking-[-0.02em] text-foreground">{t("title")}</h2>
 				<p className="mt-1 text-sm text-muted-foreground">
 					{t.rich("subtitle", {
 						code: (chunks) => <code className="rounded bg-muted px-1 text-[11px]">{chunks}</code>,
@@ -119,7 +115,7 @@ export default async function RegistryListPage({
 				</p>
 			</header>
 
-			<section className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+			<section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
 				<KPI label={t("totalSkills")} value={totalSkills} />
 				<KPI label={t("activeVersions")} value={activeCount} />
 				<KPI
@@ -211,8 +207,8 @@ function KPI({ label, value, sub }: { label: string; value: number; sub?: string
 	return (
 		<Card>
 			<CardContent className="p-3">
-				<div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
-				<div className="mt-1 text-xl font-semibold text-foreground">{value}</div>
+				<div className="mw-data-label">{label}</div>
+				<div className="mw-data-value mt-1">{value}</div>
 				{sub && <div className="mt-0.5 text-[10px] text-muted-foreground">{sub}</div>}
 			</CardContent>
 		</Card>

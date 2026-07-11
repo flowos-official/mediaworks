@@ -1,9 +1,10 @@
 'use client';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { useDialogBehavior } from '@/components/ui/use-dialog-behavior';
 
 type Role = 'admin' | 'member' | 'viewer';
 type Row = {
@@ -81,6 +82,11 @@ export default function UsersTable({ initial, currentUserId }: { initial: Row[];
 
   const [credentials, setCredentials] = useState<Credentials | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const createDialogRef = useRef<HTMLDivElement>(null);
+  const credentialsDialogRef = useRef<HTMLDivElement>(null);
+  const createTriggerRef = useRef<HTMLButtonElement>(null);
+  useDialogBehavior(createOpen, closeCreate, createDialogRef, { closeOnEscape: !creating, returnFocusRef: createTriggerRef });
+  useDialogBehavior(!!credentials, () => setCredentials(null), credentialsDialogRef, { returnFocusRef: createTriggerRef });
 
   async function changeRole(id: string, role: Role) {
     setBusy(id);
@@ -192,12 +198,16 @@ export default function UsersTable({ initial, currentUserId }: { initial: Row[];
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <Button onClick={() => setCreateOpen(true)}>{t('create.openButton')}</Button>
+      <div className="mw-toolbar">
+        <div>
+          <div className="mw-kicker mb-1">Access control</div>
+          <p className="text-xs text-muted-foreground">ユーザー、所属、ロール、初回ログイン状態を管理します</p>
+        </div>
+        <Button ref={createTriggerRef} onClick={() => setCreateOpen(true)}>{t('create.openButton')}</Button>
       </div>
 
-      <div className="border rounded overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
+      <div className="mw-table-shell overflow-x-auto">
+        <table className="w-full min-w-[900px] text-sm">
           <thead className="bg-muted">
             <tr className="border-b text-foreground">
               <th className="text-left p-3 font-medium">{t('columnsExt.name')}</th>
@@ -217,6 +227,7 @@ export default function UsersTable({ initial, currentUserId }: { initial: Row[];
                   <td className="p-3">
                     {isEditing ? (
                       <input
+                        aria-label={`${row.email} ${t('columnsExt.name')}`}
                         type="text" value={editing.displayName}
                         onChange={(e) => setEditing({ ...editing, displayName: e.target.value })}
                         className="border rounded px-2 py-1 w-full"
@@ -228,6 +239,7 @@ export default function UsersTable({ initial, currentUserId }: { initial: Row[];
                   <td className="p-3">
                     {isEditing ? (
                       <input
+                        aria-label={`${row.email} ${t('columnsExt.company')}`}
                         type="text" value={editing.companyName}
                         onChange={(e) => setEditing({ ...editing, companyName: e.target.value })}
                         className="border rounded px-2 py-1 w-full"
@@ -242,6 +254,7 @@ export default function UsersTable({ initial, currentUserId }: { initial: Row[];
                   </td>
                   <td className="p-3">
                     <select
+                      aria-label={`${row.email} ${t('columns.role')}`}
                       value={row.role}
                       onChange={(e) => changeRole(row.id, e.target.value as Role)}
                       disabled={busy === row.id || row.id === currentUserId || isEditing}
@@ -304,9 +317,9 @@ export default function UsersTable({ initial, currentUserId }: { initial: Row[];
           className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
           onClick={(e) => { if (e.target === e.currentTarget && !creating) closeCreate(); }}
         >
-          <Card className="w-full max-w-lg p-6 space-y-4">
+          <Card ref={createDialogRef} role="dialog" aria-modal="true" aria-labelledby="create-user-dialog-title" tabIndex={-1} className="w-full max-w-lg p-6 space-y-4">
             <div>
-              <h2 className="font-bold text-lg">{t('create.heading')}</h2>
+              <h2 id="create-user-dialog-title" className="font-bold text-lg">{t('create.heading')}</h2>
               <p className="text-xs text-muted-foreground mt-1">{t('create.forceChangeHint')}</p>
             </div>
             <form onSubmit={createUser} className="space-y-3">
@@ -336,7 +349,6 @@ export default function UsersTable({ initial, currentUserId }: { initial: Row[];
                     onChange={(e) => setNewEmail(e.target.value)}
                     className="mt-1 w-full border rounded px-3 py-2 font-mono text-sm"
                     autoComplete="off"
-                    autoFocus
                   />
                 </label>
                 <label className="block">
@@ -384,9 +396,9 @@ export default function UsersTable({ initial, currentUserId }: { initial: Row[];
 
       {credentials && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-lg p-6 space-y-4">
+          <Card ref={credentialsDialogRef} role="dialog" aria-modal="true" aria-labelledby="credentials-dialog-title" tabIndex={-1} className="w-full max-w-lg p-6 space-y-4">
             <div className="flex items-start justify-between">
-              <h3 className="font-bold text-lg">{t('credentials.title')}</h3>
+              <h3 id="credentials-dialog-title" className="font-bold text-lg">{t('credentials.title')}</h3>
               <Button size="sm" variant="outline" onClick={copyAll}>
                 {copied === 'all' ? t('credentials.copied') : t('credentials.copyAll')}
               </Button>

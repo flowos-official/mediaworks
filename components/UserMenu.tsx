@@ -35,7 +35,7 @@ export default function UserMenu({
     return (
       <a
         href={localePath(locale, '/login')}
-        className="text-sm font-medium text-blue-600 hover:underline"
+        className="text-sm font-medium text-blue-700 hover:underline dark:text-blue-300"
       >
         {t('login.submit')}
       </a>
@@ -56,12 +56,22 @@ export default function UserMenu({
     <DropdownMenu>
       <DropdownMenuTrigger
         id={triggerId}
-        render={<Button variant="ghost" size="sm" className="gap-2" />}
+        render={
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label={`${email} account menu`}
+            title={email}
+            className={triggerId.includes('desktop') ? 'mw-account-trigger h-9 w-full justify-start gap-2 px-2' : 'gap-2'}
+          />
+        }
       >
-        <UserCircle2 className="h-4 w-4" />
-        <span className="hidden sm:inline text-sm">{email}</span>
+        <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+          <UserCircle2 className="h-3.5 w-3.5" />
+        </span>
+        <span className="mw-account-email hidden min-w-0 flex-1 truncate text-left text-xs sm:inline">{email}</span>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent align="end" className="w-60 p-1.5">
         <DropdownMenuLabel className="flex items-center justify-between">
           <span className="text-sm font-medium truncate">{email}</span>
           <Badge variant="outline" className="text-xs ml-2">

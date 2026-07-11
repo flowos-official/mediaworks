@@ -100,7 +100,7 @@ export default function TopProductsTable({
                   <button
                     type="button"
                     onClick={() => toggleSort('name')}
-                    className={`flex items-center gap-1 ${sortKey === 'name' ? 'text-blue-600' : ''}`}
+                    className={`flex min-h-9 items-center gap-1 rounded-md px-1 ${sortKey === 'name' ? 'text-blue-700 dark:text-blue-300' : ''}`}
                   >
                     商品名 <SortIcon col="name" sortKey={sortKey} sortDir={sortDir} />
                   </button>
@@ -114,7 +114,7 @@ export default function TopProductsTable({
                     <button
                       type="button"
                       onClick={() => toggleSort(h.key)}
-                      className={`flex items-center gap-1 ml-auto ${sortKey === h.key ? 'text-blue-600' : ''}`}
+                      className={`ml-auto flex min-h-9 items-center gap-1 rounded-md px-1 ${sortKey === h.key ? 'text-blue-700 dark:text-blue-300' : ''}`}
                     >
                       {h.label} <SortIcon col={h.key} sortKey={sortKey} sortDir={sortDir} />
                     </button>
@@ -125,7 +125,7 @@ export default function TopProductsTable({
                     <button
                       type="button"
                       onClick={() => toggleSort('avgWeeklyQuantity')}
-                      className={`flex items-center gap-1 ml-auto ${sortKey === 'avgWeeklyQuantity' ? 'text-blue-600' : ''}`}
+                      className={`ml-auto flex min-h-9 items-center gap-1 rounded-md px-1 ${sortKey === 'avgWeeklyQuantity' ? 'text-blue-700 dark:text-blue-300' : ''}`}
                     >
                       週平均 <SortIcon col="avgWeeklyQuantity" sortKey={sortKey} sortDir={sortDir} />
                     </button>
@@ -136,7 +136,7 @@ export default function TopProductsTable({
                     <button
                       type="button"
                       onClick={() => toggleSort('firstDate')}
-                      className={`flex items-center gap-1 mx-auto ${sortKey === 'firstDate' ? 'text-blue-600' : ''}`}
+                      className={`mx-auto flex min-h-9 items-center gap-1 rounded-md px-1 ${sortKey === 'firstDate' ? 'text-blue-700 dark:text-blue-300' : ''}`}
                     >
                       期間 <SortIcon col="firstDate" sortKey={sortKey} sortDir={sortDir} />
                     </button>
@@ -148,12 +148,23 @@ export default function TopProductsTable({
               {paged.map((p, i) => (
                 <tr
                   key={p.code}
-                  className="border-b border-border hover:bg-muted/50 transition-colors cursor-pointer"
+                  className={`border-b border-border transition-colors hover:bg-muted/50 ${onSelectProduct ? 'cursor-pointer' : ''}`}
                   onClick={() => onSelectProduct?.(p.code)}
                 >
                   <td className="px-4 py-2.5 text-muted-foreground font-mono text-xs">{page * perPage + i + 1}</td>
                   <td className="px-4 py-2.5 font-medium text-foreground max-w-[200px] truncate">
-                    {p.name}
+                    {onSelectProduct ? (
+                      <button
+                        type="button"
+                        className="min-h-9 max-w-full rounded-md text-left underline-offset-4 hover:text-blue-700 hover:underline focus-visible:text-blue-700 dark:hover:text-blue-300 dark:focus-visible:text-blue-300"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onSelectProduct(p.code);
+                        }}
+                      >
+                        <span className="block max-w-[200px] truncate">{p.name}</span>
+                      </button>
+                    ) : p.name}
                   </td>
                   {!compact && (
                     <td className="px-4 py-2.5">
@@ -193,7 +204,7 @@ export default function TopProductsTable({
                 type="button"
                 disabled={page === 0}
                 onClick={() => setPage(page - 1)}
-                className="px-2.5 py-1 text-xs rounded border border-border hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed"
+                className="min-h-9 rounded-lg border border-border px-2.5 text-xs hover:bg-muted disabled:cursor-not-allowed disabled:opacity-30"
               >
                 前へ
               </button>
@@ -212,7 +223,7 @@ export default function TopProductsTable({
                       key={item}
                       type="button"
                       onClick={() => setPage(item)}
-                      className={`min-w-[28px] py-1 text-xs rounded border ${
+                      className={`min-h-9 min-w-9 rounded-lg border text-xs ${
                         page === item
                           ? 'bg-blue-600 text-white border-blue-600'
                           : 'border-border hover:bg-muted'
@@ -226,7 +237,7 @@ export default function TopProductsTable({
                 type="button"
                 disabled={page === totalPages - 1}
                 onClick={() => setPage(page + 1)}
-                className="px-2.5 py-1 text-xs rounded border border-border hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed"
+                className="min-h-9 rounded-lg border border-border px-2.5 text-xs hover:bg-muted disabled:cursor-not-allowed disabled:opacity-30"
               >
                 次へ
               </button>

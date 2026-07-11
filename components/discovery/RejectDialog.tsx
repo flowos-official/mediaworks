@@ -1,8 +1,9 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslations } from "next-intl";
 import { X } from "lucide-react";
+import { useDialogBehavior } from "@/components/ui/use-dialog-behavior";
 
 const REASON_KEYS = [
 	"rejectReason_priceMismatch",
@@ -35,6 +36,8 @@ export function RejectDialog({
 	const [selected, setSelected] = useState<ReasonKey>(REASON_KEYS[0]);
 	const [otherText, setOtherText] = useState("");
 	const [mounted, setMounted] = useState(false);
+	const dialogRef = useRef<HTMLDivElement>(null);
+	useDialogBehavior(open && mounted, onCancel, dialogRef);
 
 	useEffect(() => {
 		// eslint-disable-next-line react-hooks/set-state-in-effect -- portal mount guard, runs once on mount
@@ -61,15 +64,22 @@ export function RejectDialog({
 			onClick={onCancel}
 		>
 			<div
+				ref={dialogRef}
+				role="dialog"
+				aria-modal="true"
+				aria-labelledby="reject-dialog-title"
+				tabIndex={-1}
 				className="bg-card rounded-lg shadow-lg p-5 w-full max-w-sm mx-4"
 				onClick={(e) => e.stopPropagation()}
 			>
 				<div className="flex items-center justify-between mb-3">
-					<h3 className="text-sm font-semibold text-foreground">
+					<h3 id="reject-dialog-title" className="text-sm font-semibold text-foreground">
 						{t("rejectDialogTitle")}
 					</h3>
 					<button
+						data-dialog-autofocus
 						type="button"
+						aria-label={t("cancel")}
 						onClick={onCancel}
 						className="text-muted-foreground hover:text-foreground"
 					>

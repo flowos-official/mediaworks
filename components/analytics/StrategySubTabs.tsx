@@ -23,7 +23,7 @@ export function StrategySubTabs() {
 	const activeTab = getStrategyActiveTab(pathname);
 
 	return (
-		<div className="flex gap-1 p-1 bg-card border border-border rounded-lg shadow-sm mb-4 w-fit">
+		<nav aria-label="Strategy views" className="mw-scrollbar mb-4 flex w-fit max-w-full gap-1 overflow-x-auto rounded-xl border border-border bg-card p-1 shadow-sm">
 			{STRATEGY_SUB_TABS.map((tab) => {
 				const href = localePath(locale, tab.href);
 				const active = activeTab === tab.key;
@@ -31,9 +31,9 @@ export function StrategySubTabs() {
 					<Link
 						key={tab.key}
 						href={href}
-						className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+						className={`inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-all ${
 							active
-								? "bg-indigo-500 text-white shadow-sm"
+								? "bg-primary text-primary-foreground shadow-sm"
 								: "text-muted-foreground hover:text-foreground hover:bg-muted"
 						}`}
 					>
@@ -42,6 +42,6 @@ export function StrategySubTabs() {
 					</Link>
 				);
 			})}
-		</div>
+		</nav>
 	);
 }

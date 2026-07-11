@@ -33,7 +33,7 @@ export function ManualTriggerButton({ context, onStarted }: { context: Context; 
 			type="button"
 			onClick={trigger}
 			disabled={loading}
-			className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg border transition-colors disabled:opacity-60 disabled:cursor-not-allowed bg-amber-500 text-white border-amber-500 hover:bg-amber-600"
+			className="inline-flex items-center gap-2 rounded-lg border border-primary bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
 		>
 			{loading ? (
 				<>

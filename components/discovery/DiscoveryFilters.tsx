@@ -26,15 +26,16 @@ export function DiscoveryFilters({
 	];
 
 	return (
-		<div className="flex flex-wrap items-center gap-2 mb-4">
-			<div className="flex gap-1">
+		<div className="mw-toolbar mb-4">
+			<div className="mw-scrollbar flex gap-1 overflow-x-auto">
 				{statusOptions.map((opt) => (
 					<button
+						type="button"
 						key={opt.value}
 						onClick={() => onStatusChange(opt.value)}
-						className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+						className={`min-h-8 shrink-0 rounded-lg border px-3 text-xs font-medium transition-colors ${
 							status === opt.value
-								? "bg-blue-600 text-white border-blue-600"
+								? "border-primary bg-primary text-primary-foreground"
 								: "bg-card text-foreground border-border hover:bg-muted"
 						}`}
 					>
@@ -43,11 +44,12 @@ export function DiscoveryFilters({
 				))}
 			</div>
 
-			<div className="ml-auto">
+			<div className="sm:ml-auto">
 				<select
+					aria-label={t("sortByScore")}
 					value={sort}
 					onChange={(e) => onSortChange(e.target.value as SortKey)}
-					className="px-3 py-1 text-xs border border-border rounded bg-card"
+					className="h-9 rounded-lg border border-border bg-background px-3 text-xs"
 				>
 					<option value="score">{t("sortByScore")}</option>
 					<option value="price">{t("sortByPrice")}</option>

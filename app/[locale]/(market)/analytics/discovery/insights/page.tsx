@@ -5,7 +5,7 @@ import { InsightsTabs } from "@/components/discovery/InsightsTabs";
 
 export default function InsightsPage() {
 	return (
-		<div>
+		<div className="space-y-4">
 			<ContextSubTabs />
 			<InsightsTabs />
 		</div>

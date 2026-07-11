@@ -49,32 +49,33 @@ export default function HistoricalCrawlDashboard({ initialRuns, baseline }: Prop
 	const baselineMap = new Map(baseline.map((b) => [b.channel, b.median7d]));
 
 	return (
-		<div className="space-y-6">
-			<header>
-				<h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
-				<p className="text-sm text-muted-foreground">{t("subtitle")}</p>
+		<div className="space-y-5">
+			<header className="mw-panel px-4 py-4 sm:px-5">
+				<div className="mw-kicker mb-1">Ingestion monitor</div>
+				<h2 className="text-xl font-bold tracking-[-0.02em] text-foreground">{t("title")}</h2>
+				<p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
 			</header>
 
 			<section>
-				<h2 className="text-lg font-semibold text-foreground mb-2">
+				<h2 className="mw-section-title mb-2">
 					{t("baselineHeading")}
 				</h2>
 				{baseline.length === 0 ? (
 					<p className="text-sm text-muted-foreground">{t("baselineEmpty")}</p>
 				) : (
-					<div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+					<div className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-6">
 						{baseline
 							.slice()
 							.sort((a, b) => a.channel.localeCompare(b.channel))
 							.map((b) => (
 								<div
 									key={b.channel}
-									className="bg-card border border-border rounded-lg p-3"
+									className="mw-panel p-3"
 								>
 									<div className="text-xs font-medium text-foreground truncate" title={b.channel}>
 										{channelDisplayName(b.channel)}
 									</div>
-									<div className="text-xl font-bold text-foreground">
+									<div className="mw-data-value mt-1">
 										{b.median7d}
 									</div>
 									<div className="text-[10px] text-muted-foreground font-mono">
@@ -87,14 +88,14 @@ export default function HistoricalCrawlDashboard({ initialRuns, baseline }: Prop
 			</section>
 
 			<section>
-				<h2 className="text-lg font-semibold text-foreground mb-2">
+				<h2 className="mw-section-title mb-2">
 					{t("recentRuns")}
 				</h2>
 				{initialRuns.length === 0 ? (
 					<p className="text-sm text-muted-foreground">{t("runsEmpty")}</p>
 				) : (
-					<div className="overflow-x-auto">
-						<table className="w-full text-sm border border-border rounded-lg overflow-hidden">
+					<div className="mw-table-shell overflow-x-auto">
+						<table className="w-full text-sm">
 							<thead className="bg-muted text-xs uppercase text-muted-foreground">
 								<tr>
 									<th className="text-left px-3 py-2">{t("col.runAt")}</th>

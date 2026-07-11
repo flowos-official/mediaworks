@@ -1,5 +1,7 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
+import { useDialogBehavior } from "@/components/ui/use-dialog-behavior";
 
 type EventRow = {
   id: string; event_type: string; from_status: string | null; to_status: string | null;
@@ -12,6 +14,9 @@ export function EventsTimelineModal({
 }: { selectionId: string; onClose: () => void }) {
   const [events, setEvents] = useState<EventRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const t = useTranslations("pipeline");
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogBehavior(true, onClose, dialogRef);
 
   useEffect(() => {
     let cancelled = false;
@@ -23,15 +28,15 @@ export function EventsTimelineModal({
   }, [selectionId]);
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-      <div className="bg-card rounded-xl shadow-xl max-w-lg w-full max-h-[70vh] flex flex-col">
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="events-timeline-title" tabIndex={-1} className="bg-card rounded-xl border border-border shadow-xl max-w-lg w-full max-h-[75dvh] flex flex-col">
         <header className="p-4 border-b border-border flex justify-between">
-          <h2 className="font-semibold">이력</h2>
-          <button onClick={onClose} className="text-sm">닫기</button>
+          <h2 id="events-timeline-title" className="font-semibold">{t("historyTitle")}</h2>
+          <button type="button" onClick={onClose} className="min-h-9 rounded-lg px-3 text-sm hover:bg-muted">{t("cancel")}</button>
         </header>
         <ol className="p-4 overflow-auto text-xs space-y-2">
-          {loading && <li className="text-muted-foreground">로딩 중…</li>}
-          {!loading && events.length === 0 && <li className="text-muted-foreground italic">이력 없음</li>}
+          {loading && <li className="text-muted-foreground" role="status">{t("historyLoading")}</li>}
+          {!loading && events.length === 0 && <li className="text-muted-foreground italic">{t("historyEmpty")}</li>}
           {!loading && events.map((e) => (
             <li key={e.id} className="border-l-2 border-border pl-3">
               <div className="text-muted-foreground">

@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Loader2, FileSpreadsheet, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import TopProductsTable from '@/components/analytics/TopProductsTable';
 import ProductDetailModal from '@/components/analytics/ProductDetailModal';
 import { useAnalyticsFilter } from '@/lib/analytics/firm-filter-context';
+import { useDialogBehavior } from '@/components/ui/use-dialog-behavior';
 
 export default function ProductsPage() {
   const tg = useTranslations('gallery');
@@ -24,6 +25,8 @@ export default function ProductsPage() {
   const [taichoFile, setTaichoFile] = useState<File | null>(null);
   const [taichoUploading, setTaichoUploading] = useState(false);
   const [taichoResult, setTaichoResult] = useState<string | null>(null);
+  const taichoDialogRef = useRef<HTMLDivElement>(null);
+  useDialogBehavior(showTaicho, () => { setShowTaicho(false); setTaichoResult(null); }, taichoDialogRef);
 
   const fetchData = useCallback(async (signal: AbortSignal) => {
     setLoading(true);
@@ -44,8 +47,11 @@ export default function ProductsPage() {
 
   useEffect(() => {
     const ctrl = new AbortController();
-    fetchData(ctrl.signal);
-    return () => ctrl.abort();
+    const timer = window.setTimeout(() => void fetchData(ctrl.signal), 0);
+    return () => {
+      window.clearTimeout(timer);
+      ctrl.abort();
+    };
   }, [fetchData]);
 
   const handleTaichoUpload = async () => {
@@ -114,11 +120,13 @@ export default function ProductsPage() {
             className="absolute inset-0 bg-black/40"
             onClick={() => { setShowTaicho(false); setTaichoResult(null); }}
           />
-          <div className="relative bg-card rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6">
+          <div ref={taichoDialogRef} role="dialog" aria-modal="true" aria-labelledby="taicho-upload-title" tabIndex={-1} className="relative bg-card rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-foreground">{tg('uploadTitle')}</h2>
+              <h2 id="taicho-upload-title" className="text-lg font-bold text-foreground">{tg('uploadTitle')}</h2>
               <button
+                data-dialog-autofocus
                 type="button"
+                aria-label={tc('close')}
                 onClick={() => { setShowTaicho(false); setTaichoResult(null); }}
                 className="p-1.5 hover:bg-muted rounded-lg"
               >
@@ -128,8 +136,9 @@ export default function ProductsPage() {
             <p className="text-sm text-muted-foreground mb-4">{tg('uploadDescription')}</p>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">{tg('productCode')}</label>
+                <label htmlFor="taicho-product-code" className="block text-sm font-medium text-foreground mb-1">{tg('productCode')}</label>
                 <input
+                  id="taicho-product-code"
                   type="text"
                   value={taichoCode}
                   onChange={(e) => setTaichoCode(e.target.value)}
@@ -138,8 +147,9 @@ export default function ProductsPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">{tg('selectFile')}</label>
+                <label htmlFor="taicho-file" className="block text-sm font-medium text-foreground mb-1">{tg('selectFile')}</label>
                 <input
+                  id="taicho-file"
                   type="file"
                   accept=".xlsx,.xlsm"
                   onChange={(e) => setTaichoFile(e.target.files?.[0] ?? null)}

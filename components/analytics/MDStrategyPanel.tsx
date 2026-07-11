@@ -440,7 +440,7 @@ function DetailView({ initialData, backHref }: { initialData: SavedStrategyData;
 		<div className="space-y-6">
 			<div className="flex items-center gap-2">
 				<Target size={18} className="text-blue-600" />
-				<h3 className="text-lg font-semibold text-foreground">チャネル拡大戦略</h3>
+				<h2 className="text-lg font-semibold text-foreground">チャネル拡大戦略</h2>
 				<span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-600/15 text-blue-700 dark:text-blue-300 font-medium">7-Skill AI</span>
 			</div>
 
@@ -692,7 +692,7 @@ function ListView({ locale, router }: { locale: string; router: ReturnType<typeo
 			{/* Header */}
 			<div className="flex items-center gap-2">
 				<Target size={18} className="text-blue-600" />
-				<h3 className="text-lg font-semibold text-foreground">チャネル拡大戦略</h3>
+				<h2 className="text-lg font-semibold text-foreground">チャネル拡大戦略</h2>
 				<span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-600/15 text-blue-700 dark:text-blue-300 font-medium">7-Skill AI</span>
 			</div>
 
@@ -700,10 +700,11 @@ function ListView({ locale, router }: { locale: string; router: ReturnType<typeo
 			<Card className="border-border">
 				<CardContent className="p-4 space-y-3">
 					<div>
-						<label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">
+						<label htmlFor="expansion-goal" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">
 							拡大の目標・方向性 (任意)
 						</label>
 						<textarea
+							id="expansion-goal"
 							value={userGoal}
 							onChange={(e) => setUserGoal(e.target.value)}
 							placeholder="例: 楽天・Amazonで月商1000万を目指したい / TikTokで若年層にリーチしたい / 韓国Coupangへの越境ECを検討中"
@@ -715,27 +716,27 @@ function ListView({ locale, router }: { locale: string; router: ReturnType<typeo
 
 					<div className="grid grid-cols-1 md:grid-cols-3 gap-3">
 						<div>
-							<label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">カテゴリ</label>
-							<select value={category} onChange={(e) => setCategory(e.target.value)} disabled={isRunning} className="w-full border border-border bg-background text-foreground rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 disabled:bg-muted">
+							<label htmlFor="expansion-category" className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">カテゴリ</label>
+							<select id="expansion-category" value={category} onChange={(e) => setCategory(e.target.value)} disabled={isRunning} className="w-full border border-border bg-background text-foreground rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 disabled:bg-muted">
 								{CATEGORIES.map((c) => <option key={c}>{c}</option>)}
 							</select>
 						</div>
 						<div>
-							<label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">ターゲット市場</label>
-							<select value={targetMarket} onChange={(e) => setTargetMarket(e.target.value)} disabled={isRunning} className="w-full border border-border bg-background text-foreground rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 disabled:bg-muted">
+							<label htmlFor="expansion-market" className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">ターゲット市場</label>
+							<select id="expansion-market" value={targetMarket} onChange={(e) => setTargetMarket(e.target.value)} disabled={isRunning} className="w-full border border-border bg-background text-foreground rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 disabled:bg-muted">
 								{MARKETS.map((m) => <option key={m}>{m}</option>)}
 							</select>
 						</div>
 						<div>
-							<label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">価格帯（任意）</label>
-							<input type="text" value={priceRange} onChange={(e) => setPriceRange(e.target.value)} disabled={isRunning} placeholder="例: ¥3,000-8,000" className="w-full border border-border bg-background text-foreground rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 disabled:bg-muted" />
+							<label htmlFor="expansion-price" className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">価格帯（任意）</label>
+							<input id="expansion-price" type="text" value={priceRange} onChange={(e) => setPriceRange(e.target.value)} disabled={isRunning} placeholder="例: ¥3,000-8,000" className="w-full border border-border bg-background text-foreground rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 disabled:bg-muted" />
 						</div>
 					</div>
 					<p className="text-[10px] text-muted-foreground">
 						カテゴリとターゲット市場を指定すると、AI推薦商品も戦略に組み込まれます（指定なしでも分析可能）
 					</p>
 
-					<div className="flex items-center justify-between pt-1">
+					<div className="flex flex-col gap-3 pt-1 sm:flex-row sm:items-center sm:justify-between">
 						<p className="text-[10px] text-muted-foreground">
 							7つの専門スキル（目標分析→商品選定→チャネル戦略→価格設計→マーケ計画→収益予測→リスク対策）が順次分析します
 						</p>
@@ -743,7 +744,7 @@ function ListView({ locale, router }: { locale: string; router: ReturnType<typeo
 							type="button"
 							onClick={handleGenerate}
 							disabled={isRunning}
-							className="flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+							className="flex min-h-10 w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
 						>
 							{isRunning ? <Loader2 size={14} className="animate-spin" /> : <Rocket size={14} />}
 							{isRunning ? '分析中...' : '拡大戦略を分析'}

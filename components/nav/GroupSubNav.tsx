@@ -23,7 +23,7 @@ export default function GroupSubNav({ groupKey, role }: GroupSubNavProps) {
   const activeHref = findActiveMember(group, pathname)?.href ?? null;
 
   return (
-    <div className="flex gap-1 p-1 bg-card border border-border rounded-xl shadow-sm w-fit">
+    <nav aria-label={`${groupKey} views`} className="mw-scrollbar -mx-1 flex w-[calc(100%+0.5rem)] gap-1 overflow-x-auto rounded-xl border border-border bg-card/90 p-1 shadow-sm lg:hidden">
       {visibleMembers.map((m) => {
         const isActive = activeHref === m.href;
         return (
@@ -31,14 +31,14 @@ export default function GroupSubNav({ groupKey, role }: GroupSubNavProps) {
             key={m.href}
             href={localePath(locale, m.href)}
             prefetch
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
-              isActive ? 'bg-blue-600 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            className={`inline-flex min-h-10 shrink-0 items-center rounded-lg px-3 text-sm font-medium transition-all ${
+              isActive ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
             }`}
           >
             {t(m.labelKey)}
           </Link>
         );
       })}
-    </div>
+    </nav>
   );
 }

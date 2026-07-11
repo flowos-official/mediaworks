@@ -33,6 +33,7 @@ export function ScreenplayNewTabs({
 					const active = tab === t.id;
 					return (
 						<button
+							type="button"
 							key={t.id}
 							role="tab"
 							aria-selected={active}

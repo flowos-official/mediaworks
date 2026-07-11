@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useDeferredValue, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { Clock3, Search, Tv, X } from "lucide-react";
 import BroadcastListItem, {
 	type Broadcast,
 } from "./BroadcastListItem";
@@ -18,6 +19,10 @@ interface Props {
 	date: string | null;
 }
 
+const INITIAL_TIMED_ROWS = 10;
+const INITIAL_OA_ROWS = 16;
+const LOAD_MORE_ROWS = 16;
+
 type DayLoadState = {
 	date: string | null;
 	timedRows: Broadcast[];
@@ -31,10 +36,22 @@ function formatDateLabel(iso: string): string {
 	return `${y}年${parseInt(m, 10)}月${parseInt(d, 10)}日`;
 }
 
+const WEEKDAY_FORMATTER = new Intl.DateTimeFormat("ja-JP", {
+	weekday: "long",
+	timeZone: "Asia/Tokyo",
+});
+
+function formatWeekday(iso: string): string {
+	return WEEKDAY_FORMATTER.format(new Date(`${iso}T00:00:00+09:00`));
+}
+
 export default function UnifiedDayDetailPanel({ date }: Props) {
 	const t = useTranslations("broadcasts");
 	const [channelFilter, setChannelFilter] = useState<string>("all");
 	const [categoryFilter, setCategoryFilter] = useState<string>("all");
+	const [query, setQuery] = useState("");
+	const deferredQuery = useDeferredValue(query.trim().toLocaleLowerCase("ja"));
+	const [limits, setLimits] = useState({ key: "", timed: INITIAL_TIMED_ROWS, oa: INITIAL_OA_ROWS });
 	const [dayState, setDayState] = useState<DayLoadState>({
 		date: null,
 		timedRows: [],
@@ -104,7 +121,7 @@ export default function UnifiedDayDetailPanel({ date }: Props) {
 
 	if (!date) {
 		return (
-			<div className="text-sm text-muted-foreground p-6 text-center">
+			<div className="mw-empty-state border-0 bg-transparent">
 				{t("empty.day")}
 			</div>
 		);
@@ -116,13 +133,27 @@ export default function UnifiedDayDetailPanel({ date }: Props) {
 		if (categoryFilter === "all") return true;
 		return category === categoryFilter;
 	};
+	const includesQuery = (...values: Array<string | null | undefined>) =>
+		!deferredQuery || values.some((value) => value?.toLocaleLowerCase("ja").includes(deferredQuery));
 	const filteredTimed = timedRows.filter((b) =>
-		matchesFilters(b.channel, b.category ?? null),
+		matchesFilters(b.channel, b.category ?? null) && includesQuery(
+			b.program_title,
+			b.description,
+			b.presenter,
+			b.brand_name,
+			b.category,
+			...(b.products?.map((product) => product.name) ?? []),
+		),
 	);
 	const filteredOA = oaRows.filter((r) =>
-		matchesFilters(r.channel, r.category),
+		matchesFilters(r.channel, r.category) && includesQuery(
+			r.product_name,
+			r.category,
+			r.price_text,
+		),
 	);
 	const totalShown = filteredTimed.length + filteredOA.length;
+	const hasActiveFilters = channelFilter !== "all" || categoryFilter !== "all" || query.length > 0;
 
 	const channelCount = (slug: string): number => {
 		const fromTimed = timedRows.filter(
@@ -151,9 +182,14 @@ export default function UnifiedDayDetailPanel({ date }: Props) {
 			return a.start_time.localeCompare(b.start_time);
 		return a.channel.localeCompare(b.channel);
 	});
+	const resultKey = `${date}|${channelFilter}|${categoryFilter}|${deferredQuery}`;
+	const timedLimit = limits.key === resultKey ? limits.timed : INITIAL_TIMED_ROWS;
+	const oaLimit = limits.key === resultKey ? limits.oa : INITIAL_OA_ROWS;
+	const visibleTimed = sortedTimed.slice(0, timedLimit);
+	const visibleOA = filteredOA.slice(0, oaLimit);
 
 	const oaByChannel = new Map<string, OARow[]>();
-	for (const row of filteredOA) {
+	for (const row of visibleOA) {
 		const list = oaByChannel.get(row.channel) ?? [];
 		list.push(row);
 		oaByChannel.set(row.channel, list);
@@ -167,25 +203,51 @@ export default function UnifiedDayDetailPanel({ date }: Props) {
 				brandName={modalBroadcast?.brand_name ?? null}
 				onClose={() => setModalBroadcast(null)}
 			/>
-			<div className="flex items-baseline justify-between mb-3 flex-wrap gap-2">
-				<div>
-					<h2 className="text-xl font-semibold text-foreground">
-						{formatDateLabel(date)}
-					</h2>
-					<p className="text-xs text-muted-foreground">
-						{loading ? t("loading") : t("broadcastCount", { count: totalShown })}
-					</p>
+			<div className="mb-3 border-b border-border pb-3 xl:sticky xl:-top-4 xl:z-10 xl:-mx-4 xl:bg-card/95 xl:px-4 xl:pt-4 xl:backdrop-blur">
+				<div className="flex flex-wrap items-end justify-between gap-3">
+					<div>
+					<div className="mw-kicker mb-1">Selected rundown</div>
+						<div className="flex items-baseline gap-2">
+							<h2 className="text-xl font-semibold text-foreground">{formatDateLabel(date)}</h2>
+							<span className="text-xs font-medium text-muted-foreground">{formatWeekday(date)}</span>
+						</div>
+						<p className="text-xs text-muted-foreground">
+							{loading ? t("loading") : t("calendar.resultsSummary", { shown: totalShown, total: timedRows.length + oaRows.length })}
+						</p>
+					</div>
+					<div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+						<span className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-border bg-muted/50 px-2.5"><Clock3 size={13} />{t("unified.timedShort")} <strong className="font-mono text-foreground">{timedRows.length}</strong></span>
+						<span className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-border bg-muted/50 px-2.5"><Tv size={13} />{t("unified.oaShort")} <strong className="font-mono text-foreground">{oaRows.length}</strong></span>
+					</div>
+				</div>
+
+				<div className="relative mt-3">
+					<Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+					<input
+						type="search"
+						value={query}
+						onChange={(event) => setQuery(event.target.value)}
+						placeholder={t("calendar.searchPlaceholder")}
+						aria-label={t("calendar.searchLabel")}
+						className="h-10 w-full rounded-xl border border-border bg-background pl-9 pr-9 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary"
+					/>
+					{query && (
+						<button type="button" onClick={() => setQuery("")} className="absolute right-1 top-1 inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground" aria-label={t("calendar.clearSearch")}>
+							<X size={14} />
+						</button>
+					)}
 				</div>
 			</div>
 
-			<div className="flex flex-wrap gap-1.5 mb-3">
+			<div className="mw-scrollbar mb-2 flex gap-1.5 overflow-x-auto pb-1">
 				<button
 					type="button"
 					onClick={() => {
 						setChannelFilter("all");
 						setCategoryFilter("all");
 					}}
-					className={`px-2.5 py-0.5 rounded-full text-[11px] font-medium border transition-colors ${
+					aria-pressed={channelFilter === "all"}
+					className={`min-h-9 shrink-0 rounded-lg border px-3 text-[11px] font-medium transition-colors ${
 						channelFilter === "all"
 							? "bg-foreground text-background border-foreground"
 							: "bg-card text-foreground border-border hover:bg-muted"
@@ -212,7 +274,8 @@ export default function UnifiedDayDetailPanel({ date }: Props) {
 									setCategoryFilter("all");
 								}
 							}}
-							className={`px-2.5 py-0.5 rounded-full text-[11px] font-medium border transition-colors ${
+							aria-pressed={active}
+							className={`min-h-9 shrink-0 rounded-lg border px-3 text-[11px] font-medium transition-colors ${
 								active
 									? "bg-foreground text-background border-foreground"
 									: `${palette} hover:opacity-80`
@@ -225,11 +288,12 @@ export default function UnifiedDayDetailPanel({ date }: Props) {
 			</div>
 
 			{showCategoryChips && (
-				<div className="flex flex-wrap gap-1.5 mb-3">
+				<div className="mw-scrollbar mb-2 flex gap-1.5 overflow-x-auto pb-1">
 					<button
 						type="button"
 						onClick={() => setCategoryFilter("all")}
-						className={`px-2.5 py-0.5 rounded-full text-[11px] font-medium border transition-colors ${
+						aria-pressed={categoryFilter === "all"}
+						className={`min-h-9 shrink-0 rounded-lg border px-3 text-[11px] font-medium transition-colors ${
 							categoryFilter === "all"
 								? "bg-foreground text-background border-foreground"
 								: "bg-card text-foreground border-border hover:bg-muted"
@@ -242,7 +306,8 @@ export default function UnifiedDayDetailPanel({ date }: Props) {
 							key={c}
 							type="button"
 							onClick={() => setCategoryFilter(c)}
-							className={`px-2.5 py-0.5 rounded-full text-[11px] font-medium border transition-colors ${
+							aria-pressed={categoryFilter === c}
+							className={`min-h-9 shrink-0 rounded-lg border px-3 text-[11px] font-medium transition-colors ${
 								categoryFilter === c
 									? "bg-foreground text-background border-foreground"
 									: "bg-card text-foreground border-border hover:bg-muted"
@@ -251,6 +316,15 @@ export default function UnifiedDayDetailPanel({ date }: Props) {
 							{c}
 						</button>
 					))}
+				</div>
+			)}
+
+			{hasActiveFilters && (
+				<div className="mb-3 flex items-center justify-between gap-3 rounded-lg bg-muted/45 px-3 py-2 text-[11px] text-muted-foreground">
+					<span>{t("calendar.filteredCount", { count: totalShown })}</span>
+					<button type="button" onClick={() => { setChannelFilter("all"); setCategoryFilter("all"); setQuery(""); }} className="font-medium text-primary hover:underline">
+						{t("calendar.resetFilters")}
+					</button>
 				</div>
 			)}
 
@@ -277,10 +351,16 @@ export default function UnifiedDayDetailPanel({ date }: Props) {
 								{timedError ? ` · ${t("unified.fetchFailed")}` : ""}
 							</div>
 							<div className="flex flex-col gap-2">
-								{sortedTimed.map((b) => (
+								{visibleTimed.map((b) => (
 									<BroadcastListItem key={b.id} broadcast={b} onPlayVideo={setModalBroadcast} />
 								))}
 							</div>
+							{visibleTimed.length < sortedTimed.length && (
+								<ShowMoreButton
+									label={t("calendar.showMore", { count: Math.min(LOAD_MORE_ROWS, sortedTimed.length - visibleTimed.length) })}
+									onClick={() => setLimits({ key: resultKey, timed: timedLimit + LOAD_MORE_ROWS, oa: oaLimit })}
+								/>
+							)}
 						</section>
 					)}
 					{filteredOA.length > 0 && (
@@ -296,10 +376,24 @@ export default function UnifiedDayDetailPanel({ date }: Props) {
 										rows.map((r) => <OABroadcastListItem key={r.id} row={r} />),
 									)}
 							</div>
+							{visibleOA.length < filteredOA.length && (
+								<ShowMoreButton
+									label={t("calendar.showMore", { count: Math.min(LOAD_MORE_ROWS, filteredOA.length - visibleOA.length) })}
+									onClick={() => setLimits({ key: resultKey, timed: timedLimit, oa: oaLimit + LOAD_MORE_ROWS })}
+								/>
+							)}
 						</section>
 					)}
 				</div>
 			)}
 		</div>
+	);
+}
+
+function ShowMoreButton({ label, onClick }: { label: string; onClick: () => void }) {
+	return (
+		<button type="button" onClick={onClick} className="mt-2 inline-flex min-h-10 w-full items-center justify-center rounded-lg border border-dashed border-border bg-muted/25 px-4 text-xs font-medium text-foreground hover:border-primary/40 hover:bg-primary/5">
+			{label}
+		</button>
 	);
 }

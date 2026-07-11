@@ -1,7 +1,6 @@
 import { useTranslations } from 'next-intl';
 import { Star, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 
 interface Props {
   influencers: Array<{

@@ -1,5 +1,5 @@
 import "server-only";
-import { unstable_cacheLife as cacheLife, unstable_cacheTag as cacheTag } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 import { getServiceClient } from "@/lib/supabase";
 import { aggregateCalendarCounts, type CountsByDate } from "./aggregate-counts";
 import { MISDATED_OA_OR_CLAUSES } from "./misdated-suppression";

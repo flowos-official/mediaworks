@@ -1,8 +1,8 @@
 import "server-only";
 import {
+	cacheLife,
+	cacheTag,
 	revalidateTag,
-	unstable_cacheLife as cacheLife,
-	unstable_cacheTag as cacheTag,
 } from "next/cache";
 import { getServiceClient } from "@/lib/supabase";
 

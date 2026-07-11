@@ -1,23 +1,23 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
+import { ArrowRight, PackageSearch } from "lucide-react";
 import {
-  DndContext, DragEndEvent, useDroppable, useDraggable, PointerSensor, useSensor, useSensors,
+  DndContext, DragEndEvent, useDroppable, useDraggable, KeyboardSensor, PointerSensor, useSensor, useSensors,
 } from "@dnd-kit/core";
 import type { BoardData, BoardCard, SelectionStatus } from "@/lib/selections/types";
 import { SelectionCard } from "./SelectionCard";
 import { BroadcastMatchDialog } from "./BroadcastMatchDialog";
+import { localePath } from "@/lib/i18n/locale-path";
 
 const COLUMNS: Array<{ status: SelectionStatus; tone: string }> = [
-  { status: "selected",  tone: "bg-neutral-100 dark:bg-neutral-900/40" },
-  { status: "sourcing",  tone: "bg-amber-100 dark:bg-amber-900/30" },
-  { status: "scheduled", tone: "bg-blue-100 dark:bg-blue-900/30" },
-  { status: "closed",    tone: "bg-emerald-100 dark:bg-emerald-900/30" },
+  { status: "selected",  tone: "border-t-slate-400" },
+  { status: "sourcing",  tone: "border-t-amber-500" },
+  { status: "scheduled", tone: "border-t-blue-500" },
+  { status: "closed",    tone: "border-t-emerald-500" },
 ];
-
-const LABELS: Record<SelectionStatus, string> = {
-  selected: "선택됨", sourcing: "소싱중", scheduled: "방송예정", closed: "종료(최근 7일)",
-};
 
 const VALID: Record<SelectionStatus, SelectionStatus[]> = {
   selected:  ["sourcing", "closed"],
@@ -26,18 +26,18 @@ const VALID: Record<SelectionStatus, SelectionStatus[]> = {
   closed:    [],
 };
 
-function DropColumn({ status, children, count, tone }: {
-  status: SelectionStatus; children: React.ReactNode; count: number; tone: string;
+function DropColumn({ status, children, count, tone, label }: {
+  status: SelectionStatus; children: React.ReactNode; count: number; tone: string; label: string;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `col:${status}` });
   return (
     <section
       ref={setNodeRef}
-      className={`rounded-xl p-3 ${tone} ${isOver ? "ring-2 ring-indigo-400" : ""}`}
+      className={`min-w-[260px] flex-1 rounded-xl border border-border border-t-2 bg-card p-3 shadow-sm ${tone} ${isOver ? "ring-2 ring-primary/55" : ""}`}
     >
-      <header className="flex items-center justify-between mb-2">
-        <h2 className="text-sm font-semibold">{LABELS[status]}</h2>
-        <span className="text-xs text-muted-foreground">{count}</span>
+      <header className="mb-3 flex items-center justify-between border-b border-border pb-2">
+        <h2 className="text-xs font-semibold uppercase tracking-[0.04em]">{label}</h2>
+        <span className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">{count}</span>
       </header>
       <div className="flex flex-col gap-2 min-h-[40px]">{children}</div>
     </section>
@@ -62,10 +62,16 @@ export function KanbanBoard({
   initialBoard, canWrite,
 }: { initialBoard: BoardData; canWrite: boolean }) {
   const [board, setBoard] = useState(initialBoard);
+  const t = useTranslations("pipeline");
+  const locale = useLocale();
   const [pendingMove, setPendingMove] = useState<{
     card: BoardCard; from: SelectionStatus; to: SelectionStatus;
   } | null>(null);
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+  const [operationError, setOperationError] = useState<string | null>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor),
+  );
   const previousBoard = useRef<BoardData>(initialBoard);
 
   const params = useSearchParams();
@@ -84,30 +90,36 @@ export function KanbanBoard({
   async function refresh() {
     try {
       const res = await fetch("/api/selections");
-      if (res.ok) {
-        const data = await res.json();
-        setBoard(data.board);
-      }
-    } catch {}
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setBoard(data.board);
+      setOperationError(null);
+    } catch (error) {
+      setOperationError(t("refreshFailed", { error: error instanceof Error ? error.message : "unknown" }));
+    }
   }
 
   async function performMove(card: BoardCard, to: SelectionStatus, extras: Record<string, unknown> = {}) {
     previousBoard.current = board;
+    setOperationError(null);
     setBoard((b) => {
       const next: BoardData = { ...b };
       next[card.status] = b[card.status].filter((c) => c.id !== card.id);
       next[to] = [{ ...card, status: to }, ...b[to]];
       return next;
     });
-    const res = await fetch(`/api/selections/${card.id}/move`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ to_status: to, ...extras }),
-    });
-    if (!res.ok) {
-      setBoard(previousBoard.current);
+    try {
+      const res = await fetch(`/api/selections/${card.id}/move`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to_status: to, ...extras }),
+      });
+      if (res.ok) return;
       const err = await res.json().catch(() => ({ error: "unknown" }));
-      alert(`이동 실패: ${err.error}`);
+      throw new Error(err.error ?? "unknown");
+    } catch (error) {
+      setBoard(previousBoard.current);
+      setOperationError(t("moveFailed", { error: error instanceof Error ? error.message : "unknown" }));
     }
   }
 
@@ -120,7 +132,7 @@ export function KanbanBoard({
     if (!card) return;
     if (card.status === to) return;
     if (!VALID[card.status].includes(to)) {
-      alert(`${card.status} → ${to} 이동은 불가능합니다.`);
+      alert(t("moveNotAllowed", { from: t(`status.${card.status}`), to: t(`status.${to}`) }));
       return;
     }
     if (to === "scheduled") {
@@ -129,7 +141,7 @@ export function KanbanBoard({
     }
     if (to === "closed") {
       const reason = window.prompt(
-        "종료 사유? (aired / dropped / postponed)",
+        t("closePrompt"),
         "dropped",
       );
       if (!reason || !["aired", "dropped", "postponed"].includes(reason)) return;
@@ -139,17 +151,51 @@ export function KanbanBoard({
     await performMove(card, to);
   }
 
+  const totalCards = Object.values(board).reduce((sum, cards) => sum + cards.length, 0);
+
+  if (totalCards === 0) {
+    return (
+      <div className="mw-panel flex min-h-72 flex-col items-center justify-center px-5 py-10 text-center">
+        <div className="flex size-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary"><PackageSearch size={22} /></div>
+        <h2 className="mt-4 text-lg font-semibold text-foreground">{t("emptyTitle")}</h2>
+        <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">{canWrite ? t("emptyHint") : t("emptyViewerHint")}</p>
+        {canWrite && (
+          <Link href={localePath(locale, "/analytics/discovery")} className="mt-5 inline-flex min-h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
+            {t("emptyAction")} <ArrowRight size={15} />
+          </Link>
+        )}
+      </div>
+    );
+  }
+
   return (
     <>
-      <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {operationError && (
+        <div role="alert" className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:border-red-900/50 dark:text-red-300">
+          <span>{operationError}</span>
+          <button type="button" onClick={() => setOperationError(null)} className="font-medium underline">OK</button>
+        </div>
+      )}
+      <DndContext
+        sensors={sensors}
+        onDragEnd={onDragEnd}
+        accessibility={{ screenReaderInstructions: { draggable: t("dragInstructions") } }}
+      >
+        <p className="mb-2 text-[10px] text-muted-foreground xl:hidden">↔ {t("mobileScrollHint")}</p>
+        <div className="mw-scrollbar flex gap-3 overflow-x-auto pb-2 xl:grid xl:grid-cols-4 xl:overflow-visible">
           {COLUMNS.map((col) => (
-            <DropColumn key={col.status} status={col.status} count={board[col.status].length} tone={col.tone}>
+            <DropColumn
+              key={col.status}
+              status={col.status}
+              count={board[col.status].length}
+              tone={col.tone}
+              label={col.status === "closed" ? t("status.closedRecent") : t(`status.${col.status}`)}
+            >
               {board[col.status].map((c) => (
                 <DragCard key={c.id} card={c} canWrite={canWrite} onChanged={refresh} />
               ))}
               {board[col.status].length === 0 && (
-                <p className="text-xs text-muted-foreground italic py-4 text-center">비어 있음</p>
+                <p className="rounded-lg border border-dashed border-border py-6 text-center text-xs text-muted-foreground">{t("empty")}</p>
               )}
             </DropColumn>
           ))}

@@ -84,17 +84,17 @@ export function StatsDashboard() {
 	const latestInsight = data.weeklyInsights[0] ?? null;
 
 	return (
-		<div className="space-y-6">
-			<div className="flex flex-wrap items-center gap-2">
-				<span className="text-xs text-muted-foreground">Context:</span>
+		<div className="space-y-5">
+			<div className="mw-toolbar !flex-row !items-center !justify-start">
+				<span className="mw-data-label">Context</span>
 				{(["all", "home_shopping", "live_commerce"] as ContextFilter[]).map((c) => (
 					<button
 						key={c}
 						type="button"
 						onClick={() => setContext(c)}
-						className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+						className={`min-h-8 rounded-lg border px-3 text-xs font-medium transition-colors ${
 							context === c
-								? "bg-blue-500 text-white border-blue-500"
+								? "border-primary bg-primary text-primary-foreground"
 								: "bg-card text-foreground border-border hover:bg-muted"
 						}`}
 					>
@@ -102,7 +102,7 @@ export function StatsDashboard() {
 					</button>
 				))}
 			</div>
-			<div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+			<div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
 				<KPICard
 					label={t("kpiSourcedThisWeek")}
 					value={data.kpi.thisWeekSourced}
@@ -150,7 +150,7 @@ export function StatsDashboard() {
 
 function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
 	return (
-		<div className="bg-card border border-border rounded-lg p-4">
+		<div className="mw-panel p-4">
 			<h4 className="text-sm font-semibold text-foreground mb-3">{title}</h4>
 			{children}
 		</div>

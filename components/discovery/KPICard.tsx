@@ -7,18 +7,18 @@ interface Props {
 }
 
 const ACCENT = {
-	green: "bg-green-600/10 border-green-200 dark:border-green-900/40 text-green-700 dark:text-green-300",
-	red: "bg-red-600/10 border-red-200 dark:border-red-900/40 text-red-700 dark:text-red-300",
-	blue: "bg-blue-600/10 border-blue-200 dark:border-blue-900/40 text-blue-700 dark:text-blue-300",
-	gray: "bg-muted border-border text-foreground",
+	green: "border-emerald-500/20 bg-emerald-500/8 text-emerald-700 dark:text-emerald-300",
+	red: "border-red-500/20 bg-red-500/8 text-red-700 dark:text-red-300",
+	blue: "border-primary/20 bg-primary/8 text-primary",
+	gray: "border-border bg-card text-foreground",
 };
 
 export function KPICard({ label, value, subtitle, accent = "gray" }: Props) {
 	return (
-		<div className={`rounded-lg border p-4 ${ACCENT[accent]}`}>
-			<div className="text-[10px] font-semibold uppercase tracking-wide opacity-70">{label}</div>
-			<div className="text-2xl font-bold mt-1">{value}</div>
-			{subtitle && <div className="text-[10px] opacity-60 mt-1">{subtitle}</div>}
+		<div className={`rounded-xl border p-4 shadow-sm ${ACCENT[accent]}`}>
+			<div className="font-mono text-[9px] font-semibold uppercase tracking-[0.1em] opacity-70">{label}</div>
+			<div className="mt-1 font-mono text-2xl font-semibold tracking-[-0.04em] tabular-nums">{value}</div>
+			{subtitle && <div className="mt-1 text-[10px] opacity-60">{subtitle}</div>}
 		</div>
 	);
 }

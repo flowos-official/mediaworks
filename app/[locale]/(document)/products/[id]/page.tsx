@@ -95,17 +95,20 @@ export default async function ProductReportPage({
   return (
     <>
       {/* Header */}
-      <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
-          <div className="flex items-center gap-4">
+      <header className="mw-panel relative mb-5 overflow-hidden px-4 py-4 sm:px-5">
+        <span className="absolute inset-y-0 left-0 w-1 bg-primary" />
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex min-w-0 items-start gap-4">
             <Link
               href={localePath(locale, backPath)}
-              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+              className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-lg border border-border bg-background px-2.5 text-xs font-medium text-muted-foreground hover:text-foreground"
             >
               <ArrowLeft size={16} />
               {t("back")}
             </Link>
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">{product.name}</h1>
+            <div className="min-w-0">
+              <div className="mw-kicker mb-1">Grounded product report</div>
+              <h1 className="text-xl font-bold tracking-[-0.025em] text-foreground sm:text-2xl">{product.name}</h1>
               <div className="flex items-center gap-3 mt-1">
                 <span className="flex items-center gap-1 text-xs text-muted-foreground">
                   <Calendar size={12} />
@@ -118,14 +121,15 @@ export default async function ProductReportPage({
             </div>
           </div>
 
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex flex-wrap items-center gap-2">
             {research && <GenerateScreenplayButton productId={product.id} locale={locale} />}
             {research && <PdfDownload product={product} research={research} />}
           </div>
         </div>
+      </header>
 
         {!research ? (
-          <div className="bg-yellow-600/10 border border-yellow-200 dark:border-yellow-900/40 rounded-xl p-8 text-center">
+          <div className="mw-empty-state border-amber-500/20 bg-amber-500/8">
             <p className="text-yellow-700 dark:text-yellow-300">
               {status === 'analyzing'
                 ? t('generating')
@@ -136,9 +140,9 @@ export default async function ProductReportPage({
         ) : (
           <div id="report-content" className="space-y-6">
             {/* Product Info */}
-            <div className="bg-card rounded-2xl border border-border p-6">
+            <div className="mw-panel p-5 sm:p-6">
               <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
-                <Package size={20} className="text-blue-600" />
+                <Package size={20} className="text-primary" />
                 {t('productInfo')}
               </h2>
               {product.description && (

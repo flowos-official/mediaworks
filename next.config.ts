@@ -3,8 +3,13 @@ import createNextIntlPlugin from 'next-intl/plugin';
 import { withWorkflow } from 'workflow/next';
 
 const withNextIntl = createNextIntlPlugin('./i18n.ts');
+const projectRoot = process.cwd();
 
 const nextConfig: NextConfig = {
+  outputFileTracingRoot: projectRoot,
+  turbopack: {
+    root: projectRoot,
+  },
   experimental: {
     serverActions: {
       bodySizeLimit: '50mb'

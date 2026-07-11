@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element -- Broadcast feeds provide arbitrary remote image hosts at runtime. */
+
 import { useState } from "react";
 import { ChevronDown, ExternalLink } from "lucide-react";
 import { CHANNEL_BADGE, channelDisplayName } from "@/lib/broadcasts/channel-style";
@@ -38,61 +40,49 @@ export default function OABroadcastListItem({ row }: { row: OARow }) {
 		"bg-muted text-foreground border-border";
 	return (
 		<div className="border-b border-border last:border-b-0">
-			<div className="flex items-start gap-3 py-2 px-3 hover:bg-muted/50">
-				<span className="shrink-0 font-mono text-[11px] text-foreground w-10 text-right tabular-nums pt-0.5">
-					{row.start_time ? formatTime(row.start_time) : "—"}
-				</span>
+			<div className="flex min-w-0 items-start gap-2 px-3 py-2 hover:bg-muted/50 sm:gap-3">
 				{row.image_url ? (
 					<img
 						src={row.image_url}
 						alt=""
-						className="shrink-0 w-12 h-12 object-cover rounded border border-border"
+						className="size-12 shrink-0 rounded border border-border object-cover"
 						loading="lazy"
 						onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
 					/>
 				) : (
-					<div
-						className="shrink-0 w-12 h-12 rounded bg-muted border border-border"
-						aria-hidden="true"
-					/>
+					<div className="size-12 shrink-0 rounded border border-border bg-muted" aria-hidden="true" />
 				)}
-				<span
-					className={`shrink-0 inline-block px-1.5 py-0.5 rounded text-[10px] font-medium border ${badge}`}
-				>
-					{channelDisplayName(row.channel)}
-				</span>
 				<div className="flex-1 min-w-0">
-					<div className="text-sm text-foreground truncate">{row.product_name}</div>
-					{row.category && (
-						<div className="text-[10px] text-muted-foreground mt-0.5 truncate">{row.category}</div>
+					<div className="flex min-w-0 flex-wrap items-center gap-1.5">
+						<span className="font-mono text-[11px] font-semibold tabular-nums text-foreground">
+							{row.start_time ? formatTime(row.start_time) : "—"}
+						</span>
+						<span className={`inline-flex max-w-full items-center rounded border px-1.5 py-0.5 text-[10px] font-medium ${badge}`}>
+							{channelDisplayName(row.channel)}
+						</span>
+					</div>
+					<div className="mt-1 line-clamp-2 text-sm font-medium leading-snug text-foreground">{row.product_name}</div>
+					<div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground">
+						{row.category && <span className="truncate">{row.category}</span>}
+						<span className="font-mono text-foreground">{formatPrice(row)}</span>
+					</div>
+				</div>
+				<div className="flex shrink-0 flex-col gap-0.5 sm:flex-row">
+					<button
+						type="button"
+						onClick={() => setOpen((v) => !v)}
+						className={`flex size-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-indigo-600 ${open ? "text-indigo-600" : ""}`}
+						aria-label={open ? "分析を閉じる" : "分析を開く"}
+						aria-expanded={open}
+					>
+						<ChevronDown size={14} className={`transition-transform ${open ? "rotate-180" : ""}`} />
+					</button>
+					{row.source_url && (
+						<a href={row.source_url} target="_blank" rel="noopener noreferrer" className="flex size-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" aria-label="元ページを新しいタブで開く">
+							<ExternalLink size={14} />
+						</a>
 					)}
 				</div>
-				<div
-					className="shrink-0 text-right text-xs text-foreground font-mono truncate max-w-[7rem]"
-					title={formatPrice(row)}
-				>
-					{formatPrice(row)}
-				</div>
-				<button
-					type="button"
-					onClick={() => setOpen((v) => !v)}
-					className={`shrink-0 text-muted-foreground hover:text-indigo-600 transition-transform ${open ? "rotate-180 text-indigo-600" : ""}`}
-					aria-label="toggle analysis"
-					aria-expanded={open}
-				>
-					<ChevronDown size={14} />
-				</button>
-				{row.source_url && (
-					<a
-						href={row.source_url}
-						target="_blank"
-						rel="noopener noreferrer"
-						className="shrink-0 text-muted-foreground hover:text-foreground"
-						aria-label="external link"
-					>
-						<ExternalLink size={14} />
-					</a>
-				)}
 			</div>
 			{open && (
 				<div className="px-3 pb-3 flex flex-col gap-3">

@@ -106,7 +106,7 @@ export default async function SkillDetailPage({ params, searchParams }: PageProp
 
 			<header className="mb-6">
 				<div className="flex flex-wrap items-baseline gap-3">
-					<h1 className="font-mono text-2xl font-semibold text-foreground">{skill.slug}</h1>
+					<h2 className="font-mono text-2xl font-semibold text-foreground">{skill.slug}</h2>
 					<span className="text-base text-muted-foreground">{skill.display_name}</span>
 					{categoryBadge(skill.category)}
 				</div>

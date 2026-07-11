@@ -28,7 +28,7 @@ export default function RetryButton({ broadcastId }: { broadcastId: string }) {
 	return (
 		<div className="flex flex-col items-end gap-1">
 			<button type="button" disabled={pending} onClick={onClick}
-			  className="text-xs px-2 py-1 rounded border hover:bg-muted disabled:opacity-50">
+			  className="min-h-10 min-w-12 whitespace-nowrap rounded-lg border px-3 text-xs hover:bg-muted disabled:opacity-50">
 				{pending ? "..." : t("retry")}
 			</button>
 			{message && <span className="text-xs text-red-600 max-w-[12rem] text-right">{message}</span>}

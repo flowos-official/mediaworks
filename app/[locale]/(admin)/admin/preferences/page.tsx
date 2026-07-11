@@ -14,10 +14,10 @@ export default async function PreferencesPage({
   const t = await getTranslations('admin.preferences');
 
   return (
-    <div className="max-w-3xl space-y-4">
-      <section className="rounded-lg border border-border bg-card p-5">
+    <div className="max-w-4xl space-y-4">
+      <section className="mw-panel p-5">
         <div className="mb-4 flex items-start gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-blue-600 text-white">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-primary/15 bg-primary/10 text-primary">
             <Globe2 size={18} />
           </div>
           <div>
@@ -28,9 +28,9 @@ export default async function PreferencesPage({
         <LanguageSwitcher />
       </section>
 
-      <section className="rounded-lg border border-border bg-card p-5">
+      <section className="mw-panel p-5">
         <div className="mb-4 flex items-start gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-blue-600 text-white">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-primary/15 bg-primary/10 text-primary">
             <Palette size={18} />
           </div>
           <div>
@@ -41,7 +41,7 @@ export default async function PreferencesPage({
         <ThemePreferenceControl />
       </section>
 
-      <section className="rounded-lg border border-border bg-card p-5">
+      <section className="mw-panel p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted text-foreground">
@@ -54,7 +54,7 @@ export default async function PreferencesPage({
           </div>
           <Link
             href={localePath(locale, '/guide')}
-            className="inline-flex w-fit items-center justify-center rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-blue-300 hover:text-blue-600"
+            className="inline-flex min-h-9 w-fit items-center justify-center rounded-lg border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:border-primary/30 hover:text-primary"
           >
             {t('guideButton')}
           </Link>

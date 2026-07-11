@@ -19,8 +19,15 @@ export default async function LocaleLayout({
 
   return (
     <NextIntlClientProvider messages={messages}>
-      <Navbar />
-      {children}
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `try{document.documentElement.dataset.sidebarCollapsed=localStorage.getItem('mediaworks-sidebar-collapsed')==='true'?'true':'false'}catch{}`,
+        }}
+      />
+      <div className="min-h-screen">
+        <Navbar />
+        <div className="mw-content-frame">{children}</div>
+      </div>
     </NextIntlClientProvider>
   );
 }

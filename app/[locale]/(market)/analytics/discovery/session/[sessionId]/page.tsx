@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { useTranslations } from "next-intl";
 import { DiscoveryHeader } from "@/components/discovery/DiscoveryHeader";
 import { ProductCard, type DiscoveredProductRow } from "@/components/discovery/ProductCard";
 import { ContextSubTabs } from "@/components/discovery/ContextSubTabs";
+import { useTranslations } from "next-intl";
 
 type Session = {
 	id: string;
@@ -48,13 +48,13 @@ export default function SessionDetailPage() {
 		sourced: products.filter((p) => (p as unknown as { user_action?: string }).user_action === "sourced").length,
 	};
 
-	if (loading) return <div className="py-20 text-center text-sm text-muted-foreground">Loading...</div>;
+	if (loading) return <div className="py-20 text-center text-sm text-muted-foreground" role="status">{t("loadingResults")}</div>;
 
 	return (
 		<div>
 			<ContextSubTabs />
 			<div className="mb-4">
-				<p className="text-xs text-muted-foreground">session: {sessionId}</p>
+				<p className="font-mono text-[10px] text-muted-foreground">{t("sessionLabel")}: {sessionId}</p>
 			</div>
 			<DiscoveryHeader
 				session={session}
@@ -62,13 +62,14 @@ export default function SessionDetailPage() {
 				uncategorizedCount={counts.uncategorized}
 				sourcedCount={counts.sourced}
 			/>
+			<h2 className="mb-3 mt-5 text-sm font-semibold text-foreground">{t("sessionProductsTitle")} ({products.length})</h2>
 			<div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-2">
 				{products.map((p) => (
 					<ProductCard key={p.id} product={p} />
 				))}
 				{products.length === 0 && (
 					<div className="col-span-full py-12 text-center text-sm text-muted-foreground">
-						(no products in this session)
+						{t("sessionEmpty")}
 					</div>
 				)}
 			</div>

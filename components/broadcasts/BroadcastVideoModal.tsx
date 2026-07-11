@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { X, ShoppingBag } from "lucide-react";
+import { useDialogBehavior } from "@/components/ui/use-dialog-behavior";
 
 interface BroadcastProduct {
   product_id: string;
@@ -46,6 +47,7 @@ export default function BroadcastVideoModal({
     broadcastId: null,
     products: [],
   });
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   const isOpen = !!(broadcastId && videoKey);
   const archiveBaseUrl = process.env.NEXT_PUBLIC_VIDEO_ARCHIVE_BASE_URL;
@@ -56,15 +58,7 @@ export default function BroadcastVideoModal({
   const products = hasCurrentProducts ? productState.products : [];
   const loading = isOpen && !hasCurrentProducts;
 
-  // ESC to close
-  useEffect(() => {
-    if (!isOpen) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [isOpen, onClose]);
+  useDialogBehavior(isOpen, onClose, dialogRef);
 
   // Fetch products for this broadcast
   useEffect(() => {
@@ -92,13 +86,18 @@ export default function BroadcastVideoModal({
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="broadcast-video-title"
+        tabIndex={-1}
         className="relative w-full max-w-3xl max-h-[90dvh] overflow-y-auto bg-card rounded-xl shadow-2xl flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border flex-shrink-0">
           <div>
-            <h2 className="text-base font-semibold text-foreground">
+            <h2 id="broadcast-video-title" className="text-base font-semibold text-foreground">
               {t("archivedBroadcast")}
             </h2>
             {brandName && (
@@ -106,6 +105,7 @@ export default function BroadcastVideoModal({
             )}
           </div>
           <button
+            data-dialog-autofocus
             type="button"
             onClick={onClose}
             className="text-muted-foreground hover:text-foreground transition-colors"

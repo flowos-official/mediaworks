@@ -36,15 +36,16 @@ export default async function GuidePage({
 	const guide = getGuideContent(locale);
 
 	return (
-		<main className="bg-background">
-			<section className="border-b border-border bg-muted/30">
-				<div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+		<main className="mw-page">
+			<section className="mw-panel relative overflow-hidden">
+				<span className="absolute inset-y-0 left-0 w-1 bg-primary" />
+				<div className="px-5 py-6 sm:px-7 sm:py-8">
 					<div className="max-w-3xl">
-						<div className="mb-3 flex items-center gap-2 text-sm font-medium text-blue-600">
+						<div className="mw-kicker mb-3 flex items-center gap-2">
 							<BookOpen size={18} />
 							<span>{guide.badge}</span>
 						</div>
-						<h1 className="text-3xl font-bold tracking-normal text-foreground sm:text-4xl">
+						<h1 className="text-2xl font-bold tracking-[-0.035em] text-foreground sm:text-3xl">
 							{guide.heroTitle}
 						</h1>
 						<p className="mt-4 text-base leading-7 text-muted-foreground">
@@ -57,7 +58,7 @@ export default async function GuidePage({
 							<Link
 								key={link.href}
 								href={localePath(locale, link.href)}
-								className="rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-blue-300 hover:text-blue-600"
+								className="inline-flex min-h-9 items-center rounded-lg border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:border-primary/30 hover:text-primary"
 							>
 								{link.label}
 							</Link>
@@ -66,17 +67,17 @@ export default async function GuidePage({
 				</div>
 			</section>
 
-			<div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+			<div className="mx-auto max-w-6xl py-8">
 				<section aria-labelledby="workflow-title" className="mb-12">
 					<div className="mb-4 flex items-center gap-2">
-						<CheckCircle2 size={20} className="text-blue-600" />
+						<CheckCircle2 size={20} className="text-primary" />
 						<h2 id="workflow-title" className="text-xl font-semibold text-foreground">
 							{guide.workflowTitle}
 						</h2>
 					</div>
 					<div className="grid gap-3 md:grid-cols-2">
 						{guide.workflows.map((workflow) => (
-							<div key={workflow.role} className="rounded-lg border border-border bg-card p-4">
+							<div key={workflow.role} className="mw-panel p-4">
 								<h3 className="text-base font-semibold text-foreground">{workflow.role}</h3>
 								<ol className="mt-3 flex flex-wrap gap-2">
 									{workflow.path.map((step, index) => (
@@ -84,7 +85,7 @@ export default async function GuidePage({
 											key={step}
 											className="rounded-md bg-muted px-2.5 py-1.5 text-sm text-foreground"
 										>
-											<span className="mr-1 text-blue-600">{index + 1}</span>
+											<span className="mr-1 text-primary">{index + 1}</span>
 											{step}
 										</li>
 									))}
@@ -94,20 +95,31 @@ export default async function GuidePage({
 					</div>
 				</section>
 
-				<section aria-label={guide.sectionsLabel} className="space-y-10">
+				<div className="grid gap-5 xl:grid-cols-[220px_minmax(0,1fr)] xl:items-start">
+					<nav aria-label={guide.sectionsLabel} className="mw-scrollbar sticky top-3 z-10 flex gap-1.5 overflow-x-auto rounded-xl border border-border bg-card/95 p-2 shadow-sm backdrop-blur xl:block xl:space-y-1 xl:overflow-visible">
+						<div className="mw-kicker hidden px-2 pb-2 pt-1 xl:block">{guide.sectionsLabel}</div>
+						{guide.sections.map((section, index) => (
+							<a key={section.title} href={`#guide-section-${index + 1}`} className="inline-flex min-h-9 shrink-0 items-center gap-2 rounded-lg px-2.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground xl:flex">
+								<span className="font-mono text-[10px] text-primary">{String(index + 1).padStart(2, "0")}</span>
+								<span className="max-w-40 truncate">{section.title}</span>
+							</a>
+						))}
+					</nav>
+				<section aria-label={guide.sectionsLabel} className="min-w-0 space-y-10">
 					{guide.sections.map((section, index) => {
 						const Icon = sectionIcons[index] ?? BookOpen;
 						return (
 							<article
 								key={section.title}
-								className="rounded-xl border border-border bg-card p-6 shadow-sm"
+								id={`guide-section-${index + 1}`}
+								className="mw-panel scroll-mt-24 p-5 sm:p-6"
 							>
 								<header className="mb-6 flex items-start gap-3 border-b border-border pb-5">
-									<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-blue-600 text-white">
+									<div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-primary/15 bg-primary/10 text-primary">
 										<Icon size={20} />
 									</div>
 									<div>
-										<div className="text-xs font-medium uppercase tracking-wide text-blue-600">
+										<div className="mw-kicker">
 											Step {index + 1}
 										</div>
 										<h2 className="mt-1 text-xl font-semibold text-foreground">
@@ -125,7 +137,7 @@ export default async function GuidePage({
 											<p className="text-sm leading-7 text-muted-foreground">{item.body}</p>
 											{item.steps && item.steps.length > 0 ? (
 												<div className="rounded-md border border-border bg-muted/40 p-4">
-													<div className="mb-2 text-xs font-semibold uppercase tracking-wide text-blue-600">
+											<div className="mb-2 text-xs font-semibold uppercase tracking-wide text-primary">
 														{guide.stepsLabel}
 													</div>
 													<ol className="space-y-2 text-sm leading-6 text-foreground">
@@ -162,6 +174,7 @@ export default async function GuidePage({
 						);
 					})}
 				</section>
+				</div>
 			</div>
 		</main>
 	);

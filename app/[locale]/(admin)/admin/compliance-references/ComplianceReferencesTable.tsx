@@ -1,8 +1,9 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useDialogBehavior } from "@/components/ui/use-dialog-behavior";
 import type { ComplianceReference, ReferenceLaw } from "@/lib/screenplay/compliance/types";
 
 const LAWS: ReferenceLaw[] = ["yakkiho", "keihyo", "kenzo", "other", "shokuhin", "tokushoho"];
@@ -39,6 +40,8 @@ export default function ComplianceReferencesTable({ initial }: { initial: Compli
 	const [draft, setDraft] = useState<Draft | null>(null);
 	const [modalErr, setModalErr] = useState<string | null>(null);
 	const [saving, setSaving] = useState(false);
+	const dialogRef = useRef<HTMLDivElement>(null);
+	useDialogBehavior(!!draft, () => { if (!saving) { setDraft(null); setModalErr(null); } }, dialogRef, { closeOnEscape: !saving });
 
 	const visible = useMemo(() => {
 		const q = search.trim();
@@ -96,23 +99,24 @@ export default function ComplianceReferencesTable({ initial }: { initial: Compli
 
 	return (
 		<div className="space-y-4">
-			<div>
-				<h2 className="text-lg font-bold">{t("title")}</h2>
-				<p className="text-xs text-muted-foreground mt-1">{t("subtitle")}</p>
+			<div className="mw-panel px-4 py-4 sm:px-5">
+				<div className="mw-kicker mb-1">Evidence corpus</div>
+				<h2 className="text-lg font-bold tracking-[-0.015em]">{t("title")}</h2>
+				<p className="mt-1 text-xs text-muted-foreground">{t("subtitle")}</p>
 			</div>
-			<div className="flex flex-wrap items-center gap-2 justify-between">
+			<div className="mw-toolbar">
 				<div className="flex flex-wrap items-center gap-2">
-					<select value={filterLaw} onChange={(e) => setFilterLaw(e.target.value as "" | ReferenceLaw)} className="border rounded px-2 py-1.5 text-sm">
+					<select aria-label={t("filterAllLaws")} value={filterLaw} onChange={(e) => setFilterLaw(e.target.value as "" | ReferenceLaw)} className="h-9 rounded-lg border border-border bg-background px-2 text-sm">
 						<option value="">{t("filterAllLaws")}</option>
 						{LAWS.map((l) => <option key={l} value={l}>{t(`laws.${l}`)}</option>)}
 					</select>
-					<input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("searchPlaceholder")} className="border rounded px-3 py-1.5 text-sm w-56" />
+					<input aria-label={t("searchPlaceholder")} type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("searchPlaceholder")} className="h-9 w-64 max-w-full rounded-lg border border-border bg-background px-3 text-sm" />
 					<span className="text-xs text-muted-foreground">{t("count", { n: visible.length })}</span>
 				</div>
 				<Button onClick={openCreate}>{t("addButton")}</Button>
 			</div>
-			<div className="border rounded overflow-x-auto">
-				<table className="w-full border-collapse text-sm">
+			<div className="mw-table-shell overflow-x-auto">
+				<table className="w-full min-w-[900px] border-collapse text-sm">
 					<thead className="bg-muted">
 						<tr className="border-b text-foreground">
 							<th className="text-left p-2 font-medium">{t("col.law")}</th>
@@ -130,7 +134,7 @@ export default function ComplianceReferencesTable({ initial }: { initial: Compli
 								<td className="p-2 text-xs text-muted-foreground">{r.category_scope.length ? r.category_scope.join(", ") : t("allCategories")}</td>
 								<td className="p-2 max-w-[22rem]"><div className="font-medium">{r.topic}</div><div className="text-xs text-muted-foreground line-clamp-2">{r.body}</div></td>
 								<td className="p-2 text-xs">{r.source_url ? <a href={r.source_url} target="_blank" rel="noreferrer" className="underline">{r.citation || t("col.source")}</a> : <span className="text-muted-foreground">{r.citation || "—"}</span>}</td>
-								<td className="p-2"><button onClick={() => toggleActive(r)} disabled={busy === r.id} className="text-xs underline-offset-2 hover:underline disabled:opacity-50">{r.active ? t("activeYes") : t("activeNo")}</button></td>
+								<td className="p-2"><button type="button" onClick={() => toggleActive(r)} disabled={busy === r.id} className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-md px-2 text-xs underline-offset-2 hover:bg-muted hover:underline disabled:opacity-50">{r.active ? t("activeYes") : t("activeNo")}</button></td>
 								<td className="p-2 text-right whitespace-nowrap">
 									<Button variant="outline" size="sm" onClick={() => openEdit(r)} disabled={busy === r.id}>{t("edit")}</Button>
 								</td>
@@ -143,8 +147,8 @@ export default function ComplianceReferencesTable({ initial }: { initial: Compli
 
 			{draft && (
 				<div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={(e) => { if (e.target === e.currentTarget) closeModal(); }}>
-					<Card className="w-full max-w-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-						<h3 className="font-bold text-lg">{draft.id ? t("form.editHeading") : t("form.createHeading")}</h3>
+					<Card ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="compliance-reference-dialog-title" tabIndex={-1} className="w-full max-w-2xl p-6 space-y-4 max-h-[90dvh] overflow-y-auto">
+						<h3 id="compliance-reference-dialog-title" className="font-bold text-lg">{draft.id ? t("form.editHeading") : t("form.createHeading")}</h3>
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 							<label className="block"><span className="text-xs text-foreground">{t("form.law")}</span>
 								<select value={draft.law} onChange={(e) => setDraft({ ...draft, law: e.target.value as ReferenceLaw })} className="mt-1 w-full border rounded px-2 py-2">

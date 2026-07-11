@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Search, X } from "lucide-react";
 import HistoricalBroadcasts from "./HistoricalBroadcasts";
+import { useDialogBehavior } from "@/components/ui/use-dialog-behavior";
 
 interface Props {
 	channelCounts: Record<string, number>;
@@ -17,26 +18,8 @@ interface Props {
 export default function BroadcastSearchOverlay({ channelCounts }: Props) {
 	const t = useTranslations("broadcasts");
 	const [open, setOpen] = useState(false);
-
-	// ESC to close.
-	useEffect(() => {
-		if (!open) return;
-		const onKey = (e: KeyboardEvent) => {
-			if (e.key === "Escape") setOpen(false);
-		};
-		window.addEventListener("keydown", onKey);
-		return () => window.removeEventListener("keydown", onKey);
-	}, [open]);
-
-	// Lock body scroll while open.
-	useEffect(() => {
-		if (!open) return;
-		const prev = document.body.style.overflow;
-		document.body.style.overflow = "hidden";
-		return () => {
-			document.body.style.overflow = prev;
-		};
-	}, [open]);
+	const dialogRef = useRef<HTMLDivElement>(null);
+	useDialogBehavior(open, () => setOpen(false), dialogRef);
 
 	return (
 		<>
@@ -52,9 +35,12 @@ export default function BroadcastSearchOverlay({ channelCounts }: Props) {
 
 			{open && (
 				<div
+					ref={dialogRef}
 					className="fixed inset-0 z-50 flex items-start justify-center pt-12 px-4"
 					role="dialog"
 					aria-modal="true"
+					aria-labelledby="broadcast-search-title"
+					tabIndex={-1}
 				>
 					<button
 						type="button"
@@ -64,10 +50,11 @@ export default function BroadcastSearchOverlay({ channelCounts }: Props) {
 					/>
 					<div className="relative bg-card rounded-2xl shadow-2xl w-full max-w-5xl max-h-[calc(100vh-6rem)] overflow-y-auto">
 						<div className="sticky top-0 bg-card border-b border-border px-6 py-3 flex items-center justify-between rounded-t-2xl z-10">
-							<h2 className="text-base font-semibold text-foreground">
+							<h2 id="broadcast-search-title" className="text-base font-semibold text-foreground">
 								{t("historical.searchTitle")}
 							</h2>
 							<button
+								data-dialog-autofocus
 								type="button"
 								onClick={() => setOpen(false)}
 								className="p-1.5 hover:bg-muted rounded-lg"

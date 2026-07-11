@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
-  ImageIcon, Search, X, Loader2, ChevronLeft, ChevronRight,
+  ImageIcon, Search, X, Loader2, ChevronLeft, ChevronRight, RefreshCw,
 } from 'lucide-react';
 
 type GalleryProduct = {
@@ -60,9 +60,9 @@ export default function GalleryPage() {
   }, [search, t]);
 
   useEffect(() => {
-    const timer = setTimeout(fetchProducts, 300);
+    const timer = setTimeout(fetchProducts, search ? 300 : 0);
     return () => clearTimeout(timer);
-  }, [fetchProducts]);
+  }, [fetchProducts, search]);
 
   const openProduct = async (code: string) => {
     setSelectedCode(code);
@@ -107,13 +107,14 @@ export default function GalleryPage() {
           <button
             type="button"
             onClick={() => { setSelectedCode(null); setSelectedImages([]); setDetailError(null); }}
-            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4"
+            className="mb-3 inline-flex min-h-9 items-center gap-1 rounded-lg border border-border bg-card px-3 text-xs font-medium text-muted-foreground hover:text-foreground"
           >
             <ChevronLeft size={16} /> {t('backToList')}
           </button>
 
-          <div className="mb-6">
-            <h2 className="text-xl font-bold text-foreground">{product?.name ?? selectedCode}</h2>
+          <div className="mw-panel mb-5 px-4 py-4 sm:px-5">
+            <div className="mw-kicker mb-1">Asset library</div>
+            <h2 className="text-xl font-bold tracking-[-0.02em] text-foreground">{product?.name ?? selectedCode}</h2>
             <div className="flex items-center gap-2 mt-1">
               {product?.category && <Badge variant="secondary" className="text-[10px]">{product.category}</Badge>}
               <span className="text-xs text-muted-foreground font-mono">{selectedCode}</span>
@@ -136,7 +137,7 @@ export default function GalleryPage() {
           )}
 
           {!detailLoading && !detailError && selectedImages.length === 0 && (
-            <div className="text-center py-16 text-muted-foreground">{t('noImages')}</div>
+            <div className="mw-empty-state">{t('noImages')}</div>
           )}
 
           {!detailLoading && selectedImages.length > 0 && (
@@ -148,13 +149,13 @@ export default function GalleryPage() {
                       <ImageIcon size={14} /> {sheetName}
                       <span className="text-xs font-normal text-muted-foreground">({items.length}{t('images')})</span>
                     </h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                       {items.map(({ img, flatIndex }) => (
                         <button
                           key={img.id}
                           type="button"
                           onClick={() => setLightboxIndex(flatIndex)}
-                          className="relative aspect-square rounded-lg overflow-hidden border border-border hover:border-blue-400 hover:shadow-md transition-all bg-muted cursor-pointer"
+                          className="relative aspect-square cursor-pointer overflow-hidden rounded-lg border border-border bg-muted transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
                         >
                           <Image
                             src={img.s3_url}
@@ -254,27 +255,40 @@ export default function GalleryPage() {
   return (
     <>
         {/* Search */}
-        <div className="relative mb-6">
+        <div className="mw-toolbar relative mb-5">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
+            aria-label={t('searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t('searchPlaceholder')}
-            className="w-full pl-9 pr-4 py-2.5 text-sm border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-card"
+            className="h-10 w-full rounded-lg border border-border bg-background pl-9 pr-4 text-sm focus:border-primary"
           />
         </div>
 
         {!loading && listError && (
           <div
             role="alert"
-            className="mb-4 rounded-lg border border-red-200 dark:border-red-900/40 bg-red-600/10 px-4 py-3 text-sm text-red-700 dark:text-red-300"
+            className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-600/10 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:text-red-300"
           >
-            {listError}
+            <span>{listError}</span>
+            <button type="button" onClick={fetchProducts} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-current/25 px-3 text-xs font-medium hover:bg-red-500/10">
+              <RefreshCw size={14} /> {t('retry')}
+            </button>
           </div>
         )}
 
         {/* Product Grid */}
+        <div className="mb-3 flex items-end justify-between gap-3">
+          <div>
+            <div className="mw-kicker mb-1">Asset catalogue</div>
+            <h2 className="mw-section-title">{t('title')}</h2>
+          </div>
+          {!loading && !listError && (
+            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">{t('resultCount', { count: products.length })}</span>
+          )}
+        </div>
         {loading && (
           <div className="flex items-center justify-center py-16">
             <Loader2 size={24} className="animate-spin text-blue-600" />
@@ -282,19 +296,19 @@ export default function GalleryPage() {
         )}
 
         {!loading && !listError && products.length === 0 && (
-          <div className="text-center py-16 text-muted-foreground">{t('noImages')}</div>
+          <div className="mw-empty-state">{t('noImages')}</div>
         )}
 
         {!loading && products.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {products.map((product) => (
               <button
                 key={product.code}
                 type="button"
                 onClick={() => openProduct(product.code)}
-                className="text-left group"
+                className="group rounded-xl border border-transparent p-2 text-left transition hover:border-border hover:bg-card hover:shadow-md"
               >
-                <div className="relative aspect-square rounded-xl overflow-hidden border border-border bg-card group-hover:border-blue-400 group-hover:shadow-lg transition-all">
+                <div className="relative aspect-square overflow-hidden rounded-lg border border-border bg-card transition-all group-hover:border-primary/35">
                   <Image
                     src={product.thumbnail}
                     alt={product.name}
@@ -305,8 +319,8 @@ export default function GalleryPage() {
                     unoptimized
                   />
                 </div>
-                <div className="mt-2 px-1">
-                  <h3 className="text-sm font-medium text-foreground line-clamp-2">{product.name}</h3>
+                <div className="mt-2 px-0.5 pb-1">
+                  <h3 className="line-clamp-2 text-xs font-semibold leading-relaxed text-foreground sm:text-sm">{product.name}</h3>
                   <div className="flex items-center gap-2 mt-0.5">
                     {product.category && <Badge variant="secondary" className="text-[9px]">{product.category}</Badge>}
                     <span className="text-[10px] text-muted-foreground">{product.imageCount}{t('images')}</span>

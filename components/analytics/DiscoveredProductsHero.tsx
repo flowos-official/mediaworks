@@ -472,7 +472,6 @@ export default function DiscoveredProductsHero({
 				setSelectionMap(map);
 			})
 			.catch(() => {});
-	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [products]);
 
 	if (!products || products.length === 0) return null;
@@ -519,6 +518,7 @@ export default function DiscoveredProductsHero({
 				<div className="bg-card border border-amber-600/30 rounded-xl p-3 mb-4 flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
 					<input
 						type="text"
+						aria-label="フォーカス絞り込み"
 						value={focus}
 						onChange={(e) => setFocus(e.target.value)}
 						placeholder="フォーカス絞り込み (任意) — 例: 美容家電に絞って / 韓国コスメ中心 / ¥5000以下"

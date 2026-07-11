@@ -38,9 +38,9 @@ export function ScreenplayMarkdown({ markdown }: { markdown: string }) {
 								<div className="text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-600/10 inline-block px-2 py-0.5 rounded-full mb-3">
 									{t("finalScript")}
 								</div>
-								<h1 className="text-3xl font-bold tracking-tight text-foreground leading-tight">
+								<h2 className="text-3xl font-bold tracking-tight text-foreground leading-tight">
 									{b.text}
-								</h1>
+								</h2>
 							</header>
 						);
 					}

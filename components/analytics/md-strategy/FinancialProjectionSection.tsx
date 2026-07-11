@@ -1,7 +1,6 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { BarChart3, TrendingUp } from 'lucide-react';
 import {
 	AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -73,8 +72,8 @@ export default function FinancialProjectionSection({ data }: Props) {
 									<XAxis dataKey="month" tick={{ fontSize: 10, fill: '#9ca3af' }} />
 									<YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} tickFormatter={(v) => `${v}万`} />
 									<Tooltip formatter={(v: unknown) => [`${Number(v)}万円`]} contentStyle={{ fontSize: 11, borderRadius: 8 }} />
-									<Area type="monotone" dataKey="revenue" name="売上" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.15} strokeWidth={2} />
-									<Area type="monotone" dataKey="profit" name="利益" stroke="#10b981" fill="#10b981" fillOpacity={0.15} strokeWidth={2} />
+									<Area isAnimationActive={false} type="monotone" dataKey="revenue" name="売上" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.15} strokeWidth={2} />
+									<Area isAnimationActive={false} type="monotone" dataKey="profit" name="利益" stroke="#10b981" fill="#10b981" fillOpacity={0.15} strokeWidth={2} />
 								</AreaChart>
 							</ResponsiveContainer>
 						</div>

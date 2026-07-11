@@ -7,8 +7,10 @@ import {
 	ChevronLeft,
 	ChevronRight,
 	Copy,
+	Columns3,
 	Download,
 	FileText,
+	Focus,
 	PencilLine,
 	ShieldAlert,
 	ShieldCheck,
@@ -30,6 +32,8 @@ interface Props {
 	readiness: ReadinessSummary;
 	onEdit?: () => void;
 	editing?: boolean;
+	focusMode?: boolean;
+	onToggleFocus?: () => void;
 }
 
 function renderedTextLength(md: string): number {
@@ -77,6 +81,8 @@ export function ScreenplayHeaderBar({
 	readiness,
 	onEdit,
 	editing = false,
+	focusMode = false,
+	onToggleFocus,
 }: Props) {
 	const t = useTranslations("screenplay.workspace");
 	const [copied, setCopied] = useState(false);
@@ -130,7 +136,7 @@ export function ScreenplayHeaderBar({
 	}
 
 	return (
-		<div className="z-20 mb-4 rounded-xl border border-border bg-card/95 px-3 py-2.5 shadow-sm backdrop-blur-sm sm:sticky sm:top-16">
+		<div className="z-20 mb-4 rounded-xl border border-border bg-card/95 px-3 py-2.5 shadow-sm backdrop-blur-sm sm:sticky sm:top-16 md:top-3">
 			<div className="flex flex-wrap items-center justify-between gap-3">
 				<div className="min-w-0 flex-1">
 					<div className="flex flex-wrap items-center gap-2">
@@ -149,6 +155,18 @@ export function ScreenplayHeaderBar({
 				</div>
 
 				<div className="grid w-full grid-cols-3 gap-1 sm:flex sm:w-auto sm:items-center">
+					{onToggleFocus && (
+						<button
+							type="button"
+							onClick={onToggleFocus}
+							aria-pressed={focusMode}
+							title={`${focusMode ? t("exitFocus") : t("enterFocus")} (⌘⇧F)`}
+							className={`hidden min-h-10 items-center justify-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition lg:inline-flex lg:min-h-0 ${focusMode ? "border-primary/25 bg-primary/10 text-primary" : "border-border text-foreground hover:bg-muted"}`}
+						>
+							{focusMode ? <Columns3 size={13} /> : <Focus size={13} />}
+							{focusMode ? t("exitFocus") : t("enterFocus")}
+						</button>
+					)}
 					{onEdit && (
 						<button
 							type="button"

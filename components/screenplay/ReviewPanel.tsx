@@ -22,12 +22,14 @@ interface Props {
 	onCheckChange?: (check: CheckWithMeta | null) => void;
 	onJumpToQuote?: (quote: string) => void;
 	onApplyRewrite?: (quote: string, rewrite: string) => void;
+	showRefineTab?: boolean;
 }
 
 export function ReviewPanel({
 	screenplayId, version, versions, initialCheck, initialCheckVersionId,
 	isGenerating, activeTab, onTabChange, onRefineStart, onJumpToLine,
 	onCheckChange, onJumpToQuote, onApplyRewrite,
+	showRefineTab = true,
 }: Props) {
 	const t = useTranslations("screenplay");
 	const [findingCount, setFindingCount] = useState<number | null>(() =>
@@ -46,12 +48,12 @@ export function ReviewPanel({
 	const tabs: { id: ReviewTab; label: string }[] = [
 		{ id: "check", label: `放送レビュー${findingCount != null && findingCount > 0 ? ` (${findingCount})` : ""}` },
 		{ id: "diff", label: "変更内容" },
-		{ id: "refine", label: "変更を依頼" },
+		...(showRefineTab ? [{ id: "refine" as const, label: "変更を依頼" }] : []),
 	];
 
 	return (
 		<div className="flex flex-col gap-3">
-			<div role="tablist" aria-label="台本レビュー" className="sticky top-0 z-10 grid h-8 w-full grid-cols-3 items-center rounded-lg bg-muted p-[3px] text-muted-foreground">
+			<div role="tablist" aria-label="台本レビュー" className={`sticky top-0 z-10 grid h-8 w-full items-center rounded-lg bg-muted p-[3px] text-muted-foreground ${showRefineTab ? "grid-cols-3" : "grid-cols-2"}`}>
 				{tabs.map((tab) => (
 					<button
 						key={tab.id}
@@ -97,7 +99,7 @@ export function ReviewPanel({
 				)}
 			</div>}
 
-			{activeTab === "refine" && <div role="tabpanel">
+			{showRefineTab && activeTab === "refine" && <div role="tabpanel">
 				<RevisionPlanPanel
 					screenplayId={screenplayId}
 					versionId={version.id}
