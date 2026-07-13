@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { DiscoveryHeader } from "@/components/discovery/DiscoveryHeader";
 import { ProductCard, type DiscoveredProductRow } from "@/components/discovery/ProductCard";
 import { ContextSubTabs } from "@/components/discovery/ContextSubTabs";
 import { useTranslations } from "next-intl";
+import { useApiQuery } from "@/lib/client/api-cache";
 
 type Session = {
 	id: string;
@@ -21,26 +21,12 @@ export default function SessionDetailPage() {
 	const t = useTranslations("discovery");
 	const params = useParams<{ sessionId: string }>();
 	const sessionId = params?.sessionId;
-	const [session, setSession] = useState<Session | null>(null);
-	const [products, setProducts] = useState<DiscoveredProductRow[]>([]);
-	const [loading, setLoading] = useState(true);
-
-	useEffect(() => {
-		if (!sessionId) return;
-		let cancelled = false;
-		async function load() {
-			setLoading(true);
-			const res = await fetch(`/api/discovery/sessions/${sessionId}`);
-			const data = await res.json();
-			if (!cancelled) {
-				setSession(data.session);
-				setProducts(data.products ?? []);
-				setLoading(false);
-			}
-		}
-		load();
-		return () => { cancelled = true; };
-	}, [sessionId]);
+	const { data, isLoading: loading } = useApiQuery<{
+		session: Session | null;
+		products: DiscoveredProductRow[];
+	}>(sessionId ? `/api/discovery/sessions/${sessionId}` : null);
+	const session = data?.session ?? null;
+	const products = data?.products ?? [];
 
 	const counts = {
 		total: products.length,

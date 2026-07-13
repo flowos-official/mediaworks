@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight, Loader2, Radio } from "lucide-react";
 import UnifiedDayDetailPanel from "./UnifiedDayDetailPanel";
 import MonthGrid from "./MonthGrid";
@@ -12,6 +12,7 @@ import {
 	CHANNEL_BADGE,
 	CHANNEL_SHORT,
 } from "@/lib/broadcasts/channel-style";
+import { useApiQuery } from "@/lib/client/api-cache";
 
 type CountsByDate = Record<string, Record<string, number>>;
 
@@ -68,43 +69,15 @@ export default function BroadcastCalendar({
 	const [view, setView] = useState<CalendarView>("month");
 
 	const initialKey = monthKey(initialYear, initialMonth);
-	const [cache, setCache] = useState<Map<string, CountsByDate>>(
-		() => new Map([[initialKey, initialCounts]]),
-	);
-	const [loading, setLoading] = useState(false);
-	const [error, setError] = useState<string | null>(null);
-
 	const currentKey = monthKey(year, month);
-	const currentMonthCounts = useMemo(
-		() => cache.get(currentKey) ?? EMPTY_COUNTS,
-		[cache, currentKey],
+	const { from, to } = gridBounds(year, month);
+	const countsQuery = useApiQuery<{ counts: CountsByDate }>(
+		`/api/broadcasts/calendar-counts?from=${from}&to=${to}`,
+		currentKey === initialKey ? { fallbackData: { counts: initialCounts } } : undefined,
 	);
-
-	useEffect(() => {
-		if (cache.has(currentKey)) return;
-		const { from, to } = gridBounds(year, month);
-		const controller = new AbortController();
-		void (async () => {
-			setLoading(true);
-			setError(null);
-			try {
-				const r = await fetch(
-					`/api/broadcasts/calendar-counts?from=${from}&to=${to}`,
-					{ signal: controller.signal },
-				);
-				if (!r.ok) throw new Error(r.statusText);
-				const json = (await r.json()) as { counts: CountsByDate };
-				setCache((prev) => new Map(prev).set(currentKey, json.counts ?? {}));
-			} catch (e) {
-				if ((e as { name?: string }).name !== "AbortError") {
-					setError(String(e));
-				}
-			} finally {
-				setLoading(false);
-			}
-		})();
-		return () => controller.abort();
-	}, [currentKey, year, month, cache]);
+	const currentMonthCounts = countsQuery.data?.counts ?? EMPTY_COUNTS;
+	const loading = countsQuery.isLoading;
+	const error = countsQuery.error?.message ?? null;
 
 	// URL only carries the selected date now. Channel/category state moved
 	// into UnifiedDayDetailPanel and is no longer shared with the page URL.

@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { History, Eye, Trash2, Loader2 } from 'lucide-react';
+import { useApiQuery } from '@/lib/client/api-cache';
 
 type StrategySummary = {
 	id: string;
@@ -19,27 +20,13 @@ interface Props {
 }
 
 export default function StrategyHistory({ onView, refreshKey }: Props) {
-	const [strategies, setStrategies] = useState<StrategySummary[]>([]);
-	const [loading, setLoading] = useState(true);
 	const [deleting, setDeleting] = useState<string | null>(null);
-
-	const fetchList = useCallback(async () => {
-		setLoading(true);
-		try {
-			const res = await fetch('/api/analytics/md-strategy');
-			const data = await res.json();
-			setStrategies(data.strategies ?? []);
-		} catch {
-			// silent
-		} finally {
-			setLoading(false);
-		}
-	}, []);
+	const { data, isLoading: loading, mutate } = useApiQuery<{ strategies: StrategySummary[] }>('/api/analytics/md-strategy');
+	const strategies = data?.strategies ?? [];
 
 	useEffect(() => {
-		const timer = window.setTimeout(() => void fetchList(), 0);
-		return () => window.clearTimeout(timer);
-	}, [fetchList, refreshKey]);
+		if (refreshKey > 0) void mutate();
+	}, [mutate, refreshKey]);
 
 	const handleDelete = async (id: string) => {
 		if (!confirm('この戦略を削除しますか？')) return;
@@ -47,7 +34,10 @@ export default function StrategyHistory({ onView, refreshKey }: Props) {
 		try {
 			const res = await fetch(`/api/analytics/md-strategy/${id}`, { method: 'DELETE' });
 			if (res.ok) {
-				setStrategies((prev) => prev.filter((s) => s.id !== id));
+				await mutate(
+					(current) => ({ strategies: (current?.strategies ?? []).filter((strategy) => strategy.id !== id) }),
+					{ revalidate: false },
+				);
 			}
 		} catch {
 			// silent

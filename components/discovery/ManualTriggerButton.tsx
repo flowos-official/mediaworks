@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Loader2, Sparkles } from "lucide-react";
 import type { Context } from "@/lib/discovery/types";
+import { invalidateApiCache } from "@/lib/client/api-cache";
 
 export function ManualTriggerButton({ context, onStarted }: { context: Context; onStarted?: () => void }) {
 	const t = useTranslations("discovery");
@@ -21,6 +22,7 @@ export function ManualTriggerButton({ context, onStarted }: { context: Context; 
 			});
 			if (!res.ok) throw new Error(`HTTP ${res.status}`);
 			setStatus("done");
+			await invalidateApiCache('/api/discovery/history');
 		} catch {
 			setStatus("failed");
 		} finally {

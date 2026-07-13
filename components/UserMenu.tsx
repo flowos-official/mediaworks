@@ -1,6 +1,5 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import { useTranslations } from 'next-intl';
 import { UserCircle2 } from 'lucide-react';
@@ -16,6 +15,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import type { Role } from '@/lib/auth/route-permissions';
 import { localePath } from '@/lib/i18n/locale-path';
+import { clearApiCache } from '@/lib/client/api-cache';
 
 export default function UserMenu({
   email,
@@ -28,7 +28,6 @@ export default function UserMenu({
   locale: string;
   triggerId: string;
 }) {
-  const router = useRouter();
   const t = useTranslations('auth');
 
   if (!email || !role) {
@@ -48,8 +47,10 @@ export default function UserMenu({
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     );
     await sb.auth.signOut();
-    router.replace(localePath(locale, '/login'));
-    router.refresh();
+    await clearApiCache();
+    // A hard navigation clears the Next.js router cache as well as the SWR
+    // cache, preventing authenticated pages from being restored after logout.
+    window.location.assign(localePath(locale, '/login'));
   }
 
   return (

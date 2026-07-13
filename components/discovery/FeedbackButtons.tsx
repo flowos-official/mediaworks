@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { CheckCircle2, Star, XCircle, Copy, Loader2 } from "lucide-react";
 import { RejectDialog } from "./RejectDialog";
+import { invalidateApiCache } from "@/lib/client/api-cache";
 
 export type FeedbackAction = "sourced" | "interested" | "rejected" | "duplicate";
 export type FeedbackState = FeedbackAction | null;
@@ -66,6 +67,7 @@ export function FeedbackButtons({ productId, current, onUpdate }: Props) {
 			if (!res.ok) throw new Error(`HTTP ${res.status}`);
 			const data = await res.json();
 			onUpdate(data.user_action as FeedbackState, reason ?? null);
+			await invalidateApiCache('/api/discovery/', '/api/selections');
 		} catch (err) {
 			console.error("feedback failed", err);
 		} finally {

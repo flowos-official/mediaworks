@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { TrendingUp, Radio } from "lucide-react";
 import { SeedEnrichGateModal } from "./SeedEnrichGate";
 import { localePath } from "@/lib/i18n/locale-path";
+import { invalidateApiCache } from "@/lib/client/api-cache";
 
 interface Props {
 	productId: string;
@@ -77,6 +78,7 @@ export function IntegrationActions({
 				setPromoteError(json.error ?? "promotion failed");
 				return;
 			}
+			await invalidateApiCache('/api/products', '/api/discovery/', '/api/selections');
 			router.push(localePath(locale, `/products/${json.productId}`));
 		} catch (err) {
 			setPromoteError(err instanceof Error ? err.message : "unexpected error");

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Loader2 } from 'lucide-react';
 import OverviewCards from '@/components/analytics/OverviewCards';
@@ -9,56 +9,28 @@ import ProductMixChart from '@/components/analytics/ProductMixChart';
 import TopProductsTable from '@/components/analytics/TopProductsTable';
 import ProductDetailModal from '@/components/analytics/ProductDetailModal';
 import { useAnalyticsFilter } from '@/lib/analytics/firm-filter-context';
+import { useApiQuery } from '@/lib/client/api-cache';
 
 export default function OverviewPage() {
   const tCommon = useTranslations('common');
   const { selectedYears, period } = useAnalyticsFilter();
   const yearParam = selectedYears.join(',');
 
-  const [overview, setOverview] = useState<Record<string, unknown> | null>(null);
-  const [trends, setTrends] = useState<{ period: string; trends: unknown[] } | null>(null);
-  const [products, setProducts] = useState<{ products: unknown[]; total: number } | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
-
-  const fetchData = useCallback(async (signal: AbortSignal) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [ovRes, trRes, prRes] = await Promise.all([
-        fetch(`/api/analytics/overview?year=${yearParam}`, { signal }),
-        fetch(`/api/analytics/trends?year=${yearParam}&period=${period}`, { signal }),
-        fetch(`/api/analytics/products?year=${yearParam}&limit=500`, { signal }),
-      ]);
-      if (!ovRes.ok || !trRes.ok || !prRes.ok) throw new Error('Failed to fetch analytics data');
-      const [ovData, trData, prData] = await Promise.all([ovRes.json(), trRes.json(), prRes.json()]);
-      if (signal.aborted) return;
-      setOverview(ovData);
-      setTrends(trData);
-      setProducts(prData);
-    } catch (err) {
-      if ((err as { name?: string })?.name === 'AbortError') return;
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      if (!signal.aborted) setLoading(false);
-    }
-  }, [yearParam, period]);
-
-  useEffect(() => {
-    const ctrl = new AbortController();
-    const timer = window.setTimeout(() => void fetchData(ctrl.signal), 0);
-    return () => {
-      window.clearTimeout(timer);
-      ctrl.abort();
-    };
-  }, [fetchData]);
+  const overviewQuery = useApiQuery<Record<string, unknown>>(`/api/analytics/overview?year=${yearParam}`);
+  const trendsQuery = useApiQuery<{ period: string; trends: unknown[] }>(`/api/analytics/trends?year=${yearParam}&period=${period}`);
+  const productsQuery = useApiQuery<{ products: unknown[]; total: number }>(`/api/analytics/products?year=${yearParam}&limit=500`);
+  const overview = overviewQuery.data;
+  const trends = trendsQuery.data;
+  const products = productsQuery.data;
+  const loading = overviewQuery.isLoading || trendsQuery.isLoading || productsQuery.isLoading;
+  const error = overviewQuery.error ?? trendsQuery.error ?? productsQuery.error;
 
   return (
     <>
       {error && (
         <div className="p-4 bg-red-600/10 border border-red-200 dark:border-red-900/40 rounded-lg text-sm text-red-700 dark:text-red-300">
-          {error}
+          {error.message}
         </div>
       )}
 

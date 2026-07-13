@@ -1,42 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { ContextSubTabs } from "@/components/discovery/ContextSubTabs";
 import { SessionCalendar, type SessionRow } from "@/components/discovery/SessionCalendar";
+import { useApiQuery } from "@/lib/client/api-cache";
 
 type FilterContext = "all" | "home_shopping" | "live_commerce";
 
 export default function DiscoveryHistoryPage() {
 	const t = useTranslations("discovery");
-	const [sessions, setSessions] = useState<SessionRow[]>([]);
-	const [loading, setLoading] = useState(true);
 	const [contextFilter, setContextFilter] = useState<FilterContext>("all");
 	const [month, setMonth] = useState<Date>(new Date());
-
-	useEffect(() => {
-		let cancelled = false;
-		async function load() {
-			setLoading(true);
-			const q = new URLSearchParams();
-			if (contextFilter !== "all") q.set("context", contextFilter);
-			const from = new Date(month.getFullYear(), month.getMonth() - 1, 1);
-			const to = new Date(month.getFullYear(), month.getMonth() + 2, 0);
-			q.set("from", from.toISOString());
-			q.set("to", to.toISOString());
-
-			const res = await fetch(`/api/discovery/history?${q}`);
-			const data = await res.json();
-			if (!cancelled) {
-				setSessions(data.sessions ?? []);
-				setLoading(false);
-			}
-		}
-		load();
-		return () => {
-			cancelled = true;
-		};
-	}, [contextFilter, month]);
+	const q = new URLSearchParams();
+	if (contextFilter !== "all") q.set("context", contextFilter);
+	const from = new Date(month.getFullYear(), month.getMonth() - 1, 1);
+	const to = new Date(month.getFullYear(), month.getMonth() + 2, 0);
+	q.set("from", from.toISOString());
+	q.set("to", to.toISOString());
+	const { data, isLoading: loading } = useApiQuery<{ sessions: SessionRow[] }>(
+		`/api/discovery/history?${q}`,
+	);
+	const sessions = data?.sessions ?? [];
 
 	return (
 		<div className="space-y-4">

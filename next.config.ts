@@ -15,6 +15,12 @@ const nextConfig: NextConfig = {
       bodySizeLimit: '50mb'
     },
     useCache: true,
+    // Keep dynamic RSC payloads in the browser router cache so returning to a
+    // page restores it instantly instead of re-running the full server tree.
+    staleTimes: {
+      dynamic: 5 * 60,
+      static: 30 * 60,
+    },
   },
   images: {
     remotePatterns: [

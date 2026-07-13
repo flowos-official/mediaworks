@@ -1,7 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { ArrowRight, PackageSearch } from "lucide-react";
 import {
@@ -11,6 +11,7 @@ import type { BoardData, BoardCard, SelectionStatus } from "@/lib/selections/typ
 import { SelectionCard } from "./SelectionCard";
 import { BroadcastMatchDialog } from "./BroadcastMatchDialog";
 import { localePath } from "@/lib/i18n/locale-path";
+import { invalidateApiCache } from "@/lib/client/api-cache";
 
 const COLUMNS: Array<{ status: SelectionStatus; tone: string }> = [
   { status: "selected",  tone: "border-t-slate-400" },
@@ -64,6 +65,7 @@ export function KanbanBoard({
   const [board, setBoard] = useState(initialBoard);
   const t = useTranslations("pipeline");
   const locale = useLocale();
+  const router = useRouter();
   const [pendingMove, setPendingMove] = useState<{
     card: BoardCard; from: SelectionStatus; to: SelectionStatus;
   } | null>(null);
@@ -114,7 +116,11 @@ export function KanbanBoard({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ to_status: to, ...extras }),
       });
-      if (res.ok) return;
+      if (res.ok) {
+        await invalidateApiCache('/api/selections', '/api/discovery/');
+        router.refresh();
+        return;
+      }
       const err = await res.json().catch(() => ({ error: "unknown" }));
       throw new Error(err.error ?? "unknown");
     } catch (error) {

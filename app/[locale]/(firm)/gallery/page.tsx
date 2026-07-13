@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useDeferredValue, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   ImageIcon, Search, X, Loader2, ChevronLeft, ChevronRight, RefreshCw,
 } from 'lucide-react';
+import { useApiQuery } from '@/lib/client/api-cache';
 
 type GalleryProduct = {
   code: string;
@@ -29,57 +30,26 @@ export default function GalleryPage() {
   const t = useTranslations('gallery');
 
   // Gallery state
-  const [products, setProducts] = useState<GalleryProduct[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [listError, setListError] = useState<string | null>(null);
+  const deferredSearch = useDeferredValue(search);
+  const listKey = `/api/analytics/gallery${deferredSearch ? `?search=${encodeURIComponent(deferredSearch)}` : ''}`;
+  const listQuery = useApiQuery<{ products: GalleryProduct[] }>(listKey);
+  const products = listQuery.data?.products ?? [];
+  const loading = listQuery.isLoading;
+  const listError = listQuery.error ? t('loadError') : null;
 
   // Detail view state
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
-  const [selectedImages, setSelectedImages] = useState<ProductImage[]>([]);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [detailError, setDetailError] = useState<string | null>(null);
+  const detailQuery = useApiQuery<{ images: ProductImage[] }>(
+    selectedCode ? `/api/analytics/products/${selectedCode}/images` : null,
+  );
+  const selectedImages = detailQuery.data?.images ?? [];
+  const detailLoading = detailQuery.isLoading;
+  const detailError = detailQuery.error ? t('loadError') : null;
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const lightboxRef = useRef<HTMLDivElement | null>(null);
 
-  const fetchProducts = useCallback(async () => {
-    setLoading(true);
-    setListError(null);
-    try {
-      const params = search ? `?search=${encodeURIComponent(search)}` : '';
-      const res = await fetch(`/api/analytics/gallery${params}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      setProducts(data.products ?? []);
-    } catch {
-      setProducts([]);
-      setListError(t('loadError'));
-    } finally {
-      setLoading(false);
-    }
-  }, [search, t]);
-
-  useEffect(() => {
-    const timer = setTimeout(fetchProducts, search ? 300 : 0);
-    return () => clearTimeout(timer);
-  }, [fetchProducts, search]);
-
-  const openProduct = async (code: string) => {
-    setSelectedCode(code);
-    setDetailLoading(true);
-    setDetailError(null);
-    try {
-      const res = await fetch(`/api/analytics/products/${code}/images`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      setSelectedImages(data.images ?? []);
-    } catch {
-      setSelectedImages([]);
-      setDetailError(t('loadError'));
-    } finally {
-      setDetailLoading(false);
-    }
-  };
+  const openProduct = (code: string) => setSelectedCode(code);
 
   useEffect(() => {
     if (lightboxIndex !== null) {
@@ -106,7 +76,7 @@ export default function GalleryPage() {
       <>
           <button
             type="button"
-            onClick={() => { setSelectedCode(null); setSelectedImages([]); setDetailError(null); }}
+            onClick={() => setSelectedCode(null)}
             className="mb-3 inline-flex min-h-9 items-center gap-1 rounded-lg border border-border bg-card px-3 text-xs font-medium text-muted-foreground hover:text-foreground"
           >
             <ChevronLeft size={16} /> {t('backToList')}
@@ -273,7 +243,7 @@ export default function GalleryPage() {
             className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-600/10 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:text-red-300"
           >
             <span>{listError}</span>
-            <button type="button" onClick={fetchProducts} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-current/25 px-3 text-xs font-medium hover:bg-red-500/10">
+            <button type="button" onClick={() => void listQuery.mutate()} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-current/25 px-3 text-xs font-medium hover:bg-red-500/10">
               <RefreshCw size={14} /> {t('retry')}
             </button>
           </div>

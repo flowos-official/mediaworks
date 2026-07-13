@@ -1,53 +1,38 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Package, Search, X } from 'lucide-react';
 import ProductCard from './ProductCard';
 import { Product } from '@/lib/supabase';
+import { useApiQuery } from '@/lib/client/api-cache';
 
 interface ProductListProps {
   refreshTrigger: number;
 }
 
+const EMPTY_PRODUCTS: Product[] = [];
+
 export default function ProductList({ refreshTrigger }: ProductListProps) {
   const t = useTranslations('home');
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-
-  const fetchProducts = useCallback(async () => {
-    try {
-      const res = await fetch('/api/products');
-      const data = await res.json();
-      setProducts(data.products || []);
-    } catch (err) {
-      console.error('Failed to fetch products:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const { data, isLoading: loading, mutate } = useApiQuery<{ products: Product[] }>('/api/products', {
+    refreshInterval: (latest) => {
+      const rows = latest?.products ?? [];
+      const stillPollable = rows.some((product) => {
+        if (product.status !== 'pending' && product.status !== 'analyzing') return false;
+        const ageMinutes = (Date.now() - new Date(product.created_at).getTime()) / 60000;
+        return ageMinutes < 12;
+      });
+      return stillPollable ? 5000 : 0;
+    },
+  });
+  const products = data?.products ?? EMPTY_PRODUCTS;
 
   useEffect(() => {
-    const timer = window.setTimeout(() => void fetchProducts(), 0);
-    return () => window.clearTimeout(timer);
-  }, [fetchProducts, refreshTrigger]);
-
-  // Auto-refresh while any product is still in pending/analyzing within the 12-min cap.
-  // 12 min = stuck-detector 10-min threshold + 2-min clock-drift buffer.
-  const POLL_CAP_MIN = 12;
-  useEffect(() => {
-    const stillPollable = products.some((p) => {
-      if (p.status !== 'pending' && p.status !== 'analyzing') return false;
-      const ageMin = (Date.now() - new Date(p.created_at).getTime()) / 60000;
-      return ageMin < POLL_CAP_MIN;
-    });
-    if (!stillPollable) return;
-
-    const interval = setInterval(fetchProducts, 5000);
-    return () => clearInterval(interval);
-  }, [products, fetchProducts]);
+    if (refreshTrigger > 0) void mutate();
+  }, [mutate, refreshTrigger]);
 
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {

@@ -4,6 +4,7 @@ import { MoreVertical } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { BoardCard } from "@/lib/selections/types";
 import { EventsTimelineModal } from "./EventsTimelineModal";
+import { invalidateApiCache } from "@/lib/client/api-cache";
 
 export function CardMenu({ card, onChanged }: { card: BoardCard; onChanged: () => void }) {
   const [open, setOpen] = useState(false);
@@ -17,6 +18,7 @@ export function CardMenu({ card, onChanged }: { card: BoardCard; onChanged: () =
       alert((await res.json()).error ?? "reopen failed");
       return;
     }
+    await invalidateApiCache('/api/selections', '/api/discovery/');
     onChanged();
   }
 
@@ -33,6 +35,7 @@ export function CardMenu({ card, onChanged }: { card: BoardCard; onChanged: () =
       alert((await res.json()).error ?? "close failed");
       return;
     }
+    await invalidateApiCache('/api/selections', '/api/discovery/');
     onChanged();
   }
 

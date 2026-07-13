@@ -1,6 +1,6 @@
 "use client";
 
-import { useDeferredValue, useEffect, useState } from "react";
+import { useDeferredValue, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Clock3, Search, Tv, X } from "lucide-react";
 import BroadcastListItem, {
@@ -14,6 +14,7 @@ import {
 	type BroadcastChannelSlug,
 } from "@/lib/broadcasts/channel-style";
 import { CATEGORIES_BY_CHANNEL, isWhitelistedSlot } from "@/lib/broadcasts/whitelist-gate";
+import { useApiQuery } from "@/lib/client/api-cache";
 
 interface Props {
 	date: string | null;
@@ -22,14 +23,6 @@ interface Props {
 const INITIAL_TIMED_ROWS = 10;
 const INITIAL_OA_ROWS = 16;
 const LOAD_MORE_ROWS = 16;
-
-type DayLoadState = {
-	date: string | null;
-	timedRows: Broadcast[];
-	oaRows: OARow[];
-	timedError: boolean;
-	oaError: boolean;
-};
 
 function formatDateLabel(iso: string): string {
 	const [y, m, d] = iso.split("-");
@@ -52,71 +45,18 @@ export default function UnifiedDayDetailPanel({ date }: Props) {
 	const [query, setQuery] = useState("");
 	const deferredQuery = useDeferredValue(query.trim().toLocaleLowerCase("ja"));
 	const [limits, setLimits] = useState({ key: "", timed: INITIAL_TIMED_ROWS, oa: INITIAL_OA_ROWS });
-	const [dayState, setDayState] = useState<DayLoadState>({
-		date: null,
-		timedRows: [],
-		oaRows: [],
-		timedError: false,
-		oaError: false,
-	});
 	const [modalBroadcast, setModalBroadcast] = useState<Broadcast | null>(null);
-
-	useEffect(() => {
-		if (!date) return;
-		const ctrl = new AbortController();
-		const loadDay = async () => {
-			const [bRes, hRes] = await Promise.allSettled([
-				fetch(`/api/broadcasts?from=${date}&to=${date}`, {
-					signal: ctrl.signal,
-				}),
-				fetch(`/api/historical-broadcasts?date=${date}&limit=500`, {
-					signal: ctrl.signal,
-				}),
-			]);
-
-			if (ctrl.signal.aborted) return;
-
-			let timedRows: Broadcast[] = [];
-			let oaRows: OARow[] = [];
-			let timedError = false;
-			let oaError = false;
-
-			if (bRes.status === "fulfilled" && bRes.value.ok) {
-				try {
-					const json = (await bRes.value.json()) as { broadcasts: Broadcast[] };
-					timedRows = json.broadcasts ?? [];
-				} catch {
-					timedError = true;
-				}
-			} else {
-				timedError = true;
-			}
-
-			if (hRes.status === "fulfilled" && hRes.value.ok) {
-				try {
-					const json = (await hRes.value.json()) as { rows: OARow[] };
-					oaRows = json.rows ?? [];
-				} catch {
-					oaError = true;
-				}
-			} else {
-				oaError = true;
-			}
-
-			if (!ctrl.signal.aborted) {
-				setDayState({ date, timedRows, oaRows, timedError, oaError });
-			}
-		};
-		void loadDay();
-		return () => ctrl.abort();
-	}, [date]);
-
-	const isCurrentDay = date !== null && dayState.date === date;
-	const timedRows = isCurrentDay ? dayState.timedRows : [];
-	const oaRows = isCurrentDay ? dayState.oaRows : [];
-	const timedError = isCurrentDay ? dayState.timedError : false;
-	const oaError = isCurrentDay ? dayState.oaError : false;
-	const loading = date !== null && !isCurrentDay;
+	const timedQuery = useApiQuery<{ broadcasts: Broadcast[] }>(
+		date ? `/api/broadcasts?from=${date}&to=${date}` : null,
+	);
+	const oaQuery = useApiQuery<{ rows: OARow[] }>(
+		date ? `/api/historical-broadcasts?date=${date}&limit=500` : null,
+	);
+	const timedRows = timedQuery.data?.broadcasts ?? [];
+	const oaRows = oaQuery.data?.rows ?? [];
+	const timedError = Boolean(timedQuery.error);
+	const oaError = Boolean(oaQuery.error);
+	const loading = Boolean(date) && (timedQuery.isLoading || oaQuery.isLoading);
 	const hasFetchError = timedError || oaError;
 
 	if (!date) {

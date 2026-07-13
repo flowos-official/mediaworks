@@ -1,7 +1,9 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
+import useSWRInfinite from "swr/infinite";
 import { ProductCard, type DiscoveredProductRow } from "./ProductCard";
+import { apiJsonFetcher } from "@/lib/client/api-cache";
 
 type Status = "all" | "sourced" | "interested" | "rejected" | "duplicate";
 type ContextFilter = "all" | "home_shopping" | "live_commerce";
@@ -12,43 +14,31 @@ export function SelectionGrid() {
 	const [status, setStatus] = useState<Status>("all");
 	const [context, setContext] = useState<ContextFilter>("all");
 	const [days, setDays] = useState<Period>(30);
-	const [page, setPage] = useState(0);
-	const [products, setProducts] = useState<DiscoveredProductRow[]>([]);
-	const [total, setTotal] = useState(0);
-	const [loading, setLoading] = useState(false);
-
-	useEffect(() => {
-		// eslint-disable-next-line react-hooks/set-state-in-effect -- initial load flag set synchronously before async fetch
-		setLoading(true);
+	const getKey = (page: number) => {
 		const params = new URLSearchParams();
 		if (status !== "all") params.set("status", status);
 		if (context !== "all") params.set("context", context);
 		params.set("days", String(days));
 		params.set("page", String(page));
 		params.set("limit", "20");
-
-		fetch(`/api/discovery/selections?${params}`)
-			.then((r) => r.json())
-			.then((data) => {
-				if (page === 0) setProducts(data.products ?? []);
-				else setProducts((prev) => [...prev, ...(data.products ?? [])]);
-				setTotal(data.total ?? 0);
-				setLoading(false);
-			})
-			.catch(() => setLoading(false));
-	}, [status, context, days, page]);
+		return `/api/discovery/selections?${params}`;
+	};
+	const { data, size, setSize, isLoading, isValidating } = useSWRInfinite<{
+		products: DiscoveredProductRow[];
+		total: number;
+	}>(getKey, apiJsonFetcher, { revalidateFirstPage: false });
+	const products = data?.flatMap((page) => page.products ?? []) ?? [];
+	const total = data?.[0]?.total ?? 0;
+	const loading = isLoading || (isValidating && !data?.[size - 1]);
 
 	function updateStatus(s: Status) {
 		setStatus(s);
-		setPage(0);
 	}
 	function updateContext(c: ContextFilter) {
 		setContext(c);
-		setPage(0);
 	}
 	function updateDays(d: Period) {
 		setDays(d);
-		setPage(0);
 	}
 
 	return (
@@ -110,7 +100,7 @@ export function SelectionGrid() {
 				<div className="py-4 text-center">
 					<button
 						type="button"
-						onClick={() => setPage((p) => p + 1)}
+					onClick={() => void setSize((current) => current + 1)}
 						className="px-6 py-2 text-xs border border-border rounded hover:bg-muted"
 					>
 						{t("loadMore")}

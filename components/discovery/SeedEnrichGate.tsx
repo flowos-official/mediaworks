@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { useTranslations } from "next-intl";
 import { Loader2, Sparkles, X, AlertTriangle } from "lucide-react";
 import { useDialogBehavior } from "@/components/ui/use-dialog-behavior";
+import { invalidateApiCache } from "@/lib/client/api-cache";
 
 interface Props {
 	open: boolean;
@@ -61,6 +62,7 @@ export function SeedEnrichGateModal({
 			};
 			const result = await poll();
 			if (result === "completed") {
+				await invalidateApiCache('/api/discovery/');
 				onDone();
 			} else {
 				setFailed(true);

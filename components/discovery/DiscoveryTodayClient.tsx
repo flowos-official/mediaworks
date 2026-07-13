@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { AlertTriangle, RefreshCw, TrendingUp } from "lucide-react";
@@ -19,6 +19,7 @@ import {
 } from "@/components/discovery/CategoryFrequencyStrip";
 import { localePath } from "@/lib/i18n/locale-path";
 import type { Context } from "@/lib/discovery/types";
+import { useApiQuery } from "@/lib/client/api-cache";
 
 type Session = {
 	id: string;
@@ -44,6 +45,7 @@ interface DiscoveryTodayClientProps {
 const INITIAL_TIER_ROWS = 6;
 const INITIAL_FLAT_ROWS = 8;
 const LOAD_MORE_PRODUCTS = 6;
+const EMPTY_PRODUCTS: DiscoveredProductRow[] = [];
 
 const CONTEXT_LABEL: Record<Context, string> = {
 	home_shopping: "ホームショッピング",
@@ -52,16 +54,20 @@ const CONTEXT_LABEL: Record<Context, string> = {
 
 export function DiscoveryTodayClient({ context, canManualTrigger }: DiscoveryTodayClientProps) {
 	const t = useTranslations("discovery");
-	const [session, setSession] = useState<Session | null>(null);
-	const [products, setProducts] = useState<DiscoveredProductRow[]>([]);
-	const [categoryStats, setCategoryStats] = useState<CategoryStats | null>(null);
-	const [loading, setLoading] = useState(true);
-	const [loadError, setLoadError] = useState<string | null>(null);
+	const query = useApiQuery<{
+		session: Session | null;
+		products: DiscoveredProductRow[];
+		categoryStats: CategoryStats | null;
+	}>(`/api/discovery/today?context=${context}`);
+	const session = query.data?.session ?? null;
+	const products = query.data?.products ?? EMPTY_PRODUCTS;
+	const categoryStats = query.data?.categoryStats ?? null;
+	const loading = query.isLoading;
+	const loadError = query.error ? t("loadFailed") : null;
 	const [status, setStatus] = useState<StatusFilter>("all");
 	const [sort, setSort] = useState<SortKey>("score");
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 	const [limits, setLimits] = useState({ key: "", tier1: INITIAL_TIER_ROWS, tier2: INITIAL_TIER_ROWS, flat: INITIAL_FLAT_ROWS });
-	const requestIdRef = useRef(0);
 	const router = useRouter();
 	const { locale } = useParams<{ locale: string }>();
 	const isHomeShopping = context === "home_shopping";
@@ -75,29 +81,6 @@ export function DiscoveryTodayClient({ context, canManualTrigger }: DiscoveryTod
 		});
 	};
 
-	const load = useCallback(async () => {
-		const requestId = ++requestIdRef.current;
-		setLoading(true);
-		setLoadError(null);
-		try {
-			const res = await fetch(`/api/discovery/today?context=${context}`);
-			if (!res.ok) throw new Error(`HTTP ${res.status}`);
-			const data = await res.json();
-			if (requestId !== requestIdRef.current) return;
-			setSession(data.session);
-			setProducts(data.products ?? []);
-			setCategoryStats(data.categoryStats ?? null);
-		} catch {
-			if (requestId !== requestIdRef.current) return;
-			setSession(null);
-			setProducts([]);
-			setCategoryStats(null);
-			setLoadError(t("loadFailed"));
-		} finally {
-			if (requestId === requestIdRef.current) setLoading(false);
-		}
-	}, [context, t]);
-
 	const matchedCategories = useMemo(() => {
 		const set = new Set<string>();
 		for (const p of products) {
@@ -107,11 +90,6 @@ export function DiscoveryTodayClient({ context, canManualTrigger }: DiscoveryTod
 		}
 		return set;
 	}, [products]);
-
-	useEffect(() => {
-		// eslint-disable-next-line react-hooks/set-state-in-effect -- async data fetch triggered on mount; setState calls are post-await
-		load();
-	}, [load]);
 
 	const filtered = useMemo(() => {
 		let list = products;
@@ -219,7 +197,7 @@ export function DiscoveryTodayClient({ context, canManualTrigger }: DiscoveryTod
 					</p>
 				</div>
 				{canManualTrigger && (
-					<ManualTriggerButton context={context} onStarted={() => setTimeout(load, 180_000)} />
+					<ManualTriggerButton context={context} onStarted={() => setTimeout(() => void query.mutate(), 180_000)} />
 				)}
 			</div>
 
@@ -229,7 +207,7 @@ export function DiscoveryTodayClient({ context, canManualTrigger }: DiscoveryTod
 				<div role="alert" className="mw-panel flex flex-col items-center justify-center gap-3 px-5 py-10 text-center">
 					<AlertTriangle size={22} className="text-amber-600" />
 					<p className="text-sm text-foreground">{loadError}</p>
-					<button type="button" onClick={load} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border bg-card px-4 text-sm font-medium hover:bg-muted">
+					<button type="button" onClick={() => void query.mutate()} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border bg-card px-4 text-sm font-medium hover:bg-muted">
 						<RefreshCw size={15} /> {t("retry")}
 					</button>
 				</div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Rocket, AlertTriangle, Database, TrendingUp, Target } from 'lucide-react';
@@ -8,6 +8,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import type { ExpansionAnalysisResult, RecommendedProduct } from '@/lib/gemini';
+import { useApiQuery } from '@/lib/client/api-cache';
 
 type TopProduct = {
   code: string;
@@ -46,25 +47,19 @@ function scoreColor(score: number): string {
 // ---------------------------------------------------------------------------
 
 function DataPreview() {
-  const [overview, setOverview] = useState<{
+  const overviewQuery = useApiQuery<{
     totalRevenue: number;
     totalProfit: number;
     marginRate: number;
     uniqueProducts: number;
     weekCount: number;
     categoryBreakdown: Array<{ category: string; revenue: number; quantity: number }>;
-  } | null>(null);
-  const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
-
-  useEffect(() => {
-    Promise.all([
-      fetch('/api/analytics/overview?year=2025,2026').then((r) => r.json()),
-      fetch('/api/analytics/products?year=2025,2026&limit=5').then((r) => r.json()),
-    ]).then(([ov, pr]) => {
-      setOverview(ov);
-      setTopProducts(pr.products ?? []);
-    }).catch(() => {});
-  }, []);
+  }>('/api/analytics/overview?year=2025,2026');
+  const productsQuery = useApiQuery<{ products: TopProduct[] }>(
+    '/api/analytics/products?year=2025,2026&limit=5',
+  );
+  const overview = overviewQuery.data;
+  const topProducts = productsQuery.data?.products ?? [];
 
   if (!overview) return null;
 

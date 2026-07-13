@@ -1,5 +1,5 @@
 import { requireUser } from "@/lib/auth/require-user";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { GET as runHomeCron } from "@/app/api/cron/daily-discovery-home/route";
 import { GET as runLiveCron } from "@/app/api/cron/daily-discovery-live/route";
 

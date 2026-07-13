@@ -25,6 +25,7 @@ import type {
 	RiskContingencyOutput,
 	DiscoveredProduct,
 } from '@/lib/md-strategy';
+import { useApiQuery } from '@/lib/client/api-cache';
 
 import dynamic from 'next/dynamic';
 const ChannelStrategySection = dynamic(() => import('./md-strategy/ChannelStrategySection'), { ssr: false });
@@ -82,25 +83,19 @@ type TopProduct = {
 // ---------------------------------------------------------------------------
 
 function DataPreview() {
-	const [overview, setOverview] = useState<{
+	const overviewQuery = useApiQuery<{
 		totalRevenue: number;
 		totalProfit: number;
 		marginRate: number;
 		uniqueProducts: number;
 		weekCount: number;
 		categoryBreakdown: Array<{ category: string; revenue: number; quantity: number }>;
-	} | null>(null);
-	const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
-
-	useEffect(() => {
-		Promise.all([
-			fetch('/api/analytics/overview?year=2025,2026').then((r) => r.json()),
-			fetch('/api/analytics/products?year=2025,2026&limit=5').then((r) => r.json()),
-		]).then(([ov, pr]) => {
-			setOverview(ov);
-			setTopProducts(pr.products ?? []);
-		}).catch(() => {});
-	}, []);
+	}>('/api/analytics/overview?year=2025,2026');
+	const productsQuery = useApiQuery<{ products: TopProduct[] }>(
+		'/api/analytics/products?year=2025,2026&limit=5',
+	);
+	const overview = overviewQuery.data;
+	const topProducts = productsQuery.data?.products ?? [];
 
 	if (!overview) return null;
 

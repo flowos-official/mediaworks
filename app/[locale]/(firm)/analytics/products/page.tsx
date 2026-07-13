@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useRef, useState } from 'react';
 import { Loader2, FileSpreadsheet, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import TopProductsTable from '@/components/analytics/TopProductsTable';
 import ProductDetailModal from '@/components/analytics/ProductDetailModal';
 import { useAnalyticsFilter } from '@/lib/analytics/firm-filter-context';
 import { useDialogBehavior } from '@/components/ui/use-dialog-behavior';
+import { invalidateApiCache, useApiQuery } from '@/lib/client/api-cache';
 
 export default function ProductsPage() {
   const tg = useTranslations('gallery');
@@ -14,10 +15,13 @@ export default function ProductsPage() {
   const { selectedYears } = useAnalyticsFilter();
   const yearParam = selectedYears.join(',');
 
-  const [products, setProducts] = useState<{ products: unknown[]; total: number; viewer?: boolean } | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
+  const productsKey = `/api/analytics/products?year=${yearParam}&limit=500`;
+  const { data: products, error, isLoading: loading, mutate } = useApiQuery<{
+    products: unknown[];
+    total: number;
+    viewer?: boolean;
+  }>(productsKey);
 
   // Taicho upload state
   const [showTaicho, setShowTaicho] = useState(false);
@@ -27,32 +31,6 @@ export default function ProductsPage() {
   const [taichoResult, setTaichoResult] = useState<string | null>(null);
   const taichoDialogRef = useRef<HTMLDivElement>(null);
   useDialogBehavior(showTaicho, () => { setShowTaicho(false); setTaichoResult(null); }, taichoDialogRef);
-
-  const fetchData = useCallback(async (signal: AbortSignal) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/analytics/products?year=${yearParam}&limit=500`, { signal });
-      if (!res.ok) throw new Error('Failed to fetch products');
-      const data = await res.json();
-      if (signal.aborted) return;
-      setProducts(data);
-    } catch (err) {
-      if ((err as { name?: string })?.name === 'AbortError') return;
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      if (!signal.aborted) setLoading(false);
-    }
-  }, [yearParam]);
-
-  useEffect(() => {
-    const ctrl = new AbortController();
-    const timer = window.setTimeout(() => void fetchData(ctrl.signal), 0);
-    return () => {
-      window.clearTimeout(timer);
-      ctrl.abort();
-    };
-  }, [fetchData]);
 
   const handleTaichoUpload = async () => {
     if (!taichoFile || !taichoCode.trim()) return;
@@ -68,8 +46,10 @@ export default function ProductsPage() {
         setTaichoResult(`${tg('uploadSuccess')} — ${data.imagesUploaded}${tg('images')}`);
         setTaichoCode('');
         setTaichoFile(null);
-        // M7: refresh the products list so newly uploaded images appear immediately
-        fetchData(new AbortController().signal);
+        await Promise.all([
+          mutate(),
+          invalidateApiCache('/api/analytics/gallery', '/api/analytics/products/'),
+        ]);
       } else {
         setTaichoResult(data.error ?? tg('uploadError'));
       }
@@ -84,7 +64,7 @@ export default function ProductsPage() {
     <>
       {error && (
         <div className="p-4 bg-red-600/10 border border-red-200 dark:border-red-900/40 rounded-lg text-sm text-red-700 dark:text-red-300">
-          {error}
+          {error.message}
         </div>
       )}
 

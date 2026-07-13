@@ -8,6 +8,7 @@ import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useDialogBehavior } from '@/components/ui/use-dialog-behavior';
+import { useApiQuery } from '@/lib/client/api-cache';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
@@ -103,14 +104,6 @@ type ImageData = {
 
 type ModalTab = 'overview' | 'sku' | 'logistics' | 'confidential' | 'contacts' | 'images';
 
-type ProductDetailLoadState = {
-  requestKey: string | null;
-  productCode: string | null;
-  data: ProductDetailData | null;
-  images: ImageData[];
-  error: string | null;
-};
-
 function formatYen(v: number): string {
   if (v >= 100_000_000) return `¥${(v / 100_000_000).toFixed(1)}億`;
   if (v >= 10_000) return `¥${Math.round(v / 10_000)}万`;
@@ -138,14 +131,12 @@ export default function ProductDetailModal({
 }) {
   const t = useTranslations('productDetailModal');
   const yearParam = (years?.length ? years : [2025, 2026]).join(',');
-  const requestKey = `${productCode}:${yearParam}`;
-  const [loadState, setLoadState] = useState<ProductDetailLoadState>({
-    requestKey: null,
-    productCode: null,
-    data: null,
-    images: [],
-    error: null,
-  });
+  const productQuery = useApiQuery<ProductDetailData>(
+    `/api/analytics/products/${productCode}?year=${encodeURIComponent(yearParam)}`,
+  );
+  const imagesQuery = useApiQuery<{ images: ImageData[] }>(
+    `/api/analytics/products/${productCode}/images`,
+  );
   const [activeTabState, setActiveTabState] = useState<{
     productCode: string;
     tab: ModalTab;
@@ -162,46 +153,10 @@ export default function ProductDetailModal({
     }
   }, [lightboxIndex]);
 
-  useEffect(() => {
-    let ignore = false;
-    // Fetch product data and images in parallel
-    Promise.all([
-      fetch(`/api/analytics/products/${productCode}?year=${encodeURIComponent(yearParam)}`)
-        .then((res) => { if (!res.ok) throw new Error('Failed to fetch'); return res.json(); }),
-      fetch(`/api/analytics/products/${productCode}/images`)
-        .then((res) => res.json())
-        .catch(() => ({ images: [] })),
-    ])
-      .then(([productData, imageData]) => {
-        if (ignore) return;
-        setLoadState({
-          requestKey,
-          productCode,
-          data: productData,
-          images: imageData.images ?? [],
-          error: null,
-        });
-      })
-      .catch((err) => {
-        if (ignore) return;
-        setLoadState({
-          requestKey,
-          productCode,
-          data: null,
-          images: [],
-          error: err.message,
-        });
-      });
-    return () => {
-      ignore = true;
-    };
-  }, [productCode, requestKey, yearParam]);
-
-  const isCurrentLoad = loadState.requestKey === requestKey;
-  const data = isCurrentLoad ? loadState.data : null;
-  const images = isCurrentLoad ? loadState.images : [];
-  const error = isCurrentLoad ? loadState.error : null;
-  const loading = !isCurrentLoad;
+  const data = productQuery.data ?? null;
+  const images = imagesQuery.data?.images ?? [];
+  const error = productQuery.error?.message ?? null;
+  const loading = productQuery.isLoading || imagesQuery.isLoading;
   const activeTab =
     activeTabState?.productCode === productCode ? activeTabState.tab : 'overview';
   const setActiveTab = (tab: ModalTab) => {

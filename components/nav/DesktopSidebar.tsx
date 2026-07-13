@@ -38,8 +38,9 @@ export default function DesktopSidebar({ logoHref, email, role, locale, memberBa
     } catch {
       stored = document.documentElement.dataset.sidebarCollapsed === 'true';
     }
-    setCollapsed(stored);
     document.documentElement.dataset.sidebarCollapsed = stored ? 'true' : 'false';
+    const frame = window.requestAnimationFrame(() => setCollapsed(stored));
+    return () => window.cancelAnimationFrame(frame);
   }, []);
 
   useEffect(() => {

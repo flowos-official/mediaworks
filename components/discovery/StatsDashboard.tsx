@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { KPICard } from "./KPICard";
 import { WeeklyInsightCard } from "./WeeklyInsightCard";
@@ -7,6 +7,7 @@ import { CategorySourcingChart } from "./charts/CategorySourcingChart";
 import { DailyFeedbackChart } from "./charts/DailyFeedbackChart";
 import { ExplorationTrendChart } from "./charts/ExplorationTrendChart";
 import { RejectionReasonChart } from "./charts/RejectionReasonChart";
+import { useApiQuery } from "@/lib/client/api-cache";
 
 interface InsightsData {
 	kpi: {
@@ -38,38 +39,14 @@ interface InsightsData {
 
 type ContextFilter = "all" | "home_shopping" | "live_commerce";
 
-type InsightsLoadState = {
-	context: ContextFilter | null;
-	data: InsightsData | null;
-};
-
 export function StatsDashboard() {
 	const t = useTranslations("discovery");
-	const [loadState, setLoadState] = useState<InsightsLoadState>({
-		context: null,
-		data: null,
-	});
 	const [context, setContext] = useState<ContextFilter>("all");
-
-	useEffect(() => {
-		const params = new URLSearchParams({ weeks: "12" });
-		if (context !== "all") params.set("context", context);
-		const ctrl = new AbortController();
-		fetch(`/api/discovery/insights?${params}`, { signal: ctrl.signal })
-			.then((r) => r.json())
-			.then((d) => {
-				setLoadState({ context, data: d });
-			})
-			.catch(() => {
-				if (!ctrl.signal.aborted) {
-					setLoadState({ context, data: null });
-				}
-			});
-		return () => ctrl.abort();
-	}, [context]);
-
-	const data = loadState.context === context ? loadState.data : null;
-	const loading = loadState.context !== context;
+	const params = new URLSearchParams({ weeks: "12" });
+	if (context !== "all") params.set("context", context);
+	const { data, isLoading: loading } = useApiQuery<InsightsData>(
+		`/api/discovery/insights?${params}`,
+	);
 
 	if (loading) return <div className="py-20 text-center text-sm text-muted-foreground">Loading...</div>;
 	if (!data) return <div className="py-20 text-center text-sm text-muted-foreground">{t("noData")}</div>;

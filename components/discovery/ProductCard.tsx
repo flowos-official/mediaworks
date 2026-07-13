@@ -13,6 +13,7 @@ import type { CPackage, CurationScore } from "@/lib/discovery/types";
 import { getChannelBySlug, parseChannelSlugs } from "@/lib/discovery/tv-channels";
 import TvEvidenceBadge from "@/components/discovery/TvEvidenceBadge";
 import { PipelineStatusChip } from "@/components/pipeline/PipelineStatusChip";
+import { invalidateApiCache } from "@/lib/client/api-cache";
 
 type EnrichmentStatus = "idle" | "queued" | "running" | "completed" | "failed";
 
@@ -149,7 +150,10 @@ export function ProductCard({
 		if (data.error) setErr(data.error);
 		if (data.status === "completed" || data.status === "failed") {
 			stopPolling();
-			if (data.status === "completed") setShowDetails(true);
+			if (data.status === "completed") {
+				setShowDetails(true);
+				void invalidateApiCache('/api/discovery/');
+			}
 		}
 	}, [product.id, setShowDetails, stopPolling]);
 
