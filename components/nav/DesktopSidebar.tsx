@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
-import { Activity, BarChart3, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Activity, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import DesktopNav from './DesktopNav';
 import WorkspaceControls from './WorkspaceControls';
@@ -81,13 +82,13 @@ export default function DesktopSidebar({ logoHref, email, role, locale, memberBa
       </button>
 
       <div className="mw-sidebar-header border-b border-sidebar-border px-4 py-4">
-        <Link href={logoHref} className="mw-sidebar-brand flex items-center gap-3 rounded-xl px-1 py-1" title="MediaWorks">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-[0_6px_18px_rgba(37,99,235,0.2)]">
-            <BarChart3 size={18} />
+        <Link href={logoHref} className="mw-sidebar-brand flex items-center gap-3 rounded-xl px-1 py-1" title="LOTTE HOME SHOPPING · SONAR">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white shadow-[0_8px_22px_rgba(218,41,28,0.16)] ring-1 ring-primary/15">
+            <Image src="/brand/lotte-symbol.svg" alt="LOTTE" width={31} height={31} priority />
           </span>
           <span className="mw-sidebar-copy min-w-0">
-            <span className="block text-[15px] font-bold tracking-[-0.025em]">MediaWorks</span>
-            <span className="block font-mono text-[9px] uppercase tracking-[0.16em] text-sidebar-foreground/65">Broadcast intelligence</span>
+            <span className="block text-[13px] font-extrabold tracking-[-0.025em]">LOTTE HOME SHOPPING</span>
+            <span className="mt-1 block text-[9px] font-bold uppercase tracking-[0.16em] text-primary">SONAR · BROADCAST AX</span>
           </span>
         </Link>
         <div className="mw-workspace-status mt-4 flex items-center justify-between rounded-lg border border-sidebar-border bg-sidebar-accent/45 px-2.5 py-2" title={t('online')}>
@@ -103,9 +104,9 @@ export default function DesktopSidebar({ logoHref, email, role, locale, memberBa
         <DesktopNav role={role} locale={locale} memberBadges={memberBadges} />
       ) : (
         <div className="flex flex-1 flex-col justify-center px-6">
-          <p className="mw-kicker mw-sidebar-copy">Home shopping operations</p>
+          <p className="mw-kicker mw-sidebar-copy">LOTTE HOME SHOPPING</p>
           <p className="mw-sidebar-copy mt-3 text-sm leading-relaxed text-sidebar-foreground/65">
-            商品データ、市場リサーチ、放送考査、制作を一つの運用面に。
+            상품 데이터, 시장 리서치, 방송 심의와 제작을 하나의 운영 화면에 연결합니다.
           </p>
         </div>
       )}

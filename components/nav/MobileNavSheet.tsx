@@ -100,7 +100,7 @@ export default function MobileNavSheet({ role, locale, memberBadges }: Props) {
             <div>
               <div className="text-sm font-bold">Workspace navigation</div>
               <div className="mt-0.5 flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground">
-                <span className="mw-status-dot" /> MediaWorks online
+                <span className="mw-status-dot" /> LOTTE SONAR online
               </div>
             </div>
             <button

@@ -1,4 +1,6 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
   "functions": {
     "app/api/analyze/synthesize/route.ts": {
       "maxDuration": 300

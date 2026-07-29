@@ -3,6 +3,7 @@ import { NextRequest, NextResponse, after } from 'next/server';
 import { getServiceClient } from '@/lib/supabase';
 import { checkAnalyzeRateLimit } from "@/lib/research/analyze-rate-limit";
 import { checkMagicBytes } from "@/lib/upload/magic-bytes";
+import { buildAnalyzeTriggerHeaders } from "@/lib/research/analyze-trigger-headers";
 
 const SUPPORTED_MIME_TYPES = new Set([
   'application/pdf',
@@ -42,16 +43,6 @@ function resolveMimeType(file: File): string | null {
   const ext = file.name.match(/\.[^.]+$/)?.[0]?.toLowerCase();
   if (ext && EXT_TO_MIME[ext]) return EXT_TO_MIME[ext];
   return null;
-}
-
-export function buildAnalyzeTriggerHeaders(
-  cronSecret: string | undefined,
-): Record<string, string> {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-  if (cronSecret) headers.Authorization = `Bearer ${cronSecret}`;
-  return headers;
 }
 
 export async function POST(request: NextRequest) {

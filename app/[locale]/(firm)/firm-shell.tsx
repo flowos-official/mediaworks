@@ -44,7 +44,7 @@ export default function FirmShell({ role, title, subtitle, children }: FirmShell
           title={title}
           subtitle={subtitle}
           action={showFullChrome && showDateFilter ? <FilterAction /> : undefined}
-          eyebrow="First-party performance"
+          eyebrow="LOTTE HOME SHOPPING · FIRST-PARTY"
         />
         <div className="mw-page-stack">
           {showFullChrome && <GroupSubNav groupKey="firm" role={role} />}

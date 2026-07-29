@@ -76,8 +76,8 @@
     }
   },
   "home": {
-    "title": "MediaWorks",
-    "subtitle": "홈쇼핑 리서치 자동화 플랫폼",
+    "title": "LOTTE HOME SHOPPING · SONAR",
+    "subtitle": "롯데홈쇼핑 AX 운영 플랫폼",
     "description": "상품 파일을 업로드하여 홈쇼핑용 종합 리서치 리포트를 자동 생성",
     "uploadTitle": "상품 파일 업로드",
     "uploadDescription": "드래그 앤 드롭 또는 클릭하여 PDF·PPT·DOCX·이미지 파일을 업로드",
@@ -585,7 +585,7 @@
       "new": "새 대본 만들기",
       "empty": {
         "title": "아직 대본이 없습니다",
-        "body": "'새 대본 만들기'에서 MediaWorks 상품, 보유 대본 또는 새 상품 자료를 선택해 시작하세요."
+        "body": "'새 대본 만들기'에서 LOTTE SONAR 상품, 보유 대본 또는 새 상품 자료를 선택해 시작하세요."
       },
       "col": {
         "title": "제목",
@@ -668,7 +668,7 @@
     },
     "tabs": {
       "product": "기존 상품으로 만들기",
-      "productSub": "MediaWorks 조사·상품 정보 계승",
+      "productSub": "LOTTE SONAR 조사·상품 정보 계승",
       "import": "보유 대본 완성하기",
       "importSub": "Word / 생성된 초안",
       "external": "새 상품 자료로 시작",
@@ -676,7 +676,7 @@
     },
     "productPicker": {
       "recommended": "권장 흐름",
-      "heading": "MediaWorks 상품 선택",
+      "heading": "LOTTE SONAR 상품 선택",
       "description": "등록된 상품 정보와 리서치 결과를 대본의 고정 컨텍스트로 이어받습니다. 매번 자료를 다시 설명할 필요가 없습니다.",
       "searchLabel": "상품 검색",
       "searchPlaceholder": "상품명·카테고리·특징으로 검색",

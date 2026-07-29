@@ -1,4 +1,4 @@
-import { buildAnalyzeTriggerHeaders } from "../app/api/upload/route";
+import { buildAnalyzeTriggerHeaders } from "../lib/research/analyze-trigger-headers";
 import { hasInternalSecret } from "../lib/auth/require-user";
 
 function assert(condition: boolean, message: string) {

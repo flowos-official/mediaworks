@@ -76,7 +76,7 @@
     }
   },
   "home": {
-    "title": "MediaWorks",
+    "title": "LOTTE HOME SHOPPING · SONAR",
     "subtitle": "ホームショッピング リサーチ自動化プラットフォーム",
     "description": "商品ファイルをアップロードして、ホームショッピング向けの総合リサーチレポートを自動生成",
     "uploadTitle": "商品ファイルをアップロード",
@@ -585,7 +585,7 @@
       "new": "新しい台本を作成",
       "empty": {
         "title": "まだ台本がありません",
-        "body": "「新しい台本を作成」から、MediaWorksの商品、手元の台本、または新しい商品資料を選んで開始してください。"
+        "body": "「新しい台本を作成」から、LOTTE SONARの商品、手元の台本、または新しい商品資料を選んで開始してください。"
       },
       "col": {
         "title": "タイトル",
@@ -668,7 +668,7 @@
     },
     "tabs": {
       "product": "既存商品から作る",
-      "productSub": "MediaWorksの調査・商品情報を継承",
+      "productSub": "LOTTE SONARの調査・商品情報を継承",
       "import": "手元の台本を仕上げる",
       "importSub": "Word / 生成済みドラフト",
       "external": "新しい商品資料から始める",
@@ -676,7 +676,7 @@
     },
     "productPicker": {
       "recommended": "推奨フロー",
-      "heading": "MediaWorksの商品を選択",
+      "heading": "LOTTE SONARの商品を選択",
       "description": "登録済みの商品情報とリサーチ結果を台本の固定コンテキストとして引き継ぎます。毎回資料を説明し直す必要はありません。",
       "searchLabel": "商品を検索",
       "searchPlaceholder": "商品名・カテゴリ・特徴で検索",

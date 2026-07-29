@@ -1,19 +1,17 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google';
 import Script from 'next/script';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import './globals.css';
 
-const inter = Inter({ subsets: ['latin'] });
-
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
+  themeColor: '#DA291C',
 };
 
 export const metadata: Metadata = {
-  title: 'MediaWorks — Home Shopping Research Platform',
-  description: 'Automated home shopping marketing research powered by AI',
+  title: 'LOTTE HOME SHOPPING · SONAR',
+  description: '상품 발굴부터 리서치, 방송 편성, 대본, 심의까지 연결하는 롯데홈쇼핑 AX 운영 플랫폼',
 };
 
 export default function RootLayout({
@@ -23,7 +21,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ja" suppressHydrationWarning>
-      <body className={`${inter.className} min-h-screen`}>
+      <body className="min-h-screen">
         {/* FlowOS in-app instrumentation: auto pageview/click/error + window.flowos.track().
             First-party drop-in served from flowos-admin; collection is opt-in and gated
             server-side by the dashboard watch toggle (no key needed — Origin-matched).
@@ -32,7 +30,7 @@ export default function RootLayout({
           src="https://flowos-admin.vercel.app/flowos.js"
           strategy="afterInteractive"
         />
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider forcedTheme="light" enableSystem={false}>{children}</ThemeProvider>
       </body>
     </html>
   );

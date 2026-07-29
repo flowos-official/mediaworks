@@ -49,12 +49,12 @@ export default function LoginPage() {
       <div className="grid w-full max-w-5xl overflow-hidden rounded-2xl border border-border bg-card shadow-xl lg:grid-cols-[1.05fr_0.95fr]">
         <section className="hidden border-r border-border bg-muted/30 p-8 lg:flex lg:flex-col lg:justify-between">
           <div>
-            <div className="mw-kicker mb-3">Broadcast operations system</div>
+            <div className="mw-kicker mb-3">LOTTE HOME SHOPPING · SONAR</div>
             <h2 className="max-w-md text-3xl font-bold tracking-[-0.04em] text-foreground">
-              商品情報から放送判断、制作、考査までを一つの運用面に。
+              상품 발굴부터 방송 판단, 제작, 심의까지 하나의 운영 화면에.
             </h2>
             <p className="mt-4 max-w-lg text-sm leading-7 text-muted-foreground">
-              MediaWorks は一般的なAIチャットではなく、社内データと運用ルールに接続されたホームショッピング業務基盤です。
+              SONAR는 롯데홈쇼핑의 상품 데이터와 운영 기준에 연결된 AI 네이티브 방송 업무 플랫폼입니다.
             </p>
           </div>
           <div className="grid grid-cols-3 gap-2">
@@ -74,7 +74,7 @@ export default function LoginPage() {
           <div>
             <div className="mw-kicker mb-1">Secure access</div>
             <h1 className="text-xl font-bold tracking-[-0.02em]">{t('title')}</h1>
-            <p className="mt-1 text-xs text-muted-foreground">MediaWorks workspaceへログイン</p>
+            <p className="mt-1 text-xs text-muted-foreground">LOTTE SONAR 워크스페이스 로그인</p>
           </div>
         <form onSubmit={onSubmit} className="space-y-3" aria-busy={loading}>
           <div>
