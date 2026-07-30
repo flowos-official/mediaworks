@@ -31,7 +31,7 @@ export type RakutenRankingResult = {
 };
 
 // Registered application URL — used as Referer/Origin for API authentication
-const RAKUTEN_APP_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://mediaworks-six.vercel.app";
+const RAKUTEN_APP_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://lotte-sonar.flowos.work";
 
 function getRakutenCredentials(): { applicationId: string; accessKey: string } | null {
 	const applicationId = process.env.RAKUTEN_APPLICATION_ID;

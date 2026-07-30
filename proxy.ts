@@ -5,16 +5,16 @@ import { isViewerAllowedPath, ROLE_LANDING } from '@/lib/auth/route-permissions'
 
 const intl = createIntlMiddleware({
   locales: ['ja', 'ko'],
-  defaultLocale: 'ja',
+  defaultLocale: 'ko',
   localePrefix: 'as-needed',
   // URL is the source of truth — disables Accept-Language hijack that was
-  // bouncing `/login` (ja default) → `/ko/login` and breaking <LanguageSwitcher>.
+  // bouncing between locale-prefixed routes and breaking <LanguageSwitcher>.
   localeDetection: false,
 });
 
 function localePath(locale: string, path: string): string {
   const p = path.startsWith('/') ? path : `/${path}`;
-  return locale === 'ja' ? p : `/${locale}${p}`;
+  return locale === 'ko' ? p : `/${locale}${p}`;
 }
 
 const PUBLIC_SUFFIXES = [/\/login$/, /\/reset-password$/];
@@ -42,7 +42,7 @@ export default async function middleware(req: NextRequest) {
     return intlRes;
   }
 
-  const pathLocale = pathname.startsWith('/ko/') || pathname === '/ko' ? 'ko' : 'ja';
+  const pathLocale = pathname.startsWith('/ja/') || pathname === '/ja' ? 'ja' : 'ko';
 
   if (!user) {
     return NextResponse.redirect(new URL(localePath(pathLocale, '/login'), req.url));

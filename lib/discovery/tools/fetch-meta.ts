@@ -24,7 +24,7 @@ export async function fetchUrlMeta(url: string): Promise<UrlMeta> {
 			signal: AbortSignal.timeout(8000),
 			headers: {
 				"User-Agent":
-					"Mozilla/5.0 (compatible; MediaWorksBot/1.0; +https://mediaworks-six.vercel.app)",
+					"Mozilla/5.0 (compatible; LotteSonarBot/1.0; +https://lotte-sonar.flowos.work)",
 				Accept: "text/html,*/*",
 			},
 			redirect: "follow",

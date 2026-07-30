@@ -11,9 +11,9 @@ export default function LanguageSwitcher() {
   const t = useTranslations('language');
 
   const switchLocale = (newLocale: string) => {
-    // Strip current locale prefix (only present for non-default 'ko'); then re-prefix if target is non-default.
+    // Strip any locale prefix, then add one only for the non-default Japanese route.
     const stripped = pathname.replace(/^\/(ja|ko)(?=\/|$)/, '') || '/';
-    const target = newLocale === 'ja' ? stripped : `/${newLocale}${stripped === '/' ? '' : stripped}`;
+    const target = newLocale === 'ko' ? stripped : `/${newLocale}${stripped === '/' ? '' : stripped}`;
     router.push(target);
   };
 
