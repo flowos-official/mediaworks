@@ -5,7 +5,18 @@ import { withWorkflow } from 'workflow/next';
 const withNextIntl = createNextIntlPlugin('./i18n.ts');
 const projectRoot = process.cwd();
 
+const securityHeaders = [
+  { key: 'X-Robots-Tag', value: 'noindex, nofollow, noarchive, nosnippet, noimageindex, noai, noimageai' },
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'X-Frame-Options', value: 'DENY' },
+  { key: 'Referrer-Policy', value: 'no-referrer' },
+  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), browsing-topics=()' },
+  { key: 'Content-Security-Policy', value: "frame-ancestors 'none'" },
+];
+
 const nextConfig: NextConfig = {
+  poweredByHeader: false,
+  productionBrowserSourceMaps: false,
   outputFileTracingRoot: projectRoot,
   turbopack: {
     root: projectRoot,
@@ -42,7 +53,10 @@ const nextConfig: NextConfig = {
   // binary (linux-x64/darwin-x64/win32-x64). Next.js Webpack can't statically
   // resolve those — bundling fails with "Module not found". Mark it external
   // so the serverless function loads it from node_modules at runtime instead.
-  serverExternalPackages: ['@ffmpeg-installer/ffmpeg']
+  serverExternalPackages: ['@ffmpeg-installer/ffmpeg'],
+  async headers() {
+    return [{ source: '/:path*', headers: securityHeaders }];
+  }
 };
 
 export default withWorkflow(withNextIntl(nextConfig));
