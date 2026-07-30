@@ -14,6 +14,8 @@ const securityHeaders = [
   { key: 'Content-Security-Policy', value: "frame-ancestors 'none'" },
 ];
 
+const aiCrawlerPattern = '.*(GPTBot|ChatGPT-User|OAI-SearchBot|ClaudeBot|Claude-User|Claude-SearchBot|anthropic-ai|Google-Extended|PerplexityBot|Perplexity-User|CCBot|Bytespider|Applebot-Extended|Meta-ExternalAgent|Amazonbot).*';
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   productionBrowserSourceMaps: false,
@@ -56,6 +58,14 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ['@ffmpeg-installer/ffmpeg'],
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
+  },
+  async redirects() {
+    return [{
+      source: '/:path((?!robots\\.txt).*)',
+      has: [{ type: 'header', key: 'user-agent', value: aiCrawlerPattern }],
+      destination: '/robots.txt',
+      permanent: false,
+    }];
   }
 };
 
