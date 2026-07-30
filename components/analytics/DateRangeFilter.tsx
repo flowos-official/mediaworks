@@ -1,6 +1,7 @@
 'use client';
 
 import { Calendar } from 'lucide-react';
+import { useLocale } from 'next-intl';
 
 type Props = {
   years: number[];
@@ -17,6 +18,8 @@ export default function DateRangeFilter({
   onYearsChange,
   onPeriodChange,
 }: Props) {
+  const isKo = useLocale() === 'ko';
+
   const toggleYear = (year: number) => {
     if (selectedYears.includes(year)) {
       if (selectedYears.length > 1) {
@@ -31,7 +34,9 @@ export default function DateRangeFilter({
     <div className="flex flex-wrap items-center gap-3">
       <div className="flex items-center gap-1.5">
         <Calendar size={14} className="text-muted-foreground" />
-        <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">期間</span>
+        <span className="font-mono text-[9px] font-semibold tracking-[0.08em] text-muted-foreground">
+          {isKo ? '기간' : '期間'}
+        </span>
         <div className="flex gap-1">
           {years.map((y) => (
             <button
@@ -60,7 +65,7 @@ export default function DateRangeFilter({
               period === p ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
             }`}
           >
-            {p === 'weekly' ? '週次' : '月次'}
+            {p === 'weekly' ? (isKo ? '주간' : '週次') : (isKo ? '월간' : '月次')}
           </button>
         ))}
       </div>

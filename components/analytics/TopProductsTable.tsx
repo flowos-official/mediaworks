@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { useLocale } from 'next-intl';
 
 type ProductRow = {
   code: string;
@@ -34,10 +35,10 @@ function SortIcon({
   return sortDir === 'desc' ? <ArrowDown size={11} /> : <ArrowUp size={11} />;
 }
 
-function formatYen(v: number): string {
-  if (v >= 100_000_000) return `¥${(v / 100_000_000).toFixed(1)}億`;
-  if (v >= 10_000) return `¥${Math.round(v / 10_000)}万`;
-  return `¥${v.toLocaleString()}`;
+function formatMoney(v: number, isKo: boolean): string {
+  if (v >= 100_000_000) return `${isKo ? '₩' : '¥'}${(v / 100_000_000).toFixed(1)}${isKo ? '억' : '億'}`;
+  if (v >= 10_000) return `${isKo ? '₩' : '¥'}${Math.round(v / 10_000)}${isKo ? '만' : '万'}`;
+  return `${isKo ? '₩' : '¥'}${v.toLocaleString()}`;
 }
 
 function formatShortDate(d: string | null | undefined): string {
@@ -57,6 +58,7 @@ export default function TopProductsTable({
   compact?: boolean;
   limit?: number;
 }) {
+  const isKo = useLocale() === 'ko';
   const [sortKey, setSortKey] = useState<SortKey>('totalRevenue');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [page, setPage] = useState(0);
@@ -74,7 +76,7 @@ export default function TopProductsTable({
 
   const sorted = [...products].sort((a, b) => {
     const dir = sortDir === 'desc' ? -1 : 1;
-    if (sortKey === 'name') return dir * a.name.localeCompare(b.name, 'ja');
+    if (sortKey === 'name') return dir * a.name.localeCompare(b.name, isKo ? 'ko' : 'ja');
     if (sortKey === 'firstDate') return dir * (a.firstDate ?? '').localeCompare(b.firstDate ?? '');
     return dir * (a[sortKey] - b[sortKey]);
   });
@@ -86,9 +88,15 @@ export default function TopProductsTable({
     <Card className="border-border">
       <CardHeader className="pb-2">
         <CardTitle className="text-base font-semibold">
-          {limit ? `商品ランキング Top ${limit}` : '商品ランキング'}
+          {isKo
+            ? (limit ? `상품 순위 상위 ${limit}` : '상품 순위')
+            : (limit ? `商品ランキング Top ${limit}` : '商品ランキング')}
         </CardTitle>
-        <p className="text-xs text-muted-foreground">{limit ? `${products.length}商品中 上位${limit}` : `${products.length}商品`}</p>
+        <p className="text-xs text-muted-foreground">
+          {isKo
+            ? (limit ? `${products.length}개 상품 중 상위 ${limit}` : `${products.length}개 상품`)
+            : (limit ? `${products.length}商品中 上位${limit}` : `${products.length}商品`)}
+        </p>
       </CardHeader>
       <CardContent className="p-0">
         <div className="overflow-x-auto">
@@ -102,13 +110,13 @@ export default function TopProductsTable({
                     onClick={() => toggleSort('name')}
                     className={`flex min-h-9 items-center gap-1 rounded-md px-1 ${sortKey === 'name' ? 'text-blue-700 dark:text-blue-300' : ''}`}
                   >
-                    商品名 <SortIcon col="name" sortKey={sortKey} sortDir={sortDir} />
+                    {isKo ? '상품명' : '商品名'} <SortIcon col="name" sortKey={sortKey} sortDir={sortDir} />
                   </button>
                 </th>
-                {!compact && <th className="text-left px-4 py-2.5 font-medium">カテゴリ</th>}
+                {!compact && <th className="text-left px-4 py-2.5 font-medium">{isKo ? '카테고리' : 'カテゴリ'}</th>}
                 {([
-                  { key: 'totalRevenue' as const, label: '売上' },
-                  { key: 'totalQuantity' as const, label: '数量' },
+                  { key: 'totalRevenue' as const, label: isKo ? '매출' : '売上' },
+                  { key: 'totalQuantity' as const, label: isKo ? '수량' : '数量' },
                 ]).map((h) => (
                   <th key={h.key} className="text-right px-4 py-2.5 font-medium">
                     <button
@@ -127,7 +135,7 @@ export default function TopProductsTable({
                       onClick={() => toggleSort('avgWeeklyQuantity')}
                       className={`ml-auto flex min-h-9 items-center gap-1 rounded-md px-1 ${sortKey === 'avgWeeklyQuantity' ? 'text-blue-700 dark:text-blue-300' : ''}`}
                     >
-                      週平均 <SortIcon col="avgWeeklyQuantity" sortKey={sortKey} sortDir={sortDir} />
+                      {isKo ? '주간 평균' : '週平均'} <SortIcon col="avgWeeklyQuantity" sortKey={sortKey} sortDir={sortDir} />
                     </button>
                   </th>
                 )}
@@ -138,7 +146,7 @@ export default function TopProductsTable({
                       onClick={() => toggleSort('firstDate')}
                       className={`mx-auto flex min-h-9 items-center gap-1 rounded-md px-1 ${sortKey === 'firstDate' ? 'text-blue-700 dark:text-blue-300' : ''}`}
                     >
-                      期間 <SortIcon col="firstDate" sortKey={sortKey} sortDir={sortDir} />
+                      {isKo ? '기간' : '期間'} <SortIcon col="firstDate" sortKey={sortKey} sortDir={sortDir} />
                     </button>
                   </th>
                 )}
@@ -175,11 +183,11 @@ export default function TopProductsTable({
                       )}
                     </td>
                   )}
-                  <td className="px-4 py-2.5 text-right font-mono text-xs">{formatYen(p.totalRevenue)}</td>
+                  <td className="px-4 py-2.5 text-right font-mono text-xs">{formatMoney(p.totalRevenue, isKo)}</td>
                   <td className="px-4 py-2.5 text-right font-mono text-xs">{p.totalQuantity.toLocaleString()}</td>
                   {!compact && (
                     <td className="px-4 py-2.5 text-right font-mono text-xs text-muted-foreground">
-                      {p.avgWeeklyQuantity}/週
+                      {p.avgWeeklyQuantity}/{isKo ? '주' : '週'}
                     </td>
                   )}
                   {!compact && (
@@ -197,7 +205,7 @@ export default function TopProductsTable({
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-border">
             <span className="text-xs text-muted-foreground">
-              {page * perPage + 1}–{Math.min((page + 1) * perPage, sorted.length)} / {sorted.length}件
+              {page * perPage + 1}–{Math.min((page + 1) * perPage, sorted.length)} / {sorted.length}{isKo ? '개' : '件'}
             </span>
             <div className="flex items-center gap-1">
               <button
@@ -206,7 +214,7 @@ export default function TopProductsTable({
                 onClick={() => setPage(page - 1)}
                 className="min-h-9 rounded-lg border border-border px-2.5 text-xs hover:bg-muted disabled:cursor-not-allowed disabled:opacity-30"
               >
-                前へ
+                {isKo ? '이전' : '前へ'}
               </button>
               {Array.from({ length: totalPages }, (_, i) => i)
                 .filter((i) => i === 0 || i === totalPages - 1 || Math.abs(i - page) <= 1)
@@ -239,7 +247,7 @@ export default function TopProductsTable({
                 onClick={() => setPage(page + 1)}
                 className="min-h-9 rounded-lg border border-border px-2.5 text-xs hover:bg-muted disabled:cursor-not-allowed disabled:opacity-30"
               >
-                次へ
+                {isKo ? '다음' : '次へ'}
               </button>
             </div>
           </div>

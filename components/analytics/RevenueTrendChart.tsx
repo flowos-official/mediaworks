@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useLocale } from 'next-intl';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
@@ -14,9 +15,9 @@ type TrendData = {
   marginRate: number;
 };
 
-function formatYenShort(value: number): string {
-  if (value >= 100_000_000) return `${(value / 100_000_000).toFixed(1)}億`;
-  if (value >= 10_000) return `${Math.round(value / 10_000)}万`;
+function formatMoneyShort(value: number, isKo: boolean): string {
+  if (value >= 100_000_000) return `${(value / 100_000_000).toFixed(1)}${isKo ? '억' : '億'}`;
+  if (value >= 10_000) return `${Math.round(value / 10_000)}${isKo ? '만' : '万'}`;
   return value.toLocaleString();
 }
 
@@ -34,6 +35,10 @@ export default function RevenueTrendChart({
 }) {
   const [showProfit, setShowProfit] = useState(true);
   const [showCost, setShowCost] = useState(false);
+  const isKo = useLocale() === 'ko';
+  const labels: Record<string, string> = isKo
+    ? { revenue: '매출', profit: '매출이익', cost: '원가' }
+    : { revenue: '売上', profit: '粗利', cost: '原価' };
 
   const chartData = data.map((d) => ({ ...d, cost: d.revenue - d.profit }));
 
@@ -41,7 +46,7 @@ export default function RevenueTrendChart({
     <Card className="border-border">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base font-semibold">売上推移</CardTitle>
+          <CardTitle className="text-base font-semibold">{isKo ? '매출 추이' : '売上推移'}</CardTitle>
           <div className="flex gap-2">
             <button
               type="button"
@@ -50,7 +55,7 @@ export default function RevenueTrendChart({
                 showProfit ? 'bg-green-600/15 text-green-700 dark:text-green-300' : 'bg-muted text-muted-foreground'
               }`}
             >
-              粗利表示
+              {isKo ? '매출이익 표시' : '粗利表示'}
             </button>
             <button
               type="button"
@@ -59,12 +64,12 @@ export default function RevenueTrendChart({
                 showCost ? 'bg-orange-600/15 text-orange-700 dark:text-orange-300' : 'bg-muted text-muted-foreground'
               }`}
             >
-              原価表示
+              {isKo ? '원가 표시' : '原価表示'}
             </button>
           </div>
         </div>
         <p className="text-xs text-muted-foreground">
-          {period === 'weekly' ? '週次' : '月次'} | {data.length}期間
+          {period === 'weekly' ? (isKo ? '주간' : '週次') : (isKo ? '월간' : '月次')} | {data.length}{isKo ? '개 구간' : '期間'}
         </p>
       </CardHeader>
       <CardContent>
@@ -93,24 +98,24 @@ export default function RevenueTrendChart({
                 axisLine={{ stroke: '#e5e7eb' }}
               />
               <YAxis
-                tickFormatter={formatYenShort}
+                tickFormatter={(value) => formatMoneyShort(value, isKo)}
                 tick={{ fontSize: 11, fill: '#9ca3af' }}
                 axisLine={{ stroke: '#e5e7eb' }}
                 width={55}
               />
               <Tooltip
                 formatter={(value: unknown, name: unknown) => {
-                  const labels: Record<string, string> = { revenue: '売上', profit: '粗利', cost: '原価' };
-                  return [`¥${Number(value).toLocaleString()}`, labels[name as string] ?? name];
+                  return [`${isKo ? '₩' : '¥'}${Number(value).toLocaleString()}`, labels[name as string] ?? name];
                 }}
                 labelFormatter={(label) =>
-                  period === 'weekly' ? `Week: ${label}` : `Month: ${label}`
+                  period === 'weekly'
+                    ? `${isKo ? '주' : 'Week'}: ${label}`
+                    : `${isKo ? '월' : 'Month'}: ${label}`
                 }
                 contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}
               />
               <Legend
                 formatter={(value) => {
-                  const labels: Record<string, string> = { revenue: '売上', profit: '粗利', cost: '原価' };
                   return labels[value] ?? value;
                 }}
                 wrapperStyle={{ fontSize: 12 }}

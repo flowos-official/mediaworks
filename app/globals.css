@@ -2,6 +2,11 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+html:lang(ko) body {
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
 @font-face {
   font-family: "Pretendard";
   src: url("/brand/fonts/Pretendard-Regular.woff") format("woff");

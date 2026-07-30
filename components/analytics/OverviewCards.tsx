@@ -1,7 +1,7 @@
 'use client';
 
 import { TrendingUp, TrendingDown, DollarSign, Package, BarChart3 } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Card, CardContent } from '@/components/ui/card';
 
 type KpiData = {
@@ -14,10 +14,10 @@ type KpiData = {
   yearlyKpis: Record<string, { revenue: number; profit: number; quantity: number }>;
 };
 
-function formatYen(value: number): string {
-  if (value >= 100_000_000) return `¥${(value / 100_000_000).toFixed(1)}億`;
-  if (value >= 10_000) return `¥${(value / 10_000).toFixed(0)}万`;
-  return `¥${value.toLocaleString()}`;
+function formatMoney(value: number, isKo: boolean): string {
+  if (value >= 100_000_000) return `${isKo ? '₩' : '¥'}${(value / 100_000_000).toFixed(1)}${isKo ? '억' : '億'}`;
+  if (value >= 10_000) return `${isKo ? '₩' : '¥'}${(value / 10_000).toFixed(0)}${isKo ? '만' : '万'}`;
+  return `${isKo ? '₩' : '¥'}${value.toLocaleString()}`;
 }
 
 function YoyChange({ current, previous }: { current: number; previous: number }) {
@@ -34,6 +34,7 @@ function YoyChange({ current, previous }: { current: number; previous: number })
 
 export default function OverviewCards({ data }: { data: KpiData }) {
   const t = useTranslations('overviewCards');
+  const isKo = useLocale() === 'ko';
   const years = Object.keys(data.yearlyKpis).map(Number).sort();
   const prev = years.length >= 2 ? data.yearlyKpis[years[0]] : null;
   const curr = years.length >= 2 ? data.yearlyKpis[years[years.length - 1]] : null;
@@ -41,14 +42,14 @@ export default function OverviewCards({ data }: { data: KpiData }) {
   const cards = [
     {
       label: t('totalRevenue'),
-      value: formatYen(data.totalRevenue),
+      value: formatMoney(data.totalRevenue, isKo),
       icon: DollarSign,
       color: 'text-blue-600 bg-blue-600/10',
       yoy: prev && curr ? { current: curr.revenue, previous: prev.revenue } : null,
     },
     {
       label: t('totalProfit'),
-      value: formatYen(data.totalProfit),
+      value: formatMoney(data.totalProfit, isKo),
       icon: TrendingUp,
       color: 'text-green-600 bg-green-600/10',
       yoy: prev && curr ? { current: curr.profit, previous: prev.profit } : null,
