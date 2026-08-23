@@ -589,6 +589,7 @@ export function ScreenplayCreateForm({ locale }: { locale: string }) {
 							description: brief.description,
 							guarantee: brief.guarantee,
 							notes: brief.notes,
+							customization: brief.customization,
 						}}
 						onBriefChange={(b) => setBrief((prev) => (prev ? { ...prev, ...b } : { ...b }))}
 						bonusesText={bonusesText}

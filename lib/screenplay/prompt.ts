@@ -8,6 +8,58 @@ const BASE_STYLE_BIBLE_PATH = path.join(process.cwd(), "lib/screenplay/style-bib
 
 const _styleCache = new Map<string, string>();
 
+function asRecord(value: unknown): Record<string, unknown> {
+	return value && typeof value === "object" && !Array.isArray(value)
+		? (value as Record<string, unknown>)
+		: {};
+}
+
+function japanesePhrases(value: unknown): string[] {
+	if (!Array.isArray(value)) return [];
+	return value
+		.filter((item): item is string => typeof item === "string")
+		.map((item) => item.replace(/\s*[（(][A-Za-z][^）)]*[）)]/g, "").trim())
+		.filter((item) => /[ぁ-んァ-ン一-龯]/u.test(item));
+}
+
+/**
+ * The raw style bible contains English analysis and facts from one observed
+ * cleaner script. Passing that verbatim made unrelated products inherit its
+ * claims and demonstrations. Only retain Japanese rhythm examples and state
+ * the small evidence base explicitly.
+ */
+export function buildSafeStyleReference(content: string): string {
+	try {
+		const root = asRecord(JSON.parse(content));
+		const profile = asRecord(root.show_profile);
+		const observedProducts = Array.isArray(profile.product_lineup_observed)
+			? profile.product_lineup_observed.length
+			: 0;
+		const phrases: string[] = [];
+
+		// Only neutral transition vocabulary is safe to transfer from a single
+		// observed product. Full example lines encode that product's category,
+		// claims, demonstrations and offer, so they are intentionally excluded.
+		const style = asRecord(root.writing_style_dna);
+		phrases.push(...japanesePhrases(style.filler_and_transition_phrases_jp));
+
+		const unique = [...new Set(phrases)].slice(0, 24);
+		return [
+			"## 放送文体リファレンス（限定的な参考情報）",
+			`- 観測資料: ${observedProducts}商品。現時点の文体パターンは仮説であり、全カテゴリの正解ではない。`,
+			"- 転用してよいもの: 会話のテンポ、短いリアクション、問題提起から実演へ移る構成、演出キューの粒度。",
+			"- 転用禁止: 観測商品の名称、数値、性能、試験、専門家、お客様、特典、価格、固有の実演内容。",
+			"- 下記の接続表現は語調の参考に限り、商品事実や根拠として使用しない。",
+			...unique.map((phrase) => `  - ${phrase}`),
+		].join("\n");
+	} catch {
+		return [
+			"## 放送文体リファレンス",
+			"- 文体資料を解析できないため、商品ブリーフと制作条件だけを使用する。",
+		].join("\n");
+	}
+}
+
 async function loadStyleBible(tenant: string = "mediaworks"): Promise<string> {
 	const cached = _styleCache.get(tenant);
 	if (cached) return cached;
@@ -17,11 +69,12 @@ async function loadStyleBible(tenant: string = "mediaworks"): Promise<string> {
 	} catch {
 		content = await fs.readFile(BASE_STYLE_BIBLE_PATH, "utf-8");   // fallback
 	}
-	_styleCache.set(tenant, content);
-	return content;
+	const safeReference = buildSafeStyleReference(content);
+	_styleCache.set(tenant, safeReference);
+	return safeReference;
 }
 
-export const __test = { loadStyleBible };
+export const __test = { loadStyleBible, buildSafeStyleReference };
 
 // ────────────────────────────────────────────────────────────────────────────
 // SYSTEM INSTRUCTION — immutable role / output contract.
@@ -45,7 +98,7 @@ export const SYSTEM_INSTRUCTION = `
 
 - あなたは現場のスタジオ作家。視聴者の手元・耳元のリアクションを意識し、メリハリのある演出設計が得意。
 - 視聴者：60代以上のシニアが中心。聞き取りやすい言葉・具体的な比較・繰り返しを大切にする。
-- 番組：CMなし生放送、25〜30分。テロップ・カメラ・BGM・SE・お客様VTRを通常体験として使用する。
+- 番組：CMなし生放送。放送尺は商品ブリーフの指定を優先し、指定がなければ25分を目安にする。テロップ・カメラ・BGM・SEを使用する。
 
 # 出力の絶対契約
 
@@ -68,13 +121,13 @@ export const SYSTEM_INSTRUCTION = `
 ## 本編
 
 ### ■アバン — つかみと問題提起
-（VTRでペイン提示 → 専門家による権威付け）
+（生活上の困りごとを提示。確認済みの専門家情報がある場合だけ権威付けに使用）
 
 ### ■スタジオ① — 導入と従来品との対比
 （従来品との対比 → ドラマチック登場）
 
 ### ■スタジオ② — 実演（複数）
-（視界・洗浄・装着など、視覚的にわかる実演を複数連続）
+（商品ブリーフで確認できる特徴を、視覚的に理解できる実演で示す）
 
 ### ■CTA① — 最初の注文案内（約90秒）
 （実演直後の納得感を受け、電話番号・注文方法・主要条件を案内）
@@ -88,8 +141,8 @@ export const SYSTEM_INSTRUCTION = `
 ### ■CTA② — 価格と条件の注文案内（約90〜120秒）
 （価格・送料・保証など、商品ブリーフで確認できる条件だけを案内）
 
-### ■VTR — お客様の声
-（実在感のあるお客様体験）
+### ■VTR — 使用シーン／確認済みのお客様の声
+（お客様の声がブリーフにある場合だけ引用。なければ利用場面やよくある疑問を扱う）
 
 ### ■CTA③ — 最終案内（約60〜90秒）
 （電話番号・注文方法・確認済みの条件を再提示）
@@ -110,7 +163,7 @@ export const SYSTEM_INSTRUCTION = `
 
 セリフ本文の下に英訳を書かない。1行で完結する。
 
-役名は以下のいずれかのみを使用：
+標準役名は以下を使用する。商品ブリーフの「追加の話者」に指定がある場合だけ、その役名も使用可能：
 - \`[N]\` ナレーター（男性中年、語尾「…！」「…のです！」、テンポ早め）
 - \`[高橋]\` 商品アドバイザー（冷静で権威的、専門用語を分かりやすく）
 - \`[山内]\` MC（50代男性、視聴者目線、驚き役）
@@ -151,6 +204,8 @@ export const SYSTEM_INSTRUCTION = `
 - 価格、割引額、送料、保証、特典、限定条件は、商品ブリーフに明記されたものだけを使用する。
 - メーカー直販価格や過去価格の販売実績が確認できない場合、二重価格表示や「○円お得」を作らない。
 - 商品ブリーフにない比較試験、試験機関、専門家、受賞歴、お客様の体験、専用品を創作しない。
+- 「企画参考情報」は台本設計の参考に限り、確認済みの商品事実・数値・実績として断定しない。
+- お客様の声がない場合は架空の氏名や体験談を作らず、「使用シーン／よくある疑問」のVTRへ置き換える。
 - 未確認情報を台本に必要とする場合は断定せず、台本本文には混ぜずに該当要素を省略する。
 - 電話番号は実値がない場合に限り 0120-XXX-XXX の制作プレースホルダーを使う。
 
@@ -168,7 +223,7 @@ export const SYSTEM_INSTRUCTION = `
 
 各アクトに最低3〜5の演出キュー、複数の話者ラインを織り交ぜる。
 アクト境界は \`---\` で区切る。
-密度は実放送の25〜30分尺に相当する量を目指す。
+密度は商品ブリーフで指定された放送尺に合わせる。指定がなければ25分相当を目指す。
 `.trim();
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -179,7 +234,7 @@ function formatProductBrief(b: ProductBrief): string {
 	lines.push(`商品名: ${b.name}`);
 	if (b.category) lines.push(`カテゴリ: ${b.category}`);
 	lines.push("");
-	lines.push("特徴・スペック:");
+	lines.push("確認済み商品情報（台本で事実として使用可能）:");
 	lines.push(b.description);
 	if (b.price) {
 		lines.push("");
@@ -194,7 +249,13 @@ function formatProductBrief(b: ProductBrief): string {
 		for (const x of b.bonuses) lines.push(`  - ${x}`);
 	}
 	if (b.guarantee) lines.push("", `保証: ${b.guarantee}`);
-	if (b.notes) lines.push("", "その他のメモ:", b.notes);
+	if (b.notes) {
+		lines.push(
+			"",
+			"企画参考情報（構成の参考のみ。商品事実・数値・実績として断定しない）:",
+			b.notes,
+		);
+	}
 	return lines.join("\n");
 }
 
@@ -248,6 +309,13 @@ export async function buildUserPrompt(input: GenerateInput): Promise<string> {
 			"## 商品ブリーフ",
 			"",
 			productBlock,
+			"",
+			"## 根拠の優先順位",
+			"1. 確認済み商品情報・価格・特典・保証",
+			"2. ユーザー指定の作家指示",
+			"3. 企画参考情報（構成だけに使用し、事実として断定しない）",
+			"4. 放送文体リファレンス（リズムだけに使用し、内容を転用しない）",
+			"根拠が足りない要素は創作せず、省略または一般的な使用シーンに置き換える。",
 		];
 		if (customBlock) parts.push("", "---", "", customBlock);
 		const complianceInitial = input.complianceBlock?.trim();
@@ -256,7 +324,7 @@ export async function buildUserPrompt(input: GenerateInput): Promise<string> {
 			"",
 			"---",
 			"",
-			"## style_bible 抜粋（参考。出力には英語を含めないこと）",
+			"## 放送文体の限定リファレンス",
 			"",
 			styleBible.slice(0, 5000),
 			"",
@@ -311,7 +379,7 @@ export async function buildUserPrompt(input: GenerateInput): Promise<string> {
 		"",
 		"---",
 		"",
-		"## style_bible 抜粋（参考。出力には英語を含めないこと）",
+		"## 放送文体の限定リファレンス",
 		"",
 		styleBible.slice(0, 3000),
 		"",

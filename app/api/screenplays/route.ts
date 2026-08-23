@@ -6,6 +6,11 @@ import { screenplayWorkflow } from "@/lib/workflows/screenplay.workflow";
 import type { ProductBrief } from "@/lib/screenplay/types";
 import { loadProductBriefForScreenplay } from "@/lib/screenplay/product-brief";
 import { validateImportedMarkdown } from "@/lib/screenplay/import/validate";
+import { filterMarketRecords } from "@/lib/market/data-visibility";
+import {
+	sanitizeScreenplayCustomization,
+	sanitizeScreenplayOffer,
+} from "@/lib/screenplay/customization";
 
 export const maxDuration = 60;
 
@@ -19,7 +24,7 @@ export async function GET() {
 		.order("updated_at", { ascending: false })
 		.limit(50);
 	if (error) return Response.json({ error: error.message }, { status: 500 });
-	return Response.json({ screenplays: data ?? [] });
+	return Response.json({ screenplays: filterMarketRecords(data ?? []) });
 }
 
 interface ValidationFailure { ok: false; status: number; error: string }
@@ -66,7 +71,7 @@ function resolveBrief(body: unknown): ValidationFailure | ValidationSuccess {
 		if (Object.keys(price).length > 0) brief.price = price;
 	}
 	if (o.customization && typeof o.customization === "object") {
-		brief.customization = o.customization as ProductBrief["customization"];
+		brief.customization = sanitizeScreenplayCustomization(o.customization);
 	}
 	return { ok: true, brief, productId: null };
 }
@@ -85,7 +90,13 @@ export async function POST(request: NextRequest) {
 		: resolveBrief(body);
 	if (!v.ok) return Response.json({ error: v.error }, { status: v.status });
 
-	const { brief: productBrief } = v;
+	const productBrief: ProductBrief = { ...v.brief };
+	if (productId && body && typeof body === "object") {
+		const bodyRecord = body as Record<string, unknown>;
+		const customization = sanitizeScreenplayCustomization(bodyRecord.customization);
+		if (customization) productBrief.customization = customization;
+		Object.assign(productBrief, sanitizeScreenplayOffer(bodyRecord.offer));
+	}
 
 	// Import path: an operator-reviewed, pre-normalized draft seeds v1 directly.
 	let importedMarkdown: string | undefined;
@@ -112,6 +123,7 @@ export async function POST(request: NextRequest) {
 			title: productBrief.name,
 			product_info_snapshot: productBrief,
 			status: "generating",
+			last_error: null,
 			source_kind: sourceKind,
 		})
 		.select("id")
@@ -136,7 +148,10 @@ export async function POST(request: NextRequest) {
 	} catch (err) {
 		await supabase
 			.from("screenplays")
-			.update({ status: "failed" })
+			.update({
+				status: "failed",
+				last_error: "台本生成ワークフローを開始できませんでした。管理者に連絡してください。",
+			})
 			.eq("id", screenplayId);
 		const msg = err instanceof Error ? err.message : String(err);
 		console.error("[screenplays] workflow start failed:", msg);

@@ -64,12 +64,13 @@ const brief = buildProductBriefFromRows({
 assert(brief.name === "調理家電サンプル", "uses product name");
 assert(brief.category === "家電", "uses product category");
 assert(brief.description.includes("忙しい家庭向け"), "includes product description");
-assert(brief.description.includes("テレビ通販では実演性"), "includes research marketability");
+assert(brief.notes?.includes("テレビ通販では実演性") === true, "keeps research marketability as planning notes");
+assert(!brief.description.includes("テレビ通販では実演性"), "does not promote research hypothesis to confirmed facts");
 
 // REAL-shape assertions — these are the ones the old string[]-shaped test missed:
-assert(brief.description.includes("30秒台本サンプル"), "serializes broadcast_scripts object (sec30)");
-assert(brief.description.includes("5分台本サンプル"), "serializes broadcast_scripts object (min5)");
-assert(brief.description.includes("実演デモ中心"), "serializes marketing_strategy objects");
+assert(brief.notes?.includes("30秒台本サンプル") === true, "serializes broadcast_scripts object (sec30)");
+assert(brief.notes?.includes("5分台本サンプル") === true, "serializes broadcast_scripts object (min5)");
+assert(brief.notes?.includes("実演デモ中心") === true, "serializes marketing_strategy objects");
 assert(brief.notes?.includes("QVC: ¥14,800") === true, "serializes pricing_strategy channel_pricing");
 assert(brief.notes?.includes("月500個で黒字化") === true, "serializes pricing_strategy bep summary");
 

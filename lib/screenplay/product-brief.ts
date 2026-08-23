@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ProductBrief } from "@/lib/screenplay/types";
+import { isMarketRecordVisible } from "@/lib/market/data-visibility";
 
 export type ProductBriefLoadResult =
 	| { ok: true; productId: string; brief: ProductBrief }
@@ -138,17 +139,20 @@ export function buildProductBriefFromRows({
 
 	const description = compactLines([
 		text(product.description),
-		text(researchView.marketability_description) &&
-			`市場性: ${text(researchView.marketability_description)}`,
 		productFeatures.length > 0 && `特徴:\n- ${productFeatures.join("\n- ")}`,
-		text(researchView.market_size) && `市場規模: ${text(researchView.market_size)}`,
-		text(product.target_market) && `想定ターゲット: ${text(product.target_market)}`,
+		text(product.target_market) && `登録ターゲット: ${text(product.target_market)}`,
+	]);
+
+	// AI research and enrichment outputs are useful planning signals, but they
+	// are not verified product facts. Keep them in notes so prompt.ts can apply
+	// them to structure without turning them into broadcast claims.
+	const notes = compactLines([
+		text(researchView.marketability_description) &&
+			`市場性仮説: ${text(researchView.marketability_description)}`,
+		text(researchView.market_size) && `市場規模仮説: ${text(researchView.market_size)}`,
 		text(demographics.primary) && `主要顧客: ${text(demographics.primary)}`,
 		marketing.length > 0 && `販売施策:\n- ${marketing.join("\n- ")}`,
 		broadcastScripts && `放送訴求案:\n${broadcastScripts}`,
-	]);
-
-	const notes = compactLines([
 		text(product.price_range) && `商品価格帯: ${text(product.price_range)}`,
 		text(researchView.recommended_price_range) &&
 			`推奨価格帯: ${text(researchView.recommended_price_range)}`,
@@ -189,6 +193,9 @@ export async function loadProductBriefForScreenplay(
 		return { ok: false, status: 500, error: "商品情報の取得に失敗しました" };
 	}
 	if (!product) {
+		return { ok: false, status: 404, error: "商品が見つかりません" };
+	}
+	if (!isMarketRecordVisible(product)) {
 		return { ok: false, status: 404, error: "商品が見つかりません" };
 	}
 

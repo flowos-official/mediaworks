@@ -121,6 +121,8 @@
     "test:compliance-reference-input": "tsx scripts/test-compliance-reference-input.ts",
     "test:compliance-grounding": "tsx scripts/test-compliance-grounding.ts",
     "test:screenplay-prompt": "tsx scripts/test-screenplay-prompt.ts",
+    "test:screenplay-customization": "tsx scripts/test-screenplay-customization.ts",
+    "test:screenplay-product-brief": "tsx scripts/test-screenplay-product-brief.ts",
     "test:style-bible-tenant": "tsx scripts/test-style-bible-tenant.ts",
     "test:screenplay-sections": "tsx scripts/test-screenplay-sections.ts",
     "test:compliance-context": "tsx scripts/test-compliance-context.ts",
