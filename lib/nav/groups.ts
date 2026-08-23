@@ -1,5 +1,7 @@
 // lib/nav/groups.ts
 import type { Role } from '@/lib/auth/route-permissions';
+import { isFeatureEnabled, type AppFeature } from '@/config/app';
+import { stripLocalePrefix } from '@/lib/i18n/locale-path';
 
 export type GroupKey = 'firm' | 'market' | 'produce' | 'admin';
 
@@ -10,6 +12,8 @@ export interface NavMember {
   href: string;
   /** Optional per-member role filter inside an otherwise visible group. */
   roles?: readonly Role[];
+  /** Product capability required to render this destination. */
+  feature: AppFeature;
 }
 
 export type GroupVisibility = 'full' | 'productsOnly' | 'hidden';
@@ -34,9 +38,9 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     landing: '/analytics/overview',
     pathPrefixes: ['/analytics/overview', '/analytics/products', '/gallery'],
     members: [
-      { labelKey: 'nav.firm.overview', href: '/analytics/overview' },
-      { labelKey: 'nav.firm.products', href: '/analytics/products' },
-      { labelKey: 'nav.firm.gallery', href: '/gallery' },
+      { labelKey: 'nav.firm.overview', href: '/analytics/overview', feature: 'firmAnalytics' },
+      { labelKey: 'nav.firm.products', href: '/analytics/products', feature: 'firmAnalytics' },
+      { labelKey: 'nav.firm.gallery', href: '/gallery', feature: 'firmAnalytics' },
     ],
     visibility: { admin: 'full', member: 'full', viewer: 'productsOnly' },
   },
@@ -46,10 +50,10 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     landing: '/broadcasts',
     pathPrefixes: ['/broadcasts', '/analytics/discovery', '/analytics/strategy', '/analytics/pipeline'],
     members: [
-      { labelKey: 'nav.market.broadcasts', href: '/broadcasts', roles: ['admin', 'member'] },
-      { labelKey: 'nav.market.discovery', href: '/analytics/discovery', roles: ['admin', 'member'] },
-      { labelKey: 'nav.market.strategy', href: '/analytics/strategy', roles: ['admin', 'member'] },
-      { labelKey: 'nav.market.pipeline', href: '/analytics/pipeline', roles: ['admin', 'member', 'viewer'] },
+      { labelKey: 'nav.market.broadcasts', href: '/broadcasts', roles: ['admin', 'member'], feature: 'broadcastCalendar' },
+      { labelKey: 'nav.market.discovery', href: '/analytics/discovery', roles: ['admin', 'member'], feature: 'productDiscovery' },
+      { labelKey: 'nav.market.strategy', href: '/analytics/strategy', roles: ['admin', 'member'], feature: 'strategy' },
+      { labelKey: 'nav.market.pipeline', href: '/analytics/pipeline', roles: ['admin', 'member', 'viewer'], feature: 'selectionPipeline' },
     ],
     visibility: { admin: 'full', member: 'full', viewer: 'full' },
   },
@@ -59,8 +63,8 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     landing: '/screenplays',
     pathPrefixes: ['/screenplays', '/research'],
     members: [
-      { labelKey: 'nav.produce.screenplays', href: '/screenplays' },
-      { labelKey: 'nav.produce.research', href: '/research' },
+      { labelKey: 'nav.produce.screenplays', href: '/screenplays', feature: 'screenplays' },
+      { labelKey: 'nav.produce.research', href: '/research', feature: 'research' },
     ],
     visibility: { admin: 'full', member: 'full', viewer: 'hidden' },
   },
@@ -70,23 +74,23 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     landing: '/admin/users',
     pathPrefixes: ['/admin/users', '/admin/historical-crawl', '/admin/archive-status', '/admin/registry', '/admin/preferences', '/admin/discovery-calibration', '/admin/research-pipeline', '/admin/compliance-rules', '/admin/compliance-references'],
     members: [
-      { labelKey: 'nav.admin.users', href: '/admin/users' },
-      { labelKey: 'nav.admin.historicalCrawl', href: '/admin/historical-crawl' },
-      { labelKey: 'nav.admin.archiveStatus', href: '/admin/archive-status' },
-      { labelKey: 'nav.admin.discoveryCalibration', href: '/admin/discovery-calibration' },
-      { labelKey: 'nav.admin.researchPipeline', href: '/admin/research-pipeline' },
-      { labelKey: 'nav.admin.complianceRules', href: '/admin/compliance-rules' },
-      { labelKey: 'nav.admin.complianceReferences', href: '/admin/compliance-references' },
-      { labelKey: 'nav.admin.registry', href: '/admin/registry' },
-      { labelKey: 'nav.admin.preferences', href: '/admin/preferences' },
+      { labelKey: 'nav.admin.users', href: '/admin/users', feature: 'adminOperations' },
+      { labelKey: 'nav.admin.historicalCrawl', href: '/admin/historical-crawl', feature: 'adminOperations' },
+      { labelKey: 'nav.admin.archiveStatus', href: '/admin/archive-status', feature: 'adminOperations' },
+      { labelKey: 'nav.admin.discoveryCalibration', href: '/admin/discovery-calibration', feature: 'adminOperations' },
+      { labelKey: 'nav.admin.researchPipeline', href: '/admin/research-pipeline', feature: 'adminOperations' },
+      { labelKey: 'nav.admin.complianceRules', href: '/admin/compliance-rules', feature: 'adminOperations' },
+      { labelKey: 'nav.admin.complianceReferences', href: '/admin/compliance-references', feature: 'adminOperations' },
+      { labelKey: 'nav.admin.registry', href: '/admin/registry', feature: 'adminOperations' },
+      { labelKey: 'nav.admin.preferences', href: '/admin/preferences', feature: 'adminOperations' },
     ],
     visibility: { admin: 'full', member: 'hidden', viewer: 'hidden' },
   },
 ] as const;
 
-/** Strip the locale prefix ("/ko/..." or "/ja/...") for active-matching. Default locale "ja" has no prefix. */
+/** Strip the configured locale prefix for active route matching. */
 export function stripLocale(pathname: string): string {
-  return pathname.replace(/^\/(?:ja|ko)(?=\/|$)/, '') || '/';
+  return stripLocalePrefix(pathname);
 }
 
 /** Returns the group whose pathPrefixes match the given pathname, or null. */
@@ -108,5 +112,5 @@ export function findActiveMember(group: NavGroup, pathname: string): NavMember |
 }
 
 export function visibleMembersForRole(group: NavGroup, role: Role): NavMember[] {
-  return group.members.filter((m) => !m.roles || m.roles.includes(role));
+  return group.members.filter((m) => isFeatureEnabled(m.feature) && (!m.roles || m.roles.includes(role)));
 }

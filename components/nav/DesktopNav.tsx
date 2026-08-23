@@ -30,6 +30,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { localePath } from '@/lib/i18n/locale-path';
+import { appConfig } from '@/config/app';
 import {
   NAV_GROUPS,
   findActiveGroup,
@@ -123,7 +124,7 @@ export default function DesktopNav({ role, locale, memberBadges }: Props) {
         if (visibility === 'hidden' || (visibility === 'full' && members.length === 0)) return null;
         const GroupIcon = GROUP_ICONS[group.key] ?? PackageSearch;
         const visibleMembers = visibility === 'productsOnly'
-          ? group.members.filter((member) => member.href === '/analytics/products')
+          ? members.filter((member) => member.href === '/analytics/products')
           : members;
 
         return (
@@ -154,20 +155,22 @@ export default function DesktopNav({ role, locale, memberBadges }: Props) {
         );
       })}
 
-      <section aria-labelledby="nav-group-support" aria-label="Support" className="mw-nav-section">
-        <div className="mw-nav-group-header mb-1.5 flex items-center gap-2 px-2.5" title="Support">
-          <BookOpenCheck size={12} className="text-sidebar-foreground/35" />
-          <h2 id="nav-group-support" className="mw-nav-copy font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-sidebar-foreground/65">
-            Support
-          </h2>
-        </div>
-        <NavigationLink
-          href={localePath(locale, '/guide')}
-          label={t('nav.guide')}
-          icon={BookOpenCheck}
-          active={pathname === '/guide' || pathname.endsWith('/guide')}
-        />
-      </section>
+      {appConfig.features.guide && (
+        <section aria-labelledby="nav-group-support" aria-label="Support" className="mw-nav-section">
+          <div className="mw-nav-group-header mb-1.5 flex items-center gap-2 px-2.5" title="Support">
+            <BookOpenCheck size={12} className="text-sidebar-foreground/35" />
+            <h2 id="nav-group-support" className="mw-nav-copy font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-sidebar-foreground/65">
+              Support
+            </h2>
+          </div>
+          <NavigationLink
+            href={localePath(locale, '/guide')}
+            label={t('nav.guide')}
+            icon={BookOpenCheck}
+            active={pathname === '/guide' || pathname.endsWith('/guide')}
+          />
+        </section>
+      )}
     </nav>
   );
 }

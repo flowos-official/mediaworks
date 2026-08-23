@@ -8,6 +8,7 @@ import GroupSubNav from '@/components/nav/GroupSubNav';
 import DateRangeFilter from '@/components/analytics/DateRangeFilter';
 import { FirmFilterProvider, useAnalyticsFilter } from '@/lib/analytics/firm-filter-context';
 import type { Role } from '@/lib/auth/route-permissions';
+import { appConfig } from '@/config/app';
 
 interface FirmShellProps {
   role: Role | null;
@@ -44,7 +45,7 @@ export default function FirmShell({ role, title, subtitle, children }: FirmShell
           title={title}
           subtitle={subtitle}
           action={showFullChrome && showDateFilter ? <FilterAction /> : undefined}
-          eyebrow="First-party performance"
+          eyebrow={appConfig.copy.analyticsEyebrow}
         />
         <div className="mw-page-stack">
           {showFullChrome && <GroupSubNav groupKey="firm" role={role} />}

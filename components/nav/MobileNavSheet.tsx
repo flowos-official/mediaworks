@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { ChevronDown, Menu, Radio, X } from 'lucide-react';
+import { appConfig } from '@/config/app';
 import { localePath } from '@/lib/i18n/locale-path';
 import {
   NAV_GROUPS,
@@ -100,7 +101,7 @@ export default function MobileNavSheet({ role, locale, memberBadges }: Props) {
             <div>
               <div className="text-sm font-bold">Workspace navigation</div>
               <div className="mt-0.5 flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground">
-                <span className="mw-status-dot" /> MediaWorks online
+                <span className="mw-status-dot" /> {appConfig.brand.name} {appConfig.brand.marketLabel} online
               </div>
             </div>
             <button
@@ -114,20 +115,22 @@ export default function MobileNavSheet({ role, locale, memberBadges }: Props) {
             </button>
           </div>
           <nav className="mw-scrollbar h-[calc(100dvh-4rem)] overflow-y-auto p-4">
-            <Link
-              href={localePath(locale, '/guide')}
-              onClick={() => setOpen(false)}
-              className={`mb-3 flex min-h-11 items-center gap-2 rounded-xl border px-3 text-sm font-medium ${
-                isGuideActive ? 'border-primary/30 bg-primary/10 text-primary' : 'border-border bg-card text-foreground'
-              }`}
-            >
-              <Radio size={15} /> {t('nav.guide')}
-            </Link>
+            {appConfig.features.guide && (
+              <Link
+                href={localePath(locale, '/guide')}
+                onClick={() => setOpen(false)}
+                className={`mb-3 flex min-h-11 items-center gap-2 rounded-xl border px-3 text-sm font-medium ${
+                  isGuideActive ? 'border-primary/30 bg-primary/10 text-primary' : 'border-border bg-card text-foreground'
+                }`}
+              >
+                <Radio size={15} /> {t('nav.guide')}
+              </Link>
+            )}
             <div className="space-y-3">
               {groups.map(({ group, visibleMembers }) => {
                 const isActiveGroup = activeGroup?.key === group.key;
                 const members = group.visibility[role] === 'productsOnly'
-                  ? group.members.filter((member) => member.href === '/analytics/products')
+                  ? visibleMembers.filter((member) => member.href === '/analytics/products')
                   : visibleMembers;
                 return (
                   <details key={group.key} className="group overflow-hidden rounded-xl border border-border bg-card" open={isActiveGroup}>

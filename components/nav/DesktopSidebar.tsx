@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Activity, BarChart3, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Activity, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import BrandIdentity from '@/components/brand/BrandIdentity';
+import { appConfig } from '@/config/app';
 import DesktopNav from './DesktopNav';
 import WorkspaceControls from './WorkspaceControls';
 import type { Role } from '@/lib/auth/route-permissions';
 
-const SIDEBAR_STORAGE_KEY = 'mediaworks-sidebar-collapsed';
+const SIDEBAR_STORAGE_KEY = appConfig.storage.sidebarCollapsedKey;
 
 interface Props {
   logoHref: string;
@@ -81,14 +83,8 @@ export default function DesktopSidebar({ logoHref, email, role, locale, memberBa
       </button>
 
       <div className="mw-sidebar-header border-b border-sidebar-border px-4 py-4">
-        <Link href={logoHref} className="mw-sidebar-brand flex items-center gap-3 rounded-xl px-1 py-1" title="MediaWorks">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-[0_6px_18px_rgba(37,99,235,0.2)]">
-            <BarChart3 size={18} />
-          </span>
-          <span className="mw-sidebar-copy min-w-0">
-            <span className="block text-[15px] font-bold tracking-[-0.025em]">MediaWorks</span>
-            <span className="block font-mono text-[9px] uppercase tracking-[0.16em] text-sidebar-foreground/65">Broadcast intelligence</span>
-          </span>
+        <Link href={logoHref} className="mw-sidebar-brand flex items-center gap-3 rounded-xl px-1 py-1" title={`${appConfig.brand.name} ${appConfig.brand.marketLabel}`}>
+          <BrandIdentity variant="sidebar" />
         </Link>
         <div className="mw-workspace-status mt-4 flex items-center justify-between rounded-lg border border-sidebar-border bg-sidebar-accent/45 px-2.5 py-2" title={t('online')}>
           <span className="flex items-center gap-2 text-[11px] font-medium text-sidebar-foreground/70">
@@ -103,9 +99,9 @@ export default function DesktopSidebar({ logoHref, email, role, locale, memberBa
         <DesktopNav role={role} locale={locale} memberBadges={memberBadges} />
       ) : (
         <div className="flex flex-1 flex-col justify-center px-6">
-          <p className="mw-kicker mw-sidebar-copy">Home shopping operations</p>
+          <p className="mw-kicker mw-sidebar-copy">{appConfig.copy.guestKicker}</p>
           <p className="mw-sidebar-copy mt-3 text-sm leading-relaxed text-sidebar-foreground/65">
-            商品データ、市場リサーチ、放送考査、制作を一つの運用面に。
+            {appConfig.copy.guestDescription}
           </p>
         </div>
       )}

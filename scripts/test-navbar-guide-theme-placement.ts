@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { appConfig } from "../config/app";
 
 function assert(condition: unknown, message: string): asserts condition {
 	if (!condition) throw new Error(message);
@@ -29,7 +30,8 @@ assert(navGroups.includes("'/admin/preferences'"), "Admin navigation should link
 assert(preferencesPage.includes("LanguageSwitcher"), "Preferences page should contain language switching");
 assert(preferencesPage.includes("ThemePreferenceControl"), "Preferences page should contain theme selection");
 assert(preferencesPage.includes("localePath(locale, '/guide')"), "Preferences page should keep guide access discoverable");
-assert(proxy.includes("defaultLocale: 'ja'"), "Middleware default locale should be Japanese");
-assert(i18n.includes("|| 'ja'"), "i18n request config should fall back to Japanese");
+assert(proxy.includes("defaultLocale: appConfig.i18n.defaultLocale"), "Middleware should use the product locale config");
+assert(i18n.includes("appConfig.i18n.defaultLocale"), "i18n request config should use the product locale fallback");
+assert(appConfig.i18n.defaultLocale === "ja", "The Japanese product profile should default to Japanese");
 
 console.log("navbar guide/theme placement checks passed");

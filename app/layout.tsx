@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import Script from 'next/script';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
+import { appConfig } from '@/config/app';
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -9,11 +10,12 @@ const inter = Inter({ subsets: ['latin'] });
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
+  themeColor: appConfig.brand.themeColor,
 };
 
 export const metadata: Metadata = {
-  title: 'MediaWorks — Home Shopping Research Platform',
-  description: 'Automated home shopping marketing research powered by AI',
+  title: appConfig.brand.metadataTitle,
+  description: appConfig.brand.metadataDescription,
 };
 
 export default function RootLayout({
@@ -22,7 +24,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ja" suppressHydrationWarning>
+    <html
+      lang={appConfig.i18n.defaultLocale}
+      data-app-variant={appConfig.id}
+      data-market={appConfig.market.countryCode}
+      suppressHydrationWarning
+    >
       <body className={`${inter.className} min-h-screen`}>
         {/* FlowOS in-app instrumentation: auto pageview/click/error + window.flowos.track().
             First-party drop-in served from flowos-admin; collection is opt-in and gated
@@ -32,7 +39,12 @@ export default function RootLayout({
           src="https://flowos-admin.vercel.app/flowos.js"
           strategy="afterInteractive"
         />
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider
+          forcedTheme={appConfig.theme.forcedTheme}
+          enableSystem={appConfig.theme.enableSystem}
+        >
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

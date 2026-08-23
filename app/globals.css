@@ -124,6 +124,49 @@
   --mw-signal: oklch(0.7 0.19 258);
 }
 
+html[data-app-variant="lotte-kr"] {
+  color-scheme: light;
+  --background: oklch(0.985 0.005 42);
+  --foreground: oklch(0.205 0.012 35);
+  --card: oklch(0.998 0.002 42);
+  --card-foreground: oklch(0.205 0.012 35);
+  --popover: oklch(0.998 0.002 42);
+  --popover-foreground: oklch(0.205 0.012 35);
+  --primary: oklch(0.56 0.215 29);
+  --primary-foreground: oklch(0.99 0.004 42);
+  --secondary: oklch(0.954 0.01 35);
+  --secondary-foreground: oklch(0.29 0.02 35);
+  --muted: oklch(0.955 0.008 35);
+  --muted-foreground: oklch(0.5 0.02 35);
+  --accent: oklch(0.94 0.035 28);
+  --accent-foreground: oklch(0.44 0.16 29);
+  --border: oklch(0.885 0.014 35);
+  --input: oklch(0.86 0.018 35);
+  --ring: oklch(0.56 0.215 29);
+  --chart-1: oklch(0.56 0.215 29);
+  --chart-2: oklch(0.62 0.15 24);
+  --chart-3: oklch(0.69 0.12 55);
+  --chart-4: oklch(0.48 0.09 20);
+  --chart-5: oklch(0.76 0.13 82);
+  --sidebar: oklch(0.995 0.003 42);
+  --sidebar-foreground: oklch(0.205 0.012 35);
+  --sidebar-primary: oklch(0.56 0.215 29);
+  --sidebar-primary-foreground: oklch(0.99 0.004 42);
+  --sidebar-accent: oklch(0.95 0.028 28);
+  --sidebar-accent-foreground: oklch(0.42 0.15 29);
+  --sidebar-border: oklch(0.885 0.014 35);
+  --sidebar-ring: oklch(0.56 0.215 29);
+  --mw-surface-raised: oklch(1 0 0 / 90%);
+  --mw-surface-sunken: oklch(0.96 0.008 35);
+  --mw-grid-line: oklch(0.46 0.05 29 / 6%);
+  --mw-signal: oklch(0.56 0.215 29);
+}
+
+html[data-app-variant="lotte-kr"]:lang(ko) body {
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

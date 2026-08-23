@@ -3,6 +3,8 @@
 import { useLocale, useTranslations } from 'next-intl';
 import { useRouter, usePathname } from 'next/navigation';
 import { Globe } from 'lucide-react';
+import { appConfig } from '@/config/app';
+import { localePath, stripLocalePrefix } from '@/lib/i18n/locale-path';
 
 export default function LanguageSwitcher() {
   const locale = useLocale();
@@ -11,16 +13,13 @@ export default function LanguageSwitcher() {
   const t = useTranslations('language');
 
   const switchLocale = (newLocale: string) => {
-    // Strip current locale prefix (only present for non-default 'ko'); then re-prefix if target is non-default.
-    const stripped = pathname.replace(/^\/(ja|ko)(?=\/|$)/, '') || '/';
-    const target = newLocale === 'ja' ? stripped : `/${newLocale}${stripped === '/' ? '' : stripped}`;
-    router.push(target);
+    router.push(localePath(newLocale, stripLocalePrefix(pathname)));
   };
 
   return (
     <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
       <Globe size={14} className="text-muted-foreground ml-1" />
-      {['ja', 'ko'].map((loc) => (
+      {appConfig.i18n.locales.map((loc) => (
         <button
           type="button"
           key={loc}

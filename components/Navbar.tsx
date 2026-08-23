@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { getLocale } from 'next-intl/server';
-import { BarChart3 } from 'lucide-react';
+import BrandIdentity from './brand/BrandIdentity';
 import DesktopSidebar from './nav/DesktopSidebar';
 import MobileNavSheet from './nav/MobileNavSheet';
 import WorkspaceControls from './nav/WorkspaceControls';
@@ -35,13 +35,7 @@ export default async function Navbar() {
     <>
       <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-border bg-background/94 px-4 backdrop-blur md:hidden">
         <Link href={logoHref} className="flex items-center gap-2.5">
-          <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
-            <BarChart3 size={17} />
-          </span>
-          <span>
-            <span className="block text-sm font-bold tracking-[-0.02em]">MediaWorks</span>
-            <span className="block font-mono text-[8px] uppercase tracking-[0.16em] text-muted-foreground/90">Broadcast OS</span>
-          </span>
+          <BrandIdentity variant="mobile" />
         </Link>
         <div className="flex items-center gap-1">
           <WorkspaceControls
