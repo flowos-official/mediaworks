@@ -4,6 +4,7 @@ import { getTranslations, getLocale } from "next-intl/server";
 import { requireUser } from "@/lib/auth/require-user";
 import type { BoardData, BoardCard } from "@/lib/selections/types";
 import { KanbanBoard } from "@/components/pipeline/KanbanBoard";
+import { DataIntelligenceFlow } from "@/components/pipeline/DataIntelligenceFlow";
 
 export const dynamic = "force-dynamic";
 
@@ -50,15 +51,27 @@ export default async function PipelinePage() {
   const canWrite = auth.role !== "viewer";
 
   return (
-    <section className="space-y-4">
+    <section className="space-y-5 lg:space-y-6">
       <header className="mw-panel px-4 py-4 sm:px-5">
-        <div className="mw-kicker mb-1">Selection operations</div>
-        <h2 className="text-xl font-bold tracking-[-0.02em]">{t("title")}</h2>
-        <p className="mt-1 text-xs text-muted-foreground sm:text-sm">{t("subtitle")}</p>
+        <div className="mw-kicker mb-1">{t("pageKicker")}</div>
+        <h2 className="text-xl font-bold tracking-[-0.02em]">{t("pageTitle")}</h2>
+        <p className="mt-1 text-xs text-muted-foreground sm:text-sm">{t("pageSubtitle")}</p>
       </header>
-      <Suspense>
-        <KanbanBoard initialBoard={board} canWrite={canWrite} />
-      </Suspense>
+
+      <DataIntelligenceFlow />
+
+      <section aria-labelledby="selection-operations-title" className="space-y-3">
+        <header className="flex flex-col gap-1 px-0.5 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+          <div>
+            <div className="mw-kicker mb-1">{t("boardKicker")}</div>
+            <h2 id="selection-operations-title" className="mw-section-title">{t("boardTitle")}</h2>
+          </div>
+          <p className="text-xs text-muted-foreground sm:text-right">{t("subtitle")}</p>
+        </header>
+        <Suspense>
+          <KanbanBoard initialBoard={board} canWrite={canWrite} />
+        </Suspense>
+      </section>
     </section>
   );
 }
