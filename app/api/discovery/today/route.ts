@@ -4,6 +4,8 @@ import { getServiceClient } from "@/lib/supabase";
 import { loadCategoryDistribution } from "@/lib/discovery/category-distribution";
 import { getCachedDiscoveryToday } from "@/lib/discovery/cached";
 import { hasExcludedChannel } from "@/lib/discovery/tv-channels";
+import { filterMarketBatchRecords } from "@/lib/market/data-visibility";
+import { getRuntimeMarketCountry } from "@/lib/market/runtime-market";
 
 export const dynamic = "force-dynamic";
 
@@ -79,10 +81,12 @@ export async function GET(req: NextRequest) {
 	// Uncached fallback: caller did not specify a known context. Preserves the
 	// pre-caching behaviour for any callers that omit `context`.
 	const sb = getServiceClient();
+	const country = getRuntimeMarketCountry();
 	const { data: session, error: sessErr } = await sb
 		.from("discovery_runs")
 		.select("*")
 		.in("status", ["completed", "partial"])
+		.eq("country", country)
 		.order("run_at", { ascending: false })
 		.limit(1)
 		.maybeSingle();
@@ -94,6 +98,7 @@ export async function GET(req: NextRequest) {
 		.from("discovered_products")
 		.select("*")
 		.eq("session_id", session.id)
+		.eq("country", country)
 		.order("tv_tier", { ascending: true })
 		.order("tv_fit_score", { ascending: false });
 
@@ -112,6 +117,7 @@ export async function GET(req: NextRequest) {
 	products = products.filter(
 		(p) => !hasExcludedChannel((p as { tv_channel_source?: string | null }).tv_channel_source ?? null),
 	);
+	products = filterMarketBatchRecords(products);
 
 	// Merge active_selection onto each product
 	const productIds = products.map((p) => p.id as string).filter(Boolean);

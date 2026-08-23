@@ -1,6 +1,9 @@
 import { requireUser } from "@/lib/auth/require-user";
 import { type NextRequest, NextResponse } from "next/server";
 import { loadProductsForBroadcasts } from "@/lib/qvc-products/attach";
+import { filterMarketRecords } from "@/lib/market/data-visibility";
+import { appConfig } from "@/config/app";
+import { getRuntimeMarketCountry } from "@/lib/market/runtime-market";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const INT_PARAM = /^\d+$/;
@@ -89,9 +92,11 @@ export async function GET(req: NextRequest) {
 		.order("start_time", { ascending: true })
 		.order("channel", { ascending: true })
 		.range(offset, offset + limit - 1);
+	query = query.eq("country", getRuntimeMarketCountry());
 
 	if (from) query = query.gte("air_date", from);
 	if (to) query = query.lte("air_date", to);
+	if (appConfig.market.countryCode === "JP") query = query.in("channel", ["qvc", "shopch"]);
 	if (channel) query = query.eq("channel", channel);
 	if (category) query = query.eq("category", category);
 	if (search) query = query.ilike("program_title", `%${search}%`);
@@ -102,12 +107,12 @@ export async function GET(req: NextRequest) {
 		return NextResponse.json({ error: "db error" }, { status: 500 });
 	}
 
-	const rows = (data ?? []) as Array<{
+	const rows = filterMarketRecords((data ?? []) as Array<{
 		id: string;
 		channel: "shopch" | "qvc";
 		product_ids: string[] | null;
 		[k: string]: unknown;
-	}>;
+	}>);
 	const productMap = await loadProductsForBroadcasts(rows);
 	const enriched = rows.map((b) => ({
 		...b,
@@ -115,7 +120,7 @@ export async function GET(req: NextRequest) {
 	}));
 
 	return NextResponse.json(
-		{ broadcasts: enriched, total: count ?? enriched.length },
+		{ broadcasts: enriched, total: count ?? rows.length },
 		{
 			headers: {
 				// `private`: response is auth-gated, must not be served by

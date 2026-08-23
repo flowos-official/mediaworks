@@ -23,6 +23,8 @@ import { ArrowLeft, Package, Calendar } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { localePath } from '@/lib/i18n/locale-path';
 import { getServerClient } from '@/lib/supabase/server';
+import { isFeatureEnabled } from '@/config/app';
+import { isMarketRecordVisible } from '@/lib/market/data-visibility';
 
 type ProductStatus = 'pending' | 'analyzing' | 'completed' | 'failed';
 
@@ -62,7 +64,7 @@ async function getProduct(id: string) {
     .select('*')
     .eq('id', id)
     .maybeSingle();
-  if (productError || !product) return null;
+  if (productError || !product || !isMarketRecordVisible(product)) return null;
 
   const { data: research } = await sb
     .from('research_results')
@@ -214,7 +216,7 @@ export default async function ProductReportPage({
             )}
 
             {/* Korea Market */}
-            {research.korea_market_fit && (
+            {isFeatureEnabled('koreaMarketInsights') && research.korea_market_fit && (
               <KoreaMarketSection koreaMarket={research.korea_market_fit} />
             )}
 

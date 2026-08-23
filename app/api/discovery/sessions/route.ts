@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth/require-user";
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
+import { getRuntimeMarketCountry } from "@/lib/market/runtime-market";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,7 @@ export async function GET(req: NextRequest) {
 	let q = sb
 		.from("discovery_runs")
 		.select("id, run_at, completed_at, status, target_count, produced_count, iterations, context")
+		.eq("country", getRuntimeMarketCountry())
 		.order("run_at", { ascending: false });
 
 	const contextFilter = searchParams.get("context");

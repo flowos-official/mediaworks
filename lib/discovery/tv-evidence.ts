@@ -98,6 +98,7 @@ export function percentile(values: number[], q: number): number {
 
 import type { TvEvidence, TvEvidenceMatchBasis, TvEvidenceTimeslot } from "./types";
 import { normalizeCategory } from "./category-normalize";
+import { getRuntimeMarketCountry } from "@/lib/market/runtime-market";
 
 const DOW: Array<TvEvidenceTimeslot["dow"]> = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
@@ -313,6 +314,7 @@ export async function fetchMatchingBroadcastRows(
 		let bQuery = sb
 			.from("broadcasts")
 			.select("channel, air_date, start_time, program_title, category, product_ids")
+			.eq("country", getRuntimeMarketCountry())
 			.gte("air_date", cutoff);
 		if (useCategoryPath) {
 			bQuery = bQuery.in("category", resolved);
@@ -341,6 +343,7 @@ export async function fetchMatchingBroadcastRows(
 		let hQuery = sb
 			.from("historical_broadcasts")
 			.select("channel, air_date, product_name, price_jpy, category")
+			.eq("country", getRuntimeMarketCountry())
 			.gte("air_date", cutoff);
 		if (useCategoryPath) {
 			hQuery = hQuery.in("category", resolved);

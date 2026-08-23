@@ -3,6 +3,7 @@ import { getServiceClient } from "@/lib/supabase";
 import { requireUser } from "@/lib/auth/require-user";
 import { invalidateDiscoveryAfterMutation } from "@/lib/discovery/cached";
 import { invalidateSelectionsAfterMutation } from "@/lib/selections/cached";
+import { getRuntimeMarketCountry } from "@/lib/market/runtime-market";
 
 export const maxDuration = 10;
 
@@ -63,6 +64,7 @@ export async function POST(req: NextRequest) {
 		.from("discovered_products")
 		.select("id")
 		.eq("id", body.productId)
+		.eq("country", getRuntimeMarketCountry())
 		.maybeSingle();
 
 	if (prodErr) {

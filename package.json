@@ -109,6 +109,8 @@
     "test:navbar-guide-theme-placement": "tsx scripts/test-navbar-guide-theme-placement.ts",
     "test:nav-permissions": "tsx scripts/test-nav-permissions.ts",
     "test:app-config": "tsx scripts/test-app-config.ts && NEXT_PUBLIC_APP_VARIANT=lotte-kr tsx scripts/test-app-config.ts",
+    "test:market-visibility": "tsx scripts/test-market-data-visibility.ts && NEXT_PUBLIC_APP_VARIANT=lotte-kr tsx scripts/test-market-data-visibility.ts",
+    "verify:market-visibility": "tsx --env-file=.env.local scripts/verify-market-data-visibility.ts",
     "promote:discovery-research": "tsx --env-file=.env.local scripts/promote-discovered-to-research.ts",
     "complete:recommendation-flow": "tsx --env-file=.env.local scripts/complete-recommendation-flow.ts",
     "test:selections": "tsx --env-file=.env.local scripts/test-selections-state-machine.ts",

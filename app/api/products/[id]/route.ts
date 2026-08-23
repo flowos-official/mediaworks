@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth/require-user";
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase';
+import { isMarketRecordVisible } from '@/lib/market/data-visibility';
 
 export async function GET(
   request: NextRequest,
@@ -19,7 +20,7 @@ export async function GET(
     .eq('id', id)
     .single();
 
-  if (productError) {
+  if (productError || !product || !isMarketRecordVisible(product)) {
     return NextResponse.json({ error: 'Product not found' }, { status: 404 });
   }
 

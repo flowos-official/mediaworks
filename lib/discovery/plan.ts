@@ -6,6 +6,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { GEMINI_FLASH } from "@/lib/gemini-models";
 import { getServiceClient } from "@/lib/supabase";
+import { getRuntimeMarketCountry } from "@/lib/market/runtime-market";
 import type { CategoryPlan, Context, LearningState } from "./types";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
@@ -96,6 +97,7 @@ export async function loadRecentPlannedKeywords(
 	const { data, error } = await sb
 		.from("discovery_runs")
 		.select("category_plan")
+		.eq("country", getRuntimeMarketCountry())
 		.gte("run_at", since);
 
 	if (error) {

@@ -9,6 +9,7 @@ import {
 	formatBroadcastContextPrompt,
 	loadBroadcastContext,
 } from "@/lib/research/competitor-context";
+import { getRuntimeMarketCountry } from "@/lib/market/runtime-market";
 
 export type ResearchProductRow = {
 	name?: string | null;
@@ -41,6 +42,7 @@ export type ResearchResultInsert = {
 		product_info: ProductInfo;
 		search_results: Record<string, string>;
 	};
+	country: "jp" | "kr";
 };
 
 export interface ProductResearchSynthesisResult {
@@ -128,6 +130,7 @@ export function buildResearchResultInsert(
 			product_info: productInfo,
 			search_results: searchResults,
 		},
+		country: getRuntimeMarketCountry(),
 	};
 }
 

@@ -14,6 +14,7 @@ import type {
 	LearningState,
 	PoolItem,
 } from "./types";
+import { getRuntimeMarketCountry } from "@/lib/market/runtime-market";
 
 const OWN_NAME_PREFIX_LEN = 8;
 const RECENT_WINDOW_DAYS = 7;
@@ -36,12 +37,14 @@ export async function loadExclusionContext(
 	learning: LearningState,
 ): Promise<ExclusionContext> {
 	const sb = getServiceClient();
+	const country = getRuntimeMarketCountry();
 
 	const [ownRes, recentRes, codesRes, feedbackRes] = await Promise.all([
 		sb.from("product_summaries").select("product_name").limit(5000),
 		sb
 			.from("discovered_products")
 			.select("product_url")
+			.eq("country", country)
 			.gte(
 				"created_at",
 				new Date(
@@ -51,10 +54,12 @@ export async function loadExclusionContext(
 		sb
 			.from("discovered_products")
 			.select("rakuten_item_code")
+			.eq("country", country)
 			.not("rakuten_item_code", "is", null),
 		sb
 			.from("discovered_products")
 			.select("product_url, rakuten_item_code")
+			.eq("country", country)
 			.in("user_action", ["sourced", "duplicate"]),
 	]);
 

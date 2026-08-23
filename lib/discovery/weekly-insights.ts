@@ -7,6 +7,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { GEMINI_FLASH } from "@/lib/gemini-models";
 import { getServiceClient } from "@/lib/supabase";
 import type { Context } from "./types";
+import { getRuntimeMarketCountry } from "@/lib/market/runtime-market";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 const MODEL_ID = GEMINI_FLASH;
@@ -47,6 +48,7 @@ export async function aggregateWeek(
 	weekEnd: Date,
 ): Promise<WeeklyInsightInput> {
 	const sb = getServiceClient();
+	const country = getRuntimeMarketCountry();
 	const from = weekStart.toISOString();
 	const to = weekEnd.toISOString();
 
@@ -54,6 +56,7 @@ export async function aggregateWeek(
 		.from("discovered_products")
 		.select("category, track, user_action, action_reason")
 		.eq("context", context)
+		.eq("country", country)
 		.gte("created_at", from)
 		.lte("created_at", to);
 
@@ -99,6 +102,7 @@ export async function aggregateWeek(
 		.from("learning_state")
 		.select("exploration_ratio")
 		.eq("context", context)
+		.eq("country", country)
 		.single();
 
 	return {

@@ -17,6 +17,7 @@
  *     extension — see memory feedback-discovery-prior-sales-soft.
  */
 import { getServiceClient } from "@/lib/supabase";
+import { getRuntimeMarketCountry } from "@/lib/market/runtime-market";
 import type { Candidate } from "./types";
 
 // `??` only short-circuits on null/undefined, so an env var set to "" would
@@ -74,6 +75,7 @@ export async function applyRecentBroadcastPenalty(
 		.from("broadcasts")
 		.select("product_ids")
 		.eq("channel", "qvc")
+		.eq("country", getRuntimeMarketCountry())
 		.gte("air_date", cutoffDate)
 		.not("product_ids", "is", null);
 

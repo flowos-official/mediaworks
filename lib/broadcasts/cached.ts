@@ -3,6 +3,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { getServiceClient } from "@/lib/supabase";
 import { aggregateCalendarCounts, type CountsByDate } from "./aggregate-counts";
 import { MISDATED_OA_OR_CLAUSES } from "./misdated-suppression";
+import { getRuntimeMarketCountry } from "@/lib/market/runtime-market";
 
 const OA_CHANNEL_SLUGS = [
 	"japanet",
@@ -52,6 +53,7 @@ export async function getCachedChannelTotals(): Promise<Record<string, number>> 
 			const { count } = await sb
 				.from("broadcasts")
 				.select("id", { count: "exact", head: true })
+				.eq("country", getRuntimeMarketCountry())
 				.eq("channel", slug);
 			return [slug, count ?? 0] as const;
 		}),
@@ -63,6 +65,7 @@ export async function getCachedChannelTotals(): Promise<Record<string, number>> 
 			let q = sb
 				.from("historical_broadcasts")
 				.select("id", { count: "exact", head: true })
+				.eq("country", getRuntimeMarketCountry())
 				.eq("channel", slug);
 			for (const clause of MISDATED_OA_OR_CLAUSES) q = q.or(clause);
 			const { count } = await q;

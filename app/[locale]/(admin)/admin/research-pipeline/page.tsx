@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth/require-user";
 import { localePath } from "@/lib/i18n/locale-path";
 import RetryButton from "./RetryButton";
 import TriggerDetectionButton from "./TriggerDetectionButton";
+import { filterMarketRecords } from "@/lib/market/data-visibility";
 
 export const dynamic = "force-dynamic";
 
@@ -62,7 +63,7 @@ export default async function ResearchPipelinePage({ params }: PageProps) {
     .order("updated_at", { ascending: false })
     .limit(100);
 
-  const products = (rows ?? []) as PipelineRow[];
+  const products = filterMarketRecords((rows ?? []) as PipelineRow[]);
   const analyzing = products.filter((r) => r.status === "analyzing");
   const failed = products.filter((r) => r.status === "failed");
 

@@ -25,6 +25,7 @@
  */
 import { getServiceClient } from "@/lib/supabase";
 import type { Candidate } from "./types";
+import { getRuntimeMarketCountry } from "@/lib/market/runtime-market";
 
 function envInt(name: string, defaultValue: number): number {
 	const raw = process.env[name];
@@ -59,6 +60,7 @@ export async function loadHotCompetitorCategories(
 	let q = sb
 		.from("broadcasts")
 		.select("category")
+		.eq("country", getRuntimeMarketCountry())
 		.gte("air_date", cutoff)
 		.not("category", "is", null);
 	if (channelScope && channelScope.length > 0) {

@@ -2,6 +2,9 @@ import { requireUser } from "@/lib/auth/require-user";
 import { MISDATED_OA_OR_CLAUSES } from "@/lib/broadcasts/misdated-suppression";
 import { DELISTED_CALENDAR_CHANNELS } from "@/lib/broadcasts/channel-style";
 import { type NextRequest, NextResponse } from "next/server";
+import { filterMarketRecords } from "@/lib/market/data-visibility";
+import { appConfig } from "@/config/app";
+import { getRuntimeMarketCountry } from "@/lib/market/runtime-market";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const INT_PARAM = /^\d+$/;
@@ -81,8 +84,10 @@ export async function GET(req: NextRequest) {
 		.order("start_time", { ascending: true, nullsFirst: false })
 		.order("channel", { ascending: true })
 		.range(offset, offset + limit - 1);
+	q = q.eq("country", getRuntimeMarketCountry());
 
 	if (channel) q = q.eq("channel", channel);
+	if (appConfig.market.countryCode === "JP") q = q.in("channel", [...OA_CHANNELS]);
 	// Exclude delisted channels (ropping) from list + search — rows are kept in
 	// the DB but must not appear in the calendar.
 	for (const delisted of DELISTED_CALENDAR_CHANNELS) q = q.neq("channel", delisted);
@@ -101,8 +106,9 @@ export async function GET(req: NextRequest) {
 		return NextResponse.json({ error: "db error" }, { status: 500 });
 	}
 
+	const rows = filterMarketRecords(data ?? []);
 	return NextResponse.json(
-		{ rows: data ?? [], total: count ?? 0, limit, offset },
+		{ rows, total: count ?? rows.length, limit, offset },
 		{
 			headers: {
 				// `private`: this response is auth-gated, must not be served by

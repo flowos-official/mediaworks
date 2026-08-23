@@ -3,6 +3,7 @@ import { revalidateTag } from "next/cache";
 import { aggregateWeek, generateWeeklyInsight } from "@/lib/discovery/weekly-insights";
 import { getServiceClient } from "@/lib/supabase";
 import type { Context } from "@/lib/discovery/types";
+import { getRuntimeMarketCountry } from "@/lib/market/runtime-market";
 
 export const maxDuration = 120;
 
@@ -34,6 +35,7 @@ export async function GET(req: NextRequest) {
 	}
 
 	const sb = getServiceClient();
+	const country = getRuntimeMarketCountry();
 	const { start, end } = getLastWeekRange();
 	const results: Array<{ context: Context; ok: boolean; error?: string }> = [];
 
@@ -45,6 +47,7 @@ export async function GET(req: NextRequest) {
 			const { error } = await sb.from("learning_insights").upsert(
 				{
 					context,
+					country,
 					week_start: start.toISOString().slice(0, 10),
 					sourced_count: input.sourcedCount,
 					rejected_count: input.rejectedCount,
@@ -53,7 +56,7 @@ export async function GET(req: NextRequest) {
 					exploration_wins: summary.exploration_wins,
 					next_week_suggestions: summary.next_week_suggestions,
 				},
-				{ onConflict: "week_start,context" },
+				{ onConflict: "week_start,context,country" },
 			);
 
 			if (error) throw new Error(error.message);

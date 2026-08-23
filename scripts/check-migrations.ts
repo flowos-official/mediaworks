@@ -15,6 +15,10 @@ const REQUIRED_TABLES = [
 	"channel_categories",
 	"discovered_category_normalization",
 	"competitor_fit_analyses",
+	"historical_broadcasts",
+	"broadcast_products",
+	"research_results",
+	"screenplays",
 ];
 
 const REQUIRED_COLUMNS: Record<string, string[]> = {
@@ -30,6 +34,7 @@ const REQUIRED_COLUMNS: Record<string, string[]> = {
 		"iterations",
 		"error",
 		"context",
+		"country",
 	],
 	discovered_products: [
 		"id",
@@ -37,10 +42,12 @@ const REQUIRED_COLUMNS: Record<string, string[]> = {
 		"name",
 		"product_url",
 		"price_jpy",
+		"price_krw",
 		"category",
 		"seed_keyword",
 		"source",
 		"rakuten_item_code",
+		"rakuten_cross_match",
 		"review_count",
 		"review_avg",
 		"seller_name",
@@ -64,6 +71,7 @@ const REQUIRED_COLUMNS: Record<string, string[]> = {
 		"tv_tier",
 		"selection_outcome",
 		"selection_outcome_at",
+		"country",
 	],
 	product_feedback: ["id", "discovered_product_id", "action", "reason", "created_at"],
 	learning_state: [
@@ -75,6 +83,7 @@ const REQUIRED_COLUMNS: Record<string, string[]> = {
 		"feedback_sample_size",
 		"is_cold_start",
 		"updated_at",
+		"country",
 	],
 	learning_insights: [
 		"id",
@@ -86,6 +95,7 @@ const REQUIRED_COLUMNS: Record<string, string[]> = {
 		"exploration_wins",
 		"next_week_suggestions",
 		"context",
+		"country",
 	],
 	channel_categories: [
 		"channel",
@@ -111,6 +121,25 @@ const REQUIRED_COLUMNS: Record<string, string[]> = {
 		"summary",
 		"created_at",
 	],
+	historical_broadcasts: ["id", "price_jpy", "price_krw", "country"],
+	broadcast_products: [
+		"broadcast_id",
+		"product_id",
+		"price_jpy",
+		"price_krw",
+		"original_price_jpy",
+		"original_price_krw",
+	],
+	research_results: [
+		"id",
+		"product_id",
+		"japan_export_fit_score",
+		"korea_market_fit",
+		"korea_fit_score",
+		"domestic_market_fit",
+		"country",
+	],
+	screenplays: ["last_error"],
 };
 
 async function main() {

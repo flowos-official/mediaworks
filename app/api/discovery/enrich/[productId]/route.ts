@@ -2,6 +2,7 @@ import { requireUser } from "@/lib/auth/require-user";
 import { NextRequest, NextResponse } from "next/server";
 import { after } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
+import { getRuntimeMarketCountry } from "@/lib/market/runtime-market";
 
 export const maxDuration = 30;
 
@@ -25,6 +26,7 @@ export async function POST(
 		.from("discovered_products")
 		.select("id, enrichment_status, c_package")
 		.eq("id", productId)
+		.eq("country", getRuntimeMarketCountry())
 		.maybeSingle();
 
 	if (prodErr) {
@@ -122,6 +124,7 @@ export async function GET(
 		.from("discovered_products")
 		.select("id, enrichment_status, c_package, enrichment_error, enrichment_completed_at")
 		.eq("id", productId)
+		.eq("country", getRuntimeMarketCountry())
 		.maybeSingle();
 
 	if (error) {
