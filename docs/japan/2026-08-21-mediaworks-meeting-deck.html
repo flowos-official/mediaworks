@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MediaWorks 社内運用合意 · 1 Slide</title>
+  <style>
+    :root {
+      --navy: #08243f;
+      --navy-2: #125474;
+      --ink: #18324b;
+      --muted: #66798b;
+      --line: #d9e5ed;
+      --paper: #f4f8fb;
+      --white: #ffffff;
+      --cyan: #59d5e2;
+      --cyan-deep: #11869a;
+      --cyan-soft: #e9f7f9;
+      --blue-soft: #edf3ff;
+      --gold-soft: #fff5e4;
+      --red-soft: #fff0ef;
+    }
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 14px;
+      color: var(--ink);
+      background: #dfe7ed;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans JP", sans-serif;
+      word-break: normal;
+    }
+    button { font: inherit; }
+    .slide {
+      position: relative;
+      width: min(calc(100vw - 28px), calc((100vh - 28px) * 16 / 9));
+      aspect-ratio: 16 / 9;
+      min-height: 0;
+      overflow: hidden;
+      background: var(--paper);
+      box-shadow: 0 22px 60px rgba(15, 37, 60, .22);
+    }
+    .topline { height: 11px; background: linear-gradient(90deg, var(--cyan), #4e87f4 58%, #826dff); }
+    .slide-head { display: flex; justify-content: space-between; align-items: flex-start; padding: clamp(18px, 1.5vw, 24px) clamp(40px, 3.4vw, 56px) clamp(6px, .5vw, 9px); }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-mark { display: grid; place-items: center; width: clamp(44px, 3.3vw, 50px); height: clamp(44px, 3.3vw, 50px); border-radius: 11px; color: #fff; background: var(--navy); font-weight: 900; letter-spacing: -.08em; }
+    .brand strong { display: block; font-size: clamp(18px, 1.4vw, 22px); }
+    .brand span { display: block; color: var(--muted); font-size: clamp(12px, .9vw, 14px); letter-spacing: .05em; }
+    .meeting-meta { color: var(--muted); font-size: clamp(12px, .95vw, 14px); text-align: right; }
+    .meeting-meta strong { display: block; margin-bottom: 2px; color: var(--navy); font-size: clamp(15px, 1.15vw, 18px); }
+    .title { padding: 0 clamp(40px, 3.4vw, 56px) clamp(10px, .8vw, 14px); }
+    .kicker { margin-bottom: 6px; color: var(--cyan-deep); font-size: clamp(13px, 1vw, 15px); font-weight: 900; letter-spacing: .15em; }
+    h1 { margin: 0; font-size: clamp(52px, 4vw, 58px); line-height: 1.12; letter-spacing: -.045em; }
+    h1 em { color: var(--cyan-deep); font-style: normal; }
+    .lead { margin-top: 7px; color: var(--muted); font-size: clamp(16px, 1.3vw, 18px); }
+    .content { padding: 0 clamp(40px, 3.4vw, 56px); }
+    .core-grid { display: grid; grid-template-columns: .92fr 1.14fr 1fr; gap: clamp(13px, 1vw, 16px); }
+    .card { min-height: clamp(280px, 22vw, 320px); padding: clamp(19px, 1.5vw, 23px); border: 1px solid var(--line); border-radius: 15px; background: #fff; }
+    .card.context { background: var(--red-soft); border-color: #edcfcc; }
+    .card.roles { background: var(--cyan-soft); border-color: #c7e7ea; }
+    .card.decisions { background: var(--gold-soft); border-color: #eedcb9; }
+    .card-label { display: block; margin-bottom: 10px; color: var(--cyan-deep); font-size: clamp(13px, 1.1vw, 15px); font-weight: 900; letter-spacing: .11em; }
+    .card h2 { margin: 0 0 10px; font-size: clamp(25px, 2.05vw, 29px); line-height: 1.3; }
+    .point { display: grid; grid-template-columns: clamp(32px, 2.4vw, 36px) 1fr; gap: 10px; align-items: start; padding: clamp(10px, .8vw, 13px) 0; border-top: 1px solid rgba(24,50,75,.12); }
+    .point:first-of-type { border-top: 0; padding-top: 0; }
+    .point-no { display: grid; place-items: center; width: clamp(32px, 2.4vw, 36px); height: clamp(32px, 2.4vw, 36px); border-radius: 8px; color: #fff; background: var(--navy); font-size: 12px; font-weight: 900; }
+    .point strong { display: block; margin-bottom: 3px; font-size: clamp(16px, 1.35vw, 19px); line-height: 1.32; }
+    .point p { margin: 0; color: var(--muted); font-size: clamp(16px, 1.3vw, 18px); line-height: 1.38; }
+    .role-row { display: grid; grid-template-columns: clamp(64px, 4.8vw, 72px) 1fr; gap: 11px; padding: clamp(11px, .85vw, 14px) 0; border-top: 1px solid rgba(24,50,75,.12); }
+    .role-row:first-of-type { border-top: 0; padding-top: 0; }
+    .role-row b { display: grid; place-items: center; height: clamp(44px, 3.3vw, 50px); border-radius: 9px; color: #fff; background: var(--navy); font-size: 14px; }
+    .role-row strong { display: block; margin-bottom: 4px; font-size: clamp(17px, 1.4vw, 20px); }
+    .role-row p { margin: 0; color: var(--muted); font-size: clamp(16px, 1.3vw, 18px); line-height: 1.38; }
+    .decision-list { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(8px, .65vw, 11px); }
+    .decision { min-height: clamp(86px, 6.5vw, 96px); padding: clamp(10px, .8vw, 13px); border: 1px solid rgba(221,161,66,.34); border-radius: 10px; background: rgba(255,255,255,.68); }
+    .decision span { display: block; color: #a16c18; font-size: clamp(13px, 1vw, 15px); font-weight: 900; letter-spacing: .08em; }
+    .decision strong { display: block; margin-top: 4px; font-size: clamp(16px, 1.3vw, 19px); line-height: 1.3; }
+    .execution { display: grid; grid-template-columns: clamp(200px, 15.5vw, 230px) 1fr; gap: 14px; margin-top: clamp(13px, 1vw, 16px); padding: clamp(16px, 1.2vw, 19px); border-radius: 13px; color: #fff; background: linear-gradient(135deg, var(--navy), var(--navy-2)); }
+    .execution h2 { margin: 0; color: var(--cyan); font-size: clamp(19px, 1.6vw, 23px); line-height: 1.35; }
+    .flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 9px; }
+    .step { position: relative; padding-left: 12px; border-left: 2px solid rgba(89,213,226,.55); }
+    .step span { display: block; color: rgba(255,255,255,.68); font-size: clamp(12px, .9vw, 14px); font-weight: 900; letter-spacing: .08em; }
+    .step strong { display: block; margin-top: 4px; font-size: clamp(16px, 1.3vw, 18px); line-height: 1.34; }
+    .principle { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: clamp(11px, .85vw, 14px); padding: clamp(11px, .85vw, 14px); border: 1px solid #cae7ea; border-radius: 10px; color: #456777; background: #fff; font-size: clamp(16px, 1.3vw, 18px); }
+    .principle strong { color: var(--cyan-deep); }
+    .page-footer { display: none; }
+    .print {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 10;
+      height: 40px;
+      padding: 0 15px;
+      border: 1px solid rgba(255,255,255,.22);
+      border-radius: 10px;
+      color: #fff;
+      background: rgba(8,36,63,.94);
+      box-shadow: 0 9px 24px rgba(0,0,0,.2);
+      cursor: pointer;
+    }
+    @media (max-width: 900px) {
+      body { display: block; padding: 0; background: var(--paper); }
+      .slide { width: 100%; min-height: 100vh; aspect-ratio: auto; overflow: visible; box-shadow: none; }
+      .slide-head, .title, .content { padding-left: 24px; padding-right: 24px; }
+      h1 { font-size: 36px; }
+      .core-grid, .execution, .flow { grid-template-columns: 1fr; }
+      .page-footer { position: static; margin: 24px; }
+      .print { right: 9px; bottom: 9px; }
+    }
+    @media print {
+      @page { size: landscape; margin: 0; }
+      html, body { width: 100%; height: 100%; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      body { display: block; padding: 0; }
+      .slide { width: 100vw; height: 100vh; min-height: 0; aspect-ratio: auto; overflow: hidden; box-shadow: none; }
+      .slide-head { padding: 22px 48px 8px; }
+      .title { padding: 0 48px 14px; }
+      .content { padding: 0 48px; }
+      h1 { font-size: 44px; }
+      .core-grid { grid-template-columns: .92fr 1.14fr 1fr; }
+      .execution { grid-template-columns: 152px 1fr; }
+      .flow { grid-template-columns: repeat(4, 1fr); }
+      .page-footer { position: absolute; margin: 0; }
+      .print { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="slide" aria-label="MediaWorks 社内運用合意資料">
+    <div class="topline"></div>
+    <header class="slide-head">
+      <div class="brand"><div class="brand-mark">MW</div><div><strong>MEDIAWORKS × FLOWOS</strong><span>INTERNAL OPERATION MEETING</span></div></div>
+      <div class="meeting-meta"><strong>2026.08.21</strong>Decision Meeting · One Page</div>
+    </header>
+
+    <section class="title">
+      <div class="kicker">4-WEEK INTERNAL OPERATION PLAN</div>
+      <h1>MediaWorks社内を、<em>4週間でより使いやすく</em></h1>
+      <p class="lead">商品検索から始め、本日、担当・データ・確認基準・確認日をご相談します。</p>
+    </section>
+
+    <section class="content">
+      <div class="core-grid">
+        <article class="card context">
+          <span class="card-label">01 · CURRENT VIEW</span>
+          <h2>いただいたご意見</h2>
+          <div class="point"><span class="point-no">1</span><div><strong>商品検索の精度に改善の余地</strong><p>希望商品に、より確実にたどり着ける改善が必要です。</p></div></div>
+          <div class="point"><span class="point-no">2</span><div><strong>台本生成の強みをさらに明確に</strong><p>独自の価値を、より分かりやすくお伝えする必要があります。</p></div></div>
+        </article>
+
+        <article class="card roles">
+          <span class="card-label">02 · OPERATING MODEL</span>
+          <h2>役割を活かして共同運用</h2>
+          <div class="role-row"><b>MW</b><div><strong>事業・利用者・データ・利用確認</strong><p>現場の優先度と正解を共有し、実務での使いやすさを確認します。</p></div></div>
+          <div class="role-row"><b>FlowOS</b><div><strong>製品・開発・品質・配布</strong><p>課題整理、改善版、評価結果、変更記録を共有します。</p></div></div>
+        </article>
+
+        <article class="card decisions">
+          <span class="card-label">03 · TODAY'S DECISIONS</span>
+          <h2>本日ご相談したい4項目</h2>
+          <div class="decision-list">
+            <div class="decision"><span>OWNER</span><strong>ご担当者</strong></div>
+            <div class="decision"><span>DATA</span><strong>検索100件・ご提供日</strong></div>
+            <div class="decision"><span>CRITERIA</span><strong>社内確認基準</strong></div>
+            <div class="decision"><span>DATE</span><strong>4週間後の確認日</strong></div>
+          </div>
+        </article>
+      </div>
+
+      <div class="execution">
+        <h2>4週間の進め方</h2>
+        <div class="flow">
+          <div class="step"><span>WEEK 1</span><strong>実データ100件で<br />既存ツールと比較</strong></div>
+          <div class="step"><span>WEEK 2</span><strong>課題整理・改善<br />Preview確認</strong></div>
+          <div class="step"><span>WEEK 3</span><strong>社内3～5名で<br />実利用・確認</strong></div>
+          <div class="step"><span>WEEK 4</span><strong>社内確認と<br />次の進め方</strong></div>
+        </div>
+      </div>
+
+      <div class="principle"><strong>次の進め方：</strong><span>社内確認後に、台本検証・外部有料検証・専任人材についてご相談します。</span></div>
+    </section>
+
+    <footer class="page-footer"><span>MediaWorks Internal Operation × FlowOS Technology</span><span>01 / 01</span></footer>
+  </main>
+  <button class="print" type="button" onclick="window.print()">PDF / 印刷</button>
+</body>
+</html>

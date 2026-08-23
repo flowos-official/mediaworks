@@ -1,0 +1,1231 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>MediaWorks 기업 데이터 운영 시스템</title>
+  <style>
+    :root {
+      --ink: #11253d;
+      --muted: #637287;
+      --paper: #f4f7f9;
+      --white: #fff;
+      --line: #dce5eb;
+      --navy: #102943;
+      --navy-2: #173b5c;
+      --blue: #246ac7;
+      --blue-soft: #eaf3ff;
+      --teal: #0b8f78;
+      --teal-soft: #e7f7f2;
+      --violet: #7256ca;
+      --violet-soft: #f0ecff;
+      --planned: #798695;
+      --shadow: 0 12px 34px rgba(28, 52, 78, 0.09);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { margin: 0; min-width: 320px; }
+
+    body {
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 6% 6%, rgba(36, 106, 199, 0.11), transparent 24%),
+        radial-gradient(circle at 94% 92%, rgba(11, 143, 120, 0.11), transparent 27%),
+        var(--paper);
+      font-family: Pretendard, "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif;
+      word-break: keep-all;
+    }
+
+    h1, h2, h3, p { margin-top: 0; }
+
+    .system-map {
+      width: min(1540px, 100%);
+      min-height: 100svh;
+      margin: 0 auto;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto auto;
+      gap: clamp(10px, 1.4vh, 16px);
+      padding: clamp(22px, 3vh, 38px) clamp(22px, 3.2vw, 52px);
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 24px;
+      align-items: end;
+    }
+
+    .eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+      color: var(--blue);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.17em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      width: 25px;
+      height: 2px;
+      border-radius: 999px;
+      background: currentColor;
+      content: "";
+    }
+
+    h1 {
+      margin-bottom: 7px;
+      font-size: clamp(30px, 3.15vw, 48px);
+      line-height: 1.08;
+      letter-spacing: -0.055em;
+    }
+
+    h1 strong { color: var(--teal); }
+
+    .hero-copy {
+      max-width: 950px;
+      margin-bottom: 0;
+      color: var(--muted);
+      font-size: clamp(12px, 1.03vw, 15px);
+      line-height: 1.55;
+    }
+
+    .hero-tools {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+      padding-bottom: 4px;
+    }
+
+    .locale-switch {
+      display: inline-flex;
+      padding: 3px;
+      border: 1px solid #cfdbe3;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.78);
+      box-shadow: 0 5px 14px rgba(28, 52, 78, 0.06);
+    }
+
+    .locale-button {
+      min-width: 53px;
+      padding: 5px 9px;
+      border: 0;
+      border-radius: 999px;
+      color: var(--muted);
+      background: transparent;
+      font: inherit;
+      font-size: 9px;
+      font-weight: 850;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .locale-button[aria-pressed="true"] {
+      color: #fff;
+      background: var(--navy);
+    }
+
+    .locale-button:focus-visible {
+      outline: 2px solid var(--blue);
+      outline-offset: 2px;
+    }
+
+    .legend {
+      display: flex;
+      gap: 8px;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 9px;
+      border-radius: 999px;
+      color: var(--teal);
+      background: var(--teal-soft);
+      font-size: 9px;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    .status::before {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      content: "";
+    }
+
+    .status.planned {
+      border: 1px dashed #a7b1bc;
+      color: var(--planned);
+      background: rgba(255, 255, 255, 0.6);
+    }
+
+    .core {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(245px, 1fr) 44px minmax(270px, 1.12fr) 44px minmax(315px, 1.34fr);
+      align-items: stretch;
+    }
+
+    .zone {
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .zone-heading {
+      min-height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .zone-number {
+      color: var(--blue);
+      font-size: 9px;
+      font-weight: 900;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+    }
+
+    .zone-heading h2 {
+      margin: 2px 0 0;
+      font-size: clamp(15px, 1.35vw, 20px);
+      line-height: 1.15;
+      letter-spacing: -0.035em;
+    }
+
+    .zone-note {
+      color: var(--muted);
+      font-size: 9px;
+      font-weight: 700;
+      text-align: right;
+    }
+
+    .connector {
+      position: relative;
+      display: grid;
+      place-items: center;
+      padding-top: 46px;
+      color: var(--teal);
+    }
+
+    .connector::before {
+      width: calc(100% - 10px);
+      height: 1px;
+      background: linear-gradient(90deg, #a8bcc9, var(--teal));
+      content: "";
+    }
+
+    .connector::after {
+      position: absolute;
+      top: calc(50% + 18px);
+      right: 4px;
+      width: 8px;
+      height: 8px;
+      transform: rotate(45deg);
+      border-top: 2px solid currentColor;
+      border-right: 2px solid currentColor;
+      content: "";
+    }
+
+    .connector span {
+      position: absolute;
+      top: calc(50% - 3px);
+      padding: 3px 5px;
+      color: var(--muted);
+      background: var(--paper);
+      font-size: 8px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .source-list {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: repeat(4, minmax(0, 1fr));
+      gap: 7px;
+    }
+
+    .source-card {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      gap: 9px;
+      align-items: center;
+      padding: 9px 11px;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: 0 6px 18px rgba(24, 49, 76, 0.05);
+    }
+
+    .source-icon {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 10px;
+      color: var(--blue);
+      background: var(--blue-soft);
+      font-size: 15px;
+      font-weight: 900;
+    }
+
+    .source-card:nth-child(3) .source-icon {
+      color: var(--violet);
+      background: var(--violet-soft);
+    }
+
+    .source-card:nth-child(4) .source-icon {
+      color: var(--teal);
+      background: var(--teal-soft);
+    }
+
+    .source-title {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 2px;
+    }
+
+    .source-title h3 {
+      margin: 0;
+      font-size: clamp(11px, 0.88vw, 13px);
+      letter-spacing: -0.025em;
+    }
+
+    .source-fields {
+      color: var(--blue);
+      font-size: 7.5px;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    .source-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: clamp(8px, 0.66vw, 10px);
+      line-height: 1.35;
+    }
+
+    .engine {
+      position: relative;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto auto minmax(0, 1fr) auto;
+      padding: clamp(15px, 1.6vw, 23px);
+      border: 1px solid rgba(32, 80, 111, 0.55);
+      border-radius: 22px;
+      color: #f3f8fb;
+      background:
+        radial-gradient(circle at 85% 12%, rgba(48, 190, 160, 0.22), transparent 29%),
+        linear-gradient(145deg, var(--navy), var(--navy-2));
+      box-shadow: 0 18px 42px rgba(17, 42, 67, 0.2);
+    }
+
+    .engine::before {
+      position: absolute;
+      inset: 0;
+      opacity: 0.1;
+      background-image: linear-gradient(rgba(255,255,255,.24) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.24) 1px, transparent 1px);
+      background-size: 28px 28px;
+      content: "";
+      pointer-events: none;
+    }
+
+    .engine > * { position: relative; z-index: 1; }
+
+    .engine-label {
+      margin-bottom: 5px;
+      color: #64dec7;
+      font-size: 9px;
+      font-weight: 900;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+    }
+
+    .engine h3 {
+      margin-bottom: 5px;
+      font-size: clamp(19px, 1.85vw, 28px);
+      line-height: 1.08;
+      letter-spacing: -0.04em;
+    }
+
+    .engine-summary {
+      margin-bottom: 12px;
+      color: #bdccd8;
+      font-size: clamp(9px, 0.76vw, 11px);
+      line-height: 1.45;
+    }
+
+    .engine-process {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 5px;
+      margin-bottom: 11px;
+    }
+
+    .engine-process span {
+      padding: 7px 4px;
+      border: 1px solid rgba(154, 214, 204, 0.22);
+      border-radius: 8px;
+      color: #d9f7f0;
+      background: rgba(255,255,255,0.06);
+      font-size: 9px;
+      font-weight: 850;
+      text-align: center;
+    }
+
+    .asset-list {
+      min-height: 0;
+      display: grid;
+      grid-template-rows: repeat(5, minmax(0, 1fr));
+      gap: 5px;
+    }
+
+    .asset {
+      min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 6px 8px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.08);
+      font-size: clamp(8px, 0.7vw, 10px);
+      font-weight: 750;
+    }
+
+    .asset span:last-child {
+      color: #8ddfcf;
+      font-size: 7px;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    .asset.planned {
+      border: 1px dashed rgba(210, 220, 228, 0.38);
+      color: #c1cbd4;
+      background: rgba(255,255,255,0.025);
+    }
+
+    .asset.planned span:last-child { color: #b7c1cb; }
+
+    .engine-rule {
+      margin: 11px 0 0;
+      padding-top: 9px;
+      border-top: 1px solid rgba(255,255,255,0.13);
+      color: #d3dfe7;
+      font-size: clamp(8px, 0.7vw, 10px);
+      font-weight: 650;
+      line-height: 1.4;
+    }
+
+    .application-groups {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: 1.34fr 0.86fr;
+      gap: 8px;
+    }
+
+    .app-group {
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      background: rgba(255,255,255,0.9);
+      box-shadow: var(--shadow);
+    }
+
+    .app-group.future {
+      border-style: dashed;
+      border-color: #aeb8c3;
+      box-shadow: none;
+      background: rgba(255,255,255,0.58);
+    }
+
+    .group-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 7px;
+    }
+
+    .group-heading h3 {
+      margin: 0;
+      font-size: 11px;
+      letter-spacing: -0.02em;
+    }
+
+    .app-list {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      gap: 5px;
+    }
+
+    .current .app-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .current .app-card:last-child { grid-column: 1 / -1; }
+    .future .app-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    .app-card {
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 7px 9px;
+      border-radius: 9px;
+      background: #f3f7fb;
+    }
+
+    .app-card strong {
+      margin-bottom: 2px;
+      font-size: clamp(9px, 0.77vw, 11px);
+      line-height: 1.2;
+    }
+
+    .app-card span {
+      color: var(--muted);
+      font-size: clamp(7.5px, 0.62vw, 9px);
+      line-height: 1.3;
+    }
+
+    .future .app-card {
+      border: 1px dashed #bec6cf;
+      color: #405066;
+      background: transparent;
+    }
+
+    .feedback {
+      display: grid;
+      grid-template-columns: minmax(205px, 0.85fr) minmax(0, 3fr) auto;
+      gap: 12px;
+      align-items: center;
+      padding: 9px 12px;
+      border: 1px solid rgba(11, 143, 120, 0.26);
+      border-radius: 14px;
+      background: rgba(231, 247, 242, 0.77);
+    }
+
+    .feedback-title {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .feedback-title strong {
+      display: block;
+      margin-bottom: 2px;
+      font-size: 10px;
+      font-weight: 900;
+      line-height: 1.2;
+    }
+
+    .feedback-title p {
+      max-width: 235px;
+      margin: 0;
+      color: #4c6d69;
+      font-size: clamp(7px, 0.58vw, 8.5px);
+      font-weight: 650;
+      line-height: 1.32;
+    }
+
+    .loop-icon {
+      width: 29px;
+      height: 29px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      color: #fff;
+      background: var(--teal);
+      font-size: 17px;
+    }
+
+    .cycle-track {
+      min-width: 0;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .cycle-step {
+      position: relative;
+      min-width: 0;
+      display: grid;
+      grid-template-columns: 22px minmax(0, 1fr);
+      gap: 6px;
+      align-items: center;
+      padding: 7px;
+      border: 1px solid rgba(11, 143, 120, 0.16);
+      border-radius: 9px;
+      background: rgba(255,255,255,0.82);
+    }
+
+    .cycle-step:not(:last-child)::after {
+      position: absolute;
+      z-index: 2;
+      top: 50%;
+      right: -7px;
+      transform: translateY(-50%);
+      color: var(--teal);
+      content: "›";
+      font-size: 14px;
+      font-weight: 900;
+    }
+
+    .cycle-number {
+      width: 22px;
+      height: 22px;
+      display: grid;
+      place-items: center;
+      border-radius: 7px;
+      color: var(--teal);
+      background: var(--teal-soft);
+      font-size: 7px;
+      font-weight: 900;
+    }
+
+    .cycle-step strong,
+    .cycle-step span:last-child {
+      display: block;
+    }
+
+    .cycle-step strong {
+      margin-bottom: 2px;
+      font-size: clamp(8px, 0.66vw, 9.5px);
+      line-height: 1.15;
+    }
+
+    .cycle-step span:last-child {
+      color: var(--muted);
+      font-size: clamp(6.5px, 0.52vw, 8px);
+      line-height: 1.25;
+    }
+
+    .feedback-result {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--teal);
+      font-size: 9px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .feedback-result::before {
+      width: 31px;
+      height: 1px;
+      background: var(--teal);
+      content: "";
+    }
+
+    .takeaway {
+      margin: 0;
+      padding: clamp(13px, 1.45vw, 19px) clamp(17px, 2vw, 28px);
+      border-radius: 16px;
+      color: #f5fbff;
+      background: linear-gradient(112deg, #102942, #16425d);
+      box-shadow: 0 12px 32px rgba(18, 48, 74, 0.16);
+      font-size: clamp(13px, 1.28vw, 18px);
+      font-weight: 720;
+      line-height: 1.55;
+      letter-spacing: -0.025em;
+      text-align: center;
+    }
+
+    .takeaway strong { color: #64dfc7; }
+
+    .outcome-line {
+      display: block;
+      margin-top: 3px;
+      color: #64dfc7;
+      font-size: 0.9em;
+      font-weight: 850;
+    }
+
+    html[lang="ja"] .hero-copy { font-size: 15px; }
+    html[lang="ja"] .eyebrow,
+    html[lang="ja"] .locale-button,
+    html[lang="ja"] .status,
+    html[lang="ja"] .zone-number,
+    html[lang="ja"] .zone-note,
+    html[lang="ja"] .connector span,
+    html[lang="ja"] .engine-label { font-size: 11px; }
+    html[lang="ja"] .source-title h3 { font-size: 13.5px; }
+    html[lang="ja"] .source-fields { font-size: 11px; }
+    html[lang="ja"] .source-card { padding: 6px 9px; }
+    html[lang="ja"] .source-card p {
+      overflow-wrap: anywhere;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    html[lang="ja"] .engine-summary { font-size: 12px; }
+    html[lang="ja"] .engine-process span { font-size: 11px; }
+    html[lang="ja"] .asset-list {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-rows: repeat(2, minmax(0, 1fr));
+    }
+    html[lang="ja"] .asset {
+      position: relative;
+      justify-content: flex-start;
+      padding: 4px 6px;
+      font-size: 12px;
+      line-height: 1.16;
+    }
+    html[lang="ja"] .asset span:first-child {
+      width: 100%;
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+    html[lang="ja"] .asset span:last-child {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+    html[lang="ja"] .engine-rule { font-size: 12px; }
+    html[lang="ja"] .group-heading h3 { font-size: 12px; }
+    html[lang="ja"] .current .app-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    html[lang="ja"] .current .app-card:last-child { grid-column: auto; }
+    html[lang="ja"] .app-card { padding: 5px 7px; }
+    html[lang="ja"] .app-card strong { font-size: 12px; }
+    html[lang="ja"] .app-card span {
+      overflow-wrap: anywhere;
+      font-size: 12px;
+      line-height: 1.22;
+    }
+    html[lang="ja"] .feedback-title strong { font-size: 12px; }
+    html[lang="ja"] .feedback-title > div { min-width: 0; }
+    html[lang="ja"] .feedback-title strong,
+    html[lang="ja"] .feedback-title p { overflow-wrap: anywhere; }
+    html[lang="ja"] .feedback-title p {
+      max-width: none;
+      font-size: 12px;
+      line-height: 1.25;
+    }
+    html[lang="ja"] .cycle-step div { min-width: 0; }
+    html[lang="ja"] .cycle-step strong,
+    html[lang="ja"] .cycle-step span:last-child {
+      overflow-wrap: anywhere;
+      font-size: 12px;
+    }
+    html[lang="ja"] .cycle-number { font-size: 11px; }
+    html[lang="ja"] .feedback-result { font-size: 11px; }
+    html[lang="ja"] .outcome-line { font-size: 0.95em; }
+
+    @media (min-width: 1100px) and (min-height: 700px) {
+      .system-map { height: 100svh; overflow: hidden; }
+      html[lang="ja"] .system-map {
+        gap: 8px;
+        padding-top: 18px;
+        padding-bottom: 18px;
+      }
+      html[lang="ja"] .engine { padding: 15px 18px; }
+      html[lang="ja"] .engine-summary { margin-bottom: 7px; }
+      html[lang="ja"] .engine-process { margin-bottom: 6px; }
+      html[lang="ja"] .feedback { grid-template-columns: minmax(285px, 0.95fr) minmax(0, 2.8fr) auto; }
+      html[lang="ja"] .takeaway { padding-top: 12px; padding-bottom: 12px; }
+    }
+
+    @media (max-width: 1099px) {
+      .system-map { min-height: 100svh; }
+      .hero { grid-template-columns: 1fr; gap: 10px; }
+      .hero-tools { flex-direction: row; align-items: center; padding: 0; }
+      .legend { padding: 0; }
+      .core {
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+      .connector {
+        min-height: 34px;
+        padding: 0;
+        transform: rotate(90deg);
+      }
+      .connector span { top: 4px; }
+      .connector::after { top: 13px; }
+      .source-list { grid-template-columns: repeat(2, 1fr); grid-template-rows: auto; }
+      .source-card { min-height: 88px; }
+      .engine { min-height: 400px; }
+      .application-groups { min-height: 330px; }
+      .feedback { grid-template-columns: 1fr; }
+      .cycle-track { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .feedback-result::before { display: none; }
+    }
+
+    @media (max-width: 620px) {
+      .source-list, .current .app-list, .future .app-list { grid-template-columns: 1fr; }
+      .current .app-card:last-child { grid-column: auto; }
+      .future .app-list { min-height: 210px; }
+      .cycle-track { grid-template-columns: 1fr; }
+      .zone-note { display: none; }
+      .takeaway { text-align: left; }
+    }
+
+    @media print {
+      @page { size: 16in 9in; margin: 0; }
+      body { background: #f4f7f9; }
+      .system-map {
+        width: 16in;
+        height: 9in;
+        min-height: 0;
+        overflow: hidden;
+        padding: 0.28in 0.42in;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main aria-labelledby="page-title">
+    <section class="system-map" data-system-map>
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Enterprise Data Operating System</p>
+          <h1 id="page-title"><span data-i18n="titlePrefix">흩어진 데이터를 연결해 </span><strong data-i18n="titleStrong">다음 실행이 좋아지는 구조</strong></h1>
+          <p class="hero-copy" data-i18n="heroCopy">타 홈쇼핑의 상품·편성·영상 데이터와 우리 업무에서 발생하는 판단을 하나의 기업 데이터로 축적해, 지금의 제품 발굴·소싱·대본 업무와 미래의 자동화를 함께 고도화합니다.</p>
+        </div>
+        <div class="hero-tools">
+          <div class="locale-switch" role="group" aria-label="언어 선택" data-i18n-aria-label="localeGroup">
+            <button class="locale-button" type="button" data-locale="ko" aria-pressed="true" aria-label="한국어로 보기" data-i18n-aria-label="viewKorean">한국어</button>
+            <button class="locale-button" type="button" data-locale="ja" aria-pressed="false" aria-label="일본어로 보기" data-i18n-aria-label="viewJapanese">日本語</button>
+          </div>
+          <div class="legend" aria-label="구현 상태" data-i18n-aria-label="implementationStatus">
+            <span class="status" data-status="current" data-i18n="currentLinked">현재 연결</span>
+            <span class="status planned" data-status="planned" data-i18n="planned">확장 예정</span>
+          </div>
+        </div>
+      </header>
+
+      <div class="core" aria-label="기업 데이터가 흐르는 구조" data-i18n-aria-label="coreStructure">
+        <section class="zone" data-zone="sources" aria-labelledby="sources-title">
+          <div class="zone-heading">
+            <div>
+              <span class="zone-number">01 · Collect</span>
+              <h2 id="sources-title" data-i18n="sourcesTitle">외부 시장 데이터 수집</h2>
+            </div>
+            <span class="zone-note"><span data-i18n="sourcesNote1">무엇이 팔리고</span><br><span data-i18n="sourcesNote2">어떻게 방송되는가</span></span>
+          </div>
+          <div class="source-list">
+            <article class="source-card" data-source="product-offer">
+              <div class="source-icon" aria-hidden="true">₩</div>
+              <div>
+                <div class="source-title">
+                  <h3 data-i18n="productTitle">상품·가격·혜택</h3>
+                  <span class="source-fields" data-i18n="productFields">상품명 · 가격 · 할인 · 구성</span>
+                </div>
+                <p data-i18n="productDescription">현재 캘린더·발굴·리서치에서 경쟁 상품과 제안을 비교합니다.</p>
+              </div>
+            </article>
+
+            <article class="source-card" data-source="broadcast-schedule">
+              <div class="source-icon" aria-hidden="true">◷</div>
+              <div>
+                <div class="source-title">
+                  <h3 data-i18n="scheduleTitle">방송 편성</h3>
+                  <span class="source-fields" data-i18n="scheduleFields">채널 · 일시 · 노출 빈도</span>
+                </div>
+                <p data-i18n="scheduleDescription">현재 30/90일 방송량, 채널 분포, 시간대 기회를 계산합니다.</p>
+              </div>
+            </article>
+
+            <article class="source-card" data-source="media-archive">
+              <div class="source-icon" aria-hidden="true">▶</div>
+              <div>
+                <div class="source-title">
+                  <h3 data-i18n="mediaTitle">영상·음성 아카이브</h3>
+                  <span class="source-fields" data-i18n="mediaFields">VOD · 장면 · 발화</span>
+                </div>
+                <p data-i18n="mediaDescription">현재 원본 방송을 확인하고, 향후 장면·시연·화법으로 구조화합니다.</p>
+              </div>
+            </article>
+
+            <article class="source-card" data-source="channel-category">
+              <div class="source-icon" aria-hidden="true">#</div>
+              <div>
+                <div class="source-title">
+                  <h3 data-i18n="contextTitle">채널·카테고리 맥락</h3>
+                  <span class="source-fields" data-i18n="contextFields">분류 · 채널 성향 · 시즌</span>
+                </div>
+                <p data-i18n="contextDescription">현재 필터와 카테고리 흐름을 만들고, 향후 채널 적합도를 학습합니다.</p>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <div class="connector" aria-hidden="true"><span data-i18n="normalizeConnect">정규화·연결</span></div>
+
+        <section class="zone" data-zone="engine" aria-labelledby="engine-zone-title">
+          <div class="zone-heading">
+            <div>
+              <span class="zone-number">02 · Accumulate</span>
+              <h2 id="engine-zone-title" data-i18n="engineZoneTitle">기업 데이터 자산화</h2>
+            </div>
+            <span class="zone-note"><span data-i18n="engineNote1">흩어진 정보를</span><br><span data-i18n="engineNote2">재사용 가능한 근거로</span></span>
+          </div>
+          <div class="engine">
+            <span class="engine-label">MediaWorks Data Engine</span>
+            <div>
+              <h3 data-i18n="engineTitle">기업 데이터 엔진</h3>
+              <p class="engine-summary" data-i18n="engineSummary">출처와 시점을 보존해 외부 시장 정보와 내부 의사결정을 같은 제품 단위로 연결합니다.</p>
+            </div>
+            <div>
+              <div class="engine-process" aria-label="데이터 처리 과정" data-i18n-aria-label="dataProcess">
+                <span data-i18n="normalize">정규화</span>
+                <span data-i18n="productConnect">제품 연결</span>
+                <span data-i18n="decisionAccumulate">판단 축적</span>
+              </div>
+              <div class="asset-list" aria-label="생성되는 데이터 자산" data-i18n-aria-label="generatedAssets">
+                <div class="asset"><span data-i18n="assetMaster">통합 상품 마스터</span><span data-i18n="currentlyGenerated">현재 생성</span></div>
+                <div class="asset"><span data-i18n="assetPrice">가격·혜택 변화 이력</span><span data-i18n="currentlyGenerated">현재 생성</span></div>
+                <div class="asset"><span data-i18n="assetBroadcast">방송·노출·채널 신호</span><span data-i18n="currentlyGenerated">현재 생성</span></div>
+                <div class="asset planned"><span data-i18n="assetScene">장면·시연 인덱스</span><span data-i18n="planned">확장 예정</span></div>
+                <div class="asset planned"><span data-i18n="assetSelling">셀링포인트·화법 패턴</span><span data-i18n="planned">확장 예정</span></div>
+              </div>
+            </div>
+            <p class="engine-rule"><span data-i18n="engineRulePrefix">데이터만 쌓는 것이 아니라, </span><strong data-i18n="engineRuleStrong">왜 선택했고 어떤 결과가 났는지</strong><span data-i18n="engineRuleSuffix">까지 다음 업무가 다시 쓸 수 있는 자산으로 남깁니다.</span></p>
+          </div>
+        </section>
+
+        <div class="connector" aria-hidden="true"><span data-i18n="provideEvidence">근거 제공</span></div>
+
+        <section class="zone" data-zone="applications" aria-labelledby="applications-title">
+          <div class="zone-heading">
+            <div>
+              <span class="zone-number">03 · Activate</span>
+              <h2 id="applications-title" data-i18n="applicationsTitle">현재 기능과 미래 자동화</h2>
+            </div>
+            <span class="zone-note"><span data-i18n="applicationsNote1">데이터가 실제</span><br><span data-i18n="applicationsNote2">업무 판단으로 전환</span></span>
+          </div>
+          <div class="application-groups">
+            <section class="app-group current" aria-labelledby="current-title">
+              <div class="group-heading">
+                <h3 id="current-title" data-i18n="currentWorkTitle">지금 연결되는 업무</h3>
+                <span class="status" data-i18n="operating">운영 중</span>
+              </div>
+              <div class="app-list">
+                <article class="app-card" data-status="current" data-feature="broadcast-calendar">
+                  <strong data-i18n="calendarTitle">방송 캘린더</strong>
+                  <span data-i18n="calendarDescription">편성·상품·가격·VOD를 한 화면에서 확인</span>
+                </article>
+                <article class="app-card" data-status="current" data-feature="discovery">
+                  <strong data-i18n="discoveryTitle">신규 상품 발굴</strong>
+                  <span data-i18n="discoveryDescription">30/90일 노출과 채널·가격 근거로 기회 탐색</span>
+                </article>
+                <article class="app-card" data-status="current" data-feature="selection-pipeline">
+                  <strong data-i18n="sourcingTitle">소싱 파이프라인</strong>
+                  <span data-i18n="sourcingDescription">선정 → 소싱 → 편성 상태와 근거를 연결</span>
+                </article>
+                <article class="app-card" data-status="current" data-feature="research-strategy">
+                  <strong data-i18n="researchTitle">리서치·MD</strong>
+                  <span data-i18n="researchDescription">동일 카테고리 최근 방송을 전략 근거로 활용</span>
+                </article>
+                <article class="app-card" data-status="current" data-feature="screenplay">
+                  <strong data-i18n="screenplayTitle">근거형 대본</strong>
+                  <span data-i18n="screenplayDescription">상품 정보·가격·리서치 결과를 제품 브리프로 이어 생성</span>
+                </article>
+              </div>
+            </section>
+
+            <section class="app-group future" aria-labelledby="future-title">
+              <div class="group-heading">
+                <h3 id="future-title" data-i18n="futureTitle">데이터가 쌓일수록 가능한 것</h3>
+                <span class="status planned" data-i18n="planned">확장 예정</span>
+              </div>
+              <div class="app-list">
+                <article class="app-card" data-status="planned" data-application="competitive-script">
+                  <strong data-i18n="competitiveTitle">경쟁 패턴형 대본</strong>
+                  <span data-i18n="competitiveDescription">성과가 좋았던 화법·순서를 반영</span>
+                </article>
+                <article class="app-card" data-status="planned" data-application="demo-direction">
+                  <strong data-i18n="demoTitle">시연·연출 설계</strong>
+                  <span data-i18n="demoDescription">장면과 시연 구성을 근거로 추천</span>
+                </article>
+                <article class="app-card" data-status="planned" data-application="channel-recommendation">
+                  <strong data-i18n="recommendationTitle">채널별 자동 추천</strong>
+                  <span data-i18n="recommendationDescription">채널 성향에 맞는 상품·전략 제안</span>
+                </article>
+              </div>
+            </section>
+          </div>
+        </section>
+      </div>
+
+      <section class="feedback" data-feedback-loop aria-label="검수와 재검증으로 이어지는 기업 데이터 운영 사이클" data-i18n-aria-label="feedbackLoop">
+        <div class="feedback-title">
+          <span class="loop-icon" aria-hidden="true">↺</span>
+          <div>
+            <strong data-i18n="feedbackTitle">현업 판단이 다음 실행을 개선하는 운영 사이클</strong>
+            <p data-cycle-reason data-i18n="cycleReason">단순 사용만으로는 개선되지 않습니다. 현업의 정답과 수정 이유를 검수하고 같은 평가 세트로 다시 측정해야 합니다.</p>
+          </div>
+        </div>
+        <div class="cycle-track" aria-label="기업 데이터 운영 사이클의 네 단계" data-i18n-aria-label="cycleSteps">
+          <article class="cycle-step" data-cycle-step="work">
+            <span class="cycle-number">01</span>
+            <div><strong data-i18n="cycleWorkTitle">현업 사용</strong><span data-i18n="cycleWorkDescription">검색·소싱·대본 실행</span></div>
+          </article>
+          <article class="cycle-step" data-cycle-step="judge">
+            <span class="cycle-number">02</span>
+            <div><strong data-i18n="cycleJudgeTitle">정답 판정</strong><span data-i18n="cycleJudgeDescription">채택·반려·수정 이유·성과 기록</span></div>
+          </article>
+          <article class="cycle-step" data-cycle-step="improve">
+            <span class="cycle-number">03</span>
+            <div><strong data-i18n="cycleImproveTitle">검수 반영</strong><span data-i18n="cycleImproveDescription">정답 데이터·검색 규칙·인덱스·생성 기준 개선</span></div>
+          </article>
+          <article class="cycle-step" data-cycle-step="revalidate">
+            <span class="cycle-number">04</span>
+            <div><strong data-i18n="cycleRevalidateTitle">동일 조건 재검증</strong><span data-i18n="cycleRevalidateDescription">같은 평가 세트로 개선 전후 비교</span></div>
+          </article>
+        </div>
+        <div class="feedback-result" data-i18n="feedbackResult">검증된 개선만 다음 실행으로</div>
+      </section>
+
+      <p class="takeaway" data-role="takeaway" data-concept="enterprise-data-operating-system">
+        <span data-i18n="takeawayPrefix">우리가 구축하는 것은 단순한 업무 플로우가 아닙니다. 흩어진 기업 데이터와 현업의 정답·수정 이유를 하나의 운영 사이클로 연결해 모든 판단을 자산으로 축적하고, 같은 기준으로 검증된 자산이 다음 </span><strong data-i18n="takeawayStrong">상품 발굴·소싱·방송 실행을 더 정교하게 만드는 기업 데이터 운영 시스템</strong><span data-i18n="takeawaySuffix">입니다.</span>
+        <span class="outcome-line" data-outcome-line data-i18n="outcomeLine">이러한 운영 사이클이 반복되고 축적될수록, 더 나은 상품 발굴·소싱·방송 결과를 지속적으로 만들어낼 수 있습니다.</span>
+      </p>
+    </section>
+  </main>
+  <script>
+    (() => {
+      const storageKey = "mediaworks-pipeline-locale";
+      const translations = {
+        ko: {
+          documentTitle: "MediaWorks 기업 데이터 운영 시스템",
+          localeGroup: "언어 선택",
+          viewKorean: "한국어로 보기",
+          viewJapanese: "일본어로 보기",
+          implementationStatus: "구현 상태",
+          coreStructure: "기업 데이터가 흐르는 구조",
+          dataProcess: "데이터 처리 과정",
+          generatedAssets: "생성되는 데이터 자산",
+          feedbackLoop: "검수와 재검증으로 이어지는 기업 데이터 운영 사이클",
+          cycleSteps: "기업 데이터 운영 사이클의 네 단계",
+          titlePrefix: "흩어진 데이터를 연결해 ",
+          titleStrong: "다음 실행이 좋아지는 구조",
+          heroCopy: "타 홈쇼핑의 상품·편성·영상 데이터와 우리 업무에서 발생하는 판단을 하나의 기업 데이터로 축적해, 지금의 제품 발굴·소싱·대본 업무와 미래의 자동화를 함께 고도화합니다.",
+          currentLinked: "현재 연결",
+          planned: "확장 예정",
+          sourcesTitle: "외부 시장 데이터 수집",
+          sourcesNote1: "무엇이 팔리고",
+          sourcesNote2: "어떻게 방송되는가",
+          productTitle: "상품·가격·혜택",
+          productFields: "상품명 · 가격 · 할인 · 구성",
+          productDescription: "현재 캘린더·발굴·리서치에서 경쟁 상품과 제안을 비교합니다.",
+          scheduleTitle: "방송 편성",
+          scheduleFields: "채널 · 일시 · 노출 빈도",
+          scheduleDescription: "현재 30/90일 방송량, 채널 분포, 시간대 기회를 계산합니다.",
+          mediaTitle: "영상·음성 아카이브",
+          mediaFields: "VOD · 장면 · 발화",
+          mediaDescription: "현재 원본 방송을 확인하고, 향후 장면·시연·화법으로 구조화합니다.",
+          contextTitle: "채널·카테고리 맥락",
+          contextFields: "분류 · 채널 성향 · 시즌",
+          contextDescription: "현재 필터와 카테고리 흐름을 만들고, 향후 채널 적합도를 학습합니다.",
+          normalizeConnect: "정규화·연결",
+          engineZoneTitle: "기업 데이터 자산화",
+          engineNote1: "흩어진 정보를",
+          engineNote2: "재사용 가능한 근거로",
+          engineTitle: "기업 데이터 엔진",
+          engineSummary: "출처와 시점을 보존해 외부 시장 정보와 내부 의사결정을 같은 제품 단위로 연결합니다.",
+          normalize: "정규화",
+          productConnect: "제품 연결",
+          decisionAccumulate: "판단 축적",
+          assetMaster: "통합 상품 마스터",
+          assetPrice: "가격·혜택 변화 이력",
+          assetBroadcast: "방송·노출·채널 신호",
+          assetScene: "장면·시연 인덱스",
+          assetSelling: "셀링포인트·화법 패턴",
+          currentlyGenerated: "현재 생성",
+          engineRulePrefix: "데이터만 쌓는 것이 아니라, ",
+          engineRuleStrong: "왜 선택했고 어떤 결과가 났는지",
+          engineRuleSuffix: "까지 다음 업무가 다시 쓸 수 있는 자산으로 남깁니다.",
+          provideEvidence: "근거 제공",
+          applicationsTitle: "현재 기능과 미래 자동화",
+          applicationsNote1: "데이터가 실제",
+          applicationsNote2: "업무 판단으로 전환",
+          currentWorkTitle: "지금 연결되는 업무",
+          operating: "운영 중",
+          calendarTitle: "방송 캘린더",
+          calendarDescription: "편성·상품·가격·VOD를 한 화면에서 확인",
+          discoveryTitle: "신규 상품 발굴",
+          discoveryDescription: "30/90일 노출과 채널·가격 근거로 기회 탐색",
+          sourcingTitle: "소싱 파이프라인",
+          sourcingDescription: "선정 → 소싱 → 편성 상태와 근거를 연결",
+          researchTitle: "리서치·MD",
+          researchDescription: "동일 카테고리 최근 방송을 전략 근거로 활용",
+          screenplayTitle: "근거형 대본",
+          screenplayDescription: "상품 정보·가격·리서치 결과를 제품 브리프로 이어 생성",
+          futureTitle: "데이터가 쌓일수록 가능한 것",
+          competitiveTitle: "경쟁 패턴형 대본",
+          competitiveDescription: "성과가 좋았던 화법·순서를 반영",
+          demoTitle: "시연·연출 설계",
+          demoDescription: "장면과 시연 구성을 근거로 추천",
+          recommendationTitle: "채널별 자동 추천",
+          recommendationDescription: "채널 성향에 맞는 상품·전략 제안",
+          feedbackTitle: "현업 판단이 다음 실행을 개선하는 운영 사이클",
+          cycleReason: "단순 사용만으로는 개선되지 않습니다. 현업의 정답과 수정 이유를 검수하고 같은 평가 세트로 다시 측정해야 합니다.",
+          cycleWorkTitle: "현업 사용",
+          cycleWorkDescription: "검색·소싱·대본 실행",
+          cycleJudgeTitle: "정답 판정",
+          cycleJudgeDescription: "채택·반려·수정 이유·성과 기록",
+          cycleImproveTitle: "검수 반영",
+          cycleImproveDescription: "정답 데이터·검색 규칙·인덱스·생성 기준 개선",
+          cycleRevalidateTitle: "동일 조건 재검증",
+          cycleRevalidateDescription: "같은 평가 세트로 개선 전후 비교",
+          feedbackResult: "검증된 개선만 다음 실행으로",
+          takeawayPrefix: "우리가 구축하는 것은 단순한 업무 플로우가 아닙니다. 흩어진 기업 데이터와 현업의 정답·수정 이유를 하나의 운영 사이클로 연결해 모든 판단을 자산으로 축적하고, 같은 기준으로 검증된 자산이 다음 ",
+          takeawayStrong: "상품 발굴·소싱·방송 실행을 더 정교하게 만드는 기업 데이터 운영 시스템",
+          takeawaySuffix: "입니다.",
+          outcomeLine: "이러한 운영 사이클이 반복되고 축적될수록, 더 나은 상품 발굴·소싱·방송 결과를 지속적으로 만들어낼 수 있습니다."
+        },
+        ja: {
+          documentTitle: "MediaWorks 企業データ運用システム",
+          localeGroup: "言語選択",
+          viewKorean: "韓国語で表示",
+          viewJapanese: "日本語で表示",
+          implementationStatus: "実装状況",
+          coreStructure: "企業データが流れる構造",
+          dataProcess: "データ処理プロセス",
+          generatedAssets: "生成されるデータ資産",
+          feedbackLoop: "確認と再検証でつながる企業データ運用サイクル",
+          cycleSteps: "企業データ運用サイクルの4段階",
+          titlePrefix: "散在するデータをつなぎ、",
+          titleStrong: "次のアクションを進化させる",
+          heroCopy: "他社テレビ通販の商品・編成・映像データと、自社業務で生まれる判断を一つの企業データとして蓄積し、現在の商品発掘・ソーシング・台本業務と将来の自動化をともに高度化します。",
+          currentLinked: "現在連携",
+          planned: "拡張予定",
+          sourcesTitle: "外部市場データの収集",
+          sourcesNote1: "何が売れ、",
+          sourcesNote2: "どう放送されるか",
+          productTitle: "商品・価格・特典",
+          productFields: "商品名 · 価格 · 割引 · セット内容",
+          productDescription: "現在はカレンダー・商品発掘・リサーチで競合商品と提案内容を比較します。",
+          scheduleTitle: "放送編成",
+          scheduleFields: "チャンネル · 日時 · 露出頻度",
+          scheduleDescription: "現在は30/90日間の放送量、チャンネル分布、時間帯別の機会を算出します。",
+          mediaTitle: "映像・音声アーカイブ",
+          mediaFields: "VOD · シーン · 発話",
+          mediaDescription: "現在は元の放送を確認し、将来はシーン・実演・話法として構造化します。",
+          contextTitle: "チャネル・カテゴリ",
+          contextFields: "分類 · 傾向 · シーズン",
+          contextDescription: "現在はカテゴリ動向を把握し、将来はチャネル適合度を学習します。",
+          normalizeConnect: "正規化・連携",
+          engineZoneTitle: "企業データの資産化",
+          engineNote1: "散在する情報を",
+          engineNote2: "再利用できる根拠へ",
+          engineTitle: "企業データエンジン",
+          engineSummary: "出典と時点を保持し、外部市場情報と社内意思決定を同じ商品単位で連携します。",
+          normalize: "正規化",
+          productConnect: "商品連携",
+          decisionAccumulate: "判断蓄積",
+          assetMaster: "統合商品マスター",
+          assetPrice: "価格・特典の変化履歴",
+          assetBroadcast: "放送・露出・チャンネルシグナル",
+          assetScene: "シーン・実演インデックス",
+          assetSelling: "セールスポイント・話法パターン",
+          currentlyGenerated: "現在生成",
+          engineRulePrefix: "データを蓄積するだけではなく、",
+          engineRuleStrong: "なぜ選び、どのような結果になったか",
+          engineRuleSuffix: "まで、次の業務で再利用できる資産として残します。",
+          provideEvidence: "根拠を提供",
+          applicationsTitle: "現在の機能と将来の自動化",
+          applicationsNote1: "データを実際の",
+          applicationsNote2: "業務判断へ変換",
+          currentWorkTitle: "現在連携している業務",
+          operating: "運用中",
+          calendarTitle: "放送カレンダー",
+          calendarDescription: "編成・商品・価格・VODを一画面で確認",
+          discoveryTitle: "新規商品発掘",
+          discoveryDescription: "30/90日露出とチャンネル・価格根拠から機会を探索",
+          sourcingTitle: "ソーシングパイプライン",
+          sourcingDescription: "選定 → ソーシング → 編成の状態と根拠を連携",
+          researchTitle: "リサーチ・MD",
+          researchDescription: "同一カテゴリの直近放送を戦略の根拠として活用",
+          screenplayTitle: "根拠型台本",
+          screenplayDescription: "商品情報・価格・リサーチ結果を商品ブリーフにつないで生成",
+          futureTitle: "データが蓄積されるほど可能になること",
+          competitiveTitle: "競合パターン型台本",
+          competitiveDescription: "成果の高い話法・構成順を反映",
+          demoTitle: "実演・演出設計",
+          demoDescription: "シーンと実演構成を根拠に提案",
+          recommendationTitle: "チャンネル別自動推薦",
+          recommendationDescription: "チャンネル特性に合う商品・戦略を提案",
+          feedbackTitle: "現場の判断が次のアクションを改善する運用サイクル",
+          cycleReason: "使うだけで自動的に改善されるわけではありません。現場の正解と修正理由を確認し、同じ評価セットで再測定する必要があります。",
+          cycleWorkTitle: "実務で使用",
+          cycleWorkDescription: "検索・ソーシング・台本実行",
+          cycleJudgeTitle: "正解判定",
+          cycleJudgeDescription: "採用・却下・修正理由・成果を記録",
+          cycleImproveTitle: "確認・反映",
+          cycleImproveDescription: "正解データ・検索ルール・インデックス・生成基準を改善",
+          cycleRevalidateTitle: "同一条件で再検証",
+          cycleRevalidateDescription: "同じ評価セットで改善前後を比較",
+          feedbackResult: "検証済みの改善だけを次の実行へ",
+          takeawayPrefix: "私たちが構築しているのは、単なる業務フローではありません。散在する企業データと現場の正解・修正理由を一つの運用サイクルにつなぎ、あらゆる判断を資産として蓄積し、同じ基準で検証された資産によって、次の",
+          takeawayStrong: "商品発掘・ソーシング・放送実行をより精緻にする企業データ運用システム",
+          takeawaySuffix: "です。",
+          outcomeLine: "この運用サイクルを繰り返し、判断データを蓄積するほど、より良い商品発掘・ソーシング・放送成果を継続的に生み出すことができます。"
+        }
+      };
+
+      function applyLocale(locale, persist) {
+        const dictionary = translations[locale];
+        document.documentElement.lang = locale;
+        document.title = dictionary.documentTitle;
+
+        document.querySelectorAll("[data-i18n]").forEach((element) => {
+          const key = element.dataset.i18n;
+          if (dictionary[key]) element.textContent = dictionary[key];
+        });
+
+        document.querySelectorAll("[data-i18n-aria-label]").forEach((element) => {
+          const key = element.dataset.i18nAriaLabel;
+          if (dictionary[key]) element.setAttribute("aria-label", dictionary[key]);
+        });
+
+        document.querySelectorAll("[data-locale]").forEach((button) => {
+          button.setAttribute("aria-pressed", String(button.dataset.locale === locale));
+        });
+
+        if (persist) {
+          try {
+            localStorage.setItem(storageKey, locale);
+          } catch {}
+        }
+      }
+
+      let initialLocale = "ko";
+      try {
+        if (localStorage.getItem(storageKey) === "ja") initialLocale = "ja";
+      } catch {}
+
+      applyLocale(initialLocale, false);
+      document.querySelectorAll("[data-locale]").forEach((button) => {
+        button.addEventListener("click", () => applyLocale(button.dataset.locale, true));
+      });
+    })();
+  </script>
+</body>
+</html>
