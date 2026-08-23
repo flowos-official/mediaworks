@@ -20,7 +20,7 @@ export async function GET(
 
 	const { data: screenplay, error: screenplayErr } = await auth.sb
 		.from("screenplays")
-		.select("id")
+		.select("id, last_error")
 		.eq("last_run_id", runId)
 		.maybeSingle();
 	if (screenplayErr) return Response.json({ error: screenplayErr.message }, { status: 500 });
@@ -29,6 +29,14 @@ export async function GET(
 	try {
 		const run = getRun(runId);
 		const status = await run.status;
+		if (status === "failed") {
+			return Response.json({
+				status,
+				error:
+					screenplay.last_error ??
+					"台本生成に失敗しました。管理者に連絡してください。",
+			});
+		}
 		if (status === "completed") {
 			const returnValue = (await run.returnValue) as
 				| { screenplayId?: string; versionId?: string; versionNumber?: number }

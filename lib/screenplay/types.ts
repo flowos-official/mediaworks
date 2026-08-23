@@ -52,6 +52,7 @@ export interface ScreenplayRow {
   current_version_id: string | null;
   status: "pending" | "generating" | "ready" | "failed";
   last_run_id: string | null;
+  last_error?: string | null;
   created_at: string;
   updated_at: string;
   source_kind?: "upload" | "url" | "import" | "product" | null;

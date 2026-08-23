@@ -1,8 +1,12 @@
 import { GeminiCallError, type GeminiErrorKind, classifyGeminiError } from "./errors";
 
-const NO_RETRY_KINDS: ReadonlySet<GeminiErrorKind> = new Set(["safety_blocked"]);
+const NO_RETRY_KINDS: ReadonlySet<GeminiErrorKind> = new Set([
+  "authentication_failed",
+  "safety_blocked",
+]);
 
 const BACKOFF_MULTIPLIER: Record<GeminiErrorKind, number> = {
+  authentication_failed: 1.0,
   safety_blocked: 1.0,
   rate_limited: 1.5,
   server_error: 2.0,

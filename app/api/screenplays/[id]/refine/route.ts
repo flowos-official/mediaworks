@@ -84,7 +84,7 @@ export async function POST(
 	// the read before either commit landed).
 	const { data: claimed, error: claimErr } = await supabase
 		.from("screenplays")
-		.update({ status: "generating", updated_at: new Date().toISOString() })
+		.update({ status: "generating", last_error: null, updated_at: new Date().toISOString() })
 		.eq("id", id)
 		.neq("status", "generating")
 		.select("id")
@@ -118,7 +118,10 @@ export async function POST(
 	} catch (err) {
 		await supabase
 			.from("screenplays")
-			.update({ status: "failed" })
+			.update({
+				status: "failed",
+				last_error: "台本改稿ワークフローを開始できませんでした。管理者に連絡してください。",
+			})
 			.eq("id", id);
 		const msg = err instanceof Error ? err.message : String(err);
 		return Response.json({ error: msg }, { status: 500 });

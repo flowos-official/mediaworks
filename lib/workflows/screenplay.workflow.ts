@@ -23,6 +23,7 @@ import type {
   ScriptCheckResult,
   RemediationStep,
 } from "@/lib/screenplay/compliance/types";
+import { geminiUserFacingMessage } from "@/lib/gemini/errors";
 
 export interface ScreenplayWorkflowInput {
   screenplayId: string;
@@ -158,6 +159,7 @@ async function persistStep(
     .update({
       current_version_id: versionRow.id,
       status: "ready",
+      last_error: null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", screenplayId);
@@ -270,7 +272,11 @@ async function markFailedStep(screenplayId: string, message: string): Promise<vo
   const supabase = getServiceClient();
   await supabase
     .from("screenplays")
-    .update({ status: "failed", updated_at: new Date().toISOString() })
+    .update({
+      status: "failed",
+      last_error: message.slice(0, 500),
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", screenplayId);
   await writeProgressInline({ type: "error", message });
 }
@@ -351,7 +357,11 @@ export async function screenplayWorkflow(input: ScreenplayWorkflowInput) {
     return { screenplayId: input.screenplayId, ...persisted };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    await markFailedStep(input.screenplayId, msg);
+    console.error(`[screenplay-workflow] ${input.screenplayId} failed:`, msg);
+    const publicMessage =
+      geminiUserFacingMessage(err) ??
+      "台本生成中にエラーが発生しました。入力内容を確認し、解消しない場合は管理者に連絡してください。";
+    await markFailedStep(input.screenplayId, publicMessage);
     throw err;
   }
 }

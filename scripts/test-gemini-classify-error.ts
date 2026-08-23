@@ -2,7 +2,7 @@
  * 単位テスト: classifyGeminiError の 9 ケース / 7 分岐検証。
  * 実行: npm run test:gemini-classify-error
  */
-import { classifyGeminiError } from "../lib/gemini/errors";
+import { classifyGeminiError, geminiUserFacingMessage } from "../lib/gemini/errors";
 
 function assert(cond: unknown, msg: string): asserts cond {
   if (!cond) throw new Error(`ASSERT FAIL: ${msg}`);
@@ -45,7 +45,13 @@ function main(): void {
   const random = new Error("unexpected condition encountered");
   assert(classifyGeminiError(random) === "unknown", "unknown fallback");
 
-  console.log("[ok] classifyGeminiError 全9ケース通過");
+  const invalidKey = Object.assign(new Error("API key not valid: API_KEY_INVALID"), { status: 400 });
+  assert(classifyGeminiError(invalidKey) === "authentication_failed", "invalid API key → authentication_failed");
+  const userMessage = geminiUserFacingMessage(invalidKey);
+  assert(userMessage?.includes("GEMINI_API_KEY"), "invalid API key → actionable user message");
+  assert(!userMessage?.includes("API_KEY_INVALID"), "user message does not expose raw provider detail");
+
+  console.log("[ok] classifyGeminiError 全11ケース通過");
 }
 
 main();

@@ -78,14 +78,18 @@ export function GenerationProgress({ runId, onComplete, variant = "generate" }: 
 						await new Promise((r) => setTimeout(r, 5000));
 						const sr = await fetch(`/api/screenplays/run/${runId}/status`);
 						if (!sr.ok) continue;
-						const sj = (await sr.json()) as { status: string; returnValue?: { versionId: string; versionNumber: number } };
+						const sj = (await sr.json()) as {
+							status: string;
+							error?: string;
+							returnValue?: { versionId: string; versionNumber: number };
+						};
 						if (sj.status === "completed" && sj.returnValue) {
 							setDoneAt({ versionId: sj.returnValue.versionId, versionNumber: sj.returnValue.versionNumber });
 							onCompleteRef.current(sj.returnValue.versionId, sj.returnValue.versionNumber);
 							return;
 						}
 						if (sj.status === "failed") {
-							setError(tRef.current("errors.generateFailed"));
+							setError(sj.error ?? tRef.current("errors.generateFailed"));
 							return;
 						}
 					}
