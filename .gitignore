@@ -56,3 +56,6 @@ next-env.d.ts
 # Supabase CLI working dir
 supabase/.temp/
 /.swc
+
+# Local scratch: rendered PDF pages, throwaway assets
+/tmp/
