@@ -611,14 +611,14 @@ export async function runLCGoalAnalysis(userGoal: string): Promise<ParsedGoal> {
 
 		if (Array.isArray(parsed.channel_scope)) {
 			channel_scope = parsed.channel_scope
-				.map((c: any) => {
+				.map((c): ChannelScope | null => {
 					const slug = resolveChannelSlug(c?.raw_mention ?? c?.channel_slug ?? "");
 					if (!slug) return null;
 					const conf = typeof c?.confidence === "number" ? c.confidence : 0;
 					if (conf < 0.5) return null;
 					return { channel_slug: slug, raw_mention: c.raw_mention ?? slug, confidence: conf };
 				})
-				.filter((x: any): x is NonNullable<typeof x> => x !== null)
+				.filter((x): x is ChannelScope => x !== null)
 				.slice(0, 5);
 		}
 
@@ -626,7 +626,7 @@ export async function runLCGoalAnalysis(userGoal: string): Promise<ParsedGoal> {
 			const rawSk = parsed.specific_keyword.raw ?? parsed.specific_keyword.normalized;
 			const normalized = parsed.specific_keyword.normalized;
 			const rawAliases = Array.isArray(parsed.specific_keyword.aliases)
-				? parsed.specific_keyword.aliases.filter((s: any): s is string => typeof s === "string")
+				? parsed.specific_keyword.aliases.filter((s): s is string => typeof s === "string")
 				: [];
 			const conf = typeof parsed.specific_keyword.confidence === "number" ? parsed.specific_keyword.confidence : 0;
 

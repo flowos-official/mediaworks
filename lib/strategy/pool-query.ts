@@ -16,6 +16,8 @@
 import { getServiceClient } from "@/lib/supabase";
 import { buildCategoryMatchTerms } from "@/lib/strategy/category-mapping";
 import { hasExcludedChannel } from "@/lib/discovery/tv-channels";
+import { isMarketRecordVisible } from "@/lib/market/data-visibility";
+import { getRuntimeMarketCountry } from "@/lib/market/runtime-market";
 
 const FAIL_OPEN_THRESHOLD = 5;
 const DEFAULT_LOOKBACK_DAYS = 60;
@@ -89,6 +91,7 @@ function applyFilters(rows: PoolRow[], opts: FilterOptions): PoolRow[] {
 	// all-txd pool collapses → caller's fresh-search fallback engages).
 	const baseFiltered = rows.filter(
 		(r) =>
+			isMarketRecordVisible(r) &&
 			r.context === opts.context &&
 			r.user_action !== "rejected" &&
 			r.user_action !== "duplicate" &&
@@ -141,7 +144,13 @@ function applyFilters(rows: PoolRow[], opts: FilterOptions): PoolRow[] {
 		});
 		// Fail-open: if intent shrinks the pool below threshold, keep the
 		// pre-intent set (user intent is preferred but never starves the pool).
-		afterIntent = matched.length >= FAIL_OPEN_THRESHOLD ? matched : afterCategory;
+		const requiresIntentMatch =
+			opts.intentTier === "seasonal" || opts.intentTier === "genre";
+		afterIntent = requiresIntentMatch
+			? matched
+			: matched.length >= FAIL_OPEN_THRESHOLD
+				? matched
+				: afterCategory;
 	}
 
 	// R5 — price filter with NULL pass-through + fail-open (same pool-size gate)
@@ -152,7 +161,7 @@ function applyPriceFilter(rows: PoolRow[], opts: FilterOptions): PoolRow[] {
 	if (!opts.priceRange || rows.length < FAIL_OPEN_THRESHOLD) return rows;
 	const { min, max } = opts.priceRange;
 	return rows.filter(
-		(r) => r.price_jpy === null || (r.price_jpy >= min && r.price_jpy <= max),
+		(r) => r.price_jpy !== null && r.price_jpy >= min && r.price_jpy <= max,
 	);
 }
 
@@ -182,6 +191,7 @@ export async function queryDiscoveredPool(
 			"id, name, product_url, price_jpy, category, seed_keyword, source, tv_fit_score, tv_fit_reason, tv_channel_source, tv_tier, context, user_action, c_package, enrichment_status, review_count, review_avg, seller_name, broadcast_tag, thumbnail_url, created_at, tv_evidence",
 		)
 		.eq("context", input.context)
+		.eq("country", getRuntimeMarketCountry())
 		.gte("created_at", sinceIso)
 		.order("tv_tier", { ascending: true })
 		.order("tv_fit_score", { ascending: false })
@@ -199,8 +209,7 @@ export async function queryDiscoveredPool(
 
 	const { data, error } = await q;
 	if (error) {
-		console.warn("[pool-query] query failed:", error.message);
-		return [];
+		throw new Error(`[pool-query] database query failed: ${error.message}`);
 	}
 	const rows = (data ?? []) as PoolRow[];
 

@@ -35,6 +35,7 @@ import { loadChannelTasteProfiles } from "@/lib/discovery/channel-taste";
 import { isPhase05Enabled } from "@/lib/strategy/feature-flags";
 import { filterAliases } from "@/lib/strategy/alias-blocklist";
 import { resolveChannelSlug } from "@/lib/strategy/channel-aliases";
+import { getRuntimeMarketCountry } from "@/lib/market/runtime-market";
 
 // ---------------------------------------------------------------------------
 // Gemini client
@@ -667,8 +668,9 @@ export async function discoverNewProducts(
 			broadcast_tag: r.broadcast_tag,
 		}));
 	} catch (err) {
-		console.warn(
-			`[discover] pool query failed (continuing with fresh search): ${err instanceof Error ? err.message : String(err)}`,
+		throw new Error(
+			`専用の商品データを参照できませんでした。一般検索への自動切替は行っていません: ${err instanceof Error ? err.message : String(err)}`,
+			{ cause: err },
 		);
 	}
 
@@ -1216,7 +1218,12 @@ export async function discoverNewProducts(
 		? `\n${formatProfileForPrompt(input.tvProfile)}\n`
 		: "";
 
-	const itemCount = lw ? 20 : 8;
+	const requestedItemCount = lw ? 20 : 8;
+	const itemCount = Math.min(requestedItemCount, cappedPool.length);
+	if (itemCount === 0) {
+		console.warn("[discover] no verified candidates are available for curation");
+		return undefined;
+	}
 	const taskDescription = lw
 		? `新商品を${itemCount}個選定してください。`
 		: `新商品を${itemCount}つ選定し、各商品の販売戦略まで策定してください。`;
@@ -1355,11 +1362,10 @@ ${salesStrategyFooter}`;
 		});
 		console.log(`[discover] sanity-pass: ${filtered.length}/${parsed.length} items survived pool-match check`);
 		if (filtered.length === 0 && parsed.length > 0) {
-			console.warn(`[discover] all ${parsed.length} Gemini items failed sanity-pass — returning all (fallback)`);
-			// Fallback: return all parsed items rather than nothing, since pool existed
-			return parsed
-				.filter((p) => !!p.name && !!p.source_url)
-				.map((p) => ({ ...p, pool_source: "fresh_search" as const }));
+			console.warn(
+				`[discover] all ${parsed.length} Gemini items failed the verified-pool check; refusing ungrounded fallback`,
+			);
+			return undefined;
 		}
 		if (filtered.length === 0) return undefined;
 
@@ -1473,7 +1479,10 @@ export async function fetchStrategyContext(
 	const [monthlyResult, detailResult, researchResult] = await Promise.all([
 		supabase.from("monthly_summaries").select("*").in("product_code", top30Codes),
 		supabase.from("product_details").select("*").in("product_code", top30Codes),
-		supabase.from("research_results").select("*"),
+		supabase
+			.from("research_results")
+			.select("*")
+			.eq("country", getRuntimeMarketCountry()),
 	]);
 
 	// Build monthly trend map
@@ -2153,14 +2162,14 @@ export async function runGoalAnalysis(userGoal: string): Promise<ParsedGoal> {
 
 		if (Array.isArray(parsed.channel_scope)) {
 			channel_scope = parsed.channel_scope
-				.map((c: any) => {
+				.map((c): ChannelScope | null => {
 					const slug = resolveChannelSlug(c?.raw_mention ?? c?.channel_slug ?? "");
 					if (!slug) return null;
 					const conf = typeof c?.confidence === "number" ? c.confidence : 0;
 					if (conf < 0.5) return null;
 					return { channel_slug: slug, raw_mention: c.raw_mention ?? slug, confidence: conf };
 				})
-				.filter((x: any): x is NonNullable<typeof x> => x !== null)
+				.filter((x): x is ChannelScope => x !== null)
 				.slice(0, 5);
 		}
 
@@ -2168,7 +2177,7 @@ export async function runGoalAnalysis(userGoal: string): Promise<ParsedGoal> {
 			const rawSk = parsed.specific_keyword.raw ?? parsed.specific_keyword.normalized;
 			const normalized = parsed.specific_keyword.normalized;
 			const rawAliases = Array.isArray(parsed.specific_keyword.aliases)
-				? parsed.specific_keyword.aliases.filter((s: any): s is string => typeof s === "string")
+				? parsed.specific_keyword.aliases.filter((s): s is string => typeof s === "string")
 				: [];
 			const conf = typeof parsed.specific_keyword.confidence === "number" ? parsed.specific_keyword.confidence : 0;
 
@@ -2190,7 +2199,7 @@ export async function runGoalAnalysis(userGoal: string): Promise<ParsedGoal> {
 	const result: ParsedGoal = {
 		primary_objective: typeof parsed.primary_objective === "string" ? parsed.primary_objective : "",
 		target_channels: Array.isArray(parsed.target_channels)
-			? parsed.target_channels.filter((c: any): c is string => typeof c === "string")
+			? parsed.target_channels.filter((c): c is string => typeof c === "string")
 			: [],
 		target_revenue: typeof parsed.target_revenue === "string" ? parsed.target_revenue : undefined,
 		target_audience: typeof parsed.target_audience === "string" ? parsed.target_audience : undefined,
@@ -2983,4 +2992,3 @@ export const __test = {
 	decideDiscoveryStrategy,
 	poolTargetSize,
 };
-

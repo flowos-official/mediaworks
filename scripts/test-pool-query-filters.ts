@@ -115,7 +115,7 @@ function mkRow(overrides: Partial<Row>): Row {
 	);
 }
 
-// --- R5 NULL price 통과 + 범위 외 제외 ---
+// --- R5 명시 가격 필터: NULL/범위 외 모두 제외 ---
 {
 	const rows = [
 		mkRow({ id: "p1", price_jpy: 5000 }),
@@ -130,8 +130,30 @@ function mkRow(overrides: Partial<Row>): Row {
 		context: "home_shopping",
 		priceRange: { min: 5000, max: 6500 },
 	});
-	assert.ok(out.some((r) => r.id === "p2"), "R5: NULL price passes through");
+	assert.ok(!out.some((r) => r.id === "p2"), "R5: NULL price excluded when a range is explicit");
 	assert.ok(!out.some((r) => r.id === "p7"), "R5: out-of-range row excluded");
+}
+
+// --- R4.5 genre/seasonal intent is precision-first: fail-open disabled ---
+{
+	const rows = [
+		mkRow({ id: "hit-1", name: "冬用ホットカーペット" }),
+		mkRow({ id: "hit-2", name: "冬の鍋セット" }),
+		mkRow({ id: "miss-1", name: "通年商品1" }),
+		mkRow({ id: "miss-2", name: "通年商品2" }),
+		mkRow({ id: "miss-3", name: "通年商品3" }),
+		mkRow({ id: "miss-4", name: "通年商品4" }),
+	];
+	const out = __test.applyFilters(rows, {
+		context: "home_shopping",
+		intentTier: "seasonal",
+		intentKeywords: ["冬"],
+	});
+	assert.deepEqual(
+		out.map((r) => r.id),
+		["hit-1", "hit-2"],
+		"R4.5: seasonal intent never falls open to unrelated rows",
+	);
 }
 
 // --- R3: context 필터 ---

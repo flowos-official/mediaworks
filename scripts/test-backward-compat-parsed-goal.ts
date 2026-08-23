@@ -9,7 +9,7 @@ const legacy = {
   category_hints: [],
   excluded_themes: [],
   // intent_tier, channel_scope, specific_keyword missing
-} as any;
+};
 
 process.env.PHASE_0_5_SEARCH_INTENT_ENABLED = "true";
 const out = projectParsedGoalToIntent(legacy);

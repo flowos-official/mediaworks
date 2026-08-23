@@ -1,4 +1,4 @@
-import { runMDSkill } from "@/lib/md-strategy";
+import { runMDSkill, type StrategyContext } from "@/lib/md-strategy";
 
 const cachedGoal = {
 	primary_objective: "test",
@@ -15,7 +15,7 @@ const cachedGoal = {
 const ctx = {
 	userGoal: "テレ東マートで売れる包丁",
 	parsedGoal: cachedGoal,
-} as any;
+} as unknown as StrategyContext;
 
 async function main() {
 	const before = Date.now();

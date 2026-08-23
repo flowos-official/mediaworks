@@ -26,9 +26,11 @@ const tier4Input = {
 };
 
 async function main() {
-	const result = await discoverNewProducts(tier4Input as any);
+	const result = await discoverNewProducts(tier4Input);
 	if (result && result.length > 0) {
-		const padded = result.some((r: any) => r.keyword === "fallback" || /人気商品|売れ筋|おすすめ/.test(r.name ?? ""));
+		const padded = result.some(
+			(r) => ("keyword" in r && r.keyword === "fallback") || /人気商品|売れ筋|おすすめ/.test(r.name ?? ""),
+		);
 		if (padded) throw new Error(`tier=specific_keyword should suppress broadened fallback`);
 	}
 	console.log("✓ tier4-fallback-suppression test passes (empty/non-broadened result)");
