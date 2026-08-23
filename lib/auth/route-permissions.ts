@@ -1,4 +1,6 @@
 // lib/auth/route-permissions.ts
+import { appConfig } from '@/config/app';
+
 export type Role = 'admin' | 'member' | 'viewer';
 
 /** All three roles can read these page paths (just viewer-allowed list below). */
@@ -24,7 +26,7 @@ export function isViewerAllowedPath(pathname: string): boolean {
  * Default role landing pages after login.
  */
 export const ROLE_LANDING: Record<Role, string> = {
-  admin: '/',
-  member: '/',
-  viewer: '/analytics/products',
+  admin: appConfig.navigation.memberLanding,
+  member: appConfig.navigation.memberLanding,
+  viewer: appConfig.navigation.viewerLanding,
 };

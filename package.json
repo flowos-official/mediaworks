@@ -108,6 +108,7 @@
     "test:user-guide-page": "tsx scripts/test-user-guide-page.ts",
     "test:navbar-guide-theme-placement": "tsx scripts/test-navbar-guide-theme-placement.ts",
     "test:nav-permissions": "tsx scripts/test-nav-permissions.ts",
+    "test:app-config": "tsx scripts/test-app-config.ts && NEXT_PUBLIC_APP_VARIANT=lotte-kr tsx scripts/test-app-config.ts",
     "promote:discovery-research": "tsx --env-file=.env.local scripts/promote-discovered-to-research.ts",
     "complete:recommendation-flow": "tsx --env-file=.env.local scripts/complete-recommendation-flow.ts",
     "test:selections": "tsx --env-file=.env.local scripts/test-selections-state-machine.ts",
