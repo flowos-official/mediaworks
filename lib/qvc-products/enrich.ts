@@ -23,36 +23,52 @@ interface EnrichOptions {
 	onProgress?: (msg: string) => void;
 }
 
+/** PostgREST caps an unbounded select at this many rows, so full reads page by it. */
+const PAGE_SIZE = 1000;
+
 async function collectIds(options: EnrichOptions): Promise<string[]> {
 	const sb = getServiceClient();
 	const staleHours = options.staleHours ?? 24;
 	const limit = options.limit ?? null;
 
-	let q = sb
-		.from("broadcasts")
-		.select("product_ids,air_date")
-		.eq("channel", "qvc")
-		.not("product_ids", "is", null);
-	if (options.onlyDates && options.onlyDates.length > 0) {
-		q = q.in("air_date", options.onlyDates);
-	}
-	const { data: broadcasts, error } = await q;
-	if (error) throw new Error(`broadcasts fetch: ${error.message}`);
-
 	const ids = new Set<string>();
-	for (const row of broadcasts ?? []) {
-		const arr = (row as { product_ids: string[] | null }).product_ids;
-		if (!arr) continue;
-		for (const id of arr) ids.add(id);
+	// PostgREST caps an unbounded select at 1000 rows. Both sides of this
+	// comparison must be read in full: a truncated broadcast list hides product
+	// ids that need fetching, and a truncated freshness list re-fetches products
+	// that are already cached — which is what starved the real candidates.
+	for (let from = 0; ; from += PAGE_SIZE) {
+		let q = sb
+			.from("broadcasts")
+			.select("product_ids,air_date")
+			.eq("channel", "qvc")
+			.not("product_ids", "is", null);
+		if (options.onlyDates && options.onlyDates.length > 0) {
+			q = q.in("air_date", options.onlyDates);
+		}
+		const { data, error } = await q.order("id", { ascending: true }).range(from, from + PAGE_SIZE - 1);
+		if (error) throw new Error(`broadcasts fetch: ${error.message}`);
+		for (const row of data ?? []) {
+			const arr = (row as { product_ids: string[] | null }).product_ids;
+			if (!arr) continue;
+			for (const id of arr) ids.add(id);
+		}
+		if (!data || data.length < PAGE_SIZE) break;
 	}
 	if (ids.size === 0) return [];
 
 	const cutoff = new Date(Date.now() - staleHours * 3600_000).toISOString();
-	const { data: fresh } = await sb
-		.from("qvc_products")
-		.select("id")
-		.gte("fetched_at", cutoff);
-	const freshSet = new Set((fresh ?? []).map((r: { id: string }) => r.id));
+	const freshSet = new Set<string>();
+	for (let from = 0; ; from += PAGE_SIZE) {
+		const { data, error } = await sb
+			.from("qvc_products")
+			.select("id")
+			.gte("fetched_at", cutoff)
+			.order("id", { ascending: true })
+			.range(from, from + PAGE_SIZE - 1);
+		if (error) throw new Error(`qvc_products freshness fetch: ${error.message}`);
+		for (const r of (data ?? []) as Array<{ id: string }>) freshSet.add(r.id);
+		if (!data || data.length < PAGE_SIZE) break;
+	}
 
 	const need = [...ids].filter((id) => !freshSet.has(id));
 	need.sort();
@@ -124,3 +140,6 @@ export async function enrichQvcProducts(options: EnrichOptions = {}): Promise<En
 	const { ok, failed } = await fetchInBatches(ids, concurrency, pauseMs, onProgress);
 	return { candidates: ids.length, fetched: ok, failed };
 }
+
+/** Exposed for scripts/test-qvc-enrich-pagination.ts — not part of the runtime API. */
+export const __test = { collectIds };
