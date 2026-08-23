@@ -32,10 +32,25 @@ export interface QvcProductLike {
 	sale_label: string | null;
 }
 
+/**
+ * Ceiling for a believable JPY price. `broadcast_products.price_jpy` is int4,
+ * so a parse artifact above this range aborts the whole slot's upsert — a null
+ * price costs one field, a bad one costs every row in that batch.
+ */
+const MAX_PLAUSIBLE_PRICE_JPY = 10_000_000;
+
+function plausiblePrice(value: number | null): number | null {
+	if (value === null || !Number.isFinite(value)) return null;
+	return value > 0 && value <= MAX_PLAUSIBLE_PRICE_JPY ? value : null;
+}
+
 function parsePriceText(s: string | null): number | null {
 	if (!s) return null;
-	const digits = s.replace(/[^\d]/g, "");
-	return digits.length > 0 ? parseInt(digits, 10) : null;
+	// Only the first number: a detail page that renders sale and list price in
+	// one block ("¥38,200 ¥53,700") would otherwise fuse into 382000537000.
+	const match = s.match(/\d[\d,]*/);
+	if (!match) return null;
+	return plausiblePrice(parseInt(match[0].replace(/,/g, ""), 10));
 }
 
 function computeDiscountRate(
@@ -59,7 +74,7 @@ export function buildQvcSnapshotRows(
 		const p = byId.get(id);
 		if (!p) return;
 		const priceJpy = parsePriceText(p.price_text);
-		const original = p.original_price_jpy;
+		const original = plausiblePrice(p.original_price_jpy);
 		rows.push({
 			broadcast_id: broadcastId,
 			product_id: id,

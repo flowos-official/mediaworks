@@ -30,6 +30,28 @@ assert(qvcRows[0].source === "qvc", "QVC: source label");
 const qvcBrand = pickBrandFromQvcProducts(qvcSlot.product_ids, qvcProducts);
 assert(qvcBrand === "ブランドB", "QVC: brand picked from first non-null");
 
+// ---- QVC price_text that carries more than one number ----
+// A detail page whose inline price block holds both the sale and the list
+// price used to have every digit concatenated into one impossible value
+// ("¥38,200 ¥53,700" → 382000537000), overflowing the int4 column and
+// dropping the whole slot's snapshot rows.
+const messyPriceProducts = [
+	{ id: "400", name: "二重価格", image_url: null, price_text: "¥38,200 ¥53,700", brand: null, original_price_jpy: null, sale_label: null },
+	{ id: "401", name: "税込表記", image_url: null, price_text: "1,280円(税込 1,408円)", brand: null, original_price_jpy: null, sale_label: null },
+	{ id: "402", name: "小数点", image_url: null, price_text: "JPY 38200.00", brand: null, original_price_jpy: null, sale_label: null },
+	{ id: "403", name: "非現実価格", image_url: null, price_text: "¥2,300,030,000", brand: null, original_price_jpy: null, sale_label: null },
+	{ id: "404", name: "価格なし", image_url: null, price_text: "価格はカートで", brand: null, original_price_jpy: null, sale_label: null },
+	{ id: "405", name: "定価も異常", image_url: null, price_text: "¥3,980", brand: null, original_price_jpy: 2300030000, sale_label: null },
+];
+const messyRows = buildQvcSnapshotRows("bcast-2", ["400", "401", "402", "403", "404", "405"], messyPriceProducts);
+assert(messyRows[0].price_jpy === 38200, "QVC: two prices in one string → first one wins");
+assert(messyRows[1].price_jpy === 1280, "QVC: tax-inclusive suffix ignored");
+assert(messyRows[2].price_jpy === 38200, "QVC: decimal part dropped");
+assert(messyRows[3].price_jpy === null, "QVC: implausible price rejected instead of overflowing int4");
+assert(messyRows[4].price_jpy === null, "QVC: no digits → null");
+assert(messyRows[5].original_price_jpy === null, "QVC: implausible original_price_jpy rejected too");
+assert(messyRows[5].discount_rate === null, "QVC: discount_rate not computed from a rejected list price");
+
 // ---- ShopCh ----
 const shopchProducts: ShopChProductSnapshot[] = [
 	{
