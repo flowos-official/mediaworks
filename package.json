@@ -15,6 +15,8 @@
     "test:broadcast-intel-audio": "tsx scripts/test-broadcast-intel-audio.ts",
     "test:broadcast-intel-aggregate": "tsx scripts/test-broadcast-intel-aggregate.ts",
     "test:broadcast-intel-prompt": "tsx scripts/test-broadcast-intel-prompt.ts",
+    "test:broadcast-intel-guard": "tsx scripts/test-broadcast-intel-guard.ts",
+    "test:broadcast-intel": "npm run test:broadcast-intel-schema && npm run test:broadcast-intel-audio && npm run test:broadcast-intel-aggregate && npm run test:broadcast-intel-prompt && npm run test:broadcast-intel-guard",
     "test:data-intelligence-graph": "tsx scripts/test-data-intelligence-graph.ts",
     "test:supabase-paginate": "tsx scripts/test-supabase-paginate.ts",
     "test:cron-duplicate-guard": "tsx scripts/test-cron-duplicate-guard.ts",
