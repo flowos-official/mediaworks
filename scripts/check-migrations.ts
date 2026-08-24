@@ -168,8 +168,9 @@ async function main() {
 	// Check each required table + columns
 	for (const table of REQUIRED_TABLES) {
 		// Fallback: query information_schema via raw SQL through a simple select trick
-		// Just try to select 1 row; if table doesn't exist, error.
-		const probe = await sb.from(table).select("*").limit(1);
+		// Just try to select; if table doesn't exist, error. Use limit(0) to prove existence
+		// without fetching row data, matching the column-check probe pattern below.
+		const probe = await sb.from(table).select("*").limit(0);
 		if (probe.error) {
 			problems.push(`[MISSING TABLE] ${table}: ${probe.error.message}`);
 			console.log(`❌ ${table}: ${probe.error.message}`);

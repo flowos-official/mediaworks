@@ -23,8 +23,14 @@ async function main(): Promise<void> {
 		out = execFileSync("git", ["grep", "-l", "broadcast_transcripts", "--", ".", ":!node_modules"], {
 			encoding: "utf-8",
 		});
-	} catch {
-		out = ""; // git grep exits 1 when there are no matches
+	} catch (err) {
+		// git grep exits 1 when there are no matches; treat only that as zero hits.
+		// Any other error (not a git repo, binary missing, etc.) should fail loud.
+		if (err instanceof Error && "status" in err && err.status === 1) {
+			out = "";
+		} else {
+			throw err;
+		}
 	}
 
 	const hits = out.split("\n").map((s) => s.trim()).filter(Boolean);
