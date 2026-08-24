@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isDuplicateInvocation, invocationOrigin } from "@/lib/cron/duplicate-guard";
 import { revalidateTag } from "next/cache";
 import { applyBroadcastBoost, tagBroadcastEvidence } from "@/lib/discovery/broadcast";
 import { applyRecentBroadcastPenalty } from "@/lib/discovery/recent-broadcast-penalty";
@@ -17,16 +18,6 @@ import { getServiceClient } from "@/lib/supabase";
 import { DEFAULT_LEARNING_STATE, type LearningState } from "@/lib/discovery/types";
 
 
-/**
- * Which build handled this invocation. Vercel bakes env vars into a deployment
- * at build time, so a run that fails on stale config (an API key replaced after
- * that build) can only be told apart from a healthy one by naming the build.
- */
-function runOrigin(): string {
-	const id = process.env.VERCEL_DEPLOYMENT_ID ?? "local";
-	const sha = (process.env.VERCEL_GIT_COMMIT_SHA ?? "").slice(0, 7);
-	return sha ? `${id} @${sha}` : id;
-}
 
 export const maxDuration = 300;
 
@@ -82,6 +73,22 @@ function verifyCronAuth(req: NextRequest): boolean {
 export async function GET(req: NextRequest) {
 	if (!verifyCronAuth(req)) {
 		return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+	}
+
+	// This path is invoked twice per night, the second arriving 26-47s after the
+	// first and sometimes on an older build. One trigger, one run.
+	const { data: lastRun } = await getServiceClient()
+		.from("discovery_runs")
+		.select("run_at")
+		.eq("context", CONTEXT)
+		.order("run_at", { ascending: false })
+		.limit(1)
+		.maybeSingle();
+	if (isDuplicateInvocation(lastRun?.run_at)) {
+		console.warn(
+			`[cron ${CONTEXT}] duplicate invocation from ${invocationOrigin()} — last run ${lastRun?.run_at}`,
+		);
+		return NextResponse.json({ ok: true, context: CONTEXT, skipped: "duplicate-invocation", lastRunAt: lastRun?.run_at });
 	}
 
 	const startedAt = Date.now();
@@ -253,7 +260,7 @@ export async function GET(req: NextRequest) {
 			status: "failed",
 			producedCount: 0,
 			iterations: 0,
-			error: `[${runOrigin()}] ${msg}`.slice(0, 500),
+			error: `[${invocationOrigin()}] ${msg}`.slice(0, 500),
 		});
 		return NextResponse.json(
 			{ ok: false, context: CONTEXT, sessionId, error: msg },

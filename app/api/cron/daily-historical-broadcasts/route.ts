@@ -9,6 +9,8 @@ import {
 	type RunStatus,
 } from "@/lib/historical-crawl/runs";
 import { maybeSendCrawlAlert, statusWithPersist } from "@/lib/historical-crawl/alert";
+import { isDuplicateInvocation, invocationOrigin } from "@/lib/cron/duplicate-guard";
+import { getServiceClient } from "@/lib/supabase";
 
 export const maxDuration = 300;
 
@@ -26,6 +28,24 @@ export async function GET(req: NextRequest) {
 
 	const start = Date.now();
 	const date = jstToday();
+
+	// Every scheduled job here has been invoked twice, seconds apart, since at
+	// least 2026-08 — scraping every source twice and paying for every AI call
+	// twice. The two legitimate daily runs are eight hours apart, so anything
+	// this close is the same trigger arriving again.
+	const { data: lastRun } = await getServiceClient()
+		.from("historical_crawl_runs")
+		.select("run_at")
+		.order("run_at", { ascending: false })
+		.limit(1)
+		.maybeSingle();
+	if (isDuplicateInvocation(lastRun?.run_at)) {
+		console.warn(
+			`[cron daily-historical-broadcasts] duplicate invocation from ${invocationOrigin()} — last run ${lastRun?.run_at}`,
+		);
+		return NextResponse.json({ ok: true, skipped: "duplicate-invocation", lastRunAt: lastRun?.run_at });
+	}
+
 	const runId = await startRun(date);
 
 	try {
