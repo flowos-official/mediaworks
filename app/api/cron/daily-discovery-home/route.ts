@@ -16,6 +16,18 @@ import {
 import { getServiceClient } from "@/lib/supabase";
 import { DEFAULT_LEARNING_STATE, type LearningState } from "@/lib/discovery/types";
 
+
+/**
+ * Which build handled this invocation. Vercel bakes env vars into a deployment
+ * at build time, so a run that fails on stale config (an API key replaced after
+ * that build) can only be told apart from a healthy one by naming the build.
+ */
+function runOrigin(): string {
+	const id = process.env.VERCEL_DEPLOYMENT_ID ?? "local";
+	const sha = (process.env.VERCEL_GIT_COMMIT_SHA ?? "").slice(0, 7);
+	return sha ? `${id} @${sha}` : id;
+}
+
 export const maxDuration = 300;
 
 const TARGET_COUNT = Number(process.env.DISCOVERY_TARGET_COUNT ?? 30);
@@ -241,7 +253,7 @@ export async function GET(req: NextRequest) {
 			status: "failed",
 			producedCount: 0,
 			iterations: 0,
-			error: msg.slice(0, 500),
+			error: `[${runOrigin()}] ${msg}`.slice(0, 500),
 		});
 		return NextResponse.json(
 			{ ok: false, context: CONTEXT, sessionId, error: msg },
