@@ -1,6 +1,14 @@
 "use client";
 import { useTranslations } from "next-intl";
 import type { ProductBrief } from "@/lib/screenplay/types";
+import { CATEGORIES_BY_CHANNEL } from "@/lib/broadcasts/whitelist-gate";
+
+// Competitor structural patterns (lib/broadcast-intel) only apply when the
+// product's category exactly matches one of these — a free-text field
+// otherwise fails closed with no visible signal. Surfacing them as
+// suggestions (not a hard select) lets an operator pick a matching value
+// without losing the field's free-text flexibility.
+const CATEGORY_SUGGESTIONS = [...new Set([...CATEGORIES_BY_CHANNEL.qvc, ...CATEGORIES_BY_CHANNEL.shopch])];
 
 export interface BriefDraft {
 	name: string;
@@ -76,7 +84,13 @@ export function ProductBriefEditor({
 							onChange={(e) => onBriefChange({ ...brief, category: e.target.value })}
 							className={inputCls}
 							maxLength={200}
+							list="broadcast-category-suggestions"
 						/>
+						<datalist id="broadcast-category-suggestions">
+							{CATEGORY_SUGGESTIONS.map((c) => (
+								<option key={c} value={c} />
+							))}
+						</datalist>
 					</div>
 					<div className="md:col-span-2">
 						<label className="block text-xs font-medium text-foreground mb-1.5">

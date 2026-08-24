@@ -736,7 +736,6 @@
     },
     "provenanceModel": "モデル: {model}",
     "patternApplied": "競合放送の構成パターン {count}件を反映",
-    "patternNone": "競合放送パターンなし",
     "new": {
       "back": "台本一覧に戻る",
       "title": "新しい台本を作成",

@@ -187,17 +187,25 @@ export function parseAnalysisResponse(raw: unknown, durationSec: number): Broadc
 		}];
 	});
 
-	const sellingPoints = arr(r.selling_points, "selling_points").flatMap((row) => {
+	// `order` is derived from firstMentionedSec, never trusted from the model:
+	// Gemini sometimes omits it, and `num(o.order) ?? 0` used to default every
+	// such entry to 0 — collapsing medianOrder (this feature's headline
+	// output — "selling point presentation order") into a meaningless tie.
+	// firstMentionedSec is already schema-validated and in-range for every
+	// surviving entry here, so rank by it instead of defaulting or dropping.
+	const sellingPointsUnordered = arr(r.selling_points, "selling_points").flatMap((row) => {
 		const o = row as Record<string, unknown>;
 		const first = num(o.first_mentioned_sec);
 		if (!inRange(first) || typeof o.point_type !== "string" || !points.has(o.point_type)) return [];
 		return [{
-			order: num(o.order) ?? 0,
 			pointType: o.point_type as PointType,
 			firstMentionedSec: first,
 			repeatCount: Math.max(1, Math.round(num(o.repeat_count) ?? 1)),
 		}];
 	});
+	const sellingPoints = [...sellingPointsUnordered]
+		.sort((a, b) => a.firstMentionedSec - b.firstMentionedSec)
+		.map((sp, i) => ({ order: i + 1, ...sp }));
 
 	const evidenceCues = arr(r.evidence_cues, "evidence_cues").flatMap((row) => {
 		const o = row as Record<string, unknown>;

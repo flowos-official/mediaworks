@@ -124,11 +124,13 @@ export function aggregatePattern(rows: AnalysisRow[], category: string): Categor
 
 	// A slot that never announced a price contributes nothing here; counting it
 	// as second 0 would drag the median toward the opening.
-	const firstPriceShare = median(
-		usable
-			.filter((r) => r.offer_timeline.firstPriceSec !== null)
-			.map((r) => r.offer_timeline.firstPriceSec! / r.duration_sec),
-	);
+	const pricedRows = usable.filter((r) => r.offer_timeline.firstPriceSec !== null);
+	const firstPriceShare = median(pricedRows.map((r) => r.offer_timeline.firstPriceSec! / r.duration_sec));
+	// The REAL median of the observed absolute seconds — not median-share x
+	// median-runtime, which is a derived figure that happens to look like a
+	// median but isn't one (it can fall on a value no slot in the sample ever
+	// hit). format-prompt.ts labels this 「中央値」, so it must actually be one.
+	const firstPriceMedianSecRaw = median(pricedRows.map((r) => r.offer_timeline.firstPriceSec!));
 
 	return {
 		category,
@@ -141,13 +143,15 @@ export function aggregatePattern(rows: AnalysisRow[], category: string): Categor
 		objectionMix,
 		offerTiming: {
 			firstPriceShare,
-			firstPriceMedianSec: firstPriceShare === null ? null : Math.round(firstPriceShare * runtimeMedianSec),
+			firstPriceMedianSec: firstPriceMedianSecRaw === null ? null : Math.round(firstPriceMedianSecRaw),
 			ctaCountMedian: median(usable.map((r) => r.offer_timeline.ctaSecs.length)) ?? 0,
 		},
 	};
 }
 
-const ALL_WHITELIST_CATEGORIES = new Set<string>([
+/** Exported so callers (e.g. screenplay.workflow.ts) can tell "off-whitelist"
+ *  apart from "under-sampled" — loadCategoryPattern collapses both to null. */
+export const ALL_WHITELIST_CATEGORIES = new Set<string>([
 	...CATEGORIES_BY_CHANNEL.qvc,
 	...CATEGORIES_BY_CHANNEL.shopch,
 ]);

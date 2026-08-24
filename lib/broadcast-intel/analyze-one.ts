@@ -7,9 +7,16 @@
  * outcome. At attempts >= MAX_ATTEMPTS the slot becomes `failed`.
  */
 import { getServiceClient } from "@/lib/supabase";
-import { extractAudio, NonRetryableAudioError } from "./audio-extract";
-import { analyzeAudio } from "./gemini-analyze";
+import { extractAudio, NonRetryableAudioError, classifyAudioError, SLOT_TIMEOUT_MS } from "./audio-extract";
+import { analyzeAudio, classifyGeminiError } from "./gemini-analyze";
 import { persistAnalysis } from "./persist";
+import type { AnalysisErrorCode } from "./error-codes";
+
+/** Combines both modules' classifiers; analyze-one.ts is the only place that
+ *  sees failures from the whole slot, so it owns the final fallback. */
+function classifyAnalysisError(e: unknown): AnalysisErrorCode {
+	return classifyAudioError(e) ?? classifyGeminiError(e) ?? "unknown";
+}
 
 export const MAX_ATTEMPTS = Number(process.env.BROADCAST_INTEL_MAX_ATTEMPTS) || 3;
 
@@ -47,16 +54,20 @@ export async function analyzeOne(slot: QueuedAnalysisSlot): Promise<AnalyzeResul
 
 	// Conditions can break between seeding and running (e.g. a category edit).
 	if (!slot.archived_video_s3 || !slot.category) {
-		const reason = !slot.archived_video_s3 ? "no archived video" : "no category to aggregate under";
+		const code: AnalysisErrorCode = !slot.archived_video_s3 ? "no_archived_video" : "no_category";
 		await sb.from("broadcasts")
-			.update({ analysis_status: "skipped", analysis_error: reason })
+			.update({ analysis_status: "skipped", analysis_error: code })
 			.eq("id", broadcastId).eq("analysis_status", "running");
-		return { broadcastId, status: "skipped", error: reason };
+		return { broadcastId, status: "skipped", error: code };
 	}
 
 	try {
-		const { audio, durationSec } = await extractAudio(slot.archived_video_s3);
-		const { analysis, model } = await analyzeAudio(audio, durationSec);
+		// ONE deadline for the whole slot — threaded through both legs so a
+		// pathological slot is bounded by SLOT_TIMEOUT_MS total (200s default),
+		// not 2x that from each leg getting its own independent ceiling.
+		const deadline = Date.now() + SLOT_TIMEOUT_MS;
+		const { audio, durationSec } = await extractAudio(slot.archived_video_s3, deadline);
+		const { analysis, model } = await analyzeAudio(audio, durationSec, deadline);
 
 		await persistAnalysis({
 			broadcastId,
@@ -79,13 +90,19 @@ export async function analyzeOne(slot: QueuedAnalysisSlot): Promise<AnalyzeResul
 
 		return { broadcastId, status: "done", durationSec };
 	} catch (e) {
+		// The full message is for operators only (function logs / local drain
+		// terminal) — it can contain a verbatim snippet of competitor dialogue
+		// (see error-codes.ts). It must never reach `analysis_error`, which is
+		// anon-readable.
 		const msg = (e instanceof Error ? e.message : String(e)).slice(0, 500);
+		const code = classifyAnalysisError(e);
+		console.error(`[broadcast-intel] analyzeOne(${broadcastId}) failed [${code}]:`, e);
 		const attempts = (slot.analysis_attempts ?? 0) + 1;
 		const permanent = e instanceof NonRetryableAudioError || attempts >= MAX_ATTEMPTS;
 		await sb.from("broadcasts").update({
 			analysis_status: permanent ? "failed" : "queued",
 			analysis_attempts: attempts,
-			analysis_error: msg,
+			analysis_error: code,
 		}).eq("id", broadcastId).eq("analysis_status", "running");
 		return { broadcastId, status: permanent ? "failed" : "queued", error: msg };
 	}

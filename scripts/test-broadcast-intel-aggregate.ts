@@ -47,6 +47,26 @@ assert.ok(Math.abs(p.offerTiming.firstPriceShare! - 0.6) < 1e-6);
 assert.equal(p.offerTiming.firstPriceMedianSec, 1080);
 assert.equal(p.offerTiming.ctaCountMedian, 2);
 
+// S5: firstPriceMedianSec must be the REAL median of the observed absolute
+// seconds, not median-share x median-runtime — that derived figure can land
+// on a value no slot in the sample ever produced, while format-prompt.ts
+// labels it 「中央値」 (median) to the model.
+const nonUniform: AnalysisRow[] = [
+	{ ...row(720), offer_timeline: { firstPriceSec: 400, ctaSecs: [] } },
+	{ ...row(3000), offer_timeline: { firstPriceSec: 300, ctaSecs: [] } },
+	{ ...row(1500), offer_timeline: { firstPriceSec: 900, ctaSecs: [] } },
+	{ ...row(1800), offer_timeline: { firstPriceSec: 1080, ctaSecs: [] } },
+	{ ...row(2400), offer_timeline: { firstPriceSec: 1440, ctaSecs: [] } },
+];
+const np = aggregatePattern(nonUniform, "家電")!;
+assert.equal(np.runtimeMedianSec, 1800);
+assert.ok(Math.abs(np.offerTiming.firstPriceShare! - 0.6) < 1e-6);
+assert.equal(
+	np.offerTiming.firstPriceMedianSec,
+	900,
+	"must be the real median of the observed seconds (900) — the old share x runtime formula would wrongly give 1080",
+);
+
 // A slot that never announced a price is excluded, not counted as second 0.
 const noOffer: AnalysisRow = { ...row(1500), offer_timeline: { firstPriceSec: null, ctaSecs: [] } };
 const withGap = aggregatePattern([...mixed, noOffer], "家電")!;

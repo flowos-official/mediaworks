@@ -10,12 +10,16 @@
  * MAX_TOKENS finish is therefore non-retryable.
  *
  * Slot ceiling: the whole leg (file upload, PROCESSING poll, and both
- * callModel attempts together) is bounded by BROADCAST_INTEL_SLOT_TIMEOUT_MS —
- * the same ceiling audio-extract.ts's ffmpeg SIGKILL uses. Without this,
- * callModel had no timeout at all: a slow/hung Gemini response could push a
- * slot past the cron's maxDuration, stranding the row in 'running' until the
- * next daily recoverStaleAnalysis() call (up to ~24h) instead of the rare
- * exception it should be.
+ * callModel attempts together) is bounded by a `deadline` the caller passes
+ * in — analyzeOne computes ONE deadline from BROADCAST_INTEL_SLOT_TIMEOUT_MS
+ * and threads it through both this module and audio-extract.ts's ffmpeg
+ * SIGKILL, so the two legs share a single budget instead of each getting
+ * their own (which would let a pathological slot run 2x SLOT_TIMEOUT_MS
+ * before either side notices). Without a deadline at all, callModel had no
+ * timeout: a slow/hung Gemini response could push a slot past the cron's
+ * maxDuration, stranding the row in 'running' until the next daily
+ * recoverStaleAnalysis() call (up to ~24h) instead of the rare exception it
+ * should be.
  *
  * @google/genai's `config.abortSignal` is wired through to the underlying
  * fetch for `generateContent` and `files.get` (verified against
@@ -39,8 +43,9 @@
  */
 import { GoogleGenAI, createPartFromUri, createUserContent, ApiError } from "@google/genai";
 import { GEMINI_FLASH, GEMINI_PRO_FALLBACK } from "@/lib/gemini-models";
-import { AUDIO_MIME, NonRetryableAudioError } from "./audio-extract";
+import { AUDIO_MIME, NonRetryableAudioError, SLOT_TIMEOUT_MS } from "./audio-extract";
 import { ANALYSIS_RESPONSE_SCHEMA, parseAnalysisResponse, type BroadcastAnalysis } from "./schema";
+import type { AnalysisErrorCode } from "./error-codes";
 
 export const MAX_OUTPUT_TOKENS = 32768;
 
@@ -67,10 +72,6 @@ export const ANALYSIS_PROMPT = [
 
 const UPLOAD_POLL_INTERVAL_MS = 2_000;
 const UPLOAD_TIMEOUT_MS = 120_000;
-
-/** Same ceiling audio-extract.ts's ffmpeg SIGKILL uses — one knob for "how
- *  long the whole Gemini leg may run before we treat it as a fault." */
-const SLOT_TIMEOUT_MS = Number(process.env.BROADCAST_INTEL_SLOT_TIMEOUT_MS) || 200_000;
 
 /** Thrown when a Gemini sub-step (upload, PROCESSING poll, or a callModel
  *  attempt) outruns the shared slot deadline. Deliberately a plain Error
@@ -164,15 +165,47 @@ function isRetryable(err: unknown): boolean {
 	return /overloaded|UNAVAILABLE/i.test(m);
 }
 
+/**
+ * Maps a thrown error from this module (and the parsing it drives in
+ * schema.ts) to a DB-safe code. `SyntaxError` is the money check here — it is
+ * exactly what `JSON.parse(text)` throws in callModel() when Gemini returns
+ * prose instead of JSON, and its message embeds a snippet of that raw text.
+ * We classify on the error's TYPE, never its content, so no snippet of it
+ * ever reaches this function's return value. Returns null for anything not
+ * recognized as this module's own throw sites.
+ */
+export function classifyGeminiError(e: unknown): AnalysisErrorCode | null {
+	if (e instanceof SyntaxError) return "parse_failed"; // JSON.parse(text) in callModel
+	if (e instanceof GeminiTimeoutError) return "gemini_timeout";
+	// MAX_TOKENS truncation: raised as NonRetryableAudioError, but it is this
+	// module's throw site, not audio-extract.ts's — the response was too long
+	// to ever parse, so group it with parse_failed.
+	if (e instanceof NonRetryableAudioError && e.message.includes("output tokens")) return "parse_failed";
+	if (e instanceof ApiError) return "gemini_error";
+	if (e instanceof Error) {
+		// schema.ts's shape-validation throw: "broadcast-intel: <field> must be an array".
+		if (e.message.startsWith("broadcast-intel:")) return "parse_failed";
+		if (e.message === "Gemini returned an empty analysis") return "gemini_error";
+		if (e.message === "Gemini file upload stuck in PROCESSING") return "gemini_error";
+		if (e.message === "Gemini file upload failed") return "gemini_error";
+	}
+	return null;
+}
+
+/**
+ * `deadline` is an absolute Date.now()-scale timestamp shared with
+ * extractAudio (see audio-extract.ts) — analyzeOne computes it once so the
+ * ffmpeg leg and this Gemini leg share a single SLOT_TIMEOUT_MS budget
+ * instead of each getting their own. Defaults to a fresh SLOT_TIMEOUT_MS-out
+ * deadline so this stays callable standalone (tests, the live smoke script).
+ */
 export async function analyzeAudio(
 	audio: Buffer,
 	durationSec: number,
+	deadline: number = Date.now() + SLOT_TIMEOUT_MS,
 ): Promise<{ analysis: BroadcastAnalysis; model: string }> {
 	const ai = getGenAI();
 	let fileName: string | null = null;
-	// Computed once; every step below derives its remaining budget from this
-	// single absolute deadline rather than getting its own fresh window.
-	const deadline = Date.now() + SLOT_TIMEOUT_MS;
 
 	try {
 		let file = await withDeadline(deadline, "file upload", () =>

@@ -16,15 +16,45 @@ import { Readable } from "node:stream";
 import ffmpegInstaller from "@ffmpeg-installer/ffmpeg";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getVideoStorageClient } from "@/lib/broadcasts/video-storage";
+import type { AnalysisErrorCode } from "./error-codes";
 
 export const AUDIO_MIME = "audio/aac";
 
-const SLOT_TIMEOUT_MS = Number(process.env.BROADCAST_INTEL_SLOT_TIMEOUT_MS) || 200_000;
+/** Single ceiling shared by BOTH legs of a slot (this ffmpeg extraction and
+ *  gemini-analyze.ts's Gemini leg) — analyzeOne computes ONE deadline from
+ *  this and threads it through both calls, so a pathological slot is bounded
+ *  by SLOT_TIMEOUT_MS total, not per-leg. Exported so gemini-analyze.ts
+ *  shares the exact same default rather than re-parsing the env var. */
+export const SLOT_TIMEOUT_MS = Number(process.env.BROADCAST_INTEL_SLOT_TIMEOUT_MS) || 200_000;
 const STDERR_TAIL_BYTES = 64 * 1024;
 
 /** Thrown for failures that repeating cannot fix. The caller marks the slot
  *  `failed` immediately rather than re-downloading 606 MB two more times. */
 export class NonRetryableAudioError extends Error {}
+
+/**
+ * Maps a thrown error from this module's own throw sites to a DB-safe code.
+ * Returns null for anything it doesn't recognize (including the MAX_TOKENS
+ * NonRetryableAudioError raised by gemini-analyze.ts, which is not this
+ * module's concern) so the caller can fall through to the next classifier.
+ * Every comparison here is against a literal string this module itself
+ * authored — never a substring of external input — so classification can
+ * never leak content.
+ */
+export function classifyAudioError(e: unknown): AnalysisErrorCode | null {
+	if (e instanceof NonRetryableAudioError) {
+		if (e.message.startsWith("S3 object has no body")) return "s3_fetch_failed";
+		if (e.message.startsWith("no progress output")) return "runtime_unknown";
+		return null;
+	}
+	if (e instanceof Error) {
+		if (e.message.startsWith("Missing required env var")) return "config_error";
+		if (e.message.startsWith("ffmpeg failed to start")) return "ffmpeg_failed";
+		if (e.message.startsWith("ffmpeg exited with code")) return "ffmpeg_failed";
+		if (e.message.startsWith("audio extraction deadline")) return "ffmpeg_failed";
+	}
+	return null;
+}
 
 /** Mono 16 kHz AAC is the smallest form Gemini still transcribes reliably.
  *  A 25-minute slot lands around 6 MB, against 606 MB for the source. */
@@ -53,11 +83,23 @@ export function parseOutputDurationFromStderr(stderr: string): number | null {
 	return sec > 0 ? Math.round(sec) : null;
 }
 
+/**
+ * `deadline` is an absolute Date.now()-scale timestamp, not a duration — the
+ * caller (analyzeOne) computes ONE deadline and passes the same value to
+ * both this function and analyzeAudio, so the ffmpeg leg and the Gemini leg
+ * share a single SLOT_TIMEOUT_MS budget instead of each getting their own.
+ * Defaults to a fresh SLOT_TIMEOUT_MS-out deadline so this stays callable
+ * standalone (tests, the live smoke script).
+ */
 export async function extractAudio(
 	s3Key: string,
+	deadline: number = Date.now() + SLOT_TIMEOUT_MS,
 ): Promise<{ audio: Buffer; durationSec: number }> {
 	const bucket = process.env.VIDEO_ARCHIVE_AWS_BUCKET;
 	if (!bucket) throw new Error("Missing required env var: VIDEO_ARCHIVE_AWS_BUCKET");
+	if (deadline - Date.now() <= 0) {
+		throw new Error(`audio extraction deadline already elapsed before extraction started for ${s3Key}`);
+	}
 
 	const object = await getVideoStorageClient().send(
 		new GetObjectCommand({ Bucket: bucket, Key: s3Key }),
@@ -82,7 +124,7 @@ export async function extractAudio(
 	let spawnError: Error | undefined;
 	proc.on("error", (err: Error) => { spawnError = err; });
 
-	const killTimer = setTimeout(() => proc.kill("SIGKILL"), SLOT_TIMEOUT_MS);
+	const killTimer = setTimeout(() => proc.kill("SIGKILL"), Math.max(0, deadline - Date.now()));
 	source.on("error", () => proc.kill("SIGKILL"));
 	proc.stdin.on("error", () => {});   // EPIPE when ffmpeg exits early
 	source.pipe(proc.stdin);

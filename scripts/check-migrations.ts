@@ -21,6 +21,8 @@ const REQUIRED_TABLES = [
 	"broadcast_speech_analyses",
 	"research_results",
 	"screenplays",
+	"screenplay_versions",
+	"broadcasts",
 ];
 
 const REQUIRED_COLUMNS: Record<string, string[]> = {
@@ -156,6 +158,8 @@ const REQUIRED_COLUMNS: Record<string, string[]> = {
 		"domestic_market_fit",
 	],
 	screenplays: ["last_error"],
+	screenplay_versions: ["pattern_snapshot"],
+	broadcasts: ["analysis_status", "analysis_attempts", "analysis_error", "analyzed_at"],
 };
 
 async function main() {

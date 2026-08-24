@@ -10,6 +10,7 @@
  */
 import { getServiceClient } from "@/lib/supabase";
 import { CATEGORIES_BY_CHANNEL } from "@/lib/broadcasts/whitelist-gate";
+import type { AnalysisErrorCode } from "./error-codes";
 
 export interface SeedOptions {
 	limit: number;
@@ -81,7 +82,7 @@ export async function recoverStaleAnalysis(staleMinutes = 30): Promise<number> {
 			.update({
 				analysis_status: attempts >= Number(process.env.BROADCAST_INTEL_MAX_ATTEMPTS ?? 3) ? "failed" : "queued",
 				analysis_attempts: attempts,
-				analysis_error: "recovered from stale running state",
+				analysis_error: "stale_recovered" satisfies AnalysisErrorCode,
 			})
 			.eq("id", row.id)
 			.eq("analysis_status", "running")

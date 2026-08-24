@@ -24,7 +24,12 @@ import type {
   RemediationStep,
 } from "@/lib/screenplay/compliance/types";
 import { geminiUserFacingMessage } from "@/lib/gemini/errors";
-import { loadCategoryPattern, type CategoryPattern } from "@/lib/broadcast-intel/category-pattern";
+import {
+  loadCategoryPattern,
+  ALL_WHITELIST_CATEGORIES,
+  MIN_SAMPLES,
+  type CategoryPattern,
+} from "@/lib/broadcast-intel/category-pattern";
 import { formatCategoryPatternBlock } from "@/lib/broadcast-intel/format-prompt";
 
 const PATTERN_TIMEOUT_MS = 5_000;
@@ -40,18 +45,42 @@ async function loadPatternStep(
   if (process.env.BROADCAST_INTEL_ENABLED !== "true") return empty;
   try {
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let timedOut = false;
     let pattern: CategoryPattern | null;
     try {
       pattern = await Promise.race([
         loadCategoryPattern(category),
         new Promise<null>((resolve) => {
-          timer = setTimeout(() => resolve(null), PATTERN_TIMEOUT_MS);
+          timer = setTimeout(() => {
+            timedOut = true;
+            resolve(null);
+          }, PATTERN_TIMEOUT_MS);
         }),
       ]);
     } finally {
       if (timer) clearTimeout(timer);
     }
-    return pattern ? { pattern, block: formatCategoryPatternBlock(pattern) } : empty;
+    if (pattern) return { pattern, block: formatCategoryPatternBlock(pattern) };
+
+    // loadCategoryPattern collapses "off-whitelist", "under-sampled" and
+    // "no category" to the same null — without a log line here, an operator
+    // who enables the feature and enters a free-text category (e.g. the
+    // Gemini-extracted "美容家電") observes nothing happening and has no way
+    // to find out why. Each case gets its own line so it's diagnosable.
+    if (category && !ALL_WHITELIST_CATEGORIES.has(category)) {
+      console.info(
+        `[screenplay] competitor pattern: category "${category}" is not on the broadcast whitelist — no pattern injected`,
+      );
+    } else if (category && timedOut) {
+      console.info(
+        `[screenplay] competitor pattern: lookup for category "${category}" exceeded ${PATTERN_TIMEOUT_MS}ms — no pattern injected`,
+      );
+    } else if (category) {
+      console.info(
+        `[screenplay] competitor pattern: category "${category}" has fewer than ${MIN_SAMPLES} analyzed broadcasts in the lookback window — no pattern injected`,
+      );
+    }
+    return empty;
   } catch (err) {
     console.warn(
       "[screenplay] competitor pattern lookup failed:",

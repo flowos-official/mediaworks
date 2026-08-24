@@ -79,6 +79,28 @@ assert.equal(transcriptPastEnd.verbatim.transcript.length, 2, "transcript with o
 assert.equal(transcriptPastEnd.verbatim.transcript[0].textJa, "good");
 assert.equal(transcriptPastEnd.verbatim.transcript[1].textJa, "also_good");
 
+// S4: order is derived from firstMentionedSec (already schema-validated),
+// never trusted from the model — Gemini can omit it, and it must never
+// default to 0 for every entry, which would make medianOrder sorting (this
+// feature's headline output) meaningless.
+const orderDerived = parseAnalysisResponse({
+	...good,
+	selling_points: [
+		{ point_type: "price_value", first_mentioned_sec: 500, repeat_count: 1 }, // order omitted
+		{ point_type: "efficacy", first_mentioned_sec: 100, repeat_count: 2 },    // order omitted
+		{ order: 99, point_type: "safety", first_mentioned_sec: 900, repeat_count: 1 }, // model's order is ignored
+	],
+}, 1500);
+assert.deepEqual(
+	orderDerived.patterns.sellingPoints.map((s) => [s.pointType, s.order]),
+	[["efficacy", 1], ["price_value", 2], ["safety", 3]],
+	"order must be derived from firstMentionedSec ascending, not the model's self-reported (or omitted) value",
+);
+assert.ok(
+	orderDerived.patterns.sellingPoints.every((s) => s.order > 0),
+	"order must never default to 0",
+);
+
 // Malformed payload throws — and the message names the field that is wrong.
 // NOTE: transcript is validated first, so it must be well-formed here or the
 // assertion would match the wrong error.
