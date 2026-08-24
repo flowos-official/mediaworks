@@ -164,7 +164,7 @@ async function persistStep(
         base_version_id: baseVersionId ?? null,
         model,
         thinking_level: thinkingLevel,
-        pattern_snapshot: patternSnapshot,
+        ...(patternSnapshot ? { pattern_snapshot: patternSnapshot } : {}),
       })
       .select("id, version_number")
       .single();
