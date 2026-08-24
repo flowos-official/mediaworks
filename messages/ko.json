@@ -421,7 +421,7 @@
         },
         "datasetSellingLanguage": {
           "title": "판매 포인트·화법 데이터셋",
-          "description": "향후 방송 음성과 자막에서 판매 포인트, 반론 대응, 근거 제시 방식을 구조화합니다.",
+          "description": "방송 음성과 자막에서 판매 포인트, 반론 대응, 근거 제시 방식을 구조화합니다.",
           "fields": ["핵심 판매 포인트", "반론 대응", "진행자 표현", "근거 제시 신호"]
         },
         "outcomeDiscovery": {
@@ -446,7 +446,7 @@
         },
         "outcomeCompetitiveScript": {
           "title": "경쟁 방송 패턴 반영 대본",
-          "description": "향후 경쟁 방송에서 추출한 장면 순서와 판매 화법 패턴을 참고해 대본 구조를 확장합니다.",
+          "description": "경쟁 방송에서 추출한 장면 순서와 판매 화법 패턴을 참고해 대본 구조를 확장합니다.",
           "fields": ["경쟁 방송 구성 패턴", "판매 포인트 순서", "화법 패턴"]
         },
         "outcomeDemoPlan": {

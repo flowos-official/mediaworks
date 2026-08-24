@@ -67,7 +67,7 @@ export const DATA_FLOW_NODES = [
 	{
 		id: "datasetSellingLanguage",
 		stage: "dataset",
-		status: "planned",
+		status: "current",
 		fieldKeys: ["sellingPoint", "objectionHandling", "hostPhrase", "proofCue"],
 	},
 	{
@@ -97,7 +97,7 @@ export const DATA_FLOW_NODES = [
 	{
 		id: "outcomeCompetitiveScript",
 		stage: "outcome",
-		status: "planned",
+		status: "current",
 		fieldKeys: ["competitorStructurePattern", "sellingPointSequence", "phrasePattern"],
 	},
 	{
@@ -116,7 +116,7 @@ export const DATA_FLOW_LINKS = [
 	{ source: "sourceBroadcastSchedule", target: "datasetBroadcastSignals", value: 4, status: "current" },
 	{ source: "sourceBroadcastSchedule", target: "datasetSceneIndex", value: 1, status: "planned" },
 	{ source: "sourceMediaArchive", target: "datasetSceneIndex", value: 4, status: "planned" },
-	{ source: "sourceMediaArchive", target: "datasetSellingLanguage", value: 4, status: "planned" },
+	{ source: "sourceMediaArchive", target: "datasetSellingLanguage", value: 4, status: "current" },
 	{ source: "sourceChannelCategory", target: "datasetProductMaster", value: 2, status: "current" },
 	{ source: "sourceChannelCategory", target: "datasetBroadcastSignals", value: 2, status: "current" },
 	{ source: "datasetProductMaster", target: "outcomeDiscovery", value: 3, status: "current" },
@@ -132,7 +132,7 @@ export const DATA_FLOW_LINKS = [
 	{ source: "datasetBroadcastSignals", target: "outcomeResearch", value: 2, status: "current" },
 	{ source: "datasetSceneIndex", target: "outcomeCompetitiveScript", value: 3, status: "planned" },
 	{ source: "datasetSceneIndex", target: "outcomeDemoPlan", value: 2, status: "planned" },
-	{ source: "datasetSellingLanguage", target: "outcomeCompetitiveScript", value: 3, status: "planned" },
+	{ source: "datasetSellingLanguage", target: "outcomeCompetitiveScript", value: 3, status: "current" },
 	{ source: "datasetSellingLanguage", target: "outcomeDemoPlan", value: 2, status: "planned" },
 ] as const satisfies readonly DataFlowLinkDefinition[];
 
