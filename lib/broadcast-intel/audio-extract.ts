@@ -1,0 +1,106 @@
+/**
+ * Archived MP4 (S3) → mono 16 kHz ADTS AAC + the real runtime.
+ *
+ * Runtime: the archive is written with `-movflags frag_keyframe+empty_moov`
+ * (lib/broadcasts/video-archival.ts), so the stored MP4 carries no duration in
+ * its moov. Re-reading it from a non-seekable pipe makes ffmpeg report the
+ * PROBE WINDOW as the duration — measured 00:00:50.02 for a 600 s file. The
+ * only trustworthy source is the last `time=` in the progress output, which is
+ * what was actually demuxed. Do NOT reuse video-archival's
+ * parseDurationFromStderr here.
+ *
+ * NO `import "server-only"` — imported by tsx smoke scripts.
+ */
+import { spawn } from "node:child_process";
+import { Readable } from "node:stream";
+import ffmpegInstaller from "@ffmpeg-installer/ffmpeg";
+import { GetObjectCommand } from "@aws-sdk/client-s3";
+import { getVideoStorageClient } from "@/lib/broadcasts/video-storage";
+
+export const AUDIO_MIME = "audio/aac";
+
+const SLOT_TIMEOUT_MS = Number(process.env.BROADCAST_INTEL_SLOT_TIMEOUT_MS) || 200_000;
+const STDERR_TAIL_BYTES = 64 * 1024;
+
+/** Thrown for failures that repeating cannot fix. The caller marks the slot
+ *  `failed` immediately rather than re-downloading 606 MB two more times. */
+export class NonRetryableAudioError extends Error {}
+
+/** Mono 16 kHz AAC is the smallest form Gemini still transcribes reliably.
+ *  A 25-minute slot lands around 6 MB, against 606 MB for the source. */
+export function buildAudioFfmpegArgs(): string[] {
+	return [
+		"-hide_banner",
+		"-loglevel", "info",   // progress lines carry the only reliable runtime
+		"-i", "pipe:0",
+		"-vn",
+		"-ac", "1",
+		"-ar", "16000",
+		"-c:a", "aac",
+		"-b:a", "32k",
+		"-f", "adts",
+		"pipe:1",
+	];
+}
+
+/** Last `time=HH:MM:SS.xx` in ffmpeg's progress output = what was demuxed. */
+export function parseOutputDurationFromStderr(stderr: string): number | null {
+	const re = /time=\s*(\d+):(\d{2}):(\d{2}(?:\.\d+)?)/g;
+	let last: RegExpExecArray | null = null;
+	for (let m = re.exec(stderr); m; m = re.exec(stderr)) last = m;
+	if (!last) return null;
+	const sec = Number(last[1]) * 3600 + Number(last[2]) * 60 + Number(last[3]);
+	return sec > 0 ? Math.round(sec) : null;
+}
+
+export async function extractAudio(
+	s3Key: string,
+): Promise<{ audio: Buffer; durationSec: number }> {
+	const bucket = process.env.VIDEO_ARCHIVE_AWS_BUCKET;
+	if (!bucket) throw new Error("Missing required env var: VIDEO_ARCHIVE_AWS_BUCKET");
+
+	const object = await getVideoStorageClient().send(
+		new GetObjectCommand({ Bucket: bucket, Key: s3Key }),
+	);
+	const source = object.Body as Readable | undefined;
+	if (!source) throw new NonRetryableAudioError(`S3 object has no body: ${s3Key}`);
+
+	const proc = spawn(ffmpegInstaller.path, buildAudioFfmpegArgs(), {
+		stdio: ["pipe", "pipe", "pipe"],
+	});
+
+	// Ring-buffer stderr: a 25-minute transcode emits progress continuously and
+	// we only ever need the tail.
+	let stderr = "";
+	proc.stderr.on("data", (c: Buffer) => {
+		stderr = (stderr + c.toString("utf-8")).slice(-STDERR_TAIL_BYTES);
+	});
+
+	const audioChunks: Buffer[] = [];
+	proc.stdout.on("data", (c: Buffer) => audioChunks.push(c));
+
+	let spawnError: Error | undefined;
+	proc.on("error", (err: Error) => { spawnError = err; });
+
+	const killTimer = setTimeout(() => proc.kill("SIGKILL"), SLOT_TIMEOUT_MS);
+	source.on("error", () => proc.kill("SIGKILL"));
+	proc.stdin.on("error", () => {});   // EPIPE when ffmpeg exits early
+	source.pipe(proc.stdin);
+
+	try {
+		// 'close' fires only after stdout and stderr have both closed, so no
+		// output can still be in flight here.
+		const code = await new Promise<number | null>((resolve) => proc.on("close", resolve));
+		if (spawnError) throw new Error(`ffmpeg failed to start: ${spawnError.message}`);
+		if (code !== 0) throw new Error(`ffmpeg exited with code ${code}: ${stderr.slice(-500)}`);
+
+		const durationSec = parseOutputDurationFromStderr(stderr);
+		if (durationSec === null) {
+			// Deterministic: retrying re-downloads the object for the same result.
+			throw new NonRetryableAudioError(`no progress output; runtime unknown for ${s3Key}`);
+		}
+		return { audio: Buffer.concat(audioChunks), durationSec };
+	} finally {
+		clearTimeout(killTimer);
+	}
+}
