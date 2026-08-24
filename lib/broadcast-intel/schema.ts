@@ -164,7 +164,7 @@ export function parseAnalysisResponse(raw: unknown, durationSec: number): Broadc
 		const o = row as Record<string, unknown>;
 		const start = num(o.start_sec);
 		const end = num(o.end_sec);
-		if (!inRange(start) || end === null || typeof o.text_ja !== "string") return [];
+		if (!inRange(start) || !inRange(end) || typeof o.text_ja !== "string") return [];
 		return [{
 			startSec: start,
 			endSec: end,

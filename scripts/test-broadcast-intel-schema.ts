@@ -66,6 +66,19 @@ assert.deepEqual(junk.patterns.evidenceCues, [{ type: "demo", atSec: 20 }]);
 const pastEnd = parseAnalysisResponse({ ...good, evidence_cues: [{ type: "demo", at_sec: 9999 }] }, 1500);
 assert.deepEqual(pastEnd.patterns.evidenceCues, []);
 
+// Transcript with out-of-range end_sec is dropped; in-range siblings survive.
+const transcriptPastEnd = parseAnalysisResponse({
+	...good,
+	transcript: [
+		{ start_sec: 0, end_sec: 12, speaker_hint: "host", text_ja: "good" },
+		{ start_sec: 100, end_sec: 9999, speaker_hint: "host", text_ja: "too_far" },
+		{ start_sec: 200, end_sec: 250, speaker_hint: "host", text_ja: "also_good" },
+	],
+}, 1500);
+assert.equal(transcriptPastEnd.verbatim.transcript.length, 2, "transcript with out-of-range end_sec should be dropped");
+assert.equal(transcriptPastEnd.verbatim.transcript[0].textJa, "good");
+assert.equal(transcriptPastEnd.verbatim.transcript[1].textJa, "also_good");
+
 // Malformed payload throws — and the message names the field that is wrong.
 // NOTE: transcript is validated first, so it must be well-formed here or the
 // assertion would match the wrong error.
