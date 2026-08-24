@@ -344,3 +344,31 @@ v1의 `PATTERN_MIN_SAMPLES`는 접두사가 없어 충돌 위험이 있었으므
 | `category` 무살균 | 프롬프트 인젝션 경로. 살균 후 렌더 (§7) |
 | `PATTERN_MIN_SAMPLES` | `BROADCAST_INTEL_MIN_SAMPLES` (§13) |
 | 크론 `0 20 * * *` | `archive-videos`와 충돌. 홀수시 (§5.2) |
+
+## 17. 구현 상태 (2026-08-25, branch `worktree-broadcast-intel`)
+
+13개 태스크 중 실행 가능한 부분은 전부 구현·리뷰 완료. 태스크별 리뷰 13회 + 전체 브랜치 리뷰 1회 + 최종 수정 웨이브 1회를 거쳤다.
+
+**그린 상태**: `npm run test:broadcast-intel`(순수 5종), `test:data-intelligence-graph`, `check:i18n`, `tsc --noEmit`, `lint`(에러 0).
+
+### 미완 — 운영자 작업 필요
+
+1. **Task 1b: 마이그레이션 미적용.** `supabase/migrations/20260825090000_broadcast_speech_analyses.sql`가 작성만 되어 있다. `.env.local`에 `SUPABASE_DB_PASSWORD`가 없어 `scripts/apply-sql-file.ts`를 쓸 수 없다.
+2. **Task 13b: end-to-end 미실행.** 라이브 스모크, 40편 드레인, 블라인드 전/후 비교가 아직 돌지 않았다. 위 1번과, §14의 죽은 `GEMINI_API_KEY` 제거(사람이 직접)에 걸려 있다.
+
+### BLOCKING DEPLOY GATE
+
+**마이그레이션 적용 전에 이 브랜치를 배포하면 안 된다.** `app/[locale]/(produce)/screenplays/[id]/page.tsx`가 `screenplay_versions.pattern_snapshot`을 SELECT하므로, 컬럼이 없으면 PostgREST가 거부하고 대본 상세 페이지가 실패한다. (실패가 조용한 빈 목록이 아니라 눈에 보이도록 고쳐 두었다.) 적용 후 `npm run test:migrations`가 그린이 되며, 이 명령이 게이트의 자동 검증 수단이다.
+
+### Sankey "현재 운영" 표시의 전제
+
+§9의 노드 전환은 세 조건이 모두 충족되어야 참이 된다: (1) 마이그레이션 적용, (2) `BROADCAST_INTEL_ENABLED=true`, (3) 해당 카테고리에 분석 완료 방송 `BROADCAST_INTEL_MIN_SAMPLES`편 이상 누적. 그 전에는 `/analytics/pipeline`이 실제보다 앞선 상태를 표시한다.
+
+### 후속 과제 (병합 차단 아님)
+
+- `format-prompt.ts`가 서로 독립인 두 중앙값을 한 문장에 묶어 `価格初出は尺の {share}（中央値 {sec}地点）`로 렌더한다. 표기는 정직하나 두 수치의 조합이 산술적으로 어긋나 보일 수 있다.
+- 공유 deadline 도입으로 재시도 의미가 바뀌었다. ffmpeg 다리가 상한을 다 쓰면 Gemini 호출 없이 즉시 타임아웃되어 3회 만에 `failed`가 될 수 있다.
+- `"audio extraction deadline already elapsed"`가 타임아웃 코드가 아니라 `ffmpeg_failed`로 분류된다.
+- `loadPatternStep`은 category가 null이면 아무 로그도 남기지 않는다.
+- 신규 두 테이블의 RLS를 member/viewer 클라이언트로 실제 검증하는 테스트가 없다.
+- `broadcast_transcripts` 가드는 파일 단위·문자열 기반이라, 허용된 파일 안의 향후 변경은 막지 못한다.
