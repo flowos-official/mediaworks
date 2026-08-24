@@ -1,4 +1,5 @@
 import { requireUser } from "@/lib/auth/require-user";
+import { selectAllPages } from "@/lib/supabase/paginate";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -12,13 +13,22 @@ export async function GET(request: NextRequest) {
 	const supabase = auth.sb;
 
 	// Get all products that have images, with their first image as thumbnail
-	const { data: imageProducts, error: imgError } = await supabase
-		.from("product_images")
-		.select("product_code, s3_url, sheet_name, sort_order")
-		.order("sort_order", { ascending: true });
-
-	if (imgError) {
-		return NextResponse.json({ error: imgError.message }, { status: 500 });
+	// The table is past one PostgREST page, and a truncated read silently drops
+	// whole products out of the gallery.
+	let imageProducts: Array<{ product_code: string; s3_url: string; sheet_name: string | null; sort_order: number | null }>;
+	try {
+		imageProducts = await selectAllPages(
+			(r) =>
+				supabase
+					.from("product_images")
+					.select("product_code, s3_url, sheet_name, sort_order")
+					.order("sort_order", { ascending: true })
+					.order("id", { ascending: true })
+					.range(r.from, r.to),
+			{ label: "gallery:product_images" },
+		);
+	} catch (e) {
+		return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });
 	}
 
 	// Group by product_code, pick first image as thumbnail

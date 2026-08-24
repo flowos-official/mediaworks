@@ -1,4 +1,5 @@
 import { getServiceClient } from "@/lib/supabase";
+import { selectAllPages } from "@/lib/supabase/paginate";
 import { loadCategoryFitWeights } from "@/lib/discovery/competitor-trend-boost";
 
 export interface ChannelTasteProfile {
@@ -28,12 +29,26 @@ export async function loadChannelTasteProfile(
 
 	// Tier 1 — QVC/ShopCh: broadcasts.category direct query
 	if (QVC_SHOPCH.has(channelSlug)) {
-		const { data, error } = await sb
-			.from("broadcasts")
-			.select("category")
-			.eq("channel", channelSlug)
-			.gte("air_date", sinceIso)
-			.not("category", "is", null);
+		// ShopCh alone airs >1000 slots in the lookback window, so a single page
+		// would build the taste profile from part of the channel's history.
+		let data: Array<{ category: string | null }> | null = null;
+		let error: { message: string } | null = null;
+		try {
+			data = await selectAllPages<{ category: string | null }>(
+				(r) =>
+					sb
+						.from("broadcasts")
+						.select("category")
+						.eq("channel", channelSlug)
+						.gte("air_date", sinceIso)
+						.not("category", "is", null)
+						.order("id", { ascending: true })
+						.range(r.from, r.to),
+				{ label: `channel-taste:${channelSlug}` },
+			);
+		} catch (e) {
+			error = { message: e instanceof Error ? e.message : String(e) };
+		}
 		if (error || !data) {
 			return emptyProfile(
 				channelSlug,

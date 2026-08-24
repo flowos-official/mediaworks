@@ -24,6 +24,7 @@
  * analyses fall through to the unweighted baseline.
  */
 import { getServiceClient } from "@/lib/supabase";
+import { selectAllPages } from "@/lib/supabase/paginate";
 import type { Candidate } from "./types";
 
 function envInt(name: string, defaultValue: number): number {
@@ -56,26 +57,32 @@ export async function loadHotCompetitorCategories(
 		.toISOString()
 		.slice(0, 10);
 
-	let q = sb
-		.from("broadcasts")
-		.select("category")
-		.gte("air_date", cutoff)
-		.not("category", "is", null);
-	if (channelScope && channelScope.length > 0) {
-		q = q.in("channel", channelScope);
-	}
-	const { data, error } = await q;
-
-	if (error) {
+	// Same 30-day window as above: the hot-category ranking must see every
+	// aired slot, not the first page of them.
+	const buildQuery = (r: { from: number; to: number }) => {
+		let q = sb
+			.from("broadcasts")
+			.select("category")
+			.gte("air_date", cutoff)
+			.not("category", "is", null);
+		if (channelScope && channelScope.length > 0) q = q.in("channel", channelScope);
+		return q.order("id", { ascending: true }).range(r.from, r.to);
+	};
+	let data: Array<{ category: string | null }>;
+	try {
+		data = await selectAllPages<{ category: string | null }>(buildQuery, {
+			label: "competitor-trend-boost:broadcasts",
+		});
+	} catch (e) {
 		console.warn(
 			"[competitor-trend-boost] broadcasts lookup failed:",
-			error.message,
+			e instanceof Error ? e.message : String(e),
 		);
 		return [];
 	}
 
 	const freq = new Map<string, number>();
-	for (const row of (data ?? []) as { category: string | null }[]) {
+	for (const row of data) {
 		if (!row.category) continue;
 		freq.set(row.category, (freq.get(row.category) ?? 0) + 1);
 	}

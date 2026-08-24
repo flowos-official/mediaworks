@@ -11,6 +11,7 @@
     "test:discovery-row-mapping": "tsx --env-file=.env.local scripts/test-discovery-row-mapping.ts",
     "test:discovery-dry-run": "tsx --env-file=.env.local scripts/test-discovery-dry-run.ts",
     "test:discovery-cron-budget": "tsx scripts/test-discovery-cron-budget.ts",
+    "test:supabase-paginate": "tsx scripts/test-supabase-paginate.ts",
     "test:migrations": "tsx --env-file=.env.local scripts/check-migrations.ts",
     "test:broadcasts-shopch": "tsx --env-file=.env.local scripts/test-broadcasts-shopch-parser.ts",
     "test:broadcasts-qvc": "tsx --env-file=.env.local scripts/test-broadcasts-qvc-parser.ts",

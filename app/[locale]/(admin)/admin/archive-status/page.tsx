@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { selectAllPages } from "@/lib/supabase/paginate";
 import { getTranslations } from "next-intl/server";
 import { requireUser } from "@/lib/auth/require-user";
 import { localePath } from "@/lib/i18n/locale-path";
@@ -20,12 +21,20 @@ export default async function ArchiveStatusPage({ params }: PageProps) {
 	const t = await getTranslations("admin.archiveStatus");
 	const statusLabel = (s: string) => (VIDEO_STATUS_KEYS.has(s) ? t(`videoStatus.${s}`) : s);
 
-	const { data: tally } = await sb
-		.from("broadcasts")
-		.select("video_status")
-		.not("video_status", "is", null);
+	// 6000+ slots: an unpaginated read made this dashboard report a third of
+	// the archive as if it were the whole of it.
+	const tally = await selectAllPages<{ video_status: string }>(
+		(r) =>
+			sb
+				.from("broadcasts")
+				.select("video_status")
+				.not("video_status", "is", null)
+				.order("id", { ascending: true })
+				.range(r.from, r.to),
+		{ label: "archive-status:tally" },
+	).catch(() => [] as Array<{ video_status: string }>);
 	const counts = new Map<string, number>();
-	for (const r of (tally ?? []) as { video_status: string }[]) {
+	for (const r of tally) {
 		counts.set(r.video_status, (counts.get(r.video_status) ?? 0) + 1);
 	}
 
@@ -36,11 +45,17 @@ export default async function ArchiveStatusPage({ params }: PageProps) {
 		.order("air_date", { ascending: false })
 		.limit(50);
 
-	const { data: sizes } = await sb
-		.from("broadcasts")
-		.select("video_size_bytes")
-		.eq("video_status", "archived");
-	const totalBytes = (sizes ?? []).reduce(
+	const sizes = await selectAllPages<{ video_size_bytes: number | null }>(
+		(r) =>
+			sb
+				.from("broadcasts")
+				.select("video_size_bytes")
+				.eq("video_status", "archived")
+				.order("id", { ascending: true })
+				.range(r.from, r.to),
+		{ label: "archive-status:sizes" },
+	).catch(() => [] as Array<{ video_size_bytes: number | null }>);
+	const totalBytes = sizes.reduce(
 		(sum, r: { video_size_bytes: number | null }) => sum + (r.video_size_bytes ?? 0),
 		0,
 	);

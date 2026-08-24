@@ -9,6 +9,7 @@
  */
 
 import { getServiceClient } from "@/lib/supabase";
+import { selectAllPages } from "@/lib/supabase/paginate";
 import type {
 	ExclusionContext,
 	LearningState,
@@ -48,10 +49,18 @@ export async function loadExclusionContext(
 					Date.now() - RECENT_WINDOW_DAYS * 24 * 3600 * 1000,
 				).toISOString(),
 			),
-		sb
-			.from("discovered_products")
-			.select("rakuten_item_code")
-			.not("rakuten_item_code", "is", null),
+		// Every known code, not the first page of them: a truncated list lets
+		// already-seen products back into discovery as "new".
+		selectAllPages<{ rakuten_item_code: string | null }>(
+			(r) =>
+				sb
+					.from("discovered_products")
+					.select("rakuten_item_code")
+					.not("rakuten_item_code", "is", null)
+					.order("id", { ascending: true })
+					.range(r.from, r.to),
+			{ label: "exclusion:rakuten_item_code" },
+		).then((data) => ({ data, error: null as { message: string } | null })),
 		sb
 			.from("discovered_products")
 			.select("product_url, rakuten_item_code")

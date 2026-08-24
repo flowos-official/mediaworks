@@ -9,6 +9,7 @@
  */
 
 import { getServiceClient } from "@/lib/supabase";
+import { selectAllPages } from "@/lib/supabase/paginate";
 import type { Context } from "./types";
 import {
 	aggregateCategoryWeights,
@@ -114,11 +115,25 @@ export async function computeContextLearning(
 
 	// Outcome cohort (60d) — drives category_weights regardless of cold-start.
 	// Fail-soft if the migration is not yet applied (Postgres 42703 undefined_column).
-	const { data: cohortData, error: cohortErr } = await sb
-		.from("discovered_products")
-		.select("category, selection_outcome, user_action")
-		.eq("context", context)
-		.gte("created_at", cohortSince);
+	// 60 days of products outgrows one PostgREST page, and category weights
+	// computed on a slice of the cohort quietly bias the next run's plan.
+	let cohortData: unknown[] | null = null;
+	let cohortErr: { message: string; code?: string } | null = null;
+	try {
+		cohortData = await selectAllPages(
+			(r) =>
+				sb
+					.from("discovered_products")
+					.select("category, selection_outcome, user_action")
+					.eq("context", context)
+					.gte("created_at", cohortSince)
+					.order("id", { ascending: true })
+					.range(r.from, r.to),
+			{ label: "learning:outcome-cohort" },
+		);
+	} catch (e) {
+		cohortErr = { message: e instanceof Error ? e.message : String(e) };
+	}
 	if (cohortErr) {
 		console.warn(`[learning] outcome cohort query failed (${context}):`, cohortErr.message);
 	}

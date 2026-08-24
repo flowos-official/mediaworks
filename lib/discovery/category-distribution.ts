@@ -13,6 +13,7 @@
  * Fail-open: any DB error yields an empty list.
  */
 import { getServiceClient } from "@/lib/supabase";
+import { selectAllPages } from "@/lib/supabase/paginate";
 
 function envInt(name: string, defaultValue: number): number {
 	const raw = process.env[name];
@@ -46,11 +47,19 @@ export async function loadCategoryDistribution(
 		.slice(0, 10);
 
 	const [broadcasts, historical] = await Promise.all([
-		sb
-			.from("broadcasts")
-			.select("category")
-			.gte("air_date", cutoff)
-			.not("category", "is", null),
+		// A 30-day calendar window is ~1800 slots; a single page would skew the
+		// distribution these weights are derived from.
+		selectAllPages<{ category: string | null }>(
+			(r) =>
+				sb
+					.from("broadcasts")
+					.select("category")
+					.gte("air_date", cutoff)
+					.not("category", "is", null)
+					.order("id", { ascending: true })
+					.range(r.from, r.to),
+			{ label: "category-distribution:broadcasts" },
+		).then((data) => ({ data, error: null as { message: string } | null })),
 		sb
 			.from("historical_broadcasts")
 			.select("category")
