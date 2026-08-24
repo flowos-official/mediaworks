@@ -9,6 +9,32 @@
  * JSON.parse throws, and the retry re-downloads 606 MB for nothing. A
  * MAX_TOKENS finish is therefore non-retryable.
  *
+ * Slot ceiling: the whole leg (file upload, PROCESSING poll, and both
+ * callModel attempts together) is bounded by BROADCAST_INTEL_SLOT_TIMEOUT_MS —
+ * the same ceiling audio-extract.ts's ffmpeg SIGKILL uses. Without this,
+ * callModel had no timeout at all: a slow/hung Gemini response could push a
+ * slot past the cron's maxDuration, stranding the row in 'running' until the
+ * next daily recoverStaleAnalysis() call (up to ~24h) instead of the rare
+ * exception it should be.
+ *
+ * @google/genai's `config.abortSignal` is wired through to the underlying
+ * fetch for `generateContent` and `files.get` (verified against
+ * node_modules/@google/genai/dist/node/index.cjs), so callModel gets a real
+ * per-attempt AbortController. `files.upload`'s resumable byte-upload loop
+ * does NOT forward `config.abortSignal` at all (same file — neither
+ * `fetchUploadUrl` nor `uploadBlobInternal` receives it), so the upload step
+ * is bounded with Promise.race instead: our own await settles at the
+ * deadline even though the abandoned upload keeps running server-side
+ * (Gemini expires unreferenced files in 48h regardless).
+ *
+ * A deadline timeout is retryable, not NonRetryableAudioError — it is
+ * indistinguishable from any other transient failure to isRetryable() and to
+ * analyzeOne(), which already treats every non-NonRetryableAudioError as
+ * retryable. Its message deliberately does not match the
+ * overloaded/UNAVAILABLE fallback trigger below, so a Flash-call timeout does
+ * not spend a second full-length attempt against GEMINI_PRO_FALLBACK — it
+ * just requeues.
+ *
  * NO `import "server-only"` — imported by tsx smoke scripts.
  */
 import { GoogleGenAI, createPartFromUri, createUserContent, ApiError } from "@google/genai";
@@ -42,11 +68,70 @@ export const ANALYSIS_PROMPT = [
 const UPLOAD_POLL_INTERVAL_MS = 2_000;
 const UPLOAD_TIMEOUT_MS = 120_000;
 
+/** Same ceiling audio-extract.ts's ffmpeg SIGKILL uses — one knob for "how
+ *  long the whole Gemini leg may run before we treat it as a fault." */
+const SLOT_TIMEOUT_MS = Number(process.env.BROADCAST_INTEL_SLOT_TIMEOUT_MS) || 200_000;
+
+/** Thrown when a Gemini sub-step (upload, PROCESSING poll, or a callModel
+ *  attempt) outruns the shared slot deadline. Deliberately a plain Error
+ *  subclass, not NonRetryableAudioError — isRetryable() and analyzeOne() both
+ *  already treat an unrecognized Error as retryable, exactly like a transient
+ *  5xx: the slot goes back to 'queued' and consumes one attempt. */
+export class GeminiTimeoutError extends Error {
+	constructor(stage: string) {
+		super(`Gemini ${stage} exceeded the ${SLOT_TIMEOUT_MS}ms slot deadline`);
+		this.name = "GeminiTimeoutError";
+	}
+}
+
+/**
+ * Races `factory()` against the time remaining to the shared `deadline`.
+ * Fails fast without starting the call if the deadline has already passed —
+ * this is what turns "Flash timed out" into "skip Pro, don't spend a second
+ * full-length call." Clears the timer in `finally` so no handle leaks past
+ * whichever branch settles first. `onTimeout` lets the caller additionally
+ * abort the real in-flight request when the SDK honors it (see callModel).
+ */
+async function withDeadline<T>(
+	deadline: number,
+	stage: string,
+	factory: () => Promise<T>,
+	onTimeout?: () => void,
+): Promise<T> {
+	const remaining = deadline - Date.now();
+	if (remaining <= 0) {
+		onTimeout?.();
+		throw new GeminiTimeoutError(stage);
+	}
+
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const attempt = factory();
+	// If the timer wins, `attempt` is abandoned but may still settle later
+	// (e.g. once abort() finally propagates through fetch). Swallow that here
+	// so a late rejection can't surface as an unhandled rejection — Promise.race
+	// below observes `attempt` directly, so this doesn't change its outcome.
+	attempt.catch(() => {});
+	try {
+		return await Promise.race([
+			attempt,
+			new Promise<never>((_, reject) => {
+				timer = setTimeout(() => {
+					onTimeout?.();
+					reject(new GeminiTimeoutError(stage));
+				}, remaining);
+			}),
+		]);
+	} finally {
+		if (timer) clearTimeout(timer);
+	}
+}
+
 async function callModel(
 	model: string,
 	fileUri: string,
 	fileMime: string,
 	durationSec: number,
+	abortSignal: AbortSignal,
 ): Promise<BroadcastAnalysis> {
 	const response = await getGenAI().models.generateContent({
 		model,
@@ -55,6 +140,7 @@ async function callModel(
 			responseMimeType: "application/json",
 			responseSchema: ANALYSIS_RESPONSE_SCHEMA,
 			maxOutputTokens: MAX_OUTPUT_TOKENS,
+			abortSignal,
 		},
 	});
 
@@ -84,37 +170,62 @@ export async function analyzeAudio(
 ): Promise<{ analysis: BroadcastAnalysis; model: string }> {
 	const ai = getGenAI();
 	let fileName: string | null = null;
+	// Computed once; every step below derives its remaining budget from this
+	// single absolute deadline rather than getting its own fresh window.
+	const deadline = Date.now() + SLOT_TIMEOUT_MS;
 
 	try {
-		let file = await ai.files.upload({
-			file: new Blob([new Uint8Array(audio)], { type: AUDIO_MIME }),
-			config: { mimeType: AUDIO_MIME },
-		});
+		let file = await withDeadline(deadline, "file upload", () =>
+			ai.files.upload({
+				file: new Blob([new Uint8Array(audio)], { type: AUDIO_MIME }),
+				config: { mimeType: AUDIO_MIME },
+			}),
+		);
 		fileName = file.name ?? null;
 
 		// A part referencing a non-ACTIVE file is rejected, so poll until settled.
-		const deadline = Date.now() + UPLOAD_TIMEOUT_MS;
+		// withDeadline() below also enforces the shared slot deadline on every
+		// GET, so this loop cannot outlive it even when UPLOAD_TIMEOUT_MS alone
+		// would not have caught a slow-to-settle file.
+		const uploadPollDeadline = Date.now() + UPLOAD_TIMEOUT_MS;
 		while (file.state === "PROCESSING") {
-			if (Date.now() > deadline) throw new Error("Gemini file upload stuck in PROCESSING");
+			if (Date.now() > uploadPollDeadline) throw new Error("Gemini file upload stuck in PROCESSING");
 			await new Promise((r) => setTimeout(r, UPLOAD_POLL_INTERVAL_MS));
-			file = await ai.files.get({ name: file.name! });
+			file = await withDeadline(deadline, "file processing poll", () => ai.files.get({ name: file.name! }));
 			fileName = file.name ?? fileName;
 		}
 		if (file.state === "FAILED") throw new Error("Gemini file upload failed");
 
 		try {
-			return { analysis: await callModel(GEMINI_FLASH, file.uri!, file.mimeType!, durationSec), model: GEMINI_FLASH };
+			const flashController = new AbortController();
+			return {
+				analysis: await withDeadline(
+					deadline,
+					"analysis (flash)",
+					() => callModel(GEMINI_FLASH, file.uri!, file.mimeType!, durationSec, flashController.signal),
+					() => flashController.abort(),
+				),
+				model: GEMINI_FLASH,
+			};
 		} catch (err) {
 			if (!isRetryable(err)) throw err;
+			const proController = new AbortController();
 			return {
-				analysis: await callModel(GEMINI_PRO_FALLBACK, file.uri!, file.mimeType!, durationSec),
+				analysis: await withDeadline(
+					deadline,
+					"analysis (pro fallback)",
+					() => callModel(GEMINI_PRO_FALLBACK, file.uri!, file.mimeType!, durationSec, proController.signal),
+					() => proController.abort(),
+				),
 				model: GEMINI_PRO_FALLBACK,
 			};
 		}
 	} finally {
 		// Uploaded files expire in 48h anyway; deleting keeps quota clean and
 		// must never mask the real error. fileName is captured before any throw
-		// so a PROCESSING/FAILED exit still cleans up.
+		// so a PROCESSING/FAILED exit — or a deadline timeout anywhere above —
+		// still cleans up. Deliberately not bound to the (already-elapsed) slot
+		// deadline: cleanup must still run when the ceiling has fired.
 		if (fileName) {
 			try { await ai.files.delete({ name: fileName }); } catch { /* best effort */ }
 		}
