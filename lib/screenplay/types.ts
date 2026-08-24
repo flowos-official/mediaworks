@@ -35,6 +35,10 @@ export interface GenerateInput {
   /** Pre-built compliance block (feature A) injected verbatim into the prompt.
    *  Empty/undefined → not injected. Built by buildGenerationComplianceBlock. */
   complianceBlock?: string;
+  /** Pre-built competitor structure block. Aggregate shares only — never
+   *  competitor product facts. Empty/undefined → not injected. Built by
+   *  lib/broadcast-intel/format-prompt.ts. */
+  patternBlock?: string;
 }
 
 export interface GenerationResult {
@@ -70,6 +74,9 @@ export interface ScreenplayVersionRow {
   token_usage: { input?: number; output?: number } | null;
   change_notes: ChangeNotes | null;
   created_at: string;
+  /** Type-only import: importing the value would drag getServiceClient into
+   *  every "use client" component that imports this module. */
+  pattern_snapshot?: import("@/lib/broadcast-intel/category-pattern").CategoryPattern | null;
 }
 
 // ── Version diff (変更点レビュー) ───────────────────────────────────────────

@@ -313,13 +313,23 @@ export async function buildUserPrompt(input: GenerateInput): Promise<string> {
 			"## 根拠の優先順位",
 			"1. 確認済み商品情報・価格・特典・保証",
 			"2. ユーザー指定の作家指示",
-			"3. 企画参考情報（構成だけに使用し、事実として断定しない）",
-			"4. 放送文体リファレンス（リズムだけに使用し、内容を転用しない）",
+			...(input.patternBlock?.trim()
+				? [
+					"3. 競合放送の構成パターン（構成の骨格のみ。商品事実として使用しない）",
+					"4. 企画参考情報（構成だけに使用し、事実として断定しない）",
+					"5. 放送文体リファレンス（リズムだけに使用し、内容を転用しない）",
+				]
+				: [
+					"3. 企画参考情報（構成だけに使用し、事実として断定しない）",
+					"4. 放送文体リファレンス（リズムだけに使用し、内容を転用しない）",
+				]),
 			"根拠が足りない要素は創作せず、省略または一般的な使用シーンに置き換える。",
 		];
 		if (customBlock) parts.push("", "---", "", customBlock);
 		const complianceInitial = input.complianceBlock?.trim();
 		if (complianceInitial) parts.push("", "---", "", "--- 必須遵守 ---", "", complianceInitial);
+		const patternInitial = input.patternBlock?.trim();
+		if (patternInitial) parts.push("", "---", "", patternInitial);
 		parts.push(
 			"",
 			"---",

@@ -24,6 +24,34 @@ import type {
   RemediationStep,
 } from "@/lib/screenplay/compliance/types";
 import { geminiUserFacingMessage } from "@/lib/gemini/errors";
+import { loadCategoryPattern, type CategoryPattern } from "@/lib/broadcast-intel/category-pattern";
+import { formatCategoryPatternBlock } from "@/lib/broadcast-intel/format-prompt";
+
+const PATTERN_TIMEOUT_MS = 5_000;
+
+/** Aggregate same-category competitor structure. Non-fatal AND time-boxed: a
+ *  screenplay must still generate when the corpus is thin, disabled, slow or
+ *  unreachable. */
+async function loadPatternStep(
+  category: string | null,
+): Promise<{ pattern: CategoryPattern | null; block: string }> {
+  "use step";
+  const empty = { pattern: null, block: "" };
+  if (process.env.BROADCAST_INTEL_ENABLED !== "true") return empty;
+  try {
+    const pattern = await Promise.race([
+      loadCategoryPattern(category),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), PATTERN_TIMEOUT_MS)),
+    ]);
+    return pattern ? { pattern, block: formatCategoryPatternBlock(pattern) } : empty;
+  } catch (err) {
+    console.warn(
+      "[screenplay] competitor pattern lookup failed:",
+      err instanceof Error ? err.message : String(err),
+    );
+    return empty;
+  }
+}
 
 export interface ScreenplayWorkflowInput {
   screenplayId: string;
@@ -75,6 +103,7 @@ async function generateStep(
   input: ScreenplayWorkflowInput,
   previousMarkdown: string | undefined,
   complianceBlock: string,
+  patternBlock: string,
 ): Promise<{ markdown: string; model: string; thinkingLevel: string }> {
   "use step";
   await writeProgressInline({ type: "step", name: "generate", status: "started" });
@@ -86,6 +115,7 @@ async function generateStep(
         feedback: input.feedback,
         previousMarkdown,
         complianceBlock,
+        patternBlock,
       },
       (chars) => { void writeProgressInline({ type: "chunk", chars }); },
     );
@@ -105,6 +135,7 @@ async function persistStep(
   baseVersionId: string | undefined,
   model: string,
   thinkingLevel: string,
+  patternSnapshot: CategoryPattern | null,
 ): Promise<{ versionId: string; versionNumber: number }> {
   "use step";
   const supabase = getServiceClient();
@@ -133,6 +164,7 @@ async function persistStep(
         base_version_id: baseVersionId ?? null,
         model,
         thinking_level: thinkingLevel,
+        pattern_snapshot: patternSnapshot,
       })
       .select("id, version_number")
       .single();
@@ -302,6 +334,7 @@ export async function screenplayWorkflow(input: ScreenplayWorkflowInput) {
         undefined,
         "imported",
         "none",
+        null,
       );
       await persistCheckStep(persisted.versionId, check, [], rules.length, references.length, false);
 
@@ -327,7 +360,11 @@ export async function screenplayWorkflow(input: ScreenplayWorkflowInput) {
       references,
     );
 
-    const gen = await generateStep(input, previousMarkdown, complianceBlock);
+    const { pattern, block: patternBlock } = await loadPatternStep(
+      input.mode === "initial" ? (input.productBrief.category ?? null) : null,
+    );
+
+    const gen = await generateStep(input, previousMarkdown, complianceBlock, patternBlock);
 
     const { markdown, check, trail } = await remediateLoopStep(
       gen.markdown,
@@ -344,6 +381,7 @@ export async function screenplayWorkflow(input: ScreenplayWorkflowInput) {
       input.baseVersionId,
       gen.model,
       gen.thinkingLevel,
+      input.mode === "initial" ? pattern : null,
     );
 
     await persistCheckStep(persisted.versionId, check, trail, rules.length, references.length, AUTO_REMEDIATE);
