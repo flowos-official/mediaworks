@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { parseMarkdown } from "@/lib/screenplay/parse-markdown";
 import { READINESS_LABEL_JA, type ReadinessSummary } from "@/lib/screenplay/readiness";
+import { VersionProvenance } from "./VersionProvenance";
 
 interface Props {
 	markdown: string;
@@ -34,6 +35,8 @@ interface Props {
 	editing?: boolean;
 	focusMode?: boolean;
 	onToggleFocus?: () => void;
+	model?: string | null;
+	patternSampleSize?: number | null;
 }
 
 function renderedTextLength(md: string): number {
@@ -83,6 +86,8 @@ export function ScreenplayHeaderBar({
 	editing = false,
 	focusMode = false,
 	onToggleFocus,
+	model = null,
+	patternSampleSize = null,
 }: Props) {
 	const t = useTranslations("screenplay.workspace");
 	const [copied, setCopied] = useState(false);
@@ -152,6 +157,7 @@ export function ScreenplayHeaderBar({
 						<span>{t("chars", { n: chars.toLocaleString() })}</span>
 						{readiness.total > 0 && <span>{readiness.high} blockers · {readiness.total} findings</span>}
 					</div>
+					<VersionProvenance model={model} patternSampleSize={patternSampleSize} />
 				</div>
 
 				<div className="grid w-full grid-cols-3 gap-1 sm:flex sm:w-auto sm:items-center">

@@ -734,6 +734,9 @@
       "badge": "TV 홈쇼핑 대본",
       "revisionsCount": "개정 {count}회"
     },
+    "provenanceModel": "모델: {model}",
+    "patternApplied": "경쟁 방송 구성 패턴 {count}편 반영",
+    "patternNone": "경쟁 방송 패턴 없음",
     "new": {
       "back": "대본 목록으로",
       "title": "새 대본 만들기",

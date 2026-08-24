@@ -359,6 +359,8 @@ export function ScreenplayWorkspace({
 					prevLabel={previous ? `v${pad(previous.version_number, 2)}` : undefined}
 					nextLabel={next ? `v${pad(next.version_number, 2)}` : undefined}
 					readiness={readiness}
+					model={selected.model}
+					patternSampleSize={selected.pattern_snapshot?.sampleSize ?? null}
 					onEdit={() => (editing ? setEditing(false) : startEditing())}
 					editing={editing}
 					focusMode={focusMode}

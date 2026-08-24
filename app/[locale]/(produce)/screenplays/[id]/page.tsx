@@ -30,7 +30,7 @@ async function fetchDetail(id: string) {
 	const { data: versions } = await sb
 		.from("screenplay_versions")
 		.select(
-			"id, version_number, markdown, feedback, base_version_id, model, thinking_level, created_at",
+			"id, version_number, markdown, feedback, base_version_id, model, thinking_level, pattern_snapshot, created_at",
 		)
 		.eq("screenplay_id", id)
 		.order("version_number", { ascending: true });
