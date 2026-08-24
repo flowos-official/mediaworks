@@ -39,10 +39,18 @@ async function loadPatternStep(
   const empty = { pattern: null, block: "" };
   if (process.env.BROADCAST_INTEL_ENABLED !== "true") return empty;
   try {
-    const pattern = await Promise.race([
-      loadCategoryPattern(category),
-      new Promise<null>((resolve) => setTimeout(() => resolve(null), PATTERN_TIMEOUT_MS)),
-    ]);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let pattern: CategoryPattern | null;
+    try {
+      pattern = await Promise.race([
+        loadCategoryPattern(category),
+        new Promise<null>((resolve) => {
+          timer = setTimeout(() => resolve(null), PATTERN_TIMEOUT_MS);
+        }),
+      ]);
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
     return pattern ? { pattern, block: formatCategoryPatternBlock(pattern) } : empty;
   } catch (err) {
     console.warn(
