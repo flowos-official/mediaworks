@@ -35,7 +35,6 @@ import { loadChannelTasteProfiles } from "@/lib/discovery/channel-taste";
 import { isPhase05Enabled } from "@/lib/strategy/feature-flags";
 import { filterAliases } from "@/lib/strategy/alias-blocklist";
 import { resolveChannelSlug } from "@/lib/strategy/channel-aliases";
-import { getRuntimeMarketCountry } from "@/lib/market/runtime-market";
 
 // ---------------------------------------------------------------------------
 // Gemini client
@@ -1479,10 +1478,7 @@ export async function fetchStrategyContext(
 	const [monthlyResult, detailResult, researchResult] = await Promise.all([
 		supabase.from("monthly_summaries").select("*").in("product_code", top30Codes),
 		supabase.from("product_details").select("*").in("product_code", top30Codes),
-		supabase
-			.from("research_results")
-			.select("*")
-			.eq("country", getRuntimeMarketCountry()),
+		supabase.from("research_results").select("*"),
 	]);
 
 	// Build monthly trend map

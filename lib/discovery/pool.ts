@@ -18,7 +18,6 @@ import { TV_CHANNELS, broadcastsChannelToSlug, isDiscoverySearchable } from "./t
 import { LIVE_CHANNELS } from "./live-channels";
 import { findRakutenCrossMatch } from "./rakuten-crossmatch";
 import type { CategoryPlan, Context, PoolItem, Track } from "./types";
-import { getRuntimeMarketCountry } from "@/lib/market/runtime-market";
 
 const RAKUTEN_THROTTLE_MS = 1100;
 const RAKUTEN_PER_KEYWORD = 10;
@@ -167,7 +166,6 @@ async function fetchTvChannelFromBroadcasts(
 	const { data, error } = await sb
 		.from("broadcasts")
 		.select("channel, description, thumbnail_url, source_url, air_date")
-		.eq("country", getRuntimeMarketCountry())
 		.gte("air_date", since)
 		.not("description", "is", null);
 

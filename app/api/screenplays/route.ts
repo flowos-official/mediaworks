@@ -6,7 +6,6 @@ import { screenplayWorkflow } from "@/lib/workflows/screenplay.workflow";
 import type { ProductBrief } from "@/lib/screenplay/types";
 import { loadProductBriefForScreenplay } from "@/lib/screenplay/product-brief";
 import { validateImportedMarkdown } from "@/lib/screenplay/import/validate";
-import { filterMarketRecords } from "@/lib/market/data-visibility";
 import {
 	sanitizeScreenplayCustomization,
 	sanitizeScreenplayOffer,
@@ -24,7 +23,7 @@ export async function GET() {
 		.order("updated_at", { ascending: false })
 		.limit(50);
 	if (error) return Response.json({ error: error.message }, { status: 500 });
-	return Response.json({ screenplays: filterMarketRecords(data ?? []) });
+	return Response.json({ screenplays: data ?? [] });
 }
 
 interface ValidationFailure { ok: false; status: number; error: string }

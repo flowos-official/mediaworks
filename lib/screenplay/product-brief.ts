@@ -1,6 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ProductBrief } from "@/lib/screenplay/types";
-import { isMarketRecordVisible } from "@/lib/market/data-visibility";
 
 export type ProductBriefLoadResult =
 	| { ok: true; productId: string; brief: ProductBrief }
@@ -193,9 +192,6 @@ export async function loadProductBriefForScreenplay(
 		return { ok: false, status: 500, error: "商品情報の取得に失敗しました" };
 	}
 	if (!product) {
-		return { ok: false, status: 404, error: "商品が見つかりません" };
-	}
-	if (!isMarketRecordVisible(product)) {
 		return { ok: false, status: 404, error: "商品が見つかりません" };
 	}
 

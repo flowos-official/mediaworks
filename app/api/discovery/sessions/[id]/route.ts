@@ -1,8 +1,6 @@
 import { requireUser } from "@/lib/auth/require-user";
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
-import { filterMarketBatchRecords } from "@/lib/market/data-visibility";
-import { getRuntimeMarketCountry } from "@/lib/market/runtime-market";
 
 export const dynamic = "force-dynamic";
 
@@ -16,15 +14,13 @@ export async function GET(
 
 	const { id } = await ctx.params;
 	const sb = getServiceClient();
-	const country = getRuntimeMarketCountry();
 
 	const [sessionRes, productsRes] = await Promise.all([
-		sb.from("discovery_runs").select("*").eq("id", id).eq("country", country).maybeSingle(),
+		sb.from("discovery_runs").select("*").eq("id", id).maybeSingle(),
 		sb
 			.from("discovered_products")
 			.select("*")
 			.eq("session_id", id)
-			.eq("country", country)
 			.order("tv_fit_score", { ascending: false }),
 	]);
 
@@ -40,6 +36,6 @@ export async function GET(
 
 	return NextResponse.json({
 		session: sessionRes.data,
-		products: filterMarketBatchRecords(productsRes.data ?? []),
+		products: productsRes.data ?? [],
 	});
 }

@@ -1,8 +1,6 @@
 import { getServiceClient } from "@/lib/supabase";
 import { MISDATED_OA_OR_CLAUSES } from "./misdated-suppression";
 import { DELISTED_CALENDAR_CHANNELS } from "./channel-style";
-import { isMarketRecordVisible } from "@/lib/market/data-visibility";
-import { getRuntimeMarketCountry } from "@/lib/market/runtime-market";
 
 const CHUNK_SIZE = 1000;
 // Safety stop in case the table grows unexpectedly. 45-day SSR window with
@@ -33,12 +31,7 @@ export async function aggregateCalendarCounts(
 			const offset = chunk * CHUNK_SIZE;
 			let query = sb
 				.from(table)
-				.select(
-					table === "broadcasts"
-						? "channel,air_date,program_title,source_url"
-						: "channel,air_date,product_name,source_url",
-				)
-				.eq("country", getRuntimeMarketCountry())
+				.select("channel,air_date")
 				.gte("air_date", from)
 				.lte("air_date", to)
 				.order("air_date", { ascending: true })
@@ -55,8 +48,7 @@ export async function aggregateCalendarCounts(
 			}
 			const { data, error } = await query;
 			if (error || !data) break;
-			for (const r of data as Array<Record<string, unknown> & { channel: string; air_date: string }>) {
-				if (!isMarketRecordVisible(r)) continue;
+			for (const r of data as Array<{ channel: string; air_date: string }>) {
 				const day = (counts[r.air_date] ??= {});
 				day[r.channel] = (day[r.channel] ?? 0) + 1;
 			}

@@ -5,7 +5,6 @@
  */
 
 import { getServiceClient } from "@/lib/supabase";
-import { getRuntimeMarketCountry } from "@/lib/market/runtime-market";
 import { normalizeName } from "./exclusion";
 import { hasExcludedChannel, EXCLUDED_DISCOVERY_SLUGS } from "./tv-channels";
 import { fetchRakutenPage } from "./tools/rakuten-page";
@@ -98,7 +97,6 @@ export async function createSession(input: {
 			exploration_ratio: input.explorationRatio,
 			iterations: 0,
 			context: input.context,
-			country: getRuntimeMarketCountry(),
 		})
 		.select("id")
 		.single();
@@ -162,7 +160,6 @@ export interface DiscoveredProductRow {
 	tv_evidence: import("./types").TvEvidence | null;
 	tv_evidence_at: string | null;
 	rakuten_cross_match: PoolItem["rakutenCrossMatch"] | null;
-	country: "jp" | "kr";
 }
 
 export function buildDiscoveredProductRows(
@@ -206,7 +203,6 @@ export function buildDiscoveredProductRows(
 		tv_evidence: tvEvidence,
 		tv_evidence_at: tvEvidence ? new Date().toISOString() : null,
 		rakuten_cross_match: candidate.rakutenCrossMatch ?? null,
-		country: getRuntimeMarketCountry(),
 	}));
 }
 
@@ -419,7 +415,6 @@ export async function reconcileStaleDiscoveryRuns(
 	let query = sb
 		.from("discovery_runs")
 		.select("id, target_count, context")
-		.eq("country", getRuntimeMarketCountry())
 		.eq("status", "running")
 		.lt("run_at", cutoff);
 

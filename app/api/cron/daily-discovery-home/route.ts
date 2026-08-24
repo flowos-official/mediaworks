@@ -15,8 +15,6 @@ import {
 } from "@/lib/discovery/save";
 import { getServiceClient } from "@/lib/supabase";
 import { DEFAULT_LEARNING_STATE, type LearningState } from "@/lib/discovery/types";
-import { getRuntimeMarketCountry } from "@/lib/market/runtime-market";
-import { geminiUserFacingMessage } from "@/lib/gemini/errors";
 
 export const maxDuration = 300;
 
@@ -42,7 +40,6 @@ async function loadLearningState(): Promise<LearningState> {
 			.from("learning_state")
 			.select("*")
 			.eq("context", "home_shopping")
-			.eq("country", getRuntimeMarketCountry())
 			.single();
 		if (error || !data) return DEFAULT_LEARNING_STATE;
 		return {
@@ -238,17 +235,16 @@ export async function GET(req: NextRequest) {
 		});
 	} catch (err) {
 		const msg = err instanceof Error ? err.message : String(err);
-		const publicMessage = geminiUserFacingMessage(err) ?? msg;
 		console.error(`[cron ${CONTEXT}] failed:`, msg);
 		await finalizeSession({
 			sessionId,
 			status: "failed",
 			producedCount: 0,
 			iterations: 0,
-			error: publicMessage.slice(0, 500),
+			error: msg.slice(0, 500),
 		});
 		return NextResponse.json(
-			{ ok: false, context: CONTEXT, sessionId, error: publicMessage },
+			{ ok: false, context: CONTEXT, sessionId, error: msg },
 			{ status: 500 },
 		);
 	}

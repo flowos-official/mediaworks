@@ -1,8 +1,6 @@
 // lib/strategy/research-seed.ts
 import { getServiceClient } from "@/lib/supabase";
 import { buildCategoryMatchTerms } from "@/lib/strategy/category-mapping";
-import { filterMarketRecords } from "@/lib/market/data-visibility";
-import { getRuntimeMarketCountry } from "@/lib/market/runtime-market";
 
 export interface ResearchPoolItem {
 	name: string;
@@ -95,7 +93,6 @@ export async function queryResearchPool(
 			 research_results!inner(japan_export_fit_score, marketability_description, demographics)`,
 		)
 		.eq("status", "completed")
-		.eq("research_results.country", getRuntimeMarketCountry())
 		.gte("created_at", sinceIso)
 		.order("created_at", { ascending: false })
 		.limit(fetchLimit);
@@ -105,7 +102,7 @@ export async function queryResearchPool(
 		return [];
 	}
 
-	const rows = filterMarketRecords((data ?? []) as unknown as ProductWithResearch[]);
+	const rows = (data ?? []) as unknown as ProductWithResearch[];
 
 	// Filter: japan_export_fit_score >= 60 (strict — no fail-open here).
 	const scored = rows

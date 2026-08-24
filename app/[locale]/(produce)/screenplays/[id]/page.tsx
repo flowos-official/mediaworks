@@ -8,7 +8,6 @@ import type { ScriptCheckResult } from "@/lib/screenplay/compliance/types";
 import { localePath } from "@/lib/i18n/locale-path";
 import { getServerClient } from "@/lib/supabase/server";
 import type { ExistingProductOption } from "@/components/screenplay/ScreenplayProductPicker";
-import { filterMarketRecords, isMarketRecordVisible } from "@/lib/market/data-visibility";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +25,7 @@ async function fetchDetail(id: string) {
 		.select("*")
 		.eq("id", id)
 		.maybeSingle();
-	if (spErr || !screenplay || !isMarketRecordVisible(screenplay)) return null;
+	if (spErr || !screenplay) return null;
 
 	const { data: versions } = await sb
 		.from("screenplay_versions")
@@ -64,15 +63,13 @@ async function fetchAvailableProducts(): Promise<ExistingProductOption[]> {
 		.order("created_at", { ascending: false })
 		.limit(40);
 	if (!products?.length) return [];
-	const visibleProducts = filterMarketRecords(products);
-	if (visibleProducts.length === 0) return [];
-	const ids = visibleProducts.map((product) => product.id as string);
+	const ids = products.map((product) => product.id as string);
 	const { data: researchRows } = await sb
 		.from("research_results")
 		.select("product_id")
 		.in("product_id", ids);
 	const researched = new Set((researchRows ?? []).map((row) => row.product_id as string));
-	return visibleProducts.map((product) => ({
+	return products.map((product) => ({
 		id: product.id as string,
 		name: product.name as string,
 		category: typeof product.category === "string" ? product.category : null,

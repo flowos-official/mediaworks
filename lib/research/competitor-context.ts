@@ -1,7 +1,6 @@
 // lib/research/competitor-context.ts
 import { normalizeCategory } from "@/lib/discovery/category-normalize";
 import { getServiceClient } from "@/lib/supabase";
-import { getRuntimeMarketCountry } from "@/lib/market/runtime-market";
 
 export class BroadcastContextLoadError extends Error {
 	constructor(message: string, public readonly cause?: unknown) {
@@ -80,7 +79,6 @@ export async function loadBroadcastContext(
 				? sb
 						.from("broadcasts")
 						.select("channel, program_title, brand_name, air_date, start_time")
-						.eq("country", getRuntimeMarketCountry())
 						.eq("category", categoryCandidates[0])
 						.gte("air_date", sinceBroadcasts)
 						.order("air_date", { ascending: false })
@@ -88,7 +86,6 @@ export async function loadBroadcastContext(
 				: sb
 						.from("broadcasts")
 						.select("channel, program_title, brand_name, air_date, start_time")
-						.eq("country", getRuntimeMarketCountry())
 						.in("category", categoryCandidates)
 						.gte("air_date", sinceBroadcasts)
 						.order("air_date", { ascending: false })
@@ -98,7 +95,6 @@ export async function loadBroadcastContext(
 				? sb
 						.from("historical_broadcasts")
 						.select("channel, product_name, air_date, start_time")
-						.eq("country", getRuntimeMarketCountry())
 						.eq("category", categoryCandidates[0])
 						.gte("air_date", sinceBroadcasts)
 						.order("air_date", { ascending: false })
@@ -106,7 +102,6 @@ export async function loadBroadcastContext(
 				: sb
 						.from("historical_broadcasts")
 						.select("channel, product_name, air_date, start_time")
-						.eq("country", getRuntimeMarketCountry())
 						.in("category", categoryCandidates)
 						.gte("air_date", sinceBroadcasts)
 						.order("air_date", { ascending: false })

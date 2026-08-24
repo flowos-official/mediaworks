@@ -3,7 +3,6 @@ import { enrichProduct } from "@/lib/discovery/enrich-agent";
 import { getServiceClient } from "@/lib/supabase";
 import { hasInternalSecret } from "@/lib/auth/require-user";
 import { invalidateDiscoveryAfterMutation } from "@/lib/discovery/cached";
-import { getRuntimeMarketCountry } from "@/lib/market/runtime-market";
 
 export const maxDuration = 60;
 
@@ -29,7 +28,6 @@ export async function POST(
 			"id, name, product_url, price_jpy, category, seller_name, review_count, review_avg, tv_fit_reason",
 		)
 		.eq("id", productId)
-		.eq("country", getRuntimeMarketCountry())
 		.maybeSingle();
 
 	if (prodErr || !product) {

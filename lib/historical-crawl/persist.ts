@@ -1,6 +1,5 @@
 import { getServiceClient } from "@/lib/supabase";
 import type { HistoricalRow } from "./types";
-import { getRuntimeMarketCountry } from "@/lib/market/runtime-market";
 
 const BATCH = 500;
 
@@ -38,10 +37,7 @@ export async function persistRows(rows: HistoricalRow[]): Promise<PersistOutcome
 	let firstError: string | undefined;
 
 	for (let i = 0; i < unique.length; i += BATCH) {
-		const slice = unique.slice(i, i + BATCH).map((row) => ({
-			...row,
-			country: getRuntimeMarketCountry(),
-		}));
+		const slice = unique.slice(i, i + BATCH);
 		const { error, count } = await sb
 			.from("historical_broadcasts")
 			.upsert(slice, {

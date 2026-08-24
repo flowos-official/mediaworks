@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/require-user";
 import type { BoardCard, BoardData, SelectionStatus } from "@/lib/selections/types";
-import { isMarketRecordVisible } from "@/lib/market/data-visibility";
-import { getRuntimeMarketCountry } from "@/lib/market/runtime-market";
 
 export const maxDuration = 10;
 
@@ -13,7 +11,7 @@ const SELECT_STRING = `
   closed_reason, closed_at, closed_by, sourcing_note, scheduled_note,
   closed_note, created_at, updated_at,
   product:discovered_products!inner(
-    name, thumbnail_url, price_jpy, category, source, tv_fit_score, product_url, country
+    name, thumbnail_url, price_jpy, category, source, tv_fit_score, product_url
   ),
   broadcast:broadcasts(channel, air_date, start_time, program_title),
   owner:profiles!product_selections_owner_id_fkey(display_name, email),
@@ -68,11 +66,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: closed.error.message }, { status: 500 });
   }
 
-  const country = getRuntimeMarketCountry();
-  const rows = [...(active.data ?? []), ...(closed.data ?? [])].filter((row) => {
-    const product = (row as { product?: { country?: string } }).product;
-    return product?.country === country && isMarketRecordVisible(product);
-  });
+  const rows = [...(active.data ?? []), ...(closed.data ?? [])];
 
   const board: BoardData = { selected: [], sourcing: [], scheduled: [], closed: [] };
   for (const row of rows) {

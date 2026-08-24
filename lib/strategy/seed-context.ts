@@ -5,8 +5,6 @@
  */
 
 import { getServiceClient } from "@/lib/supabase";
-import { isMarketRecordVisible } from "@/lib/market/data-visibility";
-import { getRuntimeMarketCountry } from "@/lib/market/runtime-market";
 
 export interface SeedContext {
 	id: string;
@@ -56,10 +54,9 @@ export async function loadSeedContext(
 			"id, name, price_jpy, category, review_count, review_avg, seller_name, product_url, tv_fit_score, tv_fit_reason, context, broadcast_tag, c_package, enrichment_status",
 		)
 		.eq("id", seedProductId)
-		.eq("country", getRuntimeMarketCountry())
 		.maybeSingle();
 
-	if (error || !data || !isMarketRecordVisible(data)) {
+	if (error || !data) {
 		console.warn(
 			`[seed-context] load failed for ${seedProductId}:`,
 			error?.message ?? "not found",

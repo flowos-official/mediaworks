@@ -3,7 +3,6 @@
 // from tsx smoke scripts (scripts/test-strategy-fresh-search-persist.ts).
 import { getServiceClient } from "@/lib/supabase";
 import { normalizeName } from "@/lib/discovery/exclusion";
-import { getRuntimeMarketCountry } from "@/lib/market/runtime-market";
 
 export type FreshSearchCandidate = {
   name: string;
@@ -74,7 +73,6 @@ export async function persistStrategyFreshSearch(
       exploration_ratio: 0,
       iterations: 1,
       context: opts.context,
-		country: getRuntimeMarketCountry(),
     })
     .select("id")
     .single();
@@ -110,7 +108,6 @@ export async function persistStrategyFreshSearch(
       is_tv_applicable: true,
       is_live_applicable: false,
       context: opts.context,
-		country: getRuntimeMarketCountry(),
     }));
 
   try {
@@ -136,7 +133,6 @@ export async function persistStrategyFreshSearch(
       const { data: existing } = await sb
         .from("discovered_products")
         .select("id, product_url")
-				.eq("country", getRuntimeMarketCountry())
         .in("product_url", missingUrls);
       for (const row of existing ?? []) {
         if (row.product_url) idByUrl.set(row.product_url as string, row.id as string);

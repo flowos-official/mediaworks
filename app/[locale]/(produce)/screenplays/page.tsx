@@ -4,7 +4,6 @@ import { getTranslations } from "next-intl/server";
 import { ScreenplayList, type Row } from "@/components/screenplay/ScreenplayList";
 import { localePath } from "@/lib/i18n/locale-path";
 import { getServerClient } from "@/lib/supabase/server";
-import { filterMarketRecords } from "@/lib/market/data-visibility";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +29,7 @@ async function fetchList(): Promise<Row[]> {
 		console.warn("[screenplays/page] list fetch failed:", error.message);
 		return [];
 	}
-	return filterMarketRecords(data ?? []).map((r) => {
+	return (data ?? []).map((r) => {
 		const snap = (r.product_info_snapshot ?? {}) as { category?: string };
 		const vc = Array.isArray(r.screenplay_versions) ? r.screenplay_versions[0]?.count ?? 0 : 0;
 		return {

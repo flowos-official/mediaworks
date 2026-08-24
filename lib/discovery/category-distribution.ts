@@ -13,7 +13,6 @@
  * Fail-open: any DB error yields an empty list.
  */
 import { getServiceClient } from "@/lib/supabase";
-import { getRuntimeMarketCountry } from "@/lib/market/runtime-market";
 
 function envInt(name: string, defaultValue: number): number {
 	const raw = process.env[name];
@@ -50,13 +49,11 @@ export async function loadCategoryDistribution(
 		sb
 			.from("broadcasts")
 			.select("category")
-			.eq("country", getRuntimeMarketCountry())
 			.gte("air_date", cutoff)
 			.not("category", "is", null),
 		sb
 			.from("historical_broadcasts")
 			.select("category")
-			.eq("country", getRuntimeMarketCountry())
 			.gte("air_date", cutoff)
 			.not("category", "is", null),
 	]);

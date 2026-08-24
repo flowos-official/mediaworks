@@ -5,7 +5,6 @@ import { ScreenplayNewTabs } from "@/components/screenplay/ScreenplayNewTabs";
 import type { ExistingProductOption } from "@/components/screenplay/ScreenplayProductPicker";
 import { localePath } from "@/lib/i18n/locale-path";
 import { getServerClient } from "@/lib/supabase/server";
-import { filterMarketRecords } from "@/lib/market/data-visibility";
 
 async function fetchExistingProducts(): Promise<ExistingProductOption[]> {
 	const sb = await getServerClient();
@@ -16,17 +15,15 @@ async function fetchExistingProducts(): Promise<ExistingProductOption[]> {
 		.order("created_at", { ascending: false })
 		.limit(40);
 	if (error || !products?.length) return [];
-	const visibleProducts = filterMarketRecords(products);
-	if (visibleProducts.length === 0) return [];
 
-	const ids = visibleProducts.map((product) => product.id as string);
+	const ids = products.map((product) => product.id as string);
 	const { data: researchRows } = await sb
 		.from("research_results")
 		.select("product_id")
 		.in("product_id", ids);
 	const researched = new Set((researchRows ?? []).map((row) => row.product_id as string));
 
-	return visibleProducts.map((product) => ({
+	return products.map((product) => ({
 		id: product.id as string,
 		name: product.name as string,
 		category: typeof product.category === "string" ? product.category : null,

@@ -3,7 +3,6 @@ import { requireUser } from "@/lib/auth/require-user";
 import { getServiceClient } from "@/lib/supabase";
 import { loadProductBriefForScreenplay } from "@/lib/screenplay/product-brief";
 import type { ProductBrief } from "@/lib/screenplay/types";
-import { isMarketRecordVisible } from "@/lib/market/data-visibility";
 
 export const maxDuration = 30;
 
@@ -26,7 +25,7 @@ export async function GET(
 		.select("*")
 		.eq("id", id)
 		.single();
-	if (spErr || !screenplay || !isMarketRecordVisible(screenplay)) {
+	if (spErr || !screenplay) {
 		return Response.json({ error: "not found" }, { status: 404 });
 	}
 

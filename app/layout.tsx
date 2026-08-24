@@ -26,8 +26,6 @@ export default function RootLayout({
   return (
     <html
       lang={appConfig.i18n.defaultLocale}
-      data-app-variant={appConfig.id}
-      data-market={appConfig.market.countryCode}
       suppressHydrationWarning
     >
       <body className={`${inter.className} min-h-screen`}>

@@ -1,6 +1,5 @@
 import { getServiceClient } from "@/lib/supabase";
 import type { PersistResult, ScrapedSlot } from "./types";
-import { getRuntimeMarketCountry } from "@/lib/market/runtime-market";
 
 const CHUNK_SIZE = 100;
 
@@ -27,10 +26,7 @@ export async function upsertBroadcasts(slots: ScrapedSlot[]): Promise<PersistRes
 	const broadcastIds: BroadcastIdMap = new Map();
 
 	for (let i = 0; i < slots.length; i += CHUNK_SIZE) {
-		const chunk = slots.slice(i, i + CHUNK_SIZE).map((slot) => ({
-			...slot,
-			country: getRuntimeMarketCountry(),
-		}));
+		const chunk = slots.slice(i, i + CHUNK_SIZE);
 
 		// 청크의 키 조합으로 정확한 기존행 조회 — PostgREST `or` 필터
 		const orFilter = chunk

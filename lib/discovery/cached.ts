@@ -10,11 +10,6 @@ import {
 	type CategoryDistribution,
 } from "@/lib/discovery/category-distribution";
 import { hasExcludedChannel } from "@/lib/discovery/tv-channels";
-import {
-	filterMarketBatchRecords,
-	filterMarketRecords,
-} from "@/lib/market/data-visibility";
-import { getRuntimeMarketCountry } from "@/lib/market/runtime-market";
 
 type Context = "home_shopping" | "live_commerce";
 
@@ -43,46 +38,30 @@ export async function getCachedDiscoveryToday(
 	cacheLife(DISCOVERY_LIFE);
 
 	const sb = getServiceClient();
-	const country = getRuntimeMarketCountry();
-	const { data: sessions } = await sb
+	const { data: session } = await sb
 		.from("discovery_runs")
 		.select("*")
 		.in("status", ["completed", "partial"])
 		.eq("context", context)
-		.eq("country", country)
 		.order("run_at", { ascending: false })
-		.limit(20);
+		.limit(1)
+		.maybeSingle();
 
-	if (!sessions?.length) return { session: null, products: [], categoryStats: null };
-	const sessionIds = sessions.map((session) => session.id);
+	if (!session) return { session: null, products: [], categoryStats: null };
 
 	const [productsResult, categoryStats] = await Promise.all([
 		sb
 			.from("discovered_products")
 			.select("*")
-			.in("session_id", sessionIds)
-			.eq("country", country)
+			.eq("session_id", session.id)
 			.order("tv_tier", { ascending: true })
-			.order("tv_fit_score", { ascending: false })
-			.limit(5000),
+			.order("tv_fit_score", { ascending: false }),
 		getCachedCategoryDistribution(),
 	]);
 
-	const eligibleProducts = (productsResult.data ?? []).filter(
+	const products = (productsResult.data ?? []).filter(
 		(p) => !hasExcludedChannel((p as { tv_channel_source: string | null }).tv_channel_source),
 	);
-	const productsBySession = new Map<string, Array<Record<string, unknown>>>();
-	for (const product of eligibleProducts) {
-		const sessionId = product.session_id as string;
-		const batch = productsBySession.get(sessionId) ?? [];
-		batch.push(product);
-		productsBySession.set(sessionId, batch);
-	}
-	const session = sessions.find((candidate) =>
-		filterMarketBatchRecords(productsBySession.get(candidate.id) ?? []).length > 0,
-	);
-	if (!session) return { session: null, products: [], categoryStats };
-	const products = filterMarketBatchRecords(productsBySession.get(session.id) ?? []);
 
 	return {
 		session,
@@ -133,7 +112,6 @@ export async function getCachedDiscoveryInsights(
 	cacheLife(DISCOVERY_LIFE);
 
 	const sb = getServiceClient();
-	const country = getRuntimeMarketCountry();
 
 	const weeksAgo = new Date();
 	weeksAgo.setUTCDate(weeksAgo.getUTCDate() - weeks * 7);
@@ -141,7 +119,6 @@ export async function getCachedDiscoveryInsights(
 	let kpiQuery = sb
 		.from("discovered_products")
 		.select("user_action")
-		.eq("country", country)
 		.gte("created_at", mondayIso);
 	if (context) kpiQuery = kpiQuery.eq("context", context);
 	const { data: thisWeek } = await kpiQuery;
@@ -149,7 +126,7 @@ export async function getCachedDiscoveryInsights(
 	const thisWeekSourced = thisWeekRows.filter((r) => r.user_action === "sourced").length;
 	const thisWeekRejected = thisWeekRows.filter((r) => r.user_action === "rejected").length;
 
-	let stateQuery = sb.from("learning_state").select("*").eq("country", country);
+	let stateQuery = sb.from("learning_state").select("*");
 	if (context) stateQuery = stateQuery.eq("context", context);
 	const { data: states } = await stateQuery;
 	const stateRows = (states ?? []) as Array<{
@@ -168,7 +145,6 @@ export async function getCachedDiscoveryInsights(
 	let insightsQuery = sb
 		.from("learning_insights")
 		.select("*")
-		.eq("country", country)
 		.gte("week_start", weeksAgo.toISOString().slice(0, 10))
 		.order("week_start", { ascending: false });
 	if (context) insightsQuery = insightsQuery.eq("context", context);
@@ -179,7 +155,6 @@ export async function getCachedDiscoveryInsights(
 	let dailyQuery = sb
 		.from("discovered_products")
 		.select("action_at, user_action, action_reason, context")
-		.eq("country", country)
 		.not("user_action", "is", null)
 		.gte("action_at", thirtyDaysAgo.toISOString());
 	if (context) dailyQuery = dailyQuery.eq("context", context);
@@ -239,7 +214,6 @@ export async function getCachedDiscoveryInsights(
 	let trendRunsQuery = sb
 		.from("discovery_runs")
 		.select("run_at, context, exploration_ratio")
-		.eq("country", country)
 		.gte("run_at", weeksAgo.toISOString())
 		.not("exploration_ratio", "is", null);
 	if (context) trendRunsQuery = trendRunsQuery.eq("context", context);
@@ -324,14 +298,12 @@ export async function getCachedDiscoveryHistory(
 	cacheLife(DISCOVERY_LIFE);
 
 	const sb = getServiceClient();
-	const country = getRuntimeMarketCountry();
 
 	let q = sb
 		.from("discovery_run_feedback_stats")
 		.select(
-			"id, run_at, completed_at, status, target_count, produced_count, iterations, context, country, product_count, feedback_count",
+			"id, run_at, completed_at, status, target_count, produced_count, iterations, context, product_count, feedback_count",
 		)
-		.eq("country", country)
 		.gte("run_at", fromIso)
 		.lte("run_at", toIso)
 		.order("run_at", { ascending: false });
@@ -375,7 +347,6 @@ export async function getCachedDiscoverySelections(
 	cacheLife(DISCOVERY_LIFE);
 
 	const sb = getServiceClient();
-	const country = getRuntimeMarketCountry();
 
 	const fromDate = new Date();
 	fromDate.setUTCDate(fromDate.getUTCDate() - days);
@@ -383,7 +354,6 @@ export async function getCachedDiscoverySelections(
 	let query = sb
 		.from("discovered_products")
 		.select("*", { count: "exact" })
-		.eq("country", country)
 		.gte("action_at", fromDate.toISOString())
 		.order("action_at", { ascending: false });
 
@@ -395,13 +365,11 @@ export async function getCachedDiscoverySelections(
 
 	if (context) query = query.eq("context", context);
 
-	const { data } = await query.limit(5000);
-	const visibleProducts = filterMarketRecords(data ?? []);
-	const offset = page * limit;
+	const { data, count } = await query.range(page * limit, page * limit + limit - 1);
 
 	return {
-		products: visibleProducts.slice(offset, offset + limit) as Array<Record<string, unknown>>,
-		total: visibleProducts.length,
+		products: (data ?? []) as Array<Record<string, unknown>>,
+		total: count ?? 0,
 		page,
 		limit,
 	};

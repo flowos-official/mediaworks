@@ -16,8 +16,6 @@
 import { getServiceClient } from "@/lib/supabase";
 import { buildCategoryMatchTerms } from "@/lib/strategy/category-mapping";
 import { hasExcludedChannel } from "@/lib/discovery/tv-channels";
-import { isMarketRecordVisible } from "@/lib/market/data-visibility";
-import { getRuntimeMarketCountry } from "@/lib/market/runtime-market";
 
 const FAIL_OPEN_THRESHOLD = 5;
 const DEFAULT_LOOKBACK_DAYS = 60;
@@ -91,7 +89,6 @@ function applyFilters(rows: PoolRow[], opts: FilterOptions): PoolRow[] {
 	// all-txd pool collapses → caller's fresh-search fallback engages).
 	const baseFiltered = rows.filter(
 		(r) =>
-			isMarketRecordVisible(r) &&
 			r.context === opts.context &&
 			r.user_action !== "rejected" &&
 			r.user_action !== "duplicate" &&
@@ -191,7 +188,6 @@ export async function queryDiscoveredPool(
 			"id, name, product_url, price_jpy, category, seed_keyword, source, tv_fit_score, tv_fit_reason, tv_channel_source, tv_tier, context, user_action, c_package, enrichment_status, review_count, review_avg, seller_name, broadcast_tag, thumbnail_url, created_at, tv_evidence",
 		)
 		.eq("context", input.context)
-		.eq("country", getRuntimeMarketCountry())
 		.gte("created_at", sinceIso)
 		.order("tv_tier", { ascending: true })
 		.order("tv_fit_score", { ascending: false })

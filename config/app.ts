@@ -16,7 +16,7 @@ export type AppFeature = (typeof APP_FEATURES)[number];
 export const APP_LOCALES = ['ja', 'ko'] as const;
 export type AppLocale = (typeof APP_LOCALES)[number];
 
-export const SUPPORTED_APP_VARIANTS = ['mediaworks-jp', 'lotte-kr'] as const;
+export const SUPPORTED_APP_VARIANTS = ['mediaworks-jp'] as const;
 export type AppVariantId = (typeof SUPPORTED_APP_VARIANTS)[number];
 
 export interface AppConfig {
@@ -124,70 +124,16 @@ const mediaworksJapan: AppConfig = {
   },
 };
 
-const lotteKorea: AppConfig = {
-  id: 'lotte-kr',
-  brand: {
-    name: 'LOTTE HOME SHOPPING',
-    descriptor: 'SONAR · Broadcast AX',
-    mobileDescriptor: 'SONAR · Broadcast AX',
-    marketLabel: 'KOREA',
-    metadataTitle: 'LOTTE HOME SHOPPING · SONAR',
-    metadataDescription: '상품 발굴부터 리서치, 방송 편성, 대본, 심의까지 연결하는 롯데홈쇼핑 AX 운영 플랫폼',
-    themeColor: '#DA291C',
-    logoPath: '/brand/lotte-symbol.svg',
-  },
-  theme: {
-    forcedTheme: 'light',
-    enableSystem: false,
-  },
-  market: {
-    countryCode: 'KR',
-    currency: 'KRW',
-    timezone: 'Asia/Seoul',
-  },
-  i18n: {
-    defaultLocale: 'ko',
-    locales: ['ko', 'ja'],
-  },
-  navigation: {
-    memberLanding: '/analytics/overview',
-    viewerLanding: '/analytics/products',
-  },
-  storage: {
-    sidebarCollapsedKey: 'lotte-sonar-sidebar-collapsed',
-  },
-  copy: {
-    guestKicker: 'LOTTE HOME SHOPPING · SONAR',
-    guestDescription: '상품 데이터, 시장 리서치, 방송 심의와 제작을 하나의 운영 화면에 연결합니다.',
-    analyticsEyebrow: 'LOTTE HOME SHOPPING · FIRST-PARTY',
-    loginKicker: 'LOTTE HOME SHOPPING · SONAR',
-    loginHeadline: '상품 발굴부터 방송 판단, 제작, 심의까지 하나의 운영 화면에.',
-    loginDescription: 'SONAR는 롯데홈쇼핑의 상품 데이터와 운영 기준에 연결된 AI 네이티브 방송 업무 플랫폼입니다.',
-    loginWorkspaceLabel: 'LOTTE SONAR 워크스페이스 로그인',
-  },
-  features: {
-    firmAnalytics: true,
-    broadcastCalendar: true,
-    productDiscovery: true,
-    strategy: true,
-    selectionPipeline: true,
-    research: true,
-    koreaMarketInsights: true,
-    screenplays: true,
-    adminOperations: true,
-    guide: true,
-  },
-  sources: {
-    commerce: ['LOTTE Home Shopping first-party data', 'Brave Search Korea'],
-    broadcasts: ['LOTTE Home Shopping broadcast data'],
-  },
-};
 
 const APP_VARIANTS: Record<AppVariantId, AppConfig> = {
   'mediaworks-jp': mediaworksJapan,
-  'lotte-kr': lotteKorea,
 };
 
+/**
+ * Only the Japanese product remains. The variant lookup is kept so an unknown
+ * NEXT_PUBLIC_APP_VARIANT fails loudly instead of silently serving JP content
+ * under someone else's branding.
+ */
 export function resolveAppConfig(value?: string): AppConfig {
   const variant = (value?.trim() || 'mediaworks-jp') as AppVariantId;
   const config = APP_VARIANTS[variant];

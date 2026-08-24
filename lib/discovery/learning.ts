@@ -14,7 +14,6 @@ import {
 	aggregateCategoryWeights,
 	type CohortRow,
 } from "./outcome-weight";
-import { getRuntimeMarketCountry } from "@/lib/market/runtime-market";
 
 const WINDOW_DAYS = 30;
 const COHORT_DAYS = Number(process.env.LEARNING_OUTCOME_COHORT_DAYS ?? 60);
@@ -67,7 +66,6 @@ export async function computeContextLearning(
 	currentExplorationRatio: number,
 ): Promise<ContextLearningStats> {
 	const sb = getServiceClient();
-	const country = getRuntimeMarketCountry();
 	const since = new Date(Date.now() - WINDOW_DAYS * 24 * 3600 * 1000).toISOString();
 	const cohortSince = new Date(Date.now() - COHORT_DAYS * 24 * 3600 * 1000).toISOString();
 
@@ -76,7 +74,6 @@ export async function computeContextLearning(
 		.from("discovered_products")
 		.select("category, seller_name, product_url, track, user_action, action_reason")
 		.eq("context", context)
-		.eq("country", country)
 		.not("user_action", "is", null)
 		.gte("action_at", since);
 	if (exErr) console.warn(`[learning] explicit query failed (${context}):`, exErr.message);
@@ -87,7 +84,6 @@ export async function computeContextLearning(
 		.from("discovered_products")
 		.select("category, track")
 		.eq("context", context)
-		.eq("country", country)
 		.gte("created_at", since);
 	if (shErr) console.warn(`[learning] shown query failed (${context}):`, shErr.message);
 	const shown = (shownData ?? []) as ShownRow[];
@@ -97,10 +93,9 @@ export async function computeContextLearning(
 	// exploration logic stays unchanged (spec §3).
 	const { data: ddData, error: ddErr } = await sb
 		.from("product_feedback")
-		.select("discovered_products!inner(category, track, context, country)")
+		.select("discovered_products!inner(category, track, context)")
 		.eq("action", "deep_dive")
 		.eq("discovered_products.context", context)
-		.eq("discovered_products.country", country)
 		.gte("created_at", since);
 	if (ddErr) console.warn(`[learning] deep_dive query failed (${context}):`, ddErr.message);
 	const deepDives = (ddData ?? []) as unknown as DeepDiveRow[];
@@ -109,10 +104,9 @@ export async function computeContextLearning(
 	// 60d selection-outcome cohort below (not used for track stats / cold-start).
 	const { data: ddCohortData, error: ddCohortErr } = await sb
 		.from("product_feedback")
-		.select("discovered_products!inner(category, track, context, country)")
+		.select("discovered_products!inner(category, track, context)")
 		.eq("action", "deep_dive")
 		.eq("discovered_products.context", context)
-		.eq("discovered_products.country", country)
 		.gte("created_at", cohortSince);
 	if (ddCohortErr)
 		console.warn(`[learning] deep_dive cohort query failed (${context}):`, ddCohortErr.message);
@@ -124,7 +118,6 @@ export async function computeContextLearning(
 		.from("discovered_products")
 		.select("category, selection_outcome, user_action")
 		.eq("context", context)
-		.eq("country", country)
 		.gte("created_at", cohortSince);
 	if (cohortErr) {
 		console.warn(`[learning] outcome cohort query failed (${context}):`, cohortErr.message);

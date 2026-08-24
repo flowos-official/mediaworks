@@ -34,7 +34,6 @@ const REQUIRED_COLUMNS: Record<string, string[]> = {
 		"iterations",
 		"error",
 		"context",
-		"country",
 	],
 	discovered_products: [
 		"id",
@@ -42,7 +41,6 @@ const REQUIRED_COLUMNS: Record<string, string[]> = {
 		"name",
 		"product_url",
 		"price_jpy",
-		"price_krw",
 		"category",
 		"seed_keyword",
 		"source",
@@ -71,7 +69,6 @@ const REQUIRED_COLUMNS: Record<string, string[]> = {
 		"tv_tier",
 		"selection_outcome",
 		"selection_outcome_at",
-		"country",
 	],
 	product_feedback: ["id", "discovered_product_id", "action", "reason", "created_at"],
 	learning_state: [
@@ -83,7 +80,6 @@ const REQUIRED_COLUMNS: Record<string, string[]> = {
 		"feedback_sample_size",
 		"is_cold_start",
 		"updated_at",
-		"country",
 	],
 	learning_insights: [
 		"id",
@@ -95,7 +91,6 @@ const REQUIRED_COLUMNS: Record<string, string[]> = {
 		"exploration_wins",
 		"next_week_suggestions",
 		"context",
-		"country",
 	],
 	channel_categories: [
 		"channel",
@@ -121,14 +116,12 @@ const REQUIRED_COLUMNS: Record<string, string[]> = {
 		"summary",
 		"created_at",
 	],
-	historical_broadcasts: ["id", "price_jpy", "price_krw", "country"],
+	historical_broadcasts: ["id", "price_jpy"],
 	broadcast_products: [
 		"broadcast_id",
 		"product_id",
 		"price_jpy",
-		"price_krw",
 		"original_price_jpy",
-		"original_price_krw",
 	],
 	research_results: [
 		"id",
@@ -137,7 +130,6 @@ const REQUIRED_COLUMNS: Record<string, string[]> = {
 		"korea_market_fit",
 		"korea_fit_score",
 		"domestic_market_fit",
-		"country",
 	],
 	screenplays: ["last_error"],
 };

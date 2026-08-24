@@ -6,7 +6,6 @@ import {
 } from "@/lib/discovery/learning";
 import { getServiceClient } from "@/lib/supabase";
 import type { Context } from "@/lib/discovery/types";
-import { getRuntimeMarketCountry } from "@/lib/market/runtime-market";
 
 export const maxDuration = 60;
 
@@ -25,7 +24,6 @@ export async function GET(req: NextRequest) {
 	}
 
 	const sb = getServiceClient();
-	const country = getRuntimeMarketCountry();
 	const results: Array<{ context: Context; ok: boolean; error?: string }> = [];
 
 	// Seasonality derives from sales_weekly (context-agnostic), so compute once
@@ -46,7 +44,6 @@ export async function GET(req: NextRequest) {
 				.from("learning_state")
 				.select("exploration_ratio")
 				.eq("context", context)
-				.eq("country", country)
 				.single();
 
 			const currentRatio = Number(current?.exploration_ratio ?? 0.47);
@@ -56,7 +53,6 @@ export async function GET(req: NextRequest) {
 			const { error: upsertErr } = await sb.from("learning_state").upsert(
 				{
 					context,
-					country,
 					exploration_ratio: stats.exploration_ratio,
 					category_weights: stats.category_weights,
 					category_seasonal_weights: seasonalWeights,
@@ -66,7 +62,7 @@ export async function GET(req: NextRequest) {
 					is_cold_start: stats.is_cold_start,
 					updated_at: new Date().toISOString(),
 				},
-				{ onConflict: "context,country" },
+				{ onConflict: "context" },
 			);
 
 			if (upsertErr) {

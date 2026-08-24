@@ -1,6 +1,5 @@
 import { getServiceClient } from "@/lib/supabase";
 import { loadCategoryFitWeights } from "@/lib/discovery/competitor-trend-boost";
-import { getRuntimeMarketCountry } from "@/lib/market/runtime-market";
 
 export interface ChannelTasteProfile {
 	channel_slug: string;
@@ -33,7 +32,6 @@ export async function loadChannelTasteProfile(
 			.from("broadcasts")
 			.select("category")
 			.eq("channel", channelSlug)
-			.eq("country", getRuntimeMarketCountry())
 			.gte("air_date", sinceIso)
 			.not("category", "is", null);
 		if (error || !data) {
@@ -57,7 +55,6 @@ export async function loadChannelTasteProfile(
 		.from("historical_broadcasts")
 		.select("category")
 		.eq("channel", channelSlug)
-		.eq("country", getRuntimeMarketCountry())
 		.gte("air_date", sinceIso);
 	if (histErr) {
 		return emptyProfile(
@@ -89,7 +86,6 @@ export async function loadChannelTasteProfile(
 	const { data: discRows, error: discErr } = await sb
 		.from("discovered_products")
 		.select("category")
-		.eq("country", getRuntimeMarketCountry())
 		.filter("tv_channel_source", "match", slugBoundary)
 		.not("category", "is", null)
 		.gte(
