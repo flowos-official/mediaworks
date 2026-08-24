@@ -1885,7 +1885,7 @@ const CHANNEL_LABELS: Record<string, string> = { qvc: "QVC", shopch: "ShopCh" };
  *  could add a line or a heading, and cap the length. */
 export function sanitiseCategory(raw: string): string {
 	return raw
-		.replace(/[\r\n\t -]+/g, " ")
+		.replace(/[\u0000-\u001F\u007F]+/g, " ")
 		.replace(/\s+/g, " ")
 		.trim()
 		.slice(0, 40);
