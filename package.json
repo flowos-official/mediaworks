@@ -14,6 +14,7 @@
     "test:broadcast-intel-schema": "tsx scripts/test-broadcast-intel-schema.ts",
     "test:broadcast-intel-audio": "tsx scripts/test-broadcast-intel-audio.ts",
     "test:broadcast-intel-aggregate": "tsx scripts/test-broadcast-intel-aggregate.ts",
+    "test:broadcast-intel-prompt": "tsx scripts/test-broadcast-intel-prompt.ts",
     "test:supabase-paginate": "tsx scripts/test-supabase-paginate.ts",
     "test:cron-duplicate-guard": "tsx scripts/test-cron-duplicate-guard.ts",
     "test:migrations": "tsx --env-file=.env.local scripts/check-migrations.ts",
