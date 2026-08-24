@@ -1,5 +1,8 @@
 import { getServiceClient } from "@/lib/supabase";
 
+/** Keep each `in` filter well inside PostgREST's per-response row cap. */
+const ID_CHUNK = 400;
+
 export interface QvcProductView {
 	id: string;
 	name: string | null;
@@ -33,18 +36,26 @@ export async function loadProductsForBroadcasts<
 	if (allIds.size === 0) return map;
 
 	const sb = getServiceClient();
-	const { data, error } = await sb
-		.from("qvc_products")
-		.select("id,name,description,image_url,video_url,price_text,source_url")
-		.in("id", [...allIds]);
-	if (error) {
-		console.warn("loadProductsForBroadcasts: qvc_products fetch failed", error.message);
-		return map;
+	// A 62-day calendar range can reference more than 1000 products, and an
+	// `in` filter that wide still comes back capped at one page — the slots
+	// beyond it would render with no product detail at all.
+	const ids = [...allIds];
+	const data: QvcProductView[] = [];
+	for (let i = 0; i < ids.length; i += ID_CHUNK) {
+		const { data: page, error } = await sb
+			.from("qvc_products")
+			.select("id,name,description,image_url,video_url,price_text,source_url")
+			.in("id", ids.slice(i, i + ID_CHUNK));
+		if (error) {
+			console.warn("loadProductsForBroadcasts: qvc_products fetch failed", error.message);
+			return map;
+		}
+		data.push(...((page ?? []) as unknown as QvcProductView[]));
 	}
 
 	const byId = new Map<string, QvcProductView>();
-	for (const row of data ?? []) {
-		byId.set((row as { id: string }).id, row as QvcProductView);
+	for (const row of data) {
+		byId.set(row.id, row);
 	}
 
 	for (const b of broadcasts) {

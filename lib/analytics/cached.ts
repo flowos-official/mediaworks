@@ -5,6 +5,7 @@ import {
 	revalidateTag,
 } from "next/cache";
 import { getServiceClient } from "@/lib/supabase";
+import { selectAllPages } from "@/lib/supabase/paginate";
 
 const ONE_DAY = 60 * 60 * 24;
 const SEVEN_DAYS = ONE_DAY * 7;
@@ -216,11 +217,19 @@ export async function getCachedSalesProducts(
 
 	const [summaryResult, dateResult] = await Promise.all([
 		query,
-		supabase
-			.from("sales_weekly")
-			.select("product_code, week_start")
-			.or(dateFilters.map((d) => `and(week_start.gte.${d.start},week_start.lte.${d.end})`).join(","))
-			.order("week_start", { ascending: true }),
+		// Two years of weekly rows is past one PostgREST page; a truncated read
+		// gives products the wrong first/last sale date.
+		selectAllPages<{ product_code: string; week_start: string }>(
+			(r) =>
+				supabase
+					.from("sales_weekly")
+					.select("product_code, week_start")
+					.or(dateFilters.map((d) => `and(week_start.gte.${d.start},week_start.lte.${d.end})`).join(","))
+					.order("week_start", { ascending: true })
+					.order("product_code", { ascending: true })
+					.range(r.from, r.to),
+			{ label: "analytics:sales_weekly" },
+		).then((data) => ({ data, error: null as { message: string } | null })),
 	]);
 
 	const dateMap: Record<string, { firstDate: string; lastDate: string }> = {};
