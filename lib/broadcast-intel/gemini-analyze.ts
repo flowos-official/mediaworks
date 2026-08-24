@@ -11,7 +11,7 @@
  *
  * NO `import "server-only"` — imported by tsx smoke scripts.
  */
-import { GoogleGenAI, createPartFromUri, createUserContent } from "@google/genai";
+import { GoogleGenAI, createPartFromUri, createUserContent, ApiError } from "@google/genai";
 import { GEMINI_FLASH, GEMINI_PRO_FALLBACK } from "@/lib/gemini-models";
 import { AUDIO_MIME, NonRetryableAudioError } from "./audio-extract";
 import { ANALYSIS_RESPONSE_SCHEMA, parseAnalysisResponse, type BroadcastAnalysis } from "./schema";
@@ -71,8 +71,11 @@ async function callModel(
 
 function isRetryable(err: unknown): boolean {
 	if (err instanceof NonRetryableAudioError) return false;
+	if (err instanceof ApiError) {
+		return [408, 429, 500, 502, 503, 504].includes(err.status);
+	}
 	const m = err instanceof Error ? err.message : String(err);
-	return /50[0234]|429|overloaded|UNAVAILABLE/i.test(m);
+	return /overloaded|UNAVAILABLE/i.test(m);
 }
 
 export async function analyzeAudio(
