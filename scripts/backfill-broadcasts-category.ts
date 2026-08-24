@@ -113,13 +113,22 @@ async function backfillShopCh(): Promise<{
 	// just NULL-category ones) because previously-classified rows may carry
 	// the Gemini-assigned value that disagrees with the site (observed 24%
 	// disagreement). Also populates product_ids from prodList1.
-	const { data: rows, error } = await sb
-		.from("broadcasts")
-		.select("id, air_date, start_time, category, product_ids")
-		.eq("channel", "shopch");
-	if (error || !rows) {
-		console.error("[shopch] fetch rows failed:", error?.message);
-		return { candidates: 0, updated: 0, skipped: 0 };
+	// PostgREST caps an unbounded select at 1000 rows, which silently limited
+	// this rewrite to a third of the ShopCh history. Page to exhaustion.
+	const rows: unknown[] = [];
+	for (let from = 0; ; from += 1000) {
+		const { data, error } = await sb
+			.from("broadcasts")
+			.select("id, air_date, start_time, category, product_ids")
+			.eq("channel", "shopch")
+			.order("id", { ascending: true })
+			.range(from, from + 999);
+		if (error) {
+			console.error("[shopch] fetch rows failed:", error.message);
+			return { candidates: 0, updated: 0, skipped: 0 };
+		}
+		rows.push(...(data ?? []));
+		if (!data || data.length < 1000) break;
 	}
 	const typedRows = rows as Array<{
 		id: string;
