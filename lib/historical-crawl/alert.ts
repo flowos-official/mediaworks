@@ -23,9 +23,65 @@ import type { ChannelBaseline, PerChannelRunEntry, RunStatus } from "./runs";
 import { postWebhook } from "../alerts/webhook";
 
 export interface CrawlAlert {
-	kind: "run_failed" | "channel_error" | "channel_undercapture" | "channel_silent";
+	kind:
+		| "run_failed"
+		| "channel_error"
+		| "channel_undercapture"
+		| "channel_silent"
+		| "persist_failed";
 	channel?: string;
 	detail: string;
+}
+
+/** What `persistRows` actually managed to store for a run. */
+export interface PersistSummary {
+	totalRows: number;
+	upserted: number;
+	errors: number;
+	firstError?: string;
+}
+
+/**
+ * Every channel check above judges PARSING. None of them can see the save path,
+ * and between 2026-07-28 and 2026-08-19 that blind spot swallowed 22 days of OA
+ * data: the Korean deployment renamed `price_jpy` on the shared table, every
+ * upsert came back PGRST204, and the run still recorded `completed` with
+ * upserted=0 because the persist error count was never stored.
+ *
+ * Rows parsed but not stored is the signal, whether the write failed loudly
+ * (an error) or silently (a BEFORE INSERT trigger returning NULL yields zero
+ * affected rows and no error at all). Pure.
+ */
+export function selectPersistAlert(persist: PersistSummary): CrawlAlert | null {
+	if (persist.totalRows === 0) return null; // nothing to save; channel checks own this
+	if (persist.errors > 0) {
+		return {
+			kind: "persist_failed",
+			detail:
+				`${persist.errors} of ${persist.totalRows} rows failed to upsert ` +
+				`(stored ${persist.upserted})` +
+				(persist.firstError ? `: ${persist.firstError.slice(0, 160)}` : ""),
+		};
+	}
+	if (persist.upserted === 0) {
+		return {
+			kind: "persist_failed",
+			detail:
+				`parsed ${persist.totalRows} rows but stored 0 with no error — ` +
+				"the write is being rejected or skipped silently",
+		};
+	}
+	return null;
+}
+
+/**
+ * A run whose channels all parsed is not "completed" if its rows never landed.
+ * Only ever downgrades: a parse-level `partial`/`failed` stays as it is.
+ */
+export function statusWithPersist(status: RunStatus, persist: PersistSummary): RunStatus {
+	if (status !== "completed") return status;
+	if (selectPersistAlert(persist) === null) return "completed";
+	return persist.upserted > 0 ? "partial" : "failed";
 }
 
 /**
@@ -58,17 +114,20 @@ export function selectCrawlAlerts(
 	channels: PerChannelRunEntry[],
 	baselines: ChannelBaseline[],
 	opts: SelectCrawlAlertsOpts = {},
+	persist?: PersistSummary,
 ): CrawlAlert[] {
 	// A fully-failed run persisted no channel data — one alert, nothing to scan.
 	if (status === "failed") {
 		return [{ kind: "run_failed", detail: "crawl run failed — no channels persisted" }];
 	}
 
+	const persistAlert = persist ? selectPersistAlert(persist) : null;
+
 	const ratio = opts.undercaptureRatio ?? UNDERCAPTURE_RATIO;
 	const minSamples = opts.minMedianSamples ?? MIN_MEDIAN_SAMPLES;
 	const minMedian = opts.minMedian ?? MIN_MEDIAN;
 	const baseByChannel = new Map(baselines.map((b) => [b.channel, b]));
-	const alerts: CrawlAlert[] = [];
+	const alerts: CrawlAlert[] = persistAlert ? [persistAlert] : [];
 
 	for (const c of channels) {
 		if (!c.ok || c.error) {
@@ -150,6 +209,8 @@ export interface MaybeSendCrawlAlertInput {
 	jstDate: string;
 	status: RunStatus;
 	channels: PerChannelRunEntry[];
+	/** Omit only when there was no save step to judge (a total crawl failure). */
+	persist?: PersistSummary;
 }
 
 export interface MaybeSendCrawlAlertDeps {
@@ -191,7 +252,7 @@ export async function maybeSendCrawlAlert(
 			(async (d?: number) => (await import("./runs")).loadBaseline(d));
 		baselines = await load(7);
 	}
-	const alerts = selectCrawlAlerts(input.status, input.channels, baselines, deps.selectOpts);
+	const alerts = selectCrawlAlerts(input.status, input.channels, baselines, deps.selectOpts, input.persist);
 
 	// Silent-zero safety net: ping when a channel has been 0 for N consecutive
 	// runs (needs run history, so it's here rather than in the pure selector).

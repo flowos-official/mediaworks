@@ -6,6 +6,8 @@
 import {
 	selectCrawlAlerts,
 	selectSilentChannels,
+	selectPersistAlert,
+	statusWithPersist,
 	buildCrawlAlertPayload,
 	maybeSendCrawlAlert,
 	type CrawlAlert,
@@ -173,6 +175,46 @@ async function main() {
 		);
 		const j = r.alerts.filter((a) => a.channel === "junsanpo");
 		ok(j.length === 1 && j[0].kind === "channel_undercapture", "channel already flagged → not double-alerted as silent");
+	}
+
+	// ── persist-path failures ────────────────────────────────────────────────
+	// The 2026-07-28~08-19 outage: every channel parsed fine, every upsert was
+	// rejected (a renamed column), and the run still recorded as `completed`
+	// with upserted=0. Parsing health says nothing about whether rows landed.
+	{
+		const a = selectPersistAlert({ totalRows: 435, upserted: 0, errors: 435, firstError: "Could not find the 'price_jpy' column" });
+		ok(a?.kind === "persist_failed", "upsert errors → persist_failed alert");
+		ok((a?.detail ?? "").includes("price_jpy"), "persist alert carries the underlying error");
+	}
+	{
+		// A BEFORE INSERT trigger returning NULL skips rows with no error at all.
+		const a = selectPersistAlert({ totalRows: 435, upserted: 0, errors: 0 });
+		ok(a?.kind === "persist_failed", "parsed rows but stored none → persist_failed even without an error");
+	}
+	{
+		const a = selectPersistAlert({ totalRows: 435, upserted: 435, errors: 0 });
+		ok(a === null, "healthy persist → no alert");
+	}
+	{
+		const a = selectPersistAlert({ totalRows: 0, upserted: 0, errors: 0 });
+		ok(a === null, "nothing parsed → persist stays silent (channel checks own that)");
+	}
+	{
+		const a = selectPersistAlert({ totalRows: 435, upserted: 300, errors: 135 });
+		ok(a?.kind === "persist_failed", "partial upsert failure still alerts");
+	}
+	// status must stop reporting `completed` when nothing was saved
+	{
+		ok(statusWithPersist("completed", { totalRows: 435, upserted: 0, errors: 435 }) === "failed", "no rows saved → failed");
+		ok(statusWithPersist("completed", { totalRows: 435, upserted: 300, errors: 135 }) === "partial", "some rows saved → partial");
+		ok(statusWithPersist("completed", { totalRows: 435, upserted: 435, errors: 0 }) === "completed", "healthy run keeps its status");
+		ok(statusWithPersist("partial", { totalRows: 435, upserted: 435, errors: 0 }) === "partial", "parse-level partial is never upgraded");
+		ok(statusWithPersist("completed", { totalRows: 0, upserted: 0, errors: 0 }) === "completed", "empty crawl is not a persist failure");
+	}
+	// the run-level selector surfaces it alongside channel alerts
+	{
+		const alerts = selectCrawlAlerts("completed", [ch("junsanpo", 148)], [], {}, { totalRows: 148, upserted: 0, errors: 148 });
+		ok(alerts.some((a) => a.kind === "persist_failed"), "selectCrawlAlerts includes the persist alert");
 	}
 
 	console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);

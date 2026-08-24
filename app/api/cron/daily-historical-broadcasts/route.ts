@@ -8,7 +8,7 @@ import {
 	type PerChannelRunEntry,
 	type RunStatus,
 } from "@/lib/historical-crawl/runs";
-import { maybeSendCrawlAlert } from "@/lib/historical-crawl/alert";
+import { maybeSendCrawlAlert, statusWithPersist } from "@/lib/historical-crawl/alert";
 
 export const maxDuration = 300;
 
@@ -38,11 +38,29 @@ export async function GET(req: NextRequest) {
 			...(r.error ? { error: r.error } : {}),
 		}));
 
-		const status: RunStatus = summary.results.every((r) => r.ok)
+		const parseStatus: RunStatus = summary.results.every((r) => r.ok)
 			? "completed"
 			: summary.results.some((r) => r.ok)
 				? "partial"
 				: "failed";
+
+		// Parsing health says nothing about whether the rows landed. A run whose
+		// upserts were all rejected used to record as `completed, upserted=0`,
+		// which is how a 22-day OA outage went unnoticed in 2026-08.
+		const persist = {
+			totalRows: summary.totalRows,
+			upserted: summary.persist.upserted,
+			errors: summary.persist.errors,
+			...(summary.persist.firstError ? { firstError: summary.persist.firstError } : {}),
+		};
+		const status = statusWithPersist(parseStatus, persist);
+		const persistError =
+			summary.persist.errors > 0
+				? `persist: ${summary.persist.errors}/${summary.totalRows} rows failed` +
+					(summary.persist.firstError ? ` — ${summary.persist.firstError}` : "")
+				: summary.totalRows > 0 && summary.persist.upserted === 0
+					? `persist: parsed ${summary.totalRows} rows but stored 0 with no error`
+					: undefined;
 
 		await finalizeRun({
 			runId,
@@ -52,6 +70,7 @@ export async function GET(req: NextRequest) {
 			skippedDup: summary.persist.skippedDuplicate,
 			channels,
 			durationMs: Date.now() - start,
+			...(persistError ? { error: persistError } : {}),
 		});
 
 		// Keep the same console log shape so external log search continues to work.
@@ -98,7 +117,7 @@ export async function GET(req: NextRequest) {
 		// its 7-day median. Silent when healthy. Best-effort — an alert failure
 		// must never break the crawl, so it is fully wrapped.
 		try {
-			const r = await maybeSendCrawlAlert({ jstDate: date, status, channels });
+			const r = await maybeSendCrawlAlert({ jstDate: date, status, channels, persist });
 			if (r.alerts.length > 0 && !r.sent) {
 				console.warn(
 					`[cron daily-historical-broadcasts] alert not sent (${r.skippedReason ?? r.error}): ${r.alerts.length} condition(s)`,

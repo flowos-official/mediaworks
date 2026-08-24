@@ -8,6 +8,8 @@ export interface PersistOutcome {
 	upserted: number;
 	skippedDuplicate: number;
 	errors: number;
+	/** First upsert error of the run, so the recorded run says WHY nothing landed. */
+	firstError?: string;
 }
 
 /**
@@ -33,6 +35,7 @@ export async function persistRows(rows: HistoricalRow[]): Promise<PersistOutcome
 	const sb = getServiceClient();
 	let upserted = 0;
 	let errors = 0;
+	let firstError: string | undefined;
 
 	for (let i = 0; i < unique.length; i += BATCH) {
 		const slice = unique.slice(i, i + BATCH).map((row) => ({
@@ -49,9 +52,10 @@ export async function persistRows(rows: HistoricalRow[]): Promise<PersistOutcome
 		if (error) {
 			console.error("[persistRows] upsert error:", error.message);
 			errors += slice.length;
+			firstError ??= error.message;
 		} else {
 			upserted += count ?? slice.length;
 		}
 	}
-	return { upserted, skippedDuplicate, errors };
+	return { upserted, skippedDuplicate, errors, ...(firstError ? { firstError } : {}) };
 }
