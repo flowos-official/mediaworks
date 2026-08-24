@@ -27,13 +27,19 @@ async function fetchDetail(id: string) {
 		.maybeSingle();
 	if (spErr || !screenplay) return null;
 
-	const { data: versions } = await sb
+	// error must fail loudly (not degrade to []): a real query failure here
+	// (e.g. an unapplied migration referencing pattern_snapshot) would
+	// otherwise render as "this screenplay has no versions" — a plausible-
+	// looking empty state that masks a broken query. Same convention as the
+	// screenplays query above: error -> return null -> caller calls notFound().
+	const { data: versions, error: versionsErr } = await sb
 		.from("screenplay_versions")
 		.select(
 			"id, version_number, markdown, feedback, base_version_id, model, thinking_level, pattern_snapshot, created_at",
 		)
 		.eq("screenplay_id", id)
 		.order("version_number", { ascending: true });
+	if (versionsErr) return null;
 
 	let latestCheck: (ScriptCheckResult & { created_at?: string; lexicon_version?: string }) | null = null;
 	if (screenplay.current_version_id) {
