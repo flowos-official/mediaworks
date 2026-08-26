@@ -114,11 +114,16 @@ export async function extractAudio(
 	// that IAM policy, and serves from an edge cache instead of the bucket.
 	const url = `${base.replace(/\/+$/, "")}/${s3Key}`;
 	const res = await fetch(url, { signal: AbortSignal.timeout(remaining) });
-	if (res.status === 403 || res.status === 404) {
-		// The CloudFront origin is public, so these mean the object is not there
-		// — deterministic, and retrying re-spends the transfer for nothing.
-		throw new NonRetryableAudioError(`archive object not readable (HTTP ${res.status}) for ${s3Key}`);
+	if (res.status === 404) {
+		// Genuinely absent. Retrying re-spends the request for the same answer.
+		throw new NonRetryableAudioError(`archive object not readable (HTTP 404) for ${s3Key}`);
 	}
+	// 403 is NOT permanent here, despite CLAUDE.md's "a 403 means the object
+	// doesn't exist" — that note describes ShopCh's SOURCE m3u8, not our own
+	// distribution. Measured: a drain slot failed with 403, and the identical
+	// URL then returned 200 on five sequential and five concurrent HEADs
+	// (1.23 GB, cache miss then hits). Treating it as permanent pinned a
+	// healthy slot to `failed` after one attempt.
 	if (!res.ok) throw new Error(`archive fetch failed with HTTP ${res.status} for ${s3Key}`);
 	if (!res.body) throw new NonRetryableAudioError(`archive response has no body: ${s3Key}`);
 	const source = Readable.fromWeb(res.body as WebReadableStream<Uint8Array>);
