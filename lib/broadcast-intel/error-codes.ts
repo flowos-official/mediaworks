@@ -20,6 +20,7 @@ export type AnalysisErrorCode =
 	| "no_category"
 	| "config_error"
 	| "s3_fetch_failed"
+	| "cold_storage"
 	| "ffmpeg_failed"
 	| "runtime_unknown"
 	| "low_coverage"

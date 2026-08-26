@@ -10,6 +10,7 @@ import { getServiceClient } from "@/lib/supabase";
 import { extractAudio, NonRetryableAudioError, classifyAudioError, SLOT_TIMEOUT_MS } from "./audio-extract";
 import { analyzeAudio, classifyGeminiError } from "./gemini-analyze";
 import { persistAnalysis } from "./persist";
+import { checkStorageClass } from "./storage-class";
 import type { AnalysisErrorCode } from "./error-codes";
 
 /** Combines both modules' classifiers; analyze-one.ts is the only place that
@@ -86,6 +87,22 @@ export async function analyzeOne(slot: QueuedAnalysisSlot): Promise<AnalyzeResul
 			.update({ analysis_status: "skipped", analysis_error: code })
 			.eq("id", broadcastId).eq("analysis_status", "running");
 		return { broadcastId, status: "skipped", error: code };
+	}
+
+	// A cold object answers HEAD with full metadata and fails only on GET, so
+	// without this the slot spends a 1.2 GB request to learn it. Marked
+	// `skipped`, not `failed`: nothing is wrong with the slot, the bytes are
+	// merely offline until someone restores them.
+	try {
+		const storage = await checkStorageClass(slot.archived_video_s3);
+		if (!storage.retrievable) {
+			await sb.from("broadcasts")
+				.update({ analysis_status: "skipped", analysis_error: "cold_storage" satisfies AnalysisErrorCode })
+				.eq("id", broadcastId).eq("analysis_status", "running");
+			return { broadcastId, status: "skipped", error: `cold_storage (${storage.storageClass})` };
+		}
+	} catch (e) {
+		console.warn(`[broadcast-intel] storage-class check failed for ${broadcastId}, proceeding:`, e);
 	}
 
 	try {
