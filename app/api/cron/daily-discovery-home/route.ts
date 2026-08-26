@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isDuplicateInvocation, invocationOrigin } from "@/lib/cron/duplicate-guard";
+import { isDuplicateInvocation, invocationOrigin, isDuplicateRunError, waitForBlockingRun } from "@/lib/cron/duplicate-guard";
 import { revalidateTag } from "next/cache";
 import { applyBroadcastBoost, tagBroadcastEvidence } from "@/lib/discovery/broadcast";
 import { applyRecentBroadcastPenalty } from "@/lib/discovery/recent-broadcast-penalty";
@@ -77,14 +77,21 @@ export async function GET(req: NextRequest) {
 
 	// This path is invoked twice per night, the second arriving 26-47s after the
 	// first and sometimes on an older build. One trigger, one run.
-	const { data: lastRun } = await getServiceClient()
-		.from("discovery_runs")
-		.select("run_at")
-		.eq("context", CONTEXT)
-		.order("run_at", { ascending: false })
-		.limit(1)
-		.maybeSingle();
-	if (isDuplicateInvocation(lastRun?.run_at)) {
+	const readLatestRun = async () => {
+		const { data } = await getServiceClient()
+			.from("discovery_runs")
+			.select("run_at, status")
+			.eq("context", CONTEXT)
+			.order("run_at", { ascending: false })
+			.limit(1)
+			.maybeSingle();
+		return (data as { run_at: string; status: string } | null) ?? null;
+	};
+	const lastRun = await readLatestRun();
+	// A failed run does not hold the slot. The stale build that wins this race
+	// on some nights fails ~80s in, and treating first-one-wins as final handed
+	// it the whole night's discovery.
+	if (lastRun?.status !== "failed" && isDuplicateInvocation(lastRun?.run_at)) {
 		console.warn(
 			`[cron ${CONTEXT}] duplicate invocation from ${invocationOrigin()} — last run ${lastRun?.run_at}`,
 		);
@@ -106,11 +113,34 @@ export async function GET(req: NextRequest) {
 		});
 
 	const learning = await loadLearningState();
-	const sessionId = await createSession({
-		targetCount: TARGET_COUNT,
-		explorationRatio: learning.exploration_ratio,
-		context: CONTEXT,
-	});
+	const openSession = () =>
+		createSession({
+			targetCount: TARGET_COUNT,
+			explorationRatio: learning.exploration_ratio,
+			context: CONTEXT,
+		});
+
+	// The trigger refuses a second cron-shaped run inside the window. If the run
+	// holding the slot then fails, this one takes over rather than letting the
+	// night go to a build that could not finish it.
+	let sessionId: string;
+	try {
+		sessionId = await openSession();
+	} catch (err) {
+		if (!isDuplicateRunError(err)) throw err;
+		console.warn(`[cron ${CONTEXT}] slot held by another run — waiting (${invocationOrigin()})`);
+		const outcome = await waitForBlockingRun(readLatestRun);
+		if (outcome !== "failed") {
+			return NextResponse.json({
+				ok: true,
+				context: CONTEXT,
+				skipped: "duplicate-invocation",
+				blockingRun: outcome,
+			});
+		}
+		console.warn(`[cron ${CONTEXT}] blocking run failed — taking over`);
+		sessionId = await openSession();
+	}
 
 	const stages = new OptionalStageTracker();
 

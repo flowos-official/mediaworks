@@ -48,3 +48,39 @@ export function invocationOrigin(): string {
 	const sha = (process.env.VERCEL_GIT_COMMIT_SHA ?? "").slice(0, 7);
 	return sha ? `${id} @${sha}` : id;
 }
+
+export type BlockingRunOutcome = "failed" | "settled" | "still-running";
+
+/**
+ * Wait for the run that is currently holding a context's slot to finish.
+ *
+ * A stale build wins this race most nights on one context and fails ~80s in on
+ * a credential the current build no longer uses. First-one-wins would hand the
+ * night to that build and drop the real run, so the healthy caller waits it out
+ * and takes over — but only if it actually failed. A run that succeeds keeps
+ * the slot, which is the whole point of the guard.
+ */
+export async function waitForBlockingRun(
+	readStatus: () => Promise<{ status: string; run_at: string } | null>,
+	options: { timeoutMs?: number; pollMs?: number; sleep?: (ms: number) => Promise<void> } = {},
+): Promise<BlockingRunOutcome> {
+	const timeoutMs = options.timeoutMs ?? 150_000;
+	const pollMs = options.pollMs ?? 10_000;
+	const sleep = options.sleep ?? ((ms: number) => new Promise((r) => setTimeout(r, ms)));
+	const deadline = Date.now() + timeoutMs;
+
+	for (;;) {
+		const row = await readStatus();
+		if (!row) return "failed"; // the blocking row is gone — nothing holds the slot
+		if (row.status === "failed") return "failed";
+		if (row.status !== "running") return "settled";
+		if (Date.now() >= deadline) return "still-running";
+		await sleep(pollMs);
+	}
+}
+
+/** True when an insert was refused by the duplicate-run trigger. */
+export function isDuplicateRunError(err: unknown): boolean {
+	const message = err instanceof Error ? err.message : String(err ?? "");
+	return /duplicate (crawl|discovery) invocation/i.test(message);
+}

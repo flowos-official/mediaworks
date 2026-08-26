@@ -1,5 +1,6 @@
 /**
- * Archived MP4 (S3) → mono 16 kHz ADTS AAC + the real runtime.
+ * Archived MP4 (read via the CloudFront distribution) → mono 16 kHz ADTS AAC
+ * + the real runtime.
  *
  * Runtime: the archive is written with `-movflags frag_keyframe+empty_moov`
  * (lib/broadcasts/video-archival.ts), so the stored MP4 carries no duration in
@@ -13,9 +14,8 @@
  */
 import { spawn } from "node:child_process";
 import { Readable } from "node:stream";
+import type { ReadableStream as WebReadableStream } from "node:stream/web";
 import ffmpegInstaller from "@ffmpeg-installer/ffmpeg";
-import { GetObjectCommand } from "@aws-sdk/client-s3";
-import { getVideoStorageClient } from "@/lib/broadcasts/video-storage";
 import type { AnalysisErrorCode } from "./error-codes";
 
 export const AUDIO_MIME = "audio/aac";
@@ -43,12 +43,15 @@ export class NonRetryableAudioError extends Error {}
  */
 export function classifyAudioError(e: unknown): AnalysisErrorCode | null {
 	if (e instanceof NonRetryableAudioError) {
-		if (e.message.startsWith("S3 object has no body")) return "s3_fetch_failed";
+		if (e.message.startsWith("archive object not readable")) return "s3_fetch_failed";
+		if (e.message.startsWith("archive response has no body")) return "s3_fetch_failed";
 		if (e.message.startsWith("no progress output")) return "runtime_unknown";
 		return null;
 	}
 	if (e instanceof Error) {
 		if (e.message.startsWith("Missing required env var")) return "config_error";
+		if (e.message.startsWith("archive fetch failed with HTTP")) return "s3_fetch_failed";
+		if (e.name === "TimeoutError") return "s3_fetch_failed";
 		if (e.message.startsWith("ffmpeg failed to start")) return "ffmpeg_failed";
 		if (e.message.startsWith("ffmpeg exited with code")) return "ffmpeg_failed";
 		if (e.message.startsWith("audio extraction deadline")) return "ffmpeg_failed";
@@ -95,17 +98,30 @@ export async function extractAudio(
 	s3Key: string,
 	deadline: number = Date.now() + SLOT_TIMEOUT_MS,
 ): Promise<{ audio: Buffer; durationSec: number }> {
-	const bucket = process.env.VIDEO_ARCHIVE_AWS_BUCKET;
-	if (!bucket) throw new Error("Missing required env var: VIDEO_ARCHIVE_AWS_BUCKET");
-	if (deadline - Date.now() <= 0) {
+	const base =
+		process.env.VIDEO_ARCHIVE_BASE_URL ?? process.env.NEXT_PUBLIC_VIDEO_ARCHIVE_BASE_URL;
+	if (!base) throw new Error("Missing required env var: VIDEO_ARCHIVE_BASE_URL");
+	const remaining = deadline - Date.now();
+	if (remaining <= 0) {
 		throw new Error(`audio extraction deadline already elapsed before extraction started for ${s3Key}`);
 	}
 
-	const object = await getVideoStorageClient().send(
-		new GetObjectCommand({ Bucket: bucket, Key: s3Key }),
-	);
-	const source = object.Body as Readable | undefined;
-	if (!source) throw new NonRetryableAudioError(`S3 object has no body: ${s3Key}`);
+	// Read through the public CloudFront distribution rather than S3 GetObject.
+	// The archiver IAM user has PutObject but no GetObject — nothing had ever
+	// needed to read these back, because playback already goes through the CDN
+	// (BroadcastVideoModal builds the same URL). Using the CDN keeps this
+	// pipeline on the same read path as the rest of the app, avoids widening
+	// that IAM policy, and serves from an edge cache instead of the bucket.
+	const url = `${base.replace(/\/+$/, "")}/${s3Key}`;
+	const res = await fetch(url, { signal: AbortSignal.timeout(remaining) });
+	if (res.status === 403 || res.status === 404) {
+		// The CloudFront origin is public, so these mean the object is not there
+		// — deterministic, and retrying re-spends the transfer for nothing.
+		throw new NonRetryableAudioError(`archive object not readable (HTTP ${res.status}) for ${s3Key}`);
+	}
+	if (!res.ok) throw new Error(`archive fetch failed with HTTP ${res.status} for ${s3Key}`);
+	if (!res.body) throw new NonRetryableAudioError(`archive response has no body: ${s3Key}`);
+	const source = Readable.fromWeb(res.body as WebReadableStream<Uint8Array>);
 
 	const proc = spawn(ffmpegInstaller.path, buildAudioFfmpegArgs(), {
 		stdio: ["pipe", "pipe", "pipe"],
