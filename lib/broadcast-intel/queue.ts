@@ -17,13 +17,22 @@ export interface SeedOptions {
 	/** Restrict to one broadcast category. Omit only when you intend to seed
 	 *  every whitelist category on both channels. */
 	category?: string;
+	/** Restrict to one channel. The two channels archive different MEDIA, not
+	 *  merely different lengths: QVC stores ~2-minute per-product digest clips
+	 *  (median 59 MB, no offer segment at all — measured `firstPriceSec: null`,
+	 *  `ctaSecs: []`), while ShopCh stores ~1-hour full programmes (median
+	 *  1216 MB, price at 118s and four CTAs through to the close). Aggregating
+	 *  them together would average a highlight reel against a sales programme,
+	 *  so a corpus should be built one channel at a time. */
+	channel?: "qvc" | "shopch";
 }
 
-export async function seedAnalysisQueue({ limit, category }: SeedOptions): Promise<number> {
+export async function seedAnalysisQueue({ limit, category, channel: only }: SeedOptions): Promise<number> {
 	const sb = getServiceClient();
 	let promoted = 0;
 
 	for (const channel of ["qvc", "shopch"] as const) {
+		if (only && channel !== only) continue;
 		const remaining = limit - promoted;
 		if (remaining <= 0) break;
 

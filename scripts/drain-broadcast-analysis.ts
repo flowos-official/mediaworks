@@ -1,6 +1,6 @@
 /**
  * Local drain — the actual backfill path.
- * Usage: npm run drain:broadcast-analysis -- --limit=40 --category=家電
+ * Usage: npm run drain:broadcast-analysis -- --limit=40 --category=家電 --channel=shopch
  *
  * The cron cannot do this: at 100-200s per slot inside a 300s function it
  * clears 2-4 per run.
@@ -35,11 +35,19 @@ function parseLimit(raw: string | undefined, fallback: number): number {
 async function main(): Promise<void> {
 	const limit = parseLimit(flag("limit"), 40);
 	const category = flag("category") ?? "家電";
+	// One channel at a time: QVC archives ~2-minute digest clips with no offer
+	// segment, ShopCh archives ~1-hour full programmes. Mixing them averages a
+	// highlight reel against a sales programme.
+	const channelArg = flag("channel");
+	if (channelArg && channelArg !== "qvc" && channelArg !== "shopch") {
+		throw new Error(`--channel must be qvc or shopch, got "${channelArg}"`);
+	}
+	const channel = channelArg as "qvc" | "shopch" | undefined;
 	const concurrency = Number(process.env.BROADCAST_INTEL_BATCH_CONCURRENCY) || 2;
 	const sb = getServiceClient();
 
 	console.log(`[drain] recovered ${await recoverStaleAnalysis()} stale slot(s)`);
-	console.log(`[drain] seeded ${await seedAnalysisQueue({ limit, category })} slot(s) for ${category}`);
+	console.log(`[drain] seeded ${await seedAnalysisQueue({ limit, category, channel })} slot(s) for ${category}${channel ? ` / ${channel}` : ""}`);
 
 	const counts = { done: 0, failed: 0, skipped: 0, queued: 0 };
 	let processed = 0;
@@ -48,11 +56,13 @@ async function main(): Promise<void> {
 	const startedAt = Date.now();
 
 	outer: while (processed < limit) {
-		const { data, error } = await sb
+		let q = sb
 			.from("broadcasts")
 			.select("id, channel, air_date, category, archived_video_s3, analysis_attempts")
 			.eq("analysis_status", "queued")
-			.eq("category", category)
+			.eq("category", category);
+		if (channel) q = q.eq("channel", channel);
+		const { data, error } = await q
 			.lt("analysis_attempts", MAX_ATTEMPTS)
 			.order("air_date", { ascending: false })
 			.limit(Math.min(concurrency, limit - processed));

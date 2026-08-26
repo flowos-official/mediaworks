@@ -51,12 +51,25 @@ async function main(): Promise<void> {
 	console.log(`  selling_points ${a.selling_points.length}`);
 	console.log(`  transcript     ${t.segments.length} lines`);
 
-	// The runtime bug this design was rewritten around: a probe-window value
-	// would land near 25-50s regardless of the real programme length.
-	if (a.duration_sec < 300) {
-		throw new Error(`duration_sec=${a.duration_sec} looks like a probe window, not a programme runtime`);
-	}
 	if (a.segments.length === 0) throw new Error("no acts were segmented");
+
+	// The runtime bug this design was rewritten around: a probe-window value
+	// lands far short of the real length. An absolute floor cannot detect it,
+	// because QVC's archived videos are ~2-minute per-product digest clips
+	// (median 59 MB) while ShopCh's are ~1-hour full programmes (median
+	// 1216 MB) — measured. Coverage is the honest test: a probe window makes
+	// the acts span only a fraction of the stated runtime.
+	const lastActEnd = (a.segments as Array<{ endSec: number }>).reduce(
+		(max, s) => Math.max(max, s.endSec),
+		0,
+	);
+	const coverage = lastActEnd / a.duration_sec;
+	console.log(`  act coverage   ${Math.round(coverage * 100)}% of ${a.duration_sec}s`);
+	if (coverage < 0.9) {
+		throw new Error(
+			`acts cover only ${Math.round(coverage * 100)}% of ${a.duration_sec}s — truncated analysis or a probe-window runtime`,
+		);
+	}
 
 	// The transcript row existing is not enough: `transcript` on the Gemini
 	// response is built independently of `segments`, so a row can be present

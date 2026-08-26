@@ -22,6 +22,7 @@ export type AnalysisErrorCode =
 	| "s3_fetch_failed"
 	| "ffmpeg_failed"
 	| "runtime_unknown"
+	| "low_coverage"
 	| "gemini_timeout"
 	| "gemini_error"
 	| "parse_failed"

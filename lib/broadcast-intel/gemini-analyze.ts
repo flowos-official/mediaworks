@@ -55,6 +55,24 @@ function getGenAI(): GoogleGenAI {
 	return _genAI;
 }
 
+/** The runtime is measured by ffmpeg before this call, but was not being told
+ *  to the model — and both probe runs stopped analysing at 77-80% of the file
+ *  and labelled that point `closing`, silently dropping the tail (on a 59-min
+ *  ShopCh programme that meant losing the closing CTA, the single most useful
+ *  timing a script writer wants). Stating the exact length and demanding the
+ *  last act reach it gives the model something to check itself against. */
+export function buildAnalysisPrompt(durationSec: number): string {
+	const mm = Math.floor(durationSec / 60);
+	const ss = String(Math.round(durationSec % 60)).padStart(2, "0");
+	return [
+		`この音声の長さは正確に ${durationSec} 秒（${mm}分${ss}秒）です。`,
+		`最後の act は ${durationSec} 秒で終わらなければならない。`,
+		`途中で終了と判断しないこと。${durationSec} 秒の直前まで発話が続いている。`,
+		"",
+		ANALYSIS_PROMPT,
+	].join("\n");
+}
+
 export const ANALYSIS_PROMPT = [
 	"これは日本のテレビショッピング番組の音声です。",
 	"番組の構成と話法を、後の統計処理のために構造化データとして書き出してください。",
@@ -136,7 +154,10 @@ async function callModel(
 ): Promise<BroadcastAnalysis> {
 	const response = await getGenAI().models.generateContent({
 		model,
-		contents: createUserContent([createPartFromUri(fileUri, fileMime), ANALYSIS_PROMPT]),
+		contents: createUserContent([
+			createPartFromUri(fileUri, fileMime),
+			buildAnalysisPrompt(durationSec),
+		]),
 		config: {
 			responseMimeType: "application/json",
 			responseSchema: ANALYSIS_RESPONSE_SCHEMA,
