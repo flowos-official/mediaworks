@@ -15,7 +15,9 @@ export type SkillCategory =
 export type Provider = "google" | "anthropic";
 
 export interface SkillMeta {
-	/** Provider SDK model identifier (e.g. 'gemini-3.5-flash'). */
+	/** Provider SDK model identifier. Set it from `lib/gemini-models.ts`
+	 *  rather than writing a literal — that file is the single source of
+	 *  truth and a literal here silently drifts when the pin moves. */
 	model: string;
 	provider: Provider;
 	/** Optional generation knobs (temperature, max tokens, thinking budget). */
