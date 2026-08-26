@@ -80,8 +80,11 @@ async function main() {
 
 	// Numeric accuracy — these fail against an empty or hard-coded implementation.
 	assert.ok(block.includes("尺中央値 30分"), block);
-	assert.ok(block.includes("導入 12%"), block);
-	assert.ok(block.includes("実演 43%"), block);
+	// Acts carry their TOTAL share across all passes, not one instance's length.
+	// Every act occurs once in this fixture, so the totals equal the instance
+	// shares — the recurrence case is covered separately below.
+	assert.ok(block.includes("導入 計12%"), block);
+	assert.ok(block.includes("実演 計43%"), block);
 	assert.ok(block.includes("価格初出は尺の 62%"), block);
 	assert.ok(block.includes("18分36秒"), block);
 	assert.ok(block.includes("CTA 中央値 2回"), block);
@@ -150,6 +153,42 @@ async function main() {
 		feedback: "テンポを上げて", previousMarkdown: "# 台本",
 	});
 	assert.ok(!refined.includes("競合放送の構成パターン"), "refine must never receive the pattern block");
+
+	// REGRESSION: acts recur — a measured ShopCh programme ran product_intro
+	// three times. Reporting one instance's length made the rendered line read
+	// as a breakdown summing to 100% while summing to ~42%, so a writer would
+	// give an act a fraction of the time the programmes actually spend on it.
+	// The total must be the SUM of the passes, and the pass count must show.
+	const recurRows: AnalysisRow[] = Array.from({ length: 5 }, () => ({
+		duration_sec: 1000,
+		channel: "shopch" as const,
+		segments: [
+			{ startSec: 0, endSec: 100, actType: "opening" as const },
+			{ startSec: 100, endSec: 400, actType: "demo" as const },
+			{ startSec: 400, endSec: 600, actType: "product_intro" as const },
+			{ startSec: 600, endSec: 900, actType: "demo" as const },
+			{ startSec: 900, endSec: 1000, actType: "closing" as const },
+		],
+		selling_points: [{ order: 1, pointType: "efficacy" as const, firstMentionedSec: 50, repeatCount: 1 }],
+		evidence_cues: [{ type: "demo" as const, atSec: 150 }],
+		objection_handlings: [{ objectionType: "price" as const, atSec: 500 }],
+		offer_timeline: { firstPriceSec: 500, ctaSecs: [950] },
+	}));
+	const recurPattern = aggregatePattern(recurRows, "家電")!;
+	const demo = recurPattern.actSequence.find((a) => a.actType === "demo")!;
+	assert.ok(Math.abs(demo.medianShare - 0.6) < 1e-9, `demo total should be 300+300 of 1000 = 60%, got ${demo.medianShare}`);
+	assert.equal(demo.medianOccurrences, 2, "demo runs twice per broadcast");
+	// Ordering uses the FIRST appearance, so demo (100s) precedes product_intro (400s).
+	assert.deepEqual(
+		recurPattern.actSequence.map((a) => a.actType),
+		["opening", "demo", "product_intro", "closing"],
+	);
+	const recurBlock = formatCategoryPatternBlock(recurPattern);
+	assert.ok(recurBlock.includes("実演 計60%"), recurBlock);
+	assert.ok(recurBlock.includes("2回に分けて"), recurBlock);
+	// The shares now account for the whole runtime instead of a fraction of it.
+	const totalShare = recurPattern.actSequence.reduce((s, a) => s + a.medianShare, 0);
+	assert.ok(Math.abs(totalShare - 1) < 1e-9, `act shares should cover the runtime, got ${totalShare}`);
 
 	console.log("PASS: broadcast-intel prompt block");
 }

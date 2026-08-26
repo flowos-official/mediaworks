@@ -39,7 +39,16 @@ export interface CategoryPattern {
 	sampleSize: number;
 	channels: string[];
 	runtimeMedianSec: number;
-	actSequence: Array<{ actType: ActType; medianShare: number; medianStartShare: number; presenceRate: number }>;
+	actSequence: Array<{
+		actType: ActType;
+		/** Total share of runtime across all passes; sums to ~1 across act types. */
+		medianShare: number;
+		/** Typical number of separate passes in one broadcast. */
+		medianOccurrences: number;
+		/** Median position of the FIRST appearance — the ordering key. */
+		medianStartShare: number;
+		presenceRate: number;
+	}>;
 	sellingPointOrder: Array<{ pointType: PointType; medianOrder: number; presenceRate: number }>;
 	evidenceMix: Array<{ type: EvidenceType; presenceRate: number }>;
 	objectionMix: Array<{ type: ObjectionType; presenceRate: number }>;
@@ -65,27 +74,47 @@ export function aggregatePattern(rows: AnalysisRow[], category: string): Categor
 
 	const runtimeMedianSec = median(usable.map((r) => r.duration_sec))!;
 
-	const actShares = new Map<ActType, number[]>();
-	const actStarts = new Map<ActType, number[]>();
+	// Acts RECUR: a measured 59-minute ShopCh programme ran product_intro three
+	// times, demo four times, offer three times. So the useful figure per act
+	// type is the share of the runtime it occupies IN TOTAL across a broadcast,
+	// plus how many passes that is spread over — not the length of one instance.
+	// An earlier version reported the median of individual instance lengths and
+	// rendered them as `導入 2% → 商品紹介 4% → …`, which sums to 42% and reads
+	// like a breakdown that should sum to 100%: a writer (or a model) would give
+	// product_intro 4% of the script when the programmes actually spend ~17% on
+	// it, spread over three passes.
+	const actTotals = new Map<ActType, number[]>();   // per broadcast, summed share
+	const actCounts = new Map<ActType, number[]>();   // per broadcast, occurrences
+	const actStarts = new Map<ActType, number[]>();   // FIRST occurrence, for ordering
 	const actPresence = new Map<ActType, number>();
 	for (const r of usable) {
+		const totals = new Map<ActType, number>();
+		const counts = new Map<ActType, number>();
+		const firstStart = new Map<ActType, number>();
 		for (const seg of r.segments) {
 			const share = (seg.endSec - seg.startSec) / r.duration_sec;
 			if (!(share > 0)) continue;
-			push(actShares, seg.actType, share);
-			push(actStarts, seg.actType, seg.startSec / r.duration_sec);
+			totals.set(seg.actType, (totals.get(seg.actType) ?? 0) + share);
+			counts.set(seg.actType, (counts.get(seg.actType) ?? 0) + 1);
+			const s = seg.startSec / r.duration_sec;
+			if (!firstStart.has(seg.actType) || s < firstStart.get(seg.actType)!) {
+				firstStart.set(seg.actType, s);
+			}
 		}
-		for (const t of new Set(r.segments.map((s) => s.actType))) {
-			actPresence.set(t, (actPresence.get(t) ?? 0) + 1);
-		}
+		for (const [t, v] of totals) push(actTotals, t, v);
+		for (const [t, v] of counts) push(actCounts, t, v);
+		for (const [t, v] of firstStart) push(actStarts, t, v);
+		for (const t of totals.keys()) actPresence.set(t, (actPresence.get(t) ?? 0) + 1);
 	}
-	// medianShare values are independent medians and do NOT sum to 1; an act
-	// appearing twice in one broadcast is counted twice. presenceRate is what
-	// tells a reader how universal each act is — the prompt must show it.
-	const actSequence = [...actShares.entries()]
-		.map(([actType, shares]) => ({
+	const actSequence = [...actTotals.entries()]
+		.map(([actType, totals]) => ({
 			actType,
-			medianShare: median(shares)!,
+			/** Share of the runtime this act occupies in total, across all its
+			 *  passes. Sums to ~1 across act types when coverage is complete. */
+			medianShare: median(totals)!,
+			/** Typical number of separate passes this act gets in one broadcast. */
+			medianOccurrences: median(actCounts.get(actType)!)!,
+			/** Median position of the act's FIRST appearance — the ordering key. */
 			medianStartShare: median(actStarts.get(actType)!)!,
 			presenceRate: (actPresence.get(actType) ?? 0) / usable.length,
 		}))

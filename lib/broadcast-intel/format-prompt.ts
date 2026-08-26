@@ -62,8 +62,17 @@ export function formatCategoryPatternBlock(pattern: CategoryPattern): string {
 	// presenceRate travels with every act: medianShare values are independent
 	// medians that do not sum to 1, so this is described as "often seen",
 	// never as a definitive structure.
+	// Acts recur — product_intro three times, demo four — so each figure is the
+	// act's TOTAL share of the runtime and the number of separate passes it is
+	// spread over. Rendering one instance's length here instead would read as a
+	// breakdown summing to 100% while summing to about 42%, and a writer would
+	// give an act a fraction of the time the programmes actually spend on it.
 	const acts = pattern.actSequence
-		.map((a) => `${ACT_LABELS_JA[a.actType]} ${pct(a.medianShare)}（出現 ${pct(a.presenceRate)}）`)
+		.map((a) => {
+			const passes = Math.round(a.medianOccurrences);
+			const repeat = passes > 1 ? `${passes}回に分けて` : "";
+			return `${ACT_LABELS_JA[a.actType]} 計${pct(a.medianShare)}（${repeat}出現 ${pct(a.presenceRate)}）`;
+		})
 		.join(" → ");
 
 	const points = pattern.sellingPointOrder
