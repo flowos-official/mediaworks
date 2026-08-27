@@ -66,6 +66,51 @@ export async function seedAnalysisQueue({ limit, category, channel: only }: Seed
 	return promoted;
 }
 
+/**
+ * Make previously-abandoned slots eligible again.
+ *
+ * `skipped` and `failed` are both terminal — the queue selects only 'queued'
+ * and seeding promotes only 'pending', so nothing retries them on its own.
+ * That is correct for a permanent verdict (`no_archived_video`), and wrong for
+ * one that a later action invalidates:
+ *
+ *   cold_storage  → the operator restored the objects (see restore:archives)
+ *   empty_object  → the slot was re-archived
+ *   gemini_error  → a quota or key problem was fixed
+ *
+ * Scoped by error code so a reset can never sweep in slots abandoned for a
+ * different, still-valid reason. Clears `analysis_attempts` too: the attempts
+ * were spent on a precondition that no longer holds, and leaving them at the
+ * cap would make the reset a no-op.
+ */
+export async function resetAnalysisError(
+	code: AnalysisErrorCode,
+	scope: { category?: string; channel?: "qvc" | "shopch" } = {},
+): Promise<number> {
+	const sb = getServiceClient();
+	let q = sb
+		.from("broadcasts")
+		.select("id")
+		.eq("analysis_error", code)
+		.in("analysis_status", ["skipped", "failed"]);
+	if (scope.category) q = q.eq("category", scope.category);
+	if (scope.channel) q = q.eq("channel", scope.channel);
+	const { data: ids, error: selErr } = await q;
+	if (selErr) throw new Error(`reset select failed: ${selErr.message}`);
+	if (!ids || ids.length === 0) return 0;
+
+	// Two-step for the same reason seeding is: PostgREST ignores .limit() on
+	// UPDATE, so the filter set must be pinned to explicit ids.
+	const { data, error: updErr } = await sb
+		.from("broadcasts")
+		.update({ analysis_status: "pending", analysis_error: null, analysis_attempts: 0 })
+		.in("id", ids.map((r) => r.id))
+		.in("analysis_status", ["skipped", "failed"])
+		.select("id");
+	if (updErr) throw new Error(`reset update failed: ${updErr.message}`);
+	return data?.length ?? 0;
+}
+
 /** Requeue slots orphaned in 'running' by a function timeout, deploy or Ctrl-C.
  *  Without this they never retry: the queue selects only 'queued', and every
  *  UPDATE in analyzeOne is guarded on status='running'.

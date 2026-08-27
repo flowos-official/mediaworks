@@ -21,6 +21,7 @@ export type AnalysisErrorCode =
 	| "config_error"
 	| "s3_fetch_failed"
 	| "cold_storage"
+	| "empty_object"
 	| "ffmpeg_failed"
 	| "runtime_unknown"
 	| "low_coverage"

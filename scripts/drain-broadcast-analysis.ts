@@ -1,13 +1,15 @@
 /**
  * Local drain — the actual backfill path.
  * Usage: npm run drain:broadcast-analysis -- --limit=40 --category=家電 --channel=shopch
+ *        …--reset=cold_storage   requeue slots abandoned for that reason first
  *
  * The cron cannot do this: at 100-200s per slot inside a 300s function it
  * clears 2-4 per run.
  */
 import { getServiceClient } from "@/lib/supabase";
 import { analyzeOne, MAX_ATTEMPTS, type QueuedAnalysisSlot } from "@/lib/broadcast-intel/analyze-one";
-import { recoverStaleAnalysis, seedAnalysisQueue } from "@/lib/broadcast-intel/queue";
+import { recoverStaleAnalysis, resetAnalysisError, seedAnalysisQueue } from "@/lib/broadcast-intel/queue";
+import type { AnalysisErrorCode } from "@/lib/broadcast-intel/error-codes";
 
 /** Consecutive failed/requeued slots before the drain aborts. A dead Gemini
  *  key or bad S3 credentials makes every slot fail the same way — without
@@ -45,6 +47,19 @@ async function main(): Promise<void> {
 	const channel = channelArg as "qvc" | "shopch" | undefined;
 	const concurrency = Number(process.env.BROADCAST_INTEL_BATCH_CONCURRENCY) || 2;
 	const sb = getServiceClient();
+
+	// Only codes a later operator action can actually invalidate. `--reset` is
+	// not a general "try everything again": no_archived_video and no_category
+	// are properties of the row, and resetting them just re-skips every run.
+	const RESETTABLE = ["cold_storage", "empty_object", "gemini_error", "gemini_timeout", "s3_fetch_failed"] as const;
+	const resetArg = flag("reset");
+	if (resetArg) {
+		if (!(RESETTABLE as readonly string[]).includes(resetArg)) {
+			throw new Error(`--reset must be one of ${RESETTABLE.join(", ")}; got "${resetArg}"`);
+		}
+		const n = await resetAnalysisError(resetArg as AnalysisErrorCode, { category, channel });
+		console.log(`[drain] reset ${n} slot(s) from ${resetArg} back to pending`);
+	}
 
 	console.log(`[drain] recovered ${await recoverStaleAnalysis()} stale slot(s)`);
 	console.log(`[drain] seeded ${await seedAnalysisQueue({ limit, category, channel })} slot(s) for ${category}${channel ? ` / ${channel}` : ""}`);

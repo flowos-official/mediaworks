@@ -101,6 +101,20 @@ export async function analyzeOne(slot: QueuedAnalysisSlot): Promise<AnalyzeResul
 				.eq("id", broadcastId).eq("analysis_status", "running");
 			return { broadcastId, status: "skipped", error: `cold_storage (${storage.storageClass})` };
 		}
+		// A zero-byte object means the archival upload failed but recorded
+		// success — measured 2026-08-28 on 2026-05-23/shopch, whose row claims
+		// 1,213 MB while both S3 and CloudFront serve 0 bytes. ffmpeg reports
+		// this as `Invalid data found when processing input`, which reads like
+		// a codec fault and, being counted as a failure, trips the drain's
+		// consecutive-failure abort. It is a broken archive, not a transient
+		// error: mark it `failed` so a re-archive is visible as work to do,
+		// but return `skipped` so it never counts toward that abort.
+		if (storage.sizeBytes === 0) {
+			await sb.from("broadcasts")
+				.update({ analysis_status: "failed", analysis_error: "empty_object" satisfies AnalysisErrorCode })
+				.eq("id", broadcastId).eq("analysis_status", "running");
+			return { broadcastId, status: "skipped", error: "empty_object" };
+		}
 	} catch (e) {
 		console.warn(`[broadcast-intel] storage-class check failed for ${broadcastId}, proceeding:`, e);
 	}
