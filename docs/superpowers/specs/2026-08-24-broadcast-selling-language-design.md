@@ -345,30 +345,58 @@ v1의 `PATTERN_MIN_SAMPLES`는 접두사가 없어 충돌 위험이 있었으므
 | `PATTERN_MIN_SAMPLES` | `BROADCAST_INTEL_MIN_SAMPLES` (§13) |
 | 크론 `0 20 * * *` | `archive-videos`와 충돌. 홀수시 (§5.2) |
 
-## 17. 구현 상태 (2026-08-25, branch `worktree-broadcast-intel`)
+## 17. 구현 상태 (2026-08-27 갱신)
 
-13개 태스크 중 실행 가능한 부분은 전부 구현·리뷰 완료. 태스크별 리뷰 13회 + 전체 브랜치 리뷰 1회 + 최종 수정 웨이브 1회를 거쳤다.
+코드는 전부 `main`에 병합됐고, 파이프라인이 실제 방송으로 관통 검증됐다. 남은 것은 코퍼스 적재와 사람에 의한 품질 평가다.
 
-**그린 상태**: `npm run test:broadcast-intel`(순수 5종), `test:data-intelligence-graph`, `check:i18n`, `tsc --noEmit`, `lint`(에러 0).
+**그린**: `npm run test:broadcast-intel`(순수 5종), `test:data-intelligence-graph`, `check:i18n`, `tsc --noEmit`, `lint`.
 
-### 미완 — 운영자 작업 필요
+### 라이브 검증에서 드러난 것 (테스트로는 잡히지 않던 것들)
 
-1. **Task 1b: 마이그레이션 미적용.** `supabase/migrations/20260825090000_broadcast_speech_analyses.sql`가 작성만 되어 있다. `.env.local`에 `SUPABASE_DB_PASSWORD`가 없어 `scripts/apply-sql-file.ts`를 쓸 수 없다.
-2. **Task 13b: end-to-end 미실행.** 라이브 스모크, 40편 드레인, 블라인드 전/후 비교가 아직 돌지 않았다. 위 1번과, §14의 죽은 `GEMINI_API_KEY` 제거(사람이 직접)에 걸려 있다.
+| 결함 | 조치 |
+| --- | --- |
+| S3 `GetObject` 권한 없음 | CloudFront 경유로 전환 |
+| 분석이 러닝타임의 77~80%에서 끊기고 `closing`으로 위장 | 프롬프트에 실측 러닝타임 명시 → 양쪽 100% |
+| `duration_sec < 300` 단언이 정상 데이터 탈락 | 커버리지 기준으로 교체 |
+| CloudFront 403을 영구 실패로 오분류 | 403은 재시도 가능, 404만 영구 |
+| 액트 반복을 개별 인스턴스 길이로 집계 | 총 점유율 + 반복 횟수로 변경 |
+| 고정 10액트가 측정 패턴을 완전히 무력화 | 패턴 있을 때 러닝오더를 패턴에서 도출 |
+| 콜드 사전 확인이 `HeadObject` 403으로 무용지물 | `ListObjectsV2` 기반으로 교체 |
 
-### BLOCKING DEPLOY GATE
+### 패턴 주입 효과 — 대조군 포함 측정 (2026-08-27, ShopCh ファッション 5편 집계)
 
-**마이그레이션 적용 전에 이 브랜치를 배포하면 안 된다.** `app/[locale]/(produce)/screenplays/[id]/page.tsx`가 `screenplay_versions.pattern_snapshot`을 SELECT하므로, 컬럼이 없으면 PostgREST가 거부하고 대본 상세 페이지가 실패한다. (실패가 조용한 빈 목록이 아니라 눈에 보이도록 고쳐 두었다.) 적용 후 `npm run test:migrations`가 그린이 되며, 이 명령이 게이트의 자동 검증 수단이다.
+| | OFF ×3 | ON ×4 |
+| --- | --- | --- |
+| 액트 수 | 9 / 9 / 9 (템플릿 고정) | 10 / 17 / 17 / 17 |
+| 실연 전용 액트 | 0 | 4 |
+| 문면 거리 | 그룹내 0.754 | 그룹간 0.806 (11쌍 전부 같은 방향) |
+| 경쟁사 고유명사 | 없음 | 없음 |
+| 전문가·후기 날조 | 0 | 0 (패턴이 100%라 해도 브리프 근거 없으면 생성 안 함) |
 
-### Sankey "현재 운영" 표시의 전제
+**주의**: 이는 "구조가 바뀐다"의 증명이지 "대본이 더 좋다"의 증명이 아니다. 사람에 의한 채점은 아직 없다.
 
-§9의 노드 전환은 세 조건이 모두 충족되어야 참이 된다: (1) 마이그레이션 적용, (2) `BROADCAST_INTEL_ENABLED=true`, (3) 해당 카테고리에 분석 완료 방송 `BROADCAST_INTEL_MIN_SAMPLES`편 이상 누적. 그 전에는 `/analytics/pipeline`이 실제보다 앞선 상태를 표시한다.
+### 인프라 상태
+
+- S3 라이프사이클: `holding-archive-2026-08-08` 규칙이 **생성 1일 후 DEEP_ARCHIVE**로 전환하고 있었다(설계 문서의 "N년 후" 의도와 어긋남). 2026-08-27 **Glacier Instant Retrieval로 변경** — 이후 신규 객체는 복원 불필요.
+- 기존 콜드 5,051건(3.24TB)은 자동 복구되지 않음. `家電` 345편(160GB)에 **2026-08-27 Standard tier 복원 요청 완료**, 14일 보관. 약 12시간 후 사용 가능.
+- IAM `mediaworks-broadcast-archiver`에 `s3:GetObject` + `s3:RestoreObject` 추가됨(2026-08-27).
+
+### 다음 순서
+
+1. `npm run restore:archives -- --category=家電 --status` — 복원 완료 확인
+2. `npm run drain:broadcast-analysis -- --limit=40 --category=家電 --channel=shopch` (약 43분, Gemini 약 $4.4)
+3. `家電` 집계로 프롬프트 블록 생성 확인
+4. **정식 워크플로로** 대본 A/B 생성 — `pattern_snapshot`이 DB에 남아야 함 (현재 0건)
+5. **운영자 채점** — `docs/japan/2026-08-21-client-request-ja.md`의 시트로 블라인드 평가. 이 단계만이 "쓸 만한가"에 답한다
+
+### 운영 메모
+
+- 로컬 실행은 `env -u GEMINI_API_KEY` 를 붙일 것. Claude Code 프로세스가 죽은 키를 물려받은 경우가 있었다(셸 rc는 2026-08-27 정리됨).
+- 로컬 드레인은 `BROADCAST_INTEL_SLOT_TIMEOUT_MS=600000` 권장. 기본 200초는 인리전 S3 기준이라 가정 회선에서는 부족하다.
 
 ### 후속 과제 (병합 차단 아님)
 
-- `format-prompt.ts`가 서로 독립인 두 중앙값을 한 문장에 묶어 `価格初出は尺の {share}（中央値 {sec}地点）`로 렌더한다. 표기는 정직하나 두 수치의 조합이 산술적으로 어긋나 보일 수 있다.
-- 공유 deadline 도입으로 재시도 의미가 바뀌었다. ffmpeg 다리가 상한을 다 쓰면 Gemini 호출 없이 즉시 타임아웃되어 3회 만에 `failed`가 될 수 있다.
-- `"audio extraction deadline already elapsed"`가 타임아웃 코드가 아니라 `ffmpeg_failed`로 분류된다.
-- `loadPatternStep`은 category가 null이면 아무 로그도 남기지 않는다.
-- 신규 두 테이블의 RLS를 member/viewer 클라이언트로 실제 검증하는 테스트가 없다.
-- `broadcast_transcripts` 가드는 파일 단위·문자열 기반이라, 허용된 파일 안의 향후 변경은 막지 못한다.
+- 채널별 매체가 다름: QVC는 2분 다이제스트(오퍼 구간 없음), ShopCh는 59분 완결 프로그램. 한 집계에 섞으면 안 되며 `--channel`로 분리한다.
+- ShopCh 전사 커버리지는 43% 수준(59분에 28줄). 구조 분석은 100%지만 축어 전사는 표본에 가깝다. 테이블 주석의 "축어 전사" 표현을 정정할 것.
+- 방송 카테고리 ↔ 상품 카테고리 매퍼 부재 — 현재 완전일치만 지원.
+- 신규 두 테이블의 RLS를 member/viewer 클라이언트로 검증하는 테스트 없음.
