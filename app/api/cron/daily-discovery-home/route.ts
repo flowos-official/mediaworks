@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isDuplicateInvocation, invocationOrigin, isDuplicateRunError, waitForBlockingRun } from "@/lib/cron/duplicate-guard";
+import { decideDuplicateAction, invocationOrigin, isDuplicateRunError, waitForBlockingRun } from "@/lib/cron/duplicate-guard";
 import { revalidateTag } from "next/cache";
 import { applyBroadcastBoost, tagBroadcastEvidence } from "@/lib/discovery/broadcast";
 import { applyRecentBroadcastPenalty } from "@/lib/discovery/recent-broadcast-penalty";
@@ -87,15 +87,18 @@ export async function GET(req: NextRequest) {
 			.maybeSingle();
 		return (data as { run_at: string; status: string } | null) ?? null;
 	};
-	const lastRun = await readLatestRun();
-	// A failed run does not hold the slot. The stale build that wins this race
-	// on some nights fails ~80s in, and treating first-one-wins as final handed
-	// it the whole night's discovery.
-	if (lastRun?.status !== "failed" && isDuplicateInvocation(lastRun?.run_at)) {
-		console.warn(
-			`[cron ${CONTEXT}] duplicate invocation from ${invocationOrigin()} — last run ${lastRun?.run_at}`,
-		);
-		return NextResponse.json({ ok: true, context: CONTEXT, skipped: "duplicate-invocation", lastRunAt: lastRun?.run_at });
+	const action = decideDuplicateAction(await readLatestRun());
+	if (action !== "proceed") {
+		// Standing down while the other run is still going would hand the night
+		// to it; wait and take over only if it fails.
+		const outcome = action === "wait" ? await waitForBlockingRun(readLatestRun) : "settled";
+		if (outcome !== "failed") {
+			console.warn(
+				`[cron ${CONTEXT}] slot held by another run (${outcome}) — standing down (${invocationOrigin()})`,
+			);
+			return NextResponse.json({ ok: true, context: CONTEXT, skipped: "duplicate-invocation", blockingRun: outcome });
+		}
+		console.warn(`[cron ${CONTEXT}] blocking run failed — taking over (${invocationOrigin()})`);
 	}
 
 	const startedAt = Date.now();

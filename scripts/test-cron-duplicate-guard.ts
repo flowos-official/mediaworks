@@ -6,6 +6,7 @@ import {
 	isDuplicateInvocation,
 	DUPLICATE_WINDOW_MS,
 	waitForBlockingRun,
+	decideDuplicateAction,
 	isDuplicateRunError,
 } from "@/lib/cron/duplicate-guard";
 
@@ -42,10 +43,25 @@ ok(isDuplicateInvocation(new Date(now.getTime() - 10_000), now), "Date input wor
 // The stale build wins the live_commerce race most nights and fails ~80s in.
 // First-one-wins handed it the night; the healthy caller must be able to take
 // over once that run has actually failed — and only then.
+// ── what to do when a run already holds the window ───────────────────────────
+// Skipping on sight is what let the stale build keep live_commerce: it was
+// still "running" when the healthy caller checked, so the caller stood down
+// and the run it was waiting on failed 80s later.
+{
+	const at = (s: string, status: string) => ({ run_at: s, status });
+	const now = new Date("2026-08-26T23:30:50Z");
+	ok(decideDuplicateAction(at("2026-08-26T23:30:25Z", "running"), now) === "wait", "in-flight run → wait it out, do not stand down");
+	ok(decideDuplicateAction(at("2026-08-26T23:30:25Z", "failed"), now) === "proceed", "failed run → proceed at once");
+	ok(decideDuplicateAction(at("2026-08-26T23:30:25Z", "completed"), now) === "skip", "completed run → skip");
+	ok(decideDuplicateAction(at("2026-08-26T23:30:25Z", "partial"), now) === "skip", "partial run → skip");
+	ok(decideDuplicateAction(at("2026-08-26T23:00:00Z", "running"), now) === "proceed", "outside the window → proceed regardless of status");
+	ok(decideDuplicateAction(null, now) === "proceed", "no previous run → proceed");
+}
+
 async function takeover() {
 	const seq = (statuses: string[]) => {
 		let i = 0;
-		return async () => (i < statuses.length ? { status: statuses[i++], run_at: "2026-08-25T23:30:25Z" } : null);
+		return async () => (i < statuses.length ? { status: statuses[i++], run_at: "2026-08-26T23:30:25Z" } : null);
 	};
 	const noSleep = async () => {};
 

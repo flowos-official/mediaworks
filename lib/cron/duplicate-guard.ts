@@ -49,6 +49,28 @@ export function invocationOrigin(): string {
 	return sha ? `${id} @${sha}` : id;
 }
 
+export type DuplicateAction = "proceed" | "skip" | "wait";
+
+/**
+ * What to do when a run already exists inside the window.
+ *
+ * Skipping on sight looks right and is wrong: the invocation that wins the race
+ * on live_commerce is a stale build that fails ~80 s in, so a healthy caller
+ * that stands down while that run is still going hands it the night. Only a run
+ * that has actually settled without failing earns an immediate skip; one still
+ * in flight has to be waited out.
+ */
+export function decideDuplicateAction(
+	lastRun: { run_at: string; status: string } | null | undefined,
+	now: Date = new Date(),
+	windowMs: number = DUPLICATE_WINDOW_MS,
+): DuplicateAction {
+	if (!lastRun || !isDuplicateInvocation(lastRun.run_at, now, windowMs)) return "proceed";
+	if (lastRun.status === "failed") return "proceed";
+	if (lastRun.status === "running") return "wait";
+	return "skip";
+}
+
 export type BlockingRunOutcome = "failed" | "settled" | "still-running";
 
 /**
