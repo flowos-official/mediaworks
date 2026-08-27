@@ -80,7 +80,8 @@ export const __test = { loadStyleBible, buildSafeStyleReference };
 // SYSTEM INSTRUCTION — immutable role / output contract.
 // Hard rule: output is 100% Japanese. No English anywhere.
 // ────────────────────────────────────────────────────────────────────────────
-export const SYSTEM_INSTRUCTION = `
+function buildSystemInstructionText(actSection: string): string {
+	return `
 あなたはテレビ東京系「生活情報マーケット (テレ東ダイレクト)」のチーフ放送作家です。
 20年以上、現役のテレビショッピング番組の構成・台本を執筆してきました。
 あなたの仕事は、与えられた商品ブリーフから、生放送さながらの **完成版テレビショッピング台本** を Markdown で書き起こすこと。
@@ -120,33 +121,7 @@ export const SYSTEM_INSTRUCTION = `
 
 ## 本編
 
-### ■アバン — つかみと問題提起
-（生活上の困りごとを提示。確認済みの専門家情報がある場合だけ権威付けに使用）
-
-### ■スタジオ① — 導入と従来品との対比
-（従来品との対比 → ドラマチック登場）
-
-### ■スタジオ② — 実演（複数）
-（商品ブリーフで確認できる特徴を、視覚的に理解できる実演で示す）
-
-### ■CTA① — 最初の注文案内（約90秒）
-（実演直後の納得感を受け、電話番号・注文方法・主要条件を案内）
-
-### ■スタジオ③ — 反論処理と機能性
-（想定異論を順に潰す + 機能のおまけ価値）
-
-### ■スタジオ④ — 価格発表
-（バリュースタック → 「お値段そのまま」落とし）
-
-### ■CTA② — 価格と条件の注文案内（約90〜120秒）
-（価格・送料・保証など、商品ブリーフで確認できる条件だけを案内）
-
-### ■VTR — 使用シーン／確認済みのお客様の声
-（お客様の声がブリーフにある場合だけ引用。なければ利用場面やよくある疑問を扱う）
-
-### ■CTA③ — 最終案内（約60〜90秒）
-（電話番号・注文方法・確認済みの条件を再提示）
-
+${actSection}
 ## 価格＆オファー
 （Markdownテーブル）
 
@@ -225,6 +200,69 @@ export const SYSTEM_INSTRUCTION = `
 アクト境界は \`---\` で区切る。
 密度は商品ブリーフで指定された放送尺に合わせる。指定がなければ25分相当を目指す。
 `.trim();
+}
+
+/** The ten-act running order this project shipped with. Invented here, not
+ *  taken from any MWB house format, so a measured competitor structure is free
+ *  to replace it. */
+const DEFAULT_ACT_SECTION = `### ■アバン — つかみと問題提起
+（生活上の困りごとを提示。確認済みの専門家情報がある場合だけ権威付けに使用）
+
+### ■スタジオ① — 導入と従来品との対比
+（従来品との対比 → ドラマチック登場）
+
+### ■スタジオ② — 実演（複数）
+（商品ブリーフで確認できる特徴を、視覚的に理解できる実演で示す）
+
+### ■CTA① — 最初の注文案内（約90秒）
+（実演直後の納得感を受け、電話番号・注文方法・主要条件を案内）
+
+### ■スタジオ③ — 反論処理と機能性
+（想定異論を順に潰す + 機能のおまけ価値）
+
+### ■スタジオ④ — 価格発表
+（バリュースタック → 「お値段そのまま」落とし）
+
+### ■CTA② — 価格と条件の注文案内（約90〜120秒）
+（価格・送料・保証など、商品ブリーフで確認できる条件だけを案内）
+
+### ■VTR — 使用シーン／確認済みのお客様の声
+（お客様の声がブリーフにある場合だけ引用。なければ利用場面やよくある疑問を扱う）
+
+### ■CTA③ — 最終案内（約60〜90秒）
+（電話番号・注文方法・確認済みの条件を再提示）`;
+
+/** Used when a competitor-pattern block is present.
+ *
+ *  Measured: with the fixed ten acts, injecting the pattern changed nothing.
+ *  Three screenplays — two without the block, one with — produced an identical
+ *  act list, and the with/without text distance (0.739) was indistinguishable
+ *  from the distance between the two runs that had no block at all (0.733).
+ *  The pattern said 実演 occupies 35% of the hour across four passes and that
+ *  evidence is carried by 専門家 and 利用者の声 in 100% of programmes; the
+ *  template gave 実演 one section and produced no expert or testimonial content
+ *  in any run. The template was simply louder than the measurement.
+ *
+ *  So when a pattern exists, the running order comes from it. The document
+ *  skeleton and every anti-fabrication rule stay exactly as they are. */
+const PATTERN_DRIVEN_ACT_SECTION = `（アクト構成は「競合放送の構成パターン」に従って自分で組み立てる。以下を守ること）
+
+- パターンに挙がったアクトを、記載された順序で並べる。各アクトの見出しは \`### ■{アクト名}\` とする。
+- 「計N%」はそのアクトが尺全体に占める合計割合。指定の放送尺に換算して配分する。
+- 「M回に分けて」とあるアクトは、番組内でM回に分けて登場させる。1か所にまとめない。
+- 「根拠提示の型」に挙がった手段のうち、商品ブリーフで確認できるものだけを使う。確認できない専門家・お客様の声・試験結果は、割合が高くても作ってはならない。該当がなければ使用シーンやよくある疑問に置き換える。
+- 「想定される視聴者の懸念」は、反論処理のアクトで扱う話題の候補として使う。
+- 「オファー進行」の価格初出位置とCTA回数に合わせる。ただしCTAで案内してよいのは商品ブリーフで確認できる価格・送料・保証・特典だけ。
+- パターンは構成の設計にのみ使う。競合商品の名称・数値・実演内容は含まれておらず、推測して補ってはならない。`;
+
+/** `hasPattern` swaps the running order for one derived from measured
+ *  competitor structure. Everything else in the contract is identical. */
+export function buildSystemInstruction(hasPattern: boolean): string {
+	return buildSystemInstructionText(hasPattern ? PATTERN_DRIVEN_ACT_SECTION : DEFAULT_ACT_SECTION);
+}
+
+/** Back-compat for callers with no pattern. */
+export const SYSTEM_INSTRUCTION = buildSystemInstruction(false);
 
 // ────────────────────────────────────────────────────────────────────────────
 // PRODUCT BRIEF formatter

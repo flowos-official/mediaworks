@@ -1,7 +1,7 @@
 // lib/screenplay/generator.ts
 import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { GEMINI_PRO_FALLBACK } from "@/lib/gemini-models";
-import { buildUserPrompt, SYSTEM_INSTRUCTION } from "./prompt";
+import { buildUserPrompt, buildSystemInstruction } from "./prompt";
 import type { GenerateInput, GenerationResult } from "./types";
 
 let _genAI: GoogleGenAI | null = null;
@@ -36,7 +36,11 @@ export function stripInternalNotes(markdown: string): string {
     .trim();
 }
 
-async function callOnce(userPrompt: string, onChunk?: (chars: number) => void): Promise<string> {
+async function callOnce(
+  userPrompt: string,
+  systemInstruction: string,
+  onChunk?: (chars: number) => void,
+): Promise<string> {
   const controller = new AbortController();
   const hardTimer = setTimeout(
     () => controller.abort(new Error(`Gemini hard timeout ${HARD_TIMEOUT_MS}ms`)),
@@ -51,7 +55,7 @@ async function callOnce(userPrompt: string, onChunk?: (chars: number) => void): 
       model: MODEL,
       contents: userPrompt,
       config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
+        systemInstruction,
         thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
         abortSignal: controller.signal,
       },
@@ -78,11 +82,15 @@ export async function generateScreenplay(
   onChunk?: (chars: number) => void,
 ): Promise<GenerationResult> {
   const userPrompt = await buildUserPrompt(input);
+  // A measured competitor structure replaces the invented ten-act running
+  // order. With the fixed acts in place the injected pattern moved nothing —
+  // see PATTERN_DRIVEN_ACT_SECTION in prompt.ts for the measurement.
+  const systemInstruction = buildSystemInstruction(Boolean(input.patternBlock?.trim()));
   const ATTEMPTS = 3;
   let lastErr: unknown;
   for (let i = 1; i <= ATTEMPTS; i++) {
     try {
-      const raw = await callOnce(userPrompt, onChunk);
+      const raw = await callOnce(userPrompt, systemInstruction, onChunk);
       let md = raw.trim();
       const fence = md.match(/^```(?:markdown|md)?\s*\n([\s\S]*?)\n```\s*$/i);
       if (fence) md = fence[1].trim();
