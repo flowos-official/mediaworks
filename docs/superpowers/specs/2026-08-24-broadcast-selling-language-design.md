@@ -375,6 +375,30 @@ v1의 `PATTERN_MIN_SAMPLES`는 접두사가 없어 충돌 위험이 있었으므
 
 **주의**: 이는 "구조가 바뀐다"의 증명이지 "대본이 더 좋다"의 증명이 아니다. 사람에 의한 채점은 아직 없다.
 
+### 정식 경로 통합 검증 (2026-08-27, 로컬 dev 3001)
+
+배포 없이 실제 엔드포인트를 그대로 호출해 확인했다. 그 전까지 A/B 는 `generateScreenplay` 를 직접 불러 우회했기 때문에 라우트·워크플로·UI 가 한 번도 실행되지 않은 상태였다.
+
+**크론 라우트** `GET /api/cron/analyze-broadcast-audio`
+`{"ok":true,"seeded":10,"processed":94,"skipped":94,"duration_ms":10160}` — 94편 전부 콜드로 걸러졌고 다운로드는 0건. `ListObjectsV2` 기반 사전 확인이 실제로 동작함을 확인.
+
+**대본 워크플로** `POST /api/screenplays` (브라우저 로그인 세션 사용)
+
+| | 플래그 OFF | 플래그 ON |
+| --- | --- | --- |
+| HTTP / 완료 | 200 / ready 80초 | 200 / ready 80초 |
+| `pattern_snapshot` | null | `ファッション` 5편 |
+| 액트 | 9개 (템플릿) | 17개 (패턴 기반) |
+| UI 표시 | 없음 | `競合放送の構成パターン 5件を反映` |
+
+考査 패널도 자동 실행되어 `QUALITY INDEX 93 / 高リスク 0件` — 패턴 주입 대본이 기존 심의 체크를 통과한다.
+
+**운영 주의**: `BROADCAST_INTEL_ENABLED` 는 앱 프로세스 환경에서 읽힌다. 워크플로가 Next 서버 안에서 실행되므로 스크립트에 걸면 무시된다. 배포 시 **Vercel 환경변수**로 설정할 것. 재배포 없이 값만 지우면 즉시 원복된다.
+
+**참고**: 워크플로 SDK 는 `"use workflow"` 지시어를 Next 빌드가 변환하므로, tsx 로 `start(screenplayWorkflow, ...)` 를 직접 호출할 수 없다. 정식 경로 검증은 반드시 HTTP 라우트를 통해야 한다.
+
+**별건**: `npm run e2e:screenplay` 가 11 스텝 중 8개 실패. 원인은 `3874c8b Revamp MediaWorks UI and screenplay workspace` 이후 UI 가 바뀌었는데 스크립트가 따라가지 않은 것 — 이 기능과 무관하나 대본 생성 골든패스 회귀 테스트가 죽어 있다.
+
 ### 인프라 상태
 
 - S3 라이프사이클: `holding-archive-2026-08-08` 규칙이 **생성 1일 후 DEEP_ARCHIVE**로 전환하고 있었다(설계 문서의 "N년 후" 의도와 어긋남). 2026-08-27 **Glacier Instant Retrieval로 변경** — 이후 신규 객체는 복원 불필요.
