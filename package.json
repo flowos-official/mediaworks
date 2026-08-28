@@ -167,7 +167,8 @@
     "test:backward-compat-parsed-goal": "tsx scripts/test-backward-compat-parsed-goal.ts",
     "check:chokepoint": "tsx scripts/check-runGoalAnalysis-callers.ts",
     "check:i18n": "tsx scripts/check-message-parity.ts",
-    "restore:archives": "tsx --env-file=.env.local scripts/restore-cold-archives.ts"
+    "restore:archives": "tsx --env-file=.env.local scripts/restore-cold-archives.ts",
+    "verify:pipeline": "tsx --env-file=.env.local scripts/verify-pipeline.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1016.0",
