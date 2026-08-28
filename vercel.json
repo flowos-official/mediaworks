@@ -139,10 +139,6 @@
     {
       "path": "/api/cron/analyze-broadcast-audio",
       "schedule": "0 19 * * *"
-    },
-    {
-      "path": "/api/cron/ping",
-      "schedule": "*/5 * * * *"
     }
   ]
 }
