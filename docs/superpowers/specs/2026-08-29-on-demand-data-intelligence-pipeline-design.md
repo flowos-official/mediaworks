@@ -1,7 +1,7 @@
 # 온디맨드 데이터 인텔리전스 파이프라인 설계
 
 - **작성일:** 2026-08-29
-- **상태:** 설계 결정 승인 완료, 문서 검토 대기
+- **상태:** 최종 승인 완료, 구현 계획 작성 완료
 - **대상 프로젝트:** MediaWorks
 - **대상 소스:** 현재 연결된 QVC Japan, Shop Channel, OA 계열 데이터만
 - **핵심 결정:** 데이터와 인사이트는 백그라운드에서 축적하고, 제품 추천과 대본은 사용자가 요청할 때만 생성한다.
@@ -802,4 +802,9 @@ LLM은 확정된 후보·점수·근거를 설명한다. 후보 순위의 원천
 - 과거 데이터 backfill 배치 크기와 운영 시간대.
 - 엑셀 원본 보존 기간과 취소 구현 방식.
 
-이 문서가 승인되면 `superpowers:writing-plans` 절차로 Phase 0부터 세부 구현 계획을 작성한다.
+이 문서는 최종 승인됐으며, 구현은 다음 계획 순서로 진행한다.
+
+1. `docs/superpowers/plans/2026-08-29-data-intelligence-foundation.md`
+2. `docs/superpowers/plans/2026-08-29-stored-only-product-finder.md`
+3. `docs/superpowers/plans/2026-08-29-grounded-screenplay-workflow.md`
+4. `docs/superpowers/plans/2026-08-29-controlled-knowledge-inputs.md`
