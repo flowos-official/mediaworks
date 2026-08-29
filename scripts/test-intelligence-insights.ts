@@ -8,12 +8,14 @@ import {
 } from "../lib/intelligence/insights";
 import type { EvidenceItem, EvidenceValueState } from "../lib/intelligence/types";
 import {
+	INITIAL_INSIGHT_SCAN_STATE,
 	createInsightRefreshRepository,
 	persistInsightSnapshot,
 	refreshIntelligenceInsights,
 	resolveStoredBroadcastCategories,
+	type EvidenceScanCursor,
+	type EvidenceScanState,
 	type InsightRefreshRepository,
-	type SnapshotPersistence,
 } from "../lib/intelligence/refresh-insights";
 import type { PipelineRunCounts, PipelineRunHandle } from "../lib/intelligence/pipeline-run";
 import {
@@ -198,6 +200,15 @@ const broadcastEvidence: EvidenceItem[] = [
 	assert.equal(result.structurePatternAvailability, undefined, "unknown structures do not become zero availability");
 }
 
+{
+	const conflictingCategory = buildBroadcastCategoryInsight([
+		evidence({ id: "conflicting-structure", subjectType: "broadcast", subjectId: "conflicting-broadcast", predicate: "segment_pattern", valueState: "conflicting", sourceType: "qvc", sourceTable: "broadcast_speech_analyses", sourceRecordId: "conflicting-broadcast" }),
+	], "家電", CUTOFF);
+	const result = conflictingCategory.result as any;
+	assert.equal(conflictingCategory.coverage.structurePatterns, "conflicting");
+	assert.equal(result.structurePatternAvailability, undefined, "conflicting structures remain coverage-only, never numeric zero");
+}
+
 console.log("PASS: deterministic stored-evidence insight builders");
 
 function pipelineHandle(events: Array<{ status: string; counts?: Partial<PipelineRunCounts> }>): PipelineRunHandle {
@@ -210,264 +221,533 @@ function pipelineHandle(events: Array<{ status: string; counts?: Partial<Pipelin
 	};
 }
 
-function repository(overrides: Partial<InsightRefreshRepository> = {}): InsightRefreshRepository {
+function repository(overrides: Record<string, unknown> = {}): InsightRefreshRepository {
 	return {
-		async listActiveSubjectHeads() { return []; },
+		async loadScanState() { return INITIAL_INSIGHT_SCAN_STATE; },
+		async scanActiveEvidencePage() { return { evidence: [], reachedEnd: true }; },
+		async saveScanState() {},
 		async resolveBroadcastCategories() { return new Map(); },
 		async loadLatestInsightCutoffs() { return new Map(); },
 		async loadProductEvidence() { throw new Error("unexpected product evidence load"); },
-		async loadCategoryEvidence() { throw new Error("unexpected category evidence load"); },
+		async loadBroadcastEvidence() { throw new Error("unexpected broadcast evidence load"); },
 		async writeSnapshot() { throw new Error("unexpected snapshot write"); },
 		...overrides,
+	} as InsightRefreshRepository;
+}
+
+function databaseEvidenceRow(item: EvidenceItem): Record<string, unknown> {
+	return {
+		id: item.id,
+		dedupe_key: item.dedupeKey,
+		subject_type: item.subjectType,
+		subject_id: item.subjectId,
+		predicate: item.predicate,
+		value_json: item.value ?? null,
+		unit: item.unit ?? null,
+		value_state: item.valueState,
+		evidence_class: item.evidenceClass,
+		source_type: item.sourceType,
+		source_table: item.sourceTable,
+		source_record_id: item.sourceRecordId,
+		source_url: item.sourceUrl ?? null,
+		source_locator: item.sourceLocator ?? null,
+		observed_at: item.observedAt,
+		valid_from: item.validFrom ?? null,
+		valid_until: item.validUntil ?? null,
+		confidence: item.confidence,
+		raw_hash: item.rawHash ?? null,
 	};
 }
 
-async function testRefresh(): Promise<void> {
+function memoryRefreshRepository(input: {
+	evidence: EvidenceItem[];
+	latest?: Map<string, string>;
+	categories?: Map<string, string | null>;
+}) {
+	let state: EvidenceScanState = INITIAL_INSIGHT_SCAN_STATE;
+	const writes: Array<{ subjectType: string; subjectId: string; evidenceIds: string[] }> = [];
+	const loadedBroadcastGroups: string[][] = [];
+	const latest = input.latest ?? new Map<string, string>();
+	const categories = input.categories ?? new Map<string, string | null>();
+	const repo = repository({
+		async loadScanState() { return state; },
+		async scanActiveEvidencePage(_cutoff: string, cursor: EvidenceScanCursor | null, pageSize: number) {
+			const start = cursor ? input.evidence.findIndex((item) => item.id === cursor.evidenceId) + 1 : 0;
+			const evidencePage = input.evidence.slice(start, start + pageSize);
+			return { evidence: evidencePage, reachedEnd: start + evidencePage.length >= input.evidence.length };
+		},
+		async saveScanState(_runId: string, next: EvidenceScanState) { state = next; },
+		async resolveBroadcastCategories(ids: string[]) {
+			return new Map(ids.map((id) => [id, categories.get(id) ?? null]));
+		},
+		async loadLatestInsightCutoffs(subjects: Array<{ subjectType: "product" | "category"; subjectId: string }>) {
+			return new Map(subjects.flatMap((subject) => {
+				const value = latest.get(`${subject.subjectType}\u0000${subject.subjectId}`);
+				return value ? [[`${subject.subjectType}\u0000${subject.subjectId}`, value] as const] : [];
+			}));
+		},
+		async loadProductEvidence(productId: string) {
+			return [evidence({ id: `snapshot-${productId}`, subjectId: productId, predicate: "price_jpy", value: 1_000 })];
+		},
+		async loadBroadcastEvidence(broadcastIds: string[]) {
+			const ids = [...broadcastIds].sort();
+			loadedBroadcastGroups.push(ids);
+			return ids.flatMap((broadcastId, index) => [
+				evidence({ id: `${broadcastId}-category`, subjectType: "broadcast", subjectId: broadcastId, predicate: "normalized_category", value: categories.get(broadcastId), evidenceClass: "verified", sourceType: index % 2 ? "shopch" : "qvc", sourceTable: "broadcasts", sourceRecordId: broadcastId }),
+				evidence({ id: `${broadcastId}-date`, subjectType: "broadcast", subjectId: broadcastId, predicate: "air_date", value: `2026-08-${20 + index}`, evidenceClass: "verified", sourceType: index % 2 ? "shopch" : "qvc", sourceTable: "broadcast_speech_analyses", sourceRecordId: broadcastId }),
+			]);
+		},
+		async writeSnapshot(draft: any) {
+			writes.push({ subjectType: draft.subjectType, subjectId: draft.subjectId, evidenceIds: draft.evidenceIds });
+			latest.set(`${draft.subjectType}\u0000${draft.subjectId}`, draft.inputUntil);
+			return `written-${draft.subjectId}`;
+		},
+	});
+	return { repository: repo, writes, loadedBroadcastGroups, latest, get state() { return state; } };
+}
+
+async function testRefreshRound1(): Promise<void> {
 	{
-		let selectedSubjectTypes: string[] = [];
-		const internalRow = {
-			id: "internal-profit",
-			dedupe_key: "dedupe:internal-profit",
-			subject_type: "internal_product",
-			subject_id: "canonical-product",
-			predicate: "gross_profit_jpy",
-			value_json: 2_500,
-			unit: "JPY",
-			value_state: "known",
-			evidence_class: "internal_input",
-			source_type: "internal_excel",
-			source_table: "sales_weekly",
-			source_record_id: "sales-row",
-			source_url: null,
-			source_locator: null,
-			observed_at: "2026-08-28T00:00:00.000Z",
-			valid_from: null,
-			valid_until: null,
-			confidence: 1,
-			raw_hash: null,
+		const draft = buildProductMarketInsight(productEvidence, CUTOFF);
+		let deleted = false;
+		await assert.rejects(
+			persistInsightSnapshot({
+				async insertParent() { return "rollback-parent"; },
+				async insertEvidenceLinks() { throw new Error("link insert unavailable"); },
+				async deleteParent() { deleted = true; },
+			}, draft),
+			/link insert unavailable/,
+		);
+		assert.equal(deleted, true, "a link failure compensates by deleting the new parent");
+
+		await assert.rejects(
+			persistInsightSnapshot({
+				async insertParent() { return "cleanup-parent"; },
+				async insertEvidenceLinks() { return draft.evidenceIds.length - 1; },
+				async deleteParent() { throw new Error("cleanup unavailable"); },
+			}, draft),
+			/evidence link count mismatch.*snapshot cleanup failed: cleanup unavailable/,
+			"the primary count mismatch and cleanup failure are both surfaced",
+		);
+	}
+
+	{
+		const conflictingCurrent = resolveStoredBroadcastCategories(
+			["broadcast-explicit", "broadcast-domain"],
+			[
+				evidence({ id: "old-explicit", subjectType: "broadcast", subjectId: "broadcast-explicit", predicate: "normalized_category", value: "旧分類", evidenceClass: "verified", sourceTable: "broadcasts", sourceRecordId: "same", observedAt: "2026-08-10T00:00:00.000Z" }),
+				evidence({ id: "current-conflict", subjectType: "broadcast", subjectId: "broadcast-explicit", predicate: "normalized_category", valueState: "conflicting", evidenceClass: "verified", sourceTable: "broadcasts", sourceRecordId: "same", observedAt: "2026-08-20T00:00:00.000Z" }),
+				evidence({ id: "current-explicit", subjectType: "broadcast", subjectId: "broadcast-explicit", predicate: "category", value: "家電", evidenceClass: "verified", sourceTable: "manual_category", sourceRecordId: "manual", observedAt: "2026-08-21T00:00:00.000Z" }),
+			],
+			[
+				{ broadcastId: "broadcast-explicit", category: "美容", source: "broadcast_speech_analyses" },
+				{ broadcastId: "broadcast-explicit", category: "生活", source: "broadcasts" },
+				{ broadcastId: "broadcast-domain", category: "コスメ", source: "broadcast_speech_analyses" },
+				{ broadcastId: "broadcast-domain", category: "服飾", source: "broadcasts" },
+			],
+			CUTOFF,
+		);
+		assert.deepEqual([...conflictingCurrent.entries()], [
+			["broadcast-domain", "コスメ"],
+			["broadcast-explicit", "家電"],
+		], "one current explicit category wins; otherwise the stored source-domain precedence supplies exactly one category");
+	}
+
+	{
+		const cursor: EvidenceScanCursor = {
+			observedAt: "2026-08-28T12:00:00.000Z",
+			subjectType: "product",
+			subjectId: "product-a",
+			evidenceId: "evidence-a",
 		};
+		const row = evidence({ id: "evidence-b", subjectId: "product-b", predicate: "price_jpy", value: 2_000, observedAt: "2026-08-28T11:00:00.000Z" });
+		const orders: Array<[string, boolean]> = [];
+		let cursorFilter = "";
+		let requestedLimit = 0;
 		const client = {
 			from(table: string) {
 				assert.equal(table, "evidence_items");
 				const builder: any = {
 					select: () => builder,
-					in(column: string, values: string[]) {
-						if (column === "subject_type") selectedSubjectTypes = values;
-						return builder;
-					},
+					in: () => builder,
 					lte: () => builder,
 					neq: () => builder,
-					or: () => builder,
-					order: () => builder,
-					range: async () => ({ data: selectedSubjectTypes.includes("internal_product") ? [internalRow] : [], error: null }),
+					or(value: string) { cursorFilter = value; return builder; },
+					order(column: string, options: { ascending: boolean }) { orders.push([column, options.ascending]); return builder; },
+					limit(value: number) { requestedLimit = value; return Promise.resolve({ data: [databaseEvidenceRow(row)], error: null }); },
 				};
 				return builder;
 			},
 		};
-		const heads = await createInsightRefreshRepository(client as never).listActiveSubjectHeads(CUTOFF, 200);
-		assert.deepEqual(heads, [{ subjectType: "product", subjectId: "canonical-product", newestObservedAt: "2026-08-28T00:00:00.000Z" }]);
+		const page = await createInsightRefreshRepository(client as never).scanActiveEvidencePage(CUTOFF, cursor, 2);
+		assert.deepEqual(page, { evidence: [row], reachedEnd: true });
+		assert.equal(requestedLimit, 2);
+		assert.deepEqual(orders.slice(-4), [["observed_at", false], ["subject_type", true], ["subject_id", true], ["id", true]]);
+		assert.match(cursorFilter, /observed_at\.lt\.2026-08-28T12:00:00\.000Z/);
+		assert.match(cursorFilter, /subject_id\.gt\.product-a/);
+		assert.match(cursorFilter, /id\.gt\.evidence-a/);
 	}
 
 	{
-		let explicitCategoryFilter: unknown;
+		const storedState: EvidenceScanState = {
+			v: 1,
+			position: { observedAt: "2026-08-27T00:00:00.000Z", subjectType: "broadcast", subjectId: "broadcast-9", evidenceId: "evidence-9" },
+		};
+		let savedPayload: Record<string, unknown> | undefined;
+		let excludedRun = "";
+		const client = {
+			from(table: string) {
+				assert.equal(table, "data_pipeline_runs");
+				const builder: any = {
+					select: () => builder,
+					eq: () => builder,
+					not: () => builder,
+					neq(_column: string, value: string) { excludedRun = value; return builder; },
+					order: () => builder,
+					limit: () => builder,
+					maybeSingle: async () => ({ data: { cursor_json: storedState }, error: null }),
+					update(payload: Record<string, unknown>) { savedPayload = payload; return builder; },
+					single: async () => ({ data: { id: "current-run" }, error: null }),
+				};
+				return builder;
+			},
+		};
+		const production = createInsightRefreshRepository(client as never);
+		assert.deepEqual(await production.loadScanState("current-run"), storedState);
+		await production.saveScanState("current-run", INITIAL_INSIGHT_SCAN_STATE);
+		assert.equal(excludedRun, "current-run");
+		assert.deepEqual(savedPayload, { cursor_json: INITIAL_INSIGHT_SCAN_STATE });
+	}
+
+	{
+		const requestedTables: string[] = [];
+		let exactBroadcastIds: string[] = [];
+		const row = evidence({ id: "b-exact-date", subjectType: "broadcast", subjectId: "broadcast-exact", predicate: "air_date", value: "2026-08-20", sourceType: "qvc", sourceTable: "broadcast_speech_analyses", sourceRecordId: "broadcast-exact" });
+		const client = {
+			from(table: string) {
+				requestedTables.push(table);
+				const builder: any = {
+					select: () => builder,
+					in(column: string, values: string[]) { if (column === "subject_id") exactBroadcastIds = values; return builder; },
+					lte: () => builder,
+					neq: () => builder,
+					or: () => builder,
+					order: () => builder,
+					range: async () => ({ data: [databaseEvidenceRow(row)], error: null }),
+				};
+				return builder;
+			},
+		};
+		const loaded = await createInsightRefreshRepository(client as never).loadBroadcastEvidence(["broadcast-exact"], CUTOFF);
+		assert.deepEqual(loaded, [row]);
+		assert.deepEqual(exactBroadcastIds, ["broadcast-exact"]);
+		assert.deepEqual(requestedTables, ["evidence_items"], "bounded category evidence loading never queries a whole source-domain category");
+	}
+
+	{
+		const requestedIds = new Map<string, string[]>();
+		const explicit = evidence({
+			id: "explicit-category",
+			subjectType: "broadcast",
+			subjectId: "broadcast-resolved",
+			predicate: "normalized_category",
+			value: "明示分類",
+			evidenceClass: "verified",
+			sourceTable: "manual_category",
+			sourceRecordId: "broadcast-resolved",
+		});
+		const domainData: Record<string, Array<Record<string, unknown>>> = {
+			broadcast_speech_analyses: [{ broadcast_id: "broadcast-resolved", category: "音声分類" }],
+			broadcasts: [{ id: "broadcast-resolved", category: "放送分類" }],
+			historical_broadcasts: [{ id: "broadcast-resolved", category: "履歴分類" }],
+		};
 		const client = {
 			from(table: string) {
 				const builder: any = {
 					select: () => builder,
-					eq(column: string, value: unknown) {
-						if (table === "evidence_items" && column === "value_json") explicitCategoryFilter = value;
+					in(column: string, values: string[]) {
+						if (column === "subject_id" || column === "broadcast_id" || column === "id") requestedIds.set(table, values);
 						return builder;
 					},
-					in: () => builder,
 					lte: () => builder,
 					neq: () => builder,
 					or: () => builder,
 					order: () => builder,
-					range: async () => ({ data: [], error: null }),
+					range: async () => ({ data: [databaseEvidenceRow(explicit)], error: null }),
+					then(resolve: (value: unknown) => unknown, reject: (reason: unknown) => unknown) {
+						return Promise.resolve({ data: domainData[table] ?? [], error: null }).then(resolve, reject);
+					},
 				};
 				return builder;
 			},
 		};
-		await createInsightRefreshRepository(client as never).loadCategoryEvidence("家電", CUTOFF);
-		assert.equal(explicitCategoryFilter, JSON.stringify("家電"), "JSONB string membership uses a valid JSON literal");
+		const resolved = await createInsightRefreshRepository(client as never)
+			.resolveBroadcastCategories(["broadcast-resolved"], CUTOFF);
+		assert.equal(resolved.get("broadcast-resolved"), "明示分類", "production resolution applies explicit-evidence precedence");
+		for (const table of ["evidence_items", "broadcast_speech_analyses", "broadcasts", "historical_broadcasts"]) {
+			assert.deepEqual(requestedIds.get(table), ["broadcast-resolved"], `${table} is constrained to the bounded broadcast IDs`);
+		}
 	}
 
 	{
-		const resolved = resolveStoredBroadcastCategories(
-			["explicit", "domain", "fallback", "missing"],
-			[
-				evidence({ id: "explicit-category", subjectType: "broadcast", subjectId: "explicit", predicate: "normalized_category", value: "家電", evidenceClass: "verified", sourceTable: "broadcasts", sourceRecordId: "explicit" }),
-				evidence({ id: "unknown-category", subjectType: "broadcast", subjectId: "fallback", predicate: "category", valueState: "unknown", sourceTable: "broadcasts", sourceRecordId: "fallback" }),
-			],
-			[
-				{ broadcastId: "explicit", category: "美容", source: "broadcasts" },
-				{ broadcastId: "domain", category: "コスメ", source: "broadcast_speech_analyses" },
-				{ broadcastId: "fallback", category: "生活", source: "broadcasts" },
-			],
-			CUTOFF,
-		);
-		assert.deepEqual([...resolved.entries()], [
-			["domain", "コスメ"],
-			["explicit", "家電"],
-			["fallback", "生活"],
-			["missing", null],
-		]);
-	}
-
-	{
-		const calls: string[] = [];
-		const persistence: SnapshotPersistence = {
-			async insertParent(draft) { calls.push(`parent:${draft.evidenceIds.length}`); return "snapshot-ok"; },
-			async insertEvidenceLinks(snapshotId, evidenceIds) { calls.push(`links:${snapshotId}:${evidenceIds.length}`); return evidenceIds.length; },
-			async deleteParent(snapshotId) { calls.push(`delete:${snapshotId}`); },
-		};
-		const id = await persistInsightSnapshot(persistence, buildProductMarketInsight(productEvidence, CUTOFF));
-		assert.equal(id, "snapshot-ok");
-		assert.deepEqual(calls, ["parent:9", "links:snapshot-ok:9"]);
-	}
-
-	for (const scenario of ["link-error", "count-mismatch"] as const) {
-		const calls: string[] = [];
-		const persistence: SnapshotPersistence = {
-			async insertParent() { calls.push("parent"); return `snapshot-${scenario}`; },
-			async insertEvidenceLinks(_snapshotId, evidenceIds) {
-				calls.push("links");
-				if (scenario === "link-error") throw new Error("link unavailable");
-				return evidenceIds.length - 1;
+		const draft = buildProductMarketInsight(productEvidence, CUTOFF);
+		let parentPayload: Record<string, unknown> | undefined;
+		let linkedRows: Array<Record<string, unknown>> = [];
+		let deletedParent = false;
+		const client = {
+			from(table: string) {
+				const builder: any = {
+					insert(payload: Record<string, unknown> | Array<Record<string, unknown>>) {
+						if (table === "insight_snapshots") parentPayload = payload as Record<string, unknown>;
+						else linkedRows = payload as Array<Record<string, unknown>>;
+						return builder;
+					},
+					select() {
+						if (table === "insight_snapshot_evidence") {
+							return Promise.resolve({ data: linkedRows.map((row) => ({ evidence_item_id: row.evidence_item_id })), error: null });
+						}
+						return builder;
+					},
+					single: async () => ({ data: { id: "production-parent" }, error: null }),
+					delete() { deletedParent = true; return builder; },
+					eq: async () => ({ error: null }),
+				};
+				return builder;
 			},
-			async deleteParent() { calls.push("delete"); },
+		};
+		const snapshotId = await createInsightRefreshRepository(client as never).writeSnapshot(draft);
+		assert.equal(snapshotId, "production-parent");
+		assert.equal(parentPayload?.evidence_count, draft.evidenceIds.length);
+		assert.deepEqual(
+			linkedRows.map((row) => row.evidence_item_id),
+			draft.evidenceIds,
+			"the production adapter writes every and only used evidence ID",
+		);
+		assert.equal(deletedParent, false);
+	}
+
+	{
+		const draft = buildProductMarketInsight(productEvidence, CUTOFF);
+		let deletedParent = false;
+		const client = {
+			from(table: string) {
+				const builder: any = {
+					insert: () => builder,
+					select() {
+						return table === "insight_snapshot_evidence"
+							? Promise.resolve({ data: [], error: null })
+							: builder;
+					},
+					single: async () => ({ data: { id: "mismatch-parent" }, error: null }),
+					delete() { deletedParent = true; return builder; },
+					eq: async () => ({ error: null }),
+				};
+				return builder;
+			},
 		};
 		await assert.rejects(
-			() => persistInsightSnapshot(persistence, buildProductMarketInsight(productEvidence, CUTOFF)),
-			scenario === "link-error" ? /link unavailable/ : /evidence link count mismatch/,
+			createInsightRefreshRepository(client as never).writeSnapshot(draft),
+			/evidence link count mismatch/,
 		);
-		assert.deepEqual(calls, ["parent", "links", "delete"], `${scenario} deletes the unlinked snapshot parent`);
+		assert.equal(deletedParent, true, "the production adapter deletes its parent after a returned link-count mismatch");
 	}
 
 	{
-		const persistence: SnapshotPersistence = {
-			async insertParent() { return "snapshot-cleanup-fails"; },
-			async insertEvidenceLinks() { throw new Error("link unavailable"); },
-			async deleteParent() { throw new Error("delete unavailable"); },
-		};
-		await assert.rejects(
-			() => persistInsightSnapshot(persistence, buildProductMarketInsight(productEvidence, CUTOFF)),
-			/link unavailable.*snapshot cleanup failed: delete unavailable/,
-			"cleanup failure is surfaced alongside the primary link failure",
-		);
-	}
-
-	{
-		const events: Array<{ status: string; counts?: Partial<PipelineRunCounts> }> = [];
-		let writes = 0;
-		const result = await refreshIntelligenceInsights({} as never, CUTOFF, 200, {
-			repository: repository({
-				async listActiveSubjectHeads() {
-					return [{ subjectType: "product", subjectId: "unchanged", newestObservedAt: "2026-08-20T00:00:00.000Z" }];
-				},
-				async loadLatestInsightCutoffs() {
-					return new Map([["product\u0000unchanged", "2026-08-20T00:00:00.000Z"]]);
-				},
-				async writeSnapshot() { writes += 1; return "unexpected"; },
-			}),
-			startPipelineRun: async () => pipelineHandle(events),
-		});
-		assert.equal(writes, 0, "no evidence newer than the matching insight cutoff writes no snapshot");
-		assert.equal(result.skippedNoNewEvidence, 1);
-		assert.equal(result.status, "succeeded");
-		assert.deepEqual(events.map((event) => event.status), ["succeeded"]);
-		assert.deepEqual(events[0]?.counts, { new: 0, updated: 0, duplicate: 1, failed: 0, processed: 1 });
-	}
-
-	{
-		const heads = Array.from({ length: 205 }, (_, index) => ({
-			subjectType: "product" as const,
-			subjectId: `product-${String(index).padStart(3, "0")}`,
-			newestObservedAt: new Date(Date.parse(CUTOFF) - index * 1_000).toISOString(),
+		const stale = Array.from({ length: 201 }, (_, index) => evidence({
+			id: `stale-${String(index).padStart(3, "0")}`,
+			subjectId: `stale-${String(index).padStart(3, "0")}`,
+			predicate: "price_jpy",
+			value: 1_000,
+			observedAt: new Date(Date.parse("2026-08-28T23:00:00.000Z") - index * 1_000).toISOString(),
 		}));
-		const writes: string[] = [];
-		let observedRepositoryLimit = 0;
-		const result = await refreshIntelligenceInsights({} as never, CUTOFF, 999, {
-			repository: repository({
-				async listActiveSubjectHeads(_cutoff, limit) { observedRepositoryLimit = limit; return heads; },
-				async loadProductEvidence(productId) {
-					return [evidence({ id: `price-${productId}`, subjectId: productId, predicate: "price_jpy", value: 1_000 })];
-				},
-				async writeSnapshot(draft) { writes.push(draft.subjectId); return `snapshot-${draft.subjectId}`; },
-			}),
-			startPipelineRun: async () => null,
-		});
-		assert.equal(observedRepositoryLimit, 200);
-		assert.equal(writes.length, 200, "orchestrator defends the 200-subject bound even when a repository over-returns");
-		assert.equal(result.consideredSubjects, 200);
-		assert.equal(result.productSnapshots, 200);
-		assert.deepEqual(writes, heads.slice(0, 200).map((head) => head.subjectId), "refresh order is deterministic");
+		const eligibleOne = evidence({ id: "eligible-one", subjectId: "eligible-one", predicate: "price_jpy", value: 2_000, observedAt: "2026-08-27T00:00:00.000Z" });
+		const eligibleTwo = evidence({ id: "eligible-two", subjectId: "eligible-two", predicate: "price_jpy", value: 3_000, observedAt: "2026-08-26T00:00:00.000Z" });
+		const latest = new Map(stale.map((item) => [`product\u0000${item.subjectId}`, CUTOFF]));
+		const memory = memoryRefreshRepository({ evidence: [...stale, eligibleOne, eligibleTwo], latest });
+		const first = await refreshIntelligenceInsights({} as never, CUTOFF, 1, { repository: memory.repository, startPipelineRun: async () => pipelineHandle([]) });
+		assert.deepEqual(memory.writes.map((write) => write.subjectId), ["eligible-one"], "the scan passes more than 200 ineligible heads to find an eligible subject");
+		assert.equal(memory.state.position?.evidenceId, "eligible-one");
+		assert.equal(first.scannedEvidenceRows, 202);
+		const second = await refreshIntelligenceInsights({} as never, CUTOFF, 1, { repository: memory.repository, startPipelineRun: async () => pipelineHandle([]) });
+		assert.deepEqual(memory.writes.map((write) => write.subjectId), ["eligible-one", "eligible-two"], "the next run resumes strictly after the persisted cursor");
+		assert.equal(memory.state.position?.evidenceId, "eligible-two");
+
+		const eligibleAfterWrap = evidence({ id: "eligible-after-wrap", subjectId: "eligible-after-wrap", predicate: "price_jpy", value: 4_000, observedAt: "2026-08-28T23:30:00.000Z" });
+		memory.repository.scanActiveEvidencePage = async (_cutoff, cursor, pageSize) => {
+			const rows = [eligibleAfterWrap, ...stale, eligibleOne, eligibleTwo];
+			const start = cursor ? rows.findIndex((item) => item.id === cursor.evidenceId) + 1 : 0;
+			const page = rows.slice(start, start + pageSize);
+			return { evidence: page, reachedEnd: start + page.length >= rows.length };
+		};
+		const third = await refreshIntelligenceInsights({} as never, CUTOFF, 1, { repository: memory.repository, startPipelineRun: async () => pipelineHandle([]) });
+		assert.equal(third.scanWrapped, true);
+		assert.deepEqual(memory.writes.map((write) => write.subjectId), ["eligible-one", "eligible-two", "eligible-after-wrap"], "an end cursor wraps once and reaches newly inserted evidence at the front");
 	}
 
 	{
-		const events: Array<{ status: string; counts?: Partial<PipelineRunCounts> }> = [];
-		const written: Array<{ subjectType: string; subjectId: string; evidenceIds: string[] }> = [];
+		const rows = Array.from({ length: 205 }, (_, index) => evidence({
+			id: `bounded-${String(index).padStart(3, "0")}`,
+			subjectId: `bounded-${String(index).padStart(3, "0")}`,
+			predicate: "price_jpy",
+			value: 1_000,
+			observedAt: new Date(Date.parse("2026-08-28T23:00:00.000Z") - index * 1_000).toISOString(),
+		}));
+		const memory = memoryRefreshRepository({ evidence: rows });
+		const result = await refreshIntelligenceInsights({} as never, CUTOFF, 999, { repository: memory.repository, startPipelineRun: async () => pipelineHandle([]) });
+		assert.equal(memory.writes.length, 200);
+		assert.equal(result.productSnapshots, 200);
+		assert.equal(result.counts.processed, 200);
+		assert.equal(result.counts.processed, result.counts.new + result.counts.duplicate + result.counts.failed);
+		assert.equal(memory.state.position?.evidenceId, rows[199].id);
+	}
+
+	{
+		const rows = Array.from({ length: 10_001 }, (_, index) => evidence({
+			id: `scan-cap-${String(index).padStart(5, "0")}`,
+			subjectId: `scan-cap-${String(index).padStart(5, "0")}`,
+			predicate: "price_jpy",
+			value: 1_000,
+			observedAt: new Date(Date.parse("2026-08-28T23:59:59.000Z") - index).toISOString(),
+		}));
+		const latest = new Map(rows.map((item) => [`product\u0000${item.subjectId}`, CUTOFF]));
+		const memory = memoryRefreshRepository({ evidence: rows, latest });
 		const result = await refreshIntelligenceInsights({} as never, CUTOFF, 200, {
-			repository: repository({
-				async listActiveSubjectHeads() {
-					return [
-						{ subjectType: "broadcast", subjectId: "broadcast-1", newestObservedAt: "2026-08-28T03:00:00.000Z" },
-						{ subjectType: "broadcast", subjectId: "broadcast-2", newestObservedAt: "2026-08-28T02:00:00.000Z" },
-						{ subjectType: "broadcast", subjectId: "missing", newestObservedAt: "2026-08-28T01:00:00.000Z" },
-					];
-				},
-				async resolveBroadcastCategories() {
-					return new Map([["broadcast-1", "家電"], ["broadcast-2", "家電"], ["missing", null]]);
-				},
-				async loadCategoryEvidence(category) {
-					assert.equal(category, "家電");
-					return broadcastEvidence;
-				},
-				async writeSnapshot(draft) {
-					written.push({ subjectType: draft.subjectType, subjectId: draft.subjectId, evidenceIds: draft.evidenceIds });
-					return "category-snapshot";
-				},
-			}),
+			repository: memory.repository,
+			startPipelineRun: async () => pipelineHandle([]),
+		});
+		assert.equal(result.scannedEvidenceRows, 10_000, "a run never scans more than the ruled evidence-row cap");
+		assert.equal(result.scanTruncated, true);
+		assert.equal(memory.state.position?.evidenceId, rows[9_999].id);
+		assert.equal(memory.writes.length, 0);
+		assert.deepEqual(result.counts, { new: 0, updated: 0, duplicate: 10_000, failed: 0, processed: 10_000 });
+	}
+
+	{
+		const scanEvidence = [
+			evidence({ id: "scan-b1", subjectType: "broadcast", subjectId: "broadcast-1", predicate: "segment_pattern", value: [{ label: "open" }], sourceType: "qvc", sourceTable: "broadcast_speech_analyses", sourceRecordId: "broadcast-1", observedAt: "2026-08-28T03:00:00.000Z" }),
+			evidence({ id: "scan-b2", subjectType: "broadcast", subjectId: "broadcast-2", predicate: "segment_pattern", value: [{ label: "open" }], sourceType: "shopch", sourceTable: "broadcast_speech_analyses", sourceRecordId: "broadcast-2", observedAt: "2026-08-28T02:00:00.000Z" }),
+			evidence({ id: "scan-missing", subjectType: "broadcast", subjectId: "missing", predicate: "segment_pattern", value: [{ label: "open" }], sourceType: "qvc", sourceTable: "broadcast_speech_analyses", sourceRecordId: "missing", observedAt: "2026-08-28T01:00:00.000Z" }),
+		];
+		const memory = memoryRefreshRepository({
+			evidence: scanEvidence,
+			categories: new Map([["broadcast-1", "家電"], ["broadcast-2", "家電"], ["missing", null]]),
+		});
+		const events: Array<{ status: string; counts?: Partial<PipelineRunCounts> }> = [];
+		const result = await refreshIntelligenceInsights({} as never, CUTOFF, 200, { repository: memory.repository, startPipelineRun: async () => pipelineHandle(events) });
+		assert.deepEqual(memory.loadedBroadcastGroups, [["broadcast-1", "broadcast-2"]]);
+		assert.equal(memory.writes.length, 1);
+		assert.equal(memory.writes[0].subjectId, "家電");
+		assert.deepEqual(result.unresolvedBroadcastIds, ["missing"]);
+		assert.deepEqual(result.counts, { new: 1, updated: 0, duplicate: 0, failed: 1, processed: 2 });
+		assert.equal(result.counts.processed, result.counts.new + result.counts.duplicate + result.counts.failed);
+		assert.ok(events.some((event) => event.status === "running"), "normal candidate progress emits a heartbeat");
+		assert.equal(events.at(-1)?.status, "partial");
+	}
+
+	{
+		const missing = evidence({ id: "missing-first", subjectType: "broadcast", subjectId: "missing-first", predicate: "segment_pattern", value: [{ label: "open" }], observedAt: "2026-08-28T03:00:00.000Z" });
+		const eligible = evidence({ id: "eligible-after-missing", subjectId: "eligible-after-missing", predicate: "price_jpy", value: 1_000, observedAt: "2026-08-28T02:00:00.000Z" });
+		const memory = memoryRefreshRepository({ evidence: [missing, eligible], categories: new Map([["missing-first", null]]) });
+		const result = await refreshIntelligenceInsights({} as never, CUTOFF, 1, {
+			repository: memory.repository,
+			startPipelineRun: async () => pipelineHandle([]),
+		});
+		assert.deepEqual(memory.writes.map((write) => write.subjectId), ["eligible-after-missing"], "an unresolved broadcast does not consume the eligible-candidate bound");
+		assert.deepEqual(result.unresolvedBroadcastIds, ["missing-first"]);
+	}
+
+	{
+		const unchanged = evidence({ id: "unchanged", subjectId: "unchanged", predicate: "price_jpy", value: 1_000, observedAt: "2026-08-28T00:00:00.000Z" });
+		const memory = memoryRefreshRepository({ evidence: [unchanged], latest: new Map([["product\u0000unchanged", CUTOFF]]) });
+		const result = await refreshIntelligenceInsights({} as never, CUTOFF, 1, { repository: memory.repository, startPipelineRun: async () => pipelineHandle([]) });
+		assert.deepEqual(result.counts, { new: 0, updated: 0, duplicate: 1, failed: 0, processed: 1 });
+		assert.equal(result.counts.processed, result.counts.new + result.counts.duplicate + result.counts.failed);
+		assert.equal(result.scannedEvidenceRows, 1, "a scan beginning at the head does not re-read the same cycle");
+		assert.equal(result.scanWrapped, false, "only a resumed tail scan needs the one allowed wrap");
+	}
+
+	{
+		const row = evidence({ id: "write-failure", subjectId: "write-failure", predicate: "price_jpy", value: 1_000 });
+		const memory = memoryRefreshRepository({ evidence: [row] });
+		memory.repository.writeSnapshot = async () => { throw new Error("snapshot unavailable"); };
+		const events: Array<{ status: string; counts?: Partial<PipelineRunCounts> }> = [];
+		const result = await refreshIntelligenceInsights({} as never, CUTOFF, 1, {
+			repository: memory.repository,
 			startPipelineRun: async () => pipelineHandle(events),
 		});
-		assert.equal(result.categorySnapshots, 1);
-		assert.deepEqual(result.unresolvedBroadcastIds, ["missing"]);
-		assert.deepEqual(written, [{ subjectType: "category", subjectId: "家電", evidenceIds: broadcastEvidence.map((item) => item.id).sort() }]);
+		assert.deepEqual(result.counts, { new: 0, updated: 0, duplicate: 0, failed: 1, processed: 1 });
 		assert.equal(result.status, "partial");
-		assert.deepEqual(events.map((event) => event.status), ["partial"]);
-		assert.deepEqual(events[0]?.counts, { new: 1, updated: 0, duplicate: 0, failed: 1, processed: 3 });
+		assert.equal(events.at(-1)?.status, "partial", "a terminal candidate failure settles the pipeline run as partial");
 	}
 
 	{
 		const events: Array<{ status: string; counts?: Partial<PipelineRunCounts> }> = [];
 		await assert.rejects(
-			() => refreshIntelligenceInsights({} as never, CUTOFF, 200, {
-				repository: repository({ async listActiveSubjectHeads() { throw new Error("evidence query failed"); } }),
+			refreshIntelligenceInsights({} as never, CUTOFF, 1, {
+				repository: repository({ async loadScanState() { throw new Error("fatal repository failure"); } }),
 				startPipelineRun: async () => pipelineHandle(events),
+				reportTelemetryFailure: () => {},
 			}),
-			/evidence query failed/,
+			/fatal repository failure/,
 		);
-		assert.deepEqual(events.map((event) => event.status), ["running", "failed"], "fatal data errors retain observed counts before failed settlement");
+		assert.equal(events.at(-1)?.status, "failed", "a fatal data error settles the pipeline run as failed");
 	}
 
 	{
-		const reports: string[] = [];
-		let wrote = false;
-		const result = await refreshIntelligenceInsights({} as never, CUTOFF, 1, {
-			repository: repository({
-				async listActiveSubjectHeads() { return [{ subjectType: "product", subjectId: "telemetry", newestObservedAt: "2026-08-28T00:00:00.000Z" }]; },
-				async loadProductEvidence() { return [evidence({ id: "telemetry-price", subjectId: "telemetry", predicate: "price_jpy", value: 5_000 })]; },
-				async writeSnapshot() { wrote = true; return "telemetry-snapshot"; },
-			}),
-			startPipelineRun: async () => ({
-				...pipelineHandle([]),
-				async succeed() { throw new Error("telemetry settlement unavailable"); },
-			}),
-			reportTelemetryFailure: (phase) => reports.push(phase),
-		});
-		assert.equal(wrote, true);
-		assert.equal(result.productSnapshots, 1, "telemetry settlement failure does not mask a completed data write");
-		assert.deepEqual(reports, ["settle"]);
+		const row = evidence({ id: "telemetry-product", subjectId: "telemetry-product", predicate: "price_jpy", value: 5_000, observedAt: "2026-08-28T00:00:00.000Z" });
+		const originalWarn = console.warn;
+		const fallbackWarnings: string[] = [];
+		console.warn = (...values: unknown[]) => { fallbackWarnings.push(values.map(String).join(" ")); };
+		try {
+			const startFailure = memoryRefreshRepository({ evidence: [row] });
+			const startResult = await refreshIntelligenceInsights({} as never, CUTOFF, 1, {
+				repository: startFailure.repository,
+				startPipelineRun: async () => { throw new Error("start unavailable"); },
+				reportTelemetryFailure: () => { throw new Error("reporter unavailable"); },
+			});
+			assert.equal(startResult.productSnapshots, 1);
+			assert.equal(startResult.cursorPersisted, false);
+			assert.ok(startResult.telemetryFailures.some((failure) => failure.phase === "start"));
+			assert.ok(startResult.telemetryFailures.some((failure) => failure.phase === "cursor-save"));
+
+			const telemetryRepository = memoryRefreshRepository({ evidence: [row] });
+			telemetryRepository.repository.saveScanState = async () => { throw new Error("cursor save unavailable"); };
+			const telemetryResult = await refreshIntelligenceInsights({} as never, CUTOFF, 1, {
+				repository: telemetryRepository.repository,
+				startPipelineRun: async () => ({
+					...pipelineHandle([]),
+					async heartbeat() { throw new Error("heartbeat unavailable"); },
+					async succeed() { throw new Error("terminal unavailable"); },
+					async partial() { throw new Error("terminal unavailable"); },
+				}),
+				reportTelemetryFailure: () => { throw new Error("reporter unavailable"); },
+			});
+			assert.equal(telemetryResult.productSnapshots, 1, "throwing telemetry and reporter paths never replace the completed data write");
+			assert.equal(telemetryResult.cursorPersisted, false);
+			for (const phase of ["cursor-save", "heartbeat", "settle"]) {
+				assert.ok(telemetryResult.telemetryFailures.some((failure) => failure.phase === phase), `missing explicit ${phase} telemetry failure`);
+			}
+
+			const primary = repository({
+				async loadScanState() { throw new Error("cursor state corrupt"); },
+			});
+			await assert.rejects(
+				refreshIntelligenceInsights({} as never, CUTOFF, 1, {
+					repository: primary,
+					startPipelineRun: async () => ({
+						...pipelineHandle([]),
+						async heartbeat() { throw new Error("heartbeat unavailable"); },
+						async fail() { throw new Error("terminal unavailable"); },
+					}),
+					reportTelemetryFailure: () => { throw new Error("reporter unavailable"); },
+				}),
+				/cursor state corrupt/,
+				"throwing heartbeat, terminal telemetry, and reporter paths never replace the primary data error",
+			);
+			assert.ok(fallbackWarnings.length >= 1, "throwing telemetry reporters are isolated and fall back to diagnostics");
+		} finally {
+			console.warn = originalWarn;
+		}
 	}
 }
 
@@ -501,6 +781,12 @@ async function testCronRoute(): Promise<void> {
 					unresolvedBroadcastIds: [],
 					errors: [],
 					counts: { new: 2, updated: 0, duplicate: 0, failed: 0, processed: 2 },
+					scannedEvidenceRows: 2,
+					scanWrapped: false,
+					scanTruncated: false,
+					scanState: INITIAL_INSIGHT_SCAN_STATE,
+					cursorPersisted: true,
+					telemetryFailures: [],
 				};
 			},
 		},
@@ -521,6 +807,12 @@ async function testCronRoute(): Promise<void> {
 		unresolvedBroadcastIds: [],
 		errors: [],
 		counts: { new: 2, updated: 0, duplicate: 0, failed: 0, processed: 2 },
+		scannedEvidenceRows: 2,
+		scanWrapped: false,
+		scanTruncated: false,
+		scanState: INITIAL_INSIGHT_SCAN_STATE,
+		cursorPersisted: true,
+		telemetryFailures: [],
 	});
 
 	let unauthorizedRefreshCalled = false;
@@ -553,7 +845,7 @@ async function testCronRoute(): Promise<void> {
 	assert.equal(packageJson.scripts["test:intelligence-insights"], "tsx scripts/test-intelligence-insights.ts");
 }
 
-testRefresh()
+testRefreshRound1()
 	.then(testCronRoute)
 	.then(() => console.log("PASS: bounded incremental insight refresh and cron route"))
 	.catch((error) => {

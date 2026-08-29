@@ -372,7 +372,7 @@ export function buildBroadcastCategoryInsight(
 			},
 			...(prices.length > 0 ? { priceDistributionJpy: distribution(prices) } : {}),
 			channels,
-			...(structureCoverage === "known" || structureCoverage === "conflicting"
+			...(structureCoverage === "known"
 				? {
 					structurePatternAvailability: {
 						broadcastsWithPatterns,

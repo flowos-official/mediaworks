@@ -14,6 +14,7 @@ for (const token of [
   "unique (source_type, source_table, source_record_id)",
 	"canonical_product_id uuid not null references canonical_products(id) on delete restrict",
   "unique (dedupe_key)",
+	"create index evidence_refresh_scan_idx on evidence_items(observed_at desc, subject_type, subject_id, id)",
   "enable row level security",
 ]) assert.ok(sql.toLowerCase().includes(token), `missing: ${token}`);
 console.log("PASS: intelligence identity schema");

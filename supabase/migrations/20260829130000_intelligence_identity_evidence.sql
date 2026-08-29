@@ -64,6 +64,8 @@ create table evidence_items (
 create index canonical_products_category_idx on canonical_products(normalized_category) where status = 'active';
 create index product_source_links_product_idx on product_source_links(canonical_product_id);
 create index evidence_subject_idx on evidence_items(subject_type, subject_id, predicate, observed_at desc);
+create index evidence_refresh_scan_idx on evidence_items(observed_at desc, subject_type, subject_id, id)
+  where value_state <> 'stale';
 create index evidence_source_idx on evidence_items(source_type, source_table, source_record_id);
 create index evidence_fresh_idx on evidence_items(valid_until) where value_state = 'known';
 

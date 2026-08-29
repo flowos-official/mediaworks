@@ -14,13 +14,18 @@ import {
 	selectActiveEvidence,
 	type InsightDraft,
 } from "./insights";
-import { createPipelineRunRepository, startPipelineRun, type PipelineRunCounts, type PipelineRunHandle } from "./pipeline-run";
+import {
+	createPipelineRunRepository,
+	startPipelineRun,
+	type PipelineRunCounts,
+	type PipelineRunHandle,
+} from "./pipeline-run";
 import type { EvidenceItem } from "./types";
 
 export const MAX_INSIGHT_REFRESH_SUBJECTS = 200;
+export const MAX_INSIGHT_SCAN_ROWS = 10_000;
 
 const EVIDENCE_PAGE_SIZE = 500;
-const MAX_SUBJECT_SCAN_PAGES = 20;
 const DATABASE_CHUNK_SIZE = 100;
 
 const EVIDENCE_COLUMNS = [
@@ -45,10 +50,23 @@ const EVIDENCE_COLUMNS = [
 	"dedupe_key",
 ].join(",");
 
-export interface EvidenceSubjectHead {
-	subjectType: "product" | "broadcast";
+export interface EvidenceScanCursor {
+	observedAt: string;
+	subjectType: "product" | "internal_product" | "broadcast";
 	subjectId: string;
-	newestObservedAt: string;
+	evidenceId: string;
+}
+
+export interface EvidenceScanState {
+	v: 1;
+	position: EvidenceScanCursor | null;
+}
+
+export const INITIAL_INSIGHT_SCAN_STATE: EvidenceScanState = { v: 1, position: null };
+
+export interface EvidenceScanPage {
+	evidence: EvidenceItem[];
+	reachedEnd: boolean;
 }
 
 export interface LatestInsightSubject {
@@ -57,11 +75,13 @@ export interface LatestInsightSubject {
 }
 
 export interface InsightRefreshRepository {
-	listActiveSubjectHeads(cutoff: string, limit: number): Promise<EvidenceSubjectHead[]>;
+	loadScanState(currentRunId: string | null): Promise<EvidenceScanState>;
+	scanActiveEvidencePage(cutoff: string, cursor: EvidenceScanCursor | null, pageSize: number): Promise<EvidenceScanPage>;
+	saveScanState(runId: string, state: EvidenceScanState): Promise<void>;
 	resolveBroadcastCategories(broadcastIds: string[], cutoff: string): Promise<Map<string, string | null>>;
 	loadLatestInsightCutoffs(subjects: LatestInsightSubject[]): Promise<Map<string, string>>;
 	loadProductEvidence(productId: string, cutoff: string): Promise<EvidenceItem[]>;
-	loadCategoryEvidence(category: string, cutoff: string): Promise<EvidenceItem[]>;
+	loadBroadcastEvidence(broadcastIds: string[], cutoff: string): Promise<EvidenceItem[]>;
 	writeSnapshot(draft: InsightDraft): Promise<string>;
 }
 
@@ -77,6 +97,13 @@ export interface StoredBroadcastCategoryRow {
 	source: "broadcast_speech_analyses" | "broadcasts" | "historical_broadcasts";
 }
 
+export type InsightTelemetryPhase = "start" | "cursor-load" | "cursor-save" | "heartbeat" | "settle";
+
+export interface InsightTelemetryFailure {
+	phase: InsightTelemetryPhase;
+	error: string;
+}
+
 export interface RefreshIntelligenceInsightsResult {
 	status: "succeeded" | "partial";
 	cutoff: string;
@@ -89,12 +116,25 @@ export interface RefreshIntelligenceInsightsResult {
 	unresolvedBroadcastIds: string[];
 	errors: Array<{ subjectType: "product" | "category"; subjectId: string; error: string }>;
 	counts: PipelineRunCounts;
+	scannedEvidenceRows: number;
+	scanWrapped: boolean;
+	scanTruncated: boolean;
+	scanState: EvidenceScanState;
+	cursorPersisted: boolean;
+	telemetryFailures: InsightTelemetryFailure[];
 }
 
 export interface RefreshInsightsDependencies {
 	repository?: InsightRefreshRepository;
 	startPipelineRun?: () => Promise<PipelineRunHandle | null>;
-	reportTelemetryFailure?: (phase: "start" | "settle", error: unknown) => void;
+	reportTelemetryFailure?: (phase: InsightTelemetryPhase, error: unknown) => void;
+}
+
+interface RefreshCandidate {
+	subjectType: "product" | "category";
+	subjectId: string;
+	newestObservedAt: string;
+	broadcastIds: Set<string>;
 }
 
 function errorMessage(error: unknown): string {
@@ -111,7 +151,7 @@ function ensureTimestamp(value: string, label: string): string {
 	return new Date(parsed).toISOString();
 }
 
-function compareHeads(left: EvidenceSubjectHead, right: EvidenceSubjectHead): number {
+function compareCandidates(left: RefreshCandidate, right: RefreshCandidate): number {
 	return right.newestObservedAt.localeCompare(left.newestObservedAt)
 		|| left.subjectType.localeCompare(right.subjectType)
 		|| left.subjectId.localeCompare(right.subjectId);
@@ -121,16 +161,47 @@ export function refreshSubjectKey(subject: LatestInsightSubject): string {
 	return `${subject.subjectType}\u0000${subject.subjectId}`;
 }
 
-function provenanceKey(item: EvidenceItem): string {
-	return [
-		item.subjectType,
-		item.subjectId,
-		item.predicate,
-		item.sourceType,
-		item.sourceTable,
-		item.sourceRecordId,
-		item.sourceLocator ?? "",
-	].join("\u0000");
+function evidenceSubjectKey(item: EvidenceItem): string {
+	const subjectType = item.subjectType === "internal_product" ? "product" : item.subjectType;
+	return `${subjectType}\u0000${item.subjectId}`;
+}
+
+function cursorForEvidence(item: EvidenceItem): EvidenceScanCursor {
+	if (item.subjectType !== "product" && item.subjectType !== "internal_product" && item.subjectType !== "broadcast") {
+		throw new Error(`unsupported refresh evidence subject type: ${item.subjectType}`);
+	}
+	return {
+		observedAt: item.observedAt,
+		subjectType: item.subjectType,
+		subjectId: item.subjectId,
+		evidenceId: item.id,
+	};
+}
+
+function parseScanState(value: unknown): EvidenceScanState {
+	if (!value || typeof value !== "object") throw new Error("invalid insight scan cursor state");
+	const record = value as Record<string, unknown>;
+	if (record.v !== 1) throw new Error("unsupported insight scan cursor version");
+	if (record.position === null) return { v: 1, position: null };
+	if (!record.position || typeof record.position !== "object") throw new Error("invalid insight scan cursor position");
+	const position = record.position as Record<string, unknown>;
+	if (typeof position.observedAt !== "string" || !Number.isFinite(Date.parse(position.observedAt))) {
+		throw new Error("invalid insight scan cursor observation time");
+	}
+	if (position.subjectType !== "product" && position.subjectType !== "internal_product" && position.subjectType !== "broadcast") {
+		throw new Error("invalid insight scan cursor subject type");
+	}
+	if (typeof position.subjectId !== "string" || !position.subjectId) throw new Error("invalid insight scan cursor subject ID");
+	if (typeof position.evidenceId !== "string" || !position.evidenceId) throw new Error("invalid insight scan cursor evidence ID");
+	return {
+		v: 1,
+		position: {
+			observedAt: position.observedAt,
+			subjectType: position.subjectType,
+			subjectId: position.subjectId,
+			evidenceId: position.evidenceId,
+		},
+	};
 }
 
 function mapEvidenceRow(row: Record<string, unknown>): EvidenceItem {
@@ -169,6 +240,15 @@ function chunks<T>(values: T[], size: number): T[][] {
 	const result: T[][] = [];
 	for (let offset = 0; offset < values.length; offset += size) result.push(values.slice(offset, offset + size));
 	return result;
+}
+
+export function buildEvidenceScanCursorFilter(cursor: EvidenceScanCursor): string {
+	return [
+		`observed_at.lt.${cursor.observedAt}`,
+		`and(observed_at.eq.${cursor.observedAt},subject_type.gt.${cursor.subjectType})`,
+		`and(observed_at.eq.${cursor.observedAt},subject_type.eq.${cursor.subjectType},subject_id.gt.${cursor.subjectId})`,
+		`and(observed_at.eq.${cursor.observedAt},subject_type.eq.${cursor.subjectType},subject_id.eq.${cursor.subjectId},id.gt.${cursor.evidenceId})`,
+	].join(",");
 }
 
 async function loadEvidenceRows(
@@ -237,7 +317,6 @@ export function resolveStoredBroadcastCategories(
 		const category = row.category?.trim();
 		if (category && !domain.has(row.broadcastId)) domain.set(row.broadcastId, category);
 	}
-
 	return new Map(wanted.map((broadcastId) => [broadcastId, explicit.get(broadcastId) ?? domain.get(broadcastId) ?? null]));
 }
 
@@ -245,9 +324,7 @@ export async function persistInsightSnapshot(
 	persistence: SnapshotPersistence,
 	draft: InsightDraft,
 ): Promise<string> {
-	if (new Set(draft.evidenceIds).size !== draft.evidenceIds.length) {
-		throw new Error("insight evidence IDs must be unique");
-	}
+	if (new Set(draft.evidenceIds).size !== draft.evidenceIds.length) throw new Error("insight evidence IDs must be unique");
 	const snapshotId = await persistence.insertParent(draft);
 	let primaryError: unknown;
 	try {
@@ -259,7 +336,6 @@ export async function persistInsightSnapshot(
 	} catch (error) {
 		primaryError = error;
 	}
-
 	try {
 		await persistence.deleteParent(snapshotId);
 	} catch (cleanupError) {
@@ -268,7 +344,7 @@ export async function persistInsightSnapshot(
 	throw new Error(errorMessage(primaryError));
 }
 
-function snapshotPersistence(sb: SupabaseClient): SnapshotPersistence {
+export function createSnapshotPersistence(sb: SupabaseClient): SnapshotPersistence {
 	return {
 		async insertParent(draft) {
 			const { data, error } = await (sb as any)
@@ -297,10 +373,7 @@ function snapshotPersistence(sb: SupabaseClient): SnapshotPersistence {
 			if (evidenceIds.length === 0) return 0;
 			const { data, error } = await (sb as any)
 				.from("insight_snapshot_evidence")
-				.insert(evidenceIds.map((evidenceItemId) => ({
-					insight_snapshot_id: snapshotId,
-					evidence_item_id: evidenceItemId,
-				})))
+				.insert(evidenceIds.map((evidenceItemId) => ({ insight_snapshot_id: snapshotId, evidence_item_id: evidenceItemId })))
 				.select("evidence_item_id");
 			if (error) throw new Error(`insight snapshot evidence insert failed: ${error.message}`);
 			return (data ?? []).length;
@@ -317,10 +390,7 @@ async function loadDomainRowsForIds(sb: SupabaseClient, broadcastIds: string[]):
 	for (const ids of chunks([...new Set(broadcastIds)].sort(), DATABASE_CHUNK_SIZE)) {
 		for (const source of ["broadcast_speech_analyses", "broadcasts", "historical_broadcasts"] as const) {
 			const idColumn = source === "broadcast_speech_analyses" ? "broadcast_id" : "id";
-			const { data, error } = await (sb as any)
-				.from(source)
-				.select(`${idColumn},category`)
-				.in(idColumn, ids);
+			const { data, error } = await (sb as any).from(source).select(`${idColumn},category`).in(idColumn, ids);
 			if (error) throw new Error(`${source} category query failed: ${error.message}`);
 			for (const row of data ?? []) {
 				rows.push({ broadcastId: String(row[idColumn]), category: typeof row.category === "string" ? row.category : null, source });
@@ -330,82 +400,52 @@ async function loadDomainRowsForIds(sb: SupabaseClient, broadcastIds: string[]):
 	return rows;
 }
 
-async function loadCategoryBroadcastIds(sb: SupabaseClient, category: string, cutoff: string): Promise<string[]> {
-	const ids = new Set<string>();
-	for (const source of ["broadcast_speech_analyses", "broadcasts", "historical_broadcasts"] as const) {
-		const idColumn = source === "broadcast_speech_analyses" ? "broadcast_id" : "id";
-		for (let from = 0; ; from += EVIDENCE_PAGE_SIZE) {
-			const { data, error } = await (sb as any)
-				.from(source)
-				.select(idColumn)
-				.eq("category", category)
-				.order(idColumn, { ascending: true })
-				.range(from, from + EVIDENCE_PAGE_SIZE - 1);
-			if (error) throw new Error(`${source} category membership query failed: ${error.message}`);
-			const page = data ?? [];
-			for (const row of page) ids.add(String(row[idColumn]));
-			if (page.length < EVIDENCE_PAGE_SIZE) break;
-		}
-	}
-
-	for (let from = 0; ; from += EVIDENCE_PAGE_SIZE) {
-		let query: any = (sb as any)
-			.from("evidence_items")
-			.select(EVIDENCE_COLUMNS)
-			.eq("subject_type", "broadcast")
-			.in("predicate", ["category", "normalized_category"])
-			.eq("value_state", "known")
-			.eq("value_json", JSON.stringify(category));
-		query = applyActiveFilters(query, cutoff)
-			.order("observed_at", { ascending: false })
-			.order("id", { ascending: true })
-			.range(from, from + EVIDENCE_PAGE_SIZE - 1);
-		const { data, error } = await query;
-		if (error) throw new Error(`explicit category membership query failed: ${error.message}`);
-		const page = data ?? [];
-		for (const row of page) ids.add(String(row.subject_id));
-		if (page.length < EVIDENCE_PAGE_SIZE) break;
-	}
-	return [...ids].sort();
-}
-
 export function createInsightRefreshRepository(sb: SupabaseClient): InsightRefreshRepository {
 	return {
-		async listActiveSubjectHeads(cutoff, limit) {
+		async loadScanState(currentRunId) {
+			let query: any = (sb as any)
+				.from("data_pipeline_runs")
+				.select("cursor_json")
+				.eq("source_type", "evidence_items")
+				.eq("job_type", "insight_refresh")
+				.not("cursor_json", "is", null);
+			if (currentRunId) query = query.neq("id", currentRunId);
+			const { data, error } = await query.order("started_at", { ascending: false }).limit(1).maybeSingle();
+			if (error) throw new Error(`insight scan cursor load failed: ${error.message}`);
+			return data?.cursor_json ? parseScanState(data.cursor_json) : { ...INITIAL_INSIGHT_SCAN_STATE };
+		},
+
+		async scanActiveEvidencePage(cutoff, cursor, pageSize) {
 			const predicates = [...new Set([...PRODUCT_INSIGHT_PREDICATES, ...CATEGORY_INSIGHT_PREDICATES])].sort();
-			const currentProvenance = new Set<string>();
-			const heads = new Map<string, EvidenceSubjectHead>();
-			for (let pageIndex = 0; pageIndex < MAX_SUBJECT_SCAN_PAGES && heads.size < limit; pageIndex += 1) {
-				const from = pageIndex * EVIDENCE_PAGE_SIZE;
-				let query: any = (sb as any)
-					.from("evidence_items")
-					.select(EVIDENCE_COLUMNS)
-					.in("subject_type", ["product", "internal_product", "broadcast"])
-					.in("predicate", predicates);
-				query = applyActiveFilters(query, cutoff)
-					.order("observed_at", { ascending: false })
-					.order("subject_type", { ascending: true })
-					.order("subject_id", { ascending: true })
-					.order("id", { ascending: true })
-					.range(from, from + EVIDENCE_PAGE_SIZE - 1);
-				const { data, error } = await query;
-				if (error) throw new Error(`incremental evidence head query failed: ${error.message}`);
-				const page = ((data ?? []) as Array<Record<string, unknown>>).map(mapEvidenceRow);
-				for (const item of page) {
-					if (selectActiveEvidence([item], cutoff).length === 0) continue;
-					const provenance = provenanceKey(item);
-					if (currentProvenance.has(provenance)) continue;
-					currentProvenance.add(provenance);
-					const subjectType = item.subjectType === "internal_product" ? "product" : item.subjectType as "product" | "broadcast";
-					const key = `${subjectType}\u0000${item.subjectId}`;
-					const previous = heads.get(key);
-					if (!previous || item.observedAt > previous.newestObservedAt) {
-						heads.set(key, { subjectType, subjectId: item.subjectId, newestObservedAt: item.observedAt });
-					}
-				}
-				if (page.length < EVIDENCE_PAGE_SIZE) break;
-			}
-			return [...heads.values()].sort(compareHeads).slice(0, limit);
+			let query: any = (sb as any)
+				.from("evidence_items")
+				.select(EVIDENCE_COLUMNS)
+				.in("subject_type", ["product", "internal_product", "broadcast"])
+				.in("predicate", predicates);
+			query = applyActiveFilters(query, cutoff);
+			if (cursor) query = query.or(buildEvidenceScanCursorFilter(cursor));
+			query = query
+				.order("observed_at", { ascending: false })
+				.order("subject_type", { ascending: true })
+				.order("subject_id", { ascending: true })
+				.order("id", { ascending: true });
+			const { data, error } = await query.limit(pageSize);
+			if (error) throw new Error(`incremental evidence scan failed: ${error.message}`);
+			const evidence = ((data ?? []) as Array<Record<string, unknown>>).map(mapEvidenceRow)
+				.filter((item) => selectActiveEvidence([item], cutoff).length > 0);
+			return { evidence, reachedEnd: (data ?? []).length < pageSize };
+		},
+
+		async saveScanState(runId, state) {
+			const validated = parseScanState(state);
+			const { data, error } = await (sb as any)
+				.from("data_pipeline_runs")
+				.update({ cursor_json: validated })
+				.eq("id", runId)
+				.select("id")
+				.single();
+			if (error) throw new Error(`insight scan cursor save failed: ${error.message}`);
+			if (!data?.id) throw new Error("insight scan cursor save returned no run");
 		},
 
 		async resolveBroadcastCategories(broadcastIds, cutoff) {
@@ -415,8 +455,12 @@ export function createInsightRefreshRepository(sb: SupabaseClient): InsightRefre
 				predicates: ["category", "normalized_category"],
 				cutoff,
 			});
-			const domainRows = await loadDomainRowsForIds(sb, broadcastIds);
-			return resolveStoredBroadcastCategories(broadcastIds, categoryEvidence, domainRows, cutoff);
+			return resolveStoredBroadcastCategories(
+				broadcastIds,
+				categoryEvidence,
+				await loadDomainRowsForIds(sb, broadcastIds),
+				cutoff,
+			);
 		},
 
 		async loadLatestInsightCutoffs(subjects) {
@@ -455,45 +499,34 @@ export function createInsightRefreshRepository(sb: SupabaseClient): InsightRefre
 			});
 		},
 
-		async loadCategoryEvidence(category, cutoff) {
-			const broadcastIds = await loadCategoryBroadcastIds(sb, category, cutoff);
+		async loadBroadcastEvidence(broadcastIds, cutoff) {
 			return loadEvidenceRows(sb, {
 				subjectTypes: ["broadcast"],
-				subjectIds: broadcastIds,
+				subjectIds: [...new Set(broadcastIds)].sort(),
 				predicates: CATEGORY_INSIGHT_PREDICATES,
 				cutoff,
 			});
 		},
 
 		async writeSnapshot(draft) {
-			return persistInsightSnapshot(snapshotPersistence(sb), draft);
+			return persistInsightSnapshot(createSnapshotPersistence(sb), draft);
 		},
 	};
 }
 
-async function startRunBestEffort(
-	start: () => Promise<PipelineRunHandle | null>,
-	report: (phase: "start" | "settle", error: unknown) => void,
-): Promise<PipelineRunHandle | null> {
-	try {
-		return await start();
-	} catch (error) {
-		report("start", error);
-		return null;
-	}
+function candidateIsEligible(candidate: RefreshCandidate, latestCutoffs: Map<string, string | null>): boolean {
+	const latest = latestCutoffs.get(refreshSubjectKey(candidate));
+	return latest === null || latest === undefined || candidate.newestObservedAt > latest;
 }
 
-async function settleBestEffort(
-	run: PipelineRunHandle | null,
-	settle: (run: PipelineRunHandle) => Promise<void>,
-	report: (phase: "start" | "settle", error: unknown) => void,
-): Promise<void> {
-	if (!run) return;
-	try {
-		await settle(run);
-	} catch (error) {
-		report("settle", error);
-	}
+function observedCounts(input: { created: number; duplicate: number; failed: number }): PipelineRunCounts {
+	return {
+		new: input.created,
+		updated: 0,
+		duplicate: input.duplicate,
+		failed: input.failed,
+		processed: input.created + input.duplicate + input.failed,
+	};
 }
 
 export async function refreshIntelligenceInsights(
@@ -506,95 +539,233 @@ export async function refreshIntelligenceInsights(
 	if (!Number.isInteger(limit) || limit <= 0) throw new Error("insight refresh limit must be a positive integer");
 	const boundedLimit = Math.min(limit, MAX_INSIGHT_REFRESH_SUBJECTS);
 	const repository = dependencies.repository ?? createInsightRefreshRepository(sb);
-	const report = dependencies.reportTelemetryFailure ?? ((phase, error) => {
+	const telemetryFailures: InsightTelemetryFailure[] = [];
+	const reporter = dependencies.reportTelemetryFailure ?? ((phase: InsightTelemetryPhase, error: unknown) => {
 		console.warn(`[intelligence insights] pipeline run ${phase} failed:`, errorMessage(error));
 	});
-	const run = await startRunBestEffort(
-		dependencies.startPipelineRun ?? (() => startPipelineRun(
+	const recordTelemetryFailure = (phase: InsightTelemetryPhase, error: unknown): void => {
+		telemetryFailures.push({ phase, error: errorMessage(error) });
+		try {
+			reporter(phase, error);
+		} catch (reporterError) {
+			console.warn(`[intelligence insights] telemetry reporter failed during ${phase}:`, errorMessage(reporterError));
+		}
+	};
+
+	let run: PipelineRunHandle | null = null;
+	try {
+		run = await (dependencies.startPipelineRun ?? (() => startPipelineRun(
 			createPipelineRunRepository(sb),
 			{
 				sourceType: "evidence_items",
 				jobType: "insight_refresh",
 				externalRunId: `insight-refresh:${normalizedCutoff}:${randomUUID()}`,
-				targetScope: { cutoff: normalizedCutoff, limit: boundedLimit },
+				targetScope: { cutoff: normalizedCutoff, limit: boundedLimit, scanRowLimit: MAX_INSIGHT_SCAN_ROWS },
 			},
-		)),
-		report,
-	);
+		)))();
+	} catch (error) {
+		recordTelemetryFailure("start", error);
+	}
 
-	let counts: PipelineRunCounts = { new: 0, updated: 0, duplicate: 0, failed: 0, processed: 0 };
-	try {
-		const heads = (await repository.listActiveSubjectHeads(normalizedCutoff, boundedLimit))
-			.sort(compareHeads)
-			.slice(0, boundedLimit);
-		const productCandidates = heads
-			.filter((head): head is EvidenceSubjectHead & { subjectType: "product" } => head.subjectType === "product")
-			.map((head) => ({ subjectType: "product" as const, subjectId: head.subjectId, newestObservedAt: head.newestObservedAt }));
-		const broadcastHeads = heads.filter((head) => head.subjectType === "broadcast");
-		const categories = await repository.resolveBroadcastCategories(broadcastHeads.map((head) => head.subjectId), normalizedCutoff);
-		const unresolvedBroadcastIds = broadcastHeads
-			.filter((head) => !categories.get(head.subjectId))
-			.map((head) => head.subjectId)
-			.sort();
-		const categoryNewest = new Map<string, string>();
-		for (const head of broadcastHeads) {
-			const category = categories.get(head.subjectId);
-			if (!category) continue;
-			const previous = categoryNewest.get(category);
-			if (!previous || head.newestObservedAt > previous) categoryNewest.set(category, head.newestObservedAt);
+	let counts = observedCounts({ created: 0, duplicate: 0, failed: 0 });
+	const heartbeat = async (): Promise<void> => {
+		if (!run) return;
+		try {
+			await run.heartbeat(counts);
+		} catch (error) {
+			recordTelemetryFailure("heartbeat", error);
 		}
-		const categoryCandidates = [...categoryNewest.entries()].map(([subjectId, newestObservedAt]) => ({
-			subjectType: "category" as const,
-			subjectId,
-			newestObservedAt,
-		}));
-		const candidates = [...productCandidates, ...categoryCandidates]
-			.sort((left, right) => right.newestObservedAt.localeCompare(left.newestObservedAt)
-				|| left.subjectType.localeCompare(right.subjectType)
-				|| left.subjectId.localeCompare(right.subjectId));
-		const latestCutoffs = await repository.loadLatestInsightCutoffs(candidates);
-		const eligible = candidates.filter((candidate) => {
-			const latest = latestCutoffs.get(refreshSubjectKey(candidate));
-			return !latest || candidate.newestObservedAt > latest;
-		});
-		const skippedNoNewEvidence = candidates.length - eligible.length;
+	};
+
+	try {
+		let loadedState: EvidenceScanState;
+		try {
+			loadedState = await repository.loadScanState(run?.id ?? null);
+		} catch (error) {
+			recordTelemetryFailure("cursor-load", error);
+			throw error;
+		}
+		let cursor = loadedState.position;
+		const canWrap = loadedState.position !== null;
+		let scanWrapped = false;
+		let scanFinishedCycle = false;
+		let scannedEvidenceRows = 0;
+		let stoppedAtLimit = false;
+		const seenEvidenceSubjects = new Set<string>();
+		const candidates = new Map<string, RefreshCandidate>();
+		const eligibleCandidateKeys = new Set<string>();
+		const latestCutoffs = new Map<string, string | null>();
+		const unresolved = new Set<string>();
+
+		while (scannedEvidenceRows < MAX_INSIGHT_SCAN_ROWS && !stoppedAtLimit) {
+			const pageSize = Math.min(EVIDENCE_PAGE_SIZE, MAX_INSIGHT_SCAN_ROWS - scannedEvidenceRows);
+			const page = await repository.scanActiveEvidencePage(normalizedCutoff, cursor, pageSize);
+			if (page.evidence.length === 0) {
+				if (cursor && canWrap && !scanWrapped) {
+					cursor = null;
+					scanWrapped = true;
+					continue;
+				}
+				cursor = null;
+				scanFinishedCycle = true;
+				break;
+			}
+
+			const potentialProducts = new Set<string>();
+			const potentialBroadcasts = new Set<string>();
+			for (const item of page.evidence) {
+				if (seenEvidenceSubjects.has(evidenceSubjectKey(item))) continue;
+				if (item.subjectType === "broadcast") potentialBroadcasts.add(item.subjectId);
+				else potentialProducts.add(item.subjectId);
+			}
+			const resolvedCategories = await repository.resolveBroadcastCategories([...potentialBroadcasts].sort(), normalizedCutoff);
+			const potentialSubjects: LatestInsightSubject[] = [
+				...[...potentialProducts].map((subjectId) => ({ subjectType: "product" as const, subjectId })),
+				...[...new Set([...resolvedCategories.values()].filter((value): value is string => Boolean(value)))]
+					.map((subjectId) => ({ subjectType: "category" as const, subjectId })),
+			];
+			const missingLatest = potentialSubjects.filter((subject) => !latestCutoffs.has(refreshSubjectKey(subject)));
+			const loadedLatest = await repository.loadLatestInsightCutoffs(missingLatest);
+			for (const subject of missingLatest) {
+				const key = refreshSubjectKey(subject);
+				latestCutoffs.set(key, loadedLatest.get(key) ?? null);
+			}
+
+			for (const item of page.evidence) {
+				cursor = cursorForEvidence(item);
+				scannedEvidenceRows += 1;
+				const rawSubjectKey = evidenceSubjectKey(item);
+				if (seenEvidenceSubjects.has(rawSubjectKey)) continue;
+				seenEvidenceSubjects.add(rawSubjectKey);
+
+				if (item.subjectType === "broadcast") {
+					const category = resolvedCategories.get(item.subjectId);
+					if (!category) {
+						unresolved.add(item.subjectId);
+					} else {
+						const key = refreshSubjectKey({ subjectType: "category", subjectId: category });
+						const existing = candidates.get(key);
+						if (existing) {
+							existing.broadcastIds.add(item.subjectId);
+							if (item.observedAt > existing.newestObservedAt) existing.newestObservedAt = item.observedAt;
+						} else {
+							candidates.set(key, {
+								subjectType: "category",
+								subjectId: category,
+								newestObservedAt: item.observedAt,
+								broadcastIds: new Set([item.subjectId]),
+							});
+						}
+						const candidate = candidates.get(key)!;
+						if (candidateIsEligible(candidate, latestCutoffs)) eligibleCandidateKeys.add(key);
+						else eligibleCandidateKeys.delete(key);
+					}
+				} else {
+					const key = refreshSubjectKey({ subjectType: "product", subjectId: item.subjectId });
+					if (!candidates.has(key)) {
+						candidates.set(key, {
+							subjectType: "product",
+							subjectId: item.subjectId,
+							newestObservedAt: item.observedAt,
+							broadcastIds: new Set(),
+						});
+					}
+					const candidate = candidates.get(key)!;
+					if (candidateIsEligible(candidate, latestCutoffs)) eligibleCandidateKeys.add(key);
+					else eligibleCandidateKeys.delete(key);
+				}
+
+				if (eligibleCandidateKeys.size >= boundedLimit) {
+					stoppedAtLimit = true;
+					break;
+				}
+				if (scannedEvidenceRows >= MAX_INSIGHT_SCAN_ROWS) break;
+			}
+
+			if (stoppedAtLimit || scannedEvidenceRows >= MAX_INSIGHT_SCAN_ROWS) break;
+			if (page.reachedEnd) {
+				if (cursor && canWrap && !scanWrapped) {
+					cursor = null;
+					scanWrapped = true;
+					continue;
+				}
+				cursor = null;
+				scanFinishedCycle = true;
+				break;
+			}
+		}
+
+		const scanTruncated = scannedEvidenceRows >= MAX_INSIGHT_SCAN_ROWS && !scanFinishedCycle && !stoppedAtLimit;
+		const scanState: EvidenceScanState = { v: 1, position: scanFinishedCycle ? null : cursor };
+		let cursorPersisted = false;
+		if (!run) {
+			recordTelemetryFailure("cursor-save", new Error("pipeline run unavailable; insight scan cursor was not persisted"));
+		} else {
+			try {
+				await repository.saveScanState(run.id, scanState);
+				cursorPersisted = true;
+			} catch (error) {
+				recordTelemetryFailure("cursor-save", error);
+			}
+		}
+
+		const orderedCandidates = [...candidates.values()].sort(compareCandidates);
+		const eligible = orderedCandidates.filter((candidate) => candidateIsEligible(candidate, latestCutoffs)).slice(0, boundedLimit);
+		const skippedNoNewEvidence = orderedCandidates.length - eligible.length;
+		const unresolvedBroadcastIds = [...unresolved].sort();
 		const errors: RefreshIntelligenceInsightsResult["errors"] = [];
 		let productSnapshots = 0;
 		let categorySnapshots = 0;
+		counts = observedCounts({ created: 0, duplicate: skippedNoNewEvidence, failed: unresolvedBroadcastIds.length });
+		await heartbeat();
 
 		for (const candidate of eligible) {
 			try {
 				const draft = candidate.subjectType === "product"
 					? buildProductMarketInsight(await repository.loadProductEvidence(candidate.subjectId, normalizedCutoff), normalizedCutoff)
-					: buildBroadcastCategoryInsight(await repository.loadCategoryEvidence(candidate.subjectId, normalizedCutoff), candidate.subjectId, normalizedCutoff);
+					: buildBroadcastCategoryInsight(
+						await repository.loadBroadcastEvidence([...candidate.broadcastIds].sort(), normalizedCutoff),
+						candidate.subjectId,
+						normalizedCutoff,
+					);
 				await repository.writeSnapshot(draft);
 				if (candidate.subjectType === "product") productSnapshots += 1;
 				else categorySnapshots += 1;
 			} catch (error) {
 				errors.push({ subjectType: candidate.subjectType, subjectId: candidate.subjectId, error: errorMessage(error) });
 			}
+			counts = observedCounts({
+				created: productSnapshots + categorySnapshots,
+				duplicate: skippedNoNewEvidence,
+				failed: unresolvedBroadcastIds.length + errors.length,
+			});
+			await heartbeat();
 		}
 
-		counts = {
-			new: productSnapshots + categorySnapshots,
-			updated: 0,
-			duplicate: skippedNoNewEvidence,
-			failed: unresolvedBroadcastIds.length + errors.length,
-			processed: heads.length,
-		};
-		const status = counts.failed > 0 ? "partial" as const : "succeeded" as const;
-		await settleBestEffort(
-			run,
-			(handle) => status === "partial"
-				? handle.partial(counts, "insight_refresh_partial", `${counts.failed} insight subject(s) skipped or failed`)
-				: handle.succeed(counts),
-			report,
-		);
+		const status = counts.failed > 0 || !cursorPersisted ? "partial" as const : "succeeded" as const;
+		if (run) {
+			try {
+				if (status === "partial") {
+					await run.partial(
+						counts,
+						cursorPersisted ? "insight_refresh_partial" : "insight_refresh_cursor_not_persisted",
+						cursorPersisted
+							? `${counts.failed} insight candidate(s) skipped or failed`
+							: "data refresh completed but the scan cursor was not persisted",
+					);
+				} else {
+					await run.succeed(counts);
+				}
+			} catch (error) {
+				recordTelemetryFailure("settle", error);
+			}
+		}
+
 		return {
 			status,
 			cutoff: normalizedCutoff,
 			limit: boundedLimit,
-			consideredSubjects: heads.length,
+			consideredSubjects: orderedCandidates.length + unresolvedBroadcastIds.length,
 			eligibleInsightSubjects: eligible.length,
 			productSnapshots,
 			categorySnapshots,
@@ -602,16 +773,22 @@ export async function refreshIntelligenceInsights(
 			unresolvedBroadcastIds,
 			errors,
 			counts,
+			scannedEvidenceRows,
+			scanWrapped,
+			scanTruncated,
+			scanState,
+			cursorPersisted,
+			telemetryFailures,
 		};
 	} catch (error) {
-		await settleBestEffort(run, async (handle) => {
+		await heartbeat();
+		if (run) {
 			try {
-				await handle.heartbeat(counts);
-			} catch (telemetryError) {
-				report("settle", telemetryError);
+				await run.fail("insight_refresh_failed", errorMessage(error));
+			} catch (settleError) {
+				recordTelemetryFailure("settle", settleError);
 			}
-			await handle.fail("insight_refresh_failed", errorMessage(error));
-		}, report);
+		}
 		throw error;
 	}
 }
