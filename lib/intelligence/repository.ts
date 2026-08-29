@@ -41,16 +41,30 @@ export async function upsertEvidence(
 ): Promise<string[]> {
 	if (drafts.length === 0) return [];
 
-	const { data, error } = await sb
+	const rows = drafts.map(evidenceRow);
+	const dedupeKeys = rows.map((row) => row.dedupe_key);
+	const { error } = await sb
 		.from("evidence_items")
-		.upsert(drafts.map(evidenceRow), {
+		.upsert(rows, {
 			onConflict: "dedupe_key",
 			ignoreDuplicates: true,
 		})
 		.select("id");
 
 	if (error) throw new Error(`upsertEvidence failed: ${error.message}`);
-	return (data ?? []).map((row) => String(row.id));
+
+	const { data: resolved, error: resolveError } = await sb
+		.from("evidence_items")
+		.select("id,dedupe_key")
+		.in("dedupe_key", [...new Set(dedupeKeys)]);
+	if (resolveError) throw new Error(`upsertEvidence resolution failed: ${resolveError.message}`);
+
+	const idsByKey = new Map((resolved ?? []).map((row) => [String(row.dedupe_key), String(row.id)]));
+	return dedupeKeys.map((dedupeKey) => {
+		const id = idsByKey.get(dedupeKey);
+		if (!id) throw new Error(`upsertEvidence resolution missing id for dedupe key: ${dedupeKey}`);
+		return id;
+	});
 }
 
 function validateKnowledgeSnapshotItems(draft: KnowledgeSnapshotDraft): void {

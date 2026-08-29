@@ -38,9 +38,25 @@ assert.equal(
 );
 
 const evidenceCalls: Array<{ table: string; rows: unknown; options: unknown }> = [];
+let evidenceQueries = 0;
 const evidenceClient = {
 	from(table: string) {
 		assert.equal(table, "evidence_items");
+		evidenceQueries += 1;
+		if (evidenceQueries > 1) {
+			return {
+				select() {
+					return {
+						in() {
+							return Promise.resolve({
+								data: [{ id: "evidence-1", dedupe_key: evidenceDedupeKey(draft) }],
+								error: null,
+							});
+						},
+					};
+				},
+			};
+		}
 		return {
 			upsert(rows: unknown, options: unknown) {
 				evidenceCalls.push({ table, rows, options });
@@ -79,6 +95,45 @@ assert.deepEqual(evidenceCalls[0].rows, [{
 	raw_hash: null,
 	dedupe_key: evidenceDedupeKey(draft),
 }]);
+
+let duplicateEvidenceQueries = 0;
+const duplicateEvidenceClient = {
+	from(table: string) {
+		assert.equal(table, "evidence_items");
+		duplicateEvidenceQueries += 1;
+		if (duplicateEvidenceQueries === 1) {
+			return {
+				upsert() {
+					return {
+						select() {
+							return Promise.resolve({ data: [], error: null });
+						},
+					};
+				},
+			};
+		}
+		return {
+			select(columns: string) {
+				assert.equal(columns, "id,dedupe_key");
+				return {
+					in(column: string, keys: string[]) {
+						assert.equal(column, "dedupe_key");
+						assert.deepEqual(keys, [evidenceDedupeKey(draft)]);
+						return Promise.resolve({
+							data: [{ id: "existing-evidence-1", dedupe_key: evidenceDedupeKey(draft) }],
+							error: null,
+						});
+					},
+				};
+			},
+		};
+	},
+} as unknown as SupabaseClient;
+
+assert.deepEqual(
+	await upsertEvidence(duplicateEvidenceClient, [draft, draft]),
+	["existing-evidence-1", "existing-evidence-1"],
+);
 
 const snapshotCalls: Array<{ table: string; operation: string; payload?: unknown }> = [];
 const snapshotClient = {
