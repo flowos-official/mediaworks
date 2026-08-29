@@ -486,7 +486,7 @@ async function verifyDryRun(): Promise<void> {
 			startPipelineRun: async () => fakeRun,
 		},
 	);
-	assert.deepEqual(restrictRaceResult.counts, { new: 5, updated: 0, duplicate: 1, failed: 0, processed: 1 }, "actual CLI reuses the winning exact source link when RESTRICT protects shared identity");
+	assert.deepEqual(restrictRaceResult.counts, { new: 6, updated: 0, duplicate: 1, failed: 0, processed: 1 }, "actual CLI counts its RESTRICT-protected local canonical while reusing the exact winning source link");
 	assert.ok(restrictRaceCli.calls.includes("canonical_products:delete"), "RESTRICT cleanup attempts only the locally-created canonical through the injected client");
 
 	const resumedQueries: string[] = [];
@@ -633,6 +633,32 @@ async function verifyDryRun(): Promise<void> {
 	}), /success telemetry settlement failed/);
 	assert.equal(successSettles, 2, "the intended success settlement is retried once and never flipped to fail");
 
+	const existingResolution = await resolveExactCanonicalProduct({
+		findExactSourceLink: async () => ({ canonicalProductId: "already-linked" }),
+		insertCanonical: async () => { throw new Error("existing source links need no canonical insert"); },
+		insertExactSourceLink: async () => { throw new Error("existing source links need no link insert"); },
+		deleteCanonical: async () => { throw new Error("existing source links need no cleanup"); },
+	}, productRow);
+	assert.deepEqual(existingResolution, {
+		canonicalProductId: "already-linked",
+		canonicalProductCreated: false,
+		exactSourceLinkCreated: false,
+		exactSourceLinkReused: true,
+	}, "an existing exact source link is only a reuse");
+
+	const normalIdentityResolution = await resolveExactCanonicalProduct({
+		findExactSourceLink: async () => null,
+		insertCanonical: async () => "normal-local",
+		insertExactSourceLink: async () => undefined,
+		deleteCanonical: async () => { throw new Error("normal creation must not clean up"); },
+	}, productRow);
+	assert.deepEqual(normalIdentityResolution, {
+		canonicalProductId: "normal-local",
+		canonicalProductCreated: true,
+		exactSourceLinkCreated: true,
+		exactSourceLinkReused: false,
+	}, "a normal local canonical and exact link are independently new rows");
+
 	const canonicalCalls: string[] = [];
 	const raceResolution = await resolveExactCanonicalProduct({
 		findExactSourceLink: async () => canonicalCalls.includes("link") ? { canonicalProductId: "winner" } : null,
@@ -640,7 +666,12 @@ async function verifyDryRun(): Promise<void> {
 		insertExactSourceLink: async () => { canonicalCalls.push("link"); throw new Error("duplicate key"); },
 		deleteCanonical: async (id) => { canonicalCalls.push(`delete:${id}`); },
 	}, productRow);
-	assert.deepEqual(raceResolution, { canonicalProductId: "winner", canonicalCreated: false, sourceLinkDuplicate: true });
+	assert.deepEqual(raceResolution, {
+		canonicalProductId: "winner",
+		canonicalProductCreated: false,
+		exactSourceLinkCreated: false,
+		exactSourceLinkReused: true,
+	}, "a unique winner on another canonical leaves no local identity row after cleanup");
 	assert.deepEqual(canonicalCalls, ["canonical", "link", "delete:orphan"], "a source-link race cleans up only its orphan canonical");
 
 	let protectedLookupCount = 0;
@@ -657,7 +688,12 @@ async function verifyDryRun(): Promise<void> {
 	}, productRow);
 	assert.deepEqual(
 		protectedCleanupResolution,
-		{ canonicalProductId: "winner-after-restrict", canonicalCreated: false, sourceLinkDuplicate: true },
+		{
+			canonicalProductId: "winner-after-restrict",
+			canonicalProductCreated: true,
+			exactSourceLinkCreated: false,
+			exactSourceLinkReused: true,
+		},
 		"a RESTRICT-protected locally-created canonical is never cascaded away while the exact winning link is reused",
 	);
 

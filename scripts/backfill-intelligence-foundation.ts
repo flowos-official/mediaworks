@@ -246,9 +246,11 @@ async function writeProduct(
 		mapDiscoveredProductEvidence({ ...row, canonicalProductId: resolved.canonicalProductId }),
 	);
 	return {
-		new: evidence.new + (resolved.canonicalCreated ? 2 : 0),
+		new: evidence.new
+			+ Number(resolved.canonicalProductCreated)
+			+ Number(resolved.exactSourceLinkCreated),
 		updated: 0,
-		duplicate: evidence.duplicate + Number(resolved.sourceLinkDuplicate),
+		duplicate: evidence.duplicate + Number(resolved.exactSourceLinkReused),
 	};
 }
 

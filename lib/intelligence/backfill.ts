@@ -752,8 +752,12 @@ export interface CanonicalBackfillRepository {
 
 export interface ExactCanonicalResolution {
 	canonicalProductId: string;
-	canonicalCreated: boolean;
-	sourceLinkDuplicate: boolean;
+	/** This invocation inserted a canonical row that still durably exists. */
+	canonicalProductCreated: boolean;
+	/** This invocation inserted (or definitively completed) the exact source link. */
+	exactSourceLinkCreated: boolean;
+	/** An exact source link created by another operation was reused. */
+	exactSourceLinkReused: boolean;
 }
 
 function isRestrictProtectedCleanup(error: unknown): boolean {
@@ -774,8 +778,8 @@ async function cleanupCreatedCanonical(
 				const winner = await repository.findExactSourceLink(row);
 				if (winner) {
 					return winner.canonicalProductId === canonicalProductId
-						? { canonicalProductId, canonicalCreated: true, sourceLinkDuplicate: false }
-						: { canonicalProductId: winner.canonicalProductId, canonicalCreated: false, sourceLinkDuplicate: true };
+						? { canonicalProductId, canonicalProductCreated: true, exactSourceLinkCreated: true, exactSourceLinkReused: false }
+						: { canonicalProductId: winner.canonicalProductId, canonicalProductCreated: true, exactSourceLinkCreated: false, exactSourceLinkReused: true };
 				}
 			} catch (lookupError) {
 				throw new Error(`${errorText(primaryError)}; orphan canonical cleanup protected (local canonical was not deleted): ${errorText(cleanupError)}; source-link race lookup failed: ${errorText(lookupError)}`);
@@ -793,11 +797,18 @@ export async function resolveExactCanonicalProduct(
 	row: DiscoveredProductBackfillRow,
 ): Promise<ExactCanonicalResolution> {
 	const existing = await repository.findExactSourceLink(row);
-	if (existing) return { canonicalProductId: existing.canonicalProductId, canonicalCreated: false, sourceLinkDuplicate: true };
+	if (existing) {
+		return {
+			canonicalProductId: existing.canonicalProductId,
+			canonicalProductCreated: false,
+			exactSourceLinkCreated: false,
+			exactSourceLinkReused: true,
+		};
+	}
 	const canonicalProductId = await repository.insertCanonical(row);
 	try {
 		await repository.insertExactSourceLink({ canonicalProductId, row });
-		return { canonicalProductId, canonicalCreated: true, sourceLinkDuplicate: false };
+		return { canonicalProductId, canonicalProductCreated: true, exactSourceLinkCreated: true, exactSourceLinkReused: false };
 	} catch (linkError) {
 		let winner: ExactSourceLink | null = null;
 		let lookupError: unknown;
@@ -808,7 +819,7 @@ export async function resolveExactCanonicalProduct(
 		}
 		if (winner) {
 			if (winner.canonicalProductId === canonicalProductId) {
-				return { canonicalProductId, canonicalCreated: true, sourceLinkDuplicate: false };
+				return { canonicalProductId, canonicalProductCreated: true, exactSourceLinkCreated: true, exactSourceLinkReused: false };
 			}
 			try {
 				await repository.deleteCanonical(canonicalProductId);
@@ -817,11 +828,21 @@ export async function resolveExactCanonicalProduct(
 					// A different source may now legitimately reference the local
 					// canonical. RESTRICT preserves that shared identity; the exact
 					// winning source link remains the truthful product resolution.
-					return { canonicalProductId: winner.canonicalProductId, canonicalCreated: false, sourceLinkDuplicate: true };
+					return {
+						canonicalProductId: winner.canonicalProductId,
+						canonicalProductCreated: true,
+						exactSourceLinkCreated: false,
+						exactSourceLinkReused: true,
+					};
 				}
 				throw new Error(`${errorText(linkError)}; winning exact source link resolved to ${winner.canonicalProductId}; orphan canonical cleanup failed: ${errorText(cleanupError)}`);
 			}
-			return { canonicalProductId: winner.canonicalProductId, canonicalCreated: false, sourceLinkDuplicate: true };
+			return {
+				canonicalProductId: winner.canonicalProductId,
+				canonicalProductCreated: false,
+				exactSourceLinkCreated: false,
+				exactSourceLinkReused: true,
+			};
 		}
 		return cleanupCreatedCanonical(repository, canonicalProductId, row, lookupError
 			? new Error(`${errorText(linkError)}; source-link race lookup failed: ${errorText(lookupError)}`)
