@@ -23,6 +23,7 @@
     "test:supabase-paginate": "tsx scripts/test-supabase-paginate.ts",
     "test:cron-duplicate-guard": "tsx scripts/test-cron-duplicate-guard.ts",
     "test:pipeline-health": "tsx scripts/test-pipeline-health.ts",
+    "test:intelligence-pipeline-run": "tsx scripts/test-intelligence-pipeline-run.ts",
     "test:migrations": "tsx --env-file=.env.local scripts/check-migrations.ts",
     "test:intelligence-identity-schema": "tsx scripts/test-intelligence-identity-schema.ts",
     "test:intelligence-snapshot-schema": "tsx scripts/test-intelligence-snapshot-schema.ts",

@@ -16,6 +16,7 @@ import {
 } from "@/lib/discovery/save";
 import { getServiceClient } from "@/lib/supabase";
 import { DEFAULT_LEARNING_STATE, type LearningState } from "@/lib/discovery/types";
+import { createPipelineRunRepository, startPipelineRun } from "@/lib/intelligence/pipeline-run";
 
 
 
@@ -146,6 +147,18 @@ export async function GET(req: NextRequest) {
 	}
 
 	const stages = new OptionalStageTracker();
+	const pipelineRun = await startPipelineRun(
+		createPipelineRunRepository(getServiceClient()),
+		{
+			sourceType: "discovery",
+			jobType: "home_shopping",
+			externalRunId: sessionId,
+			targetScope: { context: CONTEXT, targetCount: TARGET_COUNT },
+		},
+	).catch((err) => {
+		console.warn(`[cron ${CONTEXT}] pipeline run start failed:`, err instanceof Error ? err.message : String(err));
+		return null;
+	});
 
 	try {
 		const orchestrated = await runStage1(learning, TARGET_COUNT, CONTEXT);
@@ -256,12 +269,34 @@ export async function GET(req: NextRequest) {
 		});
 
 		const partial = savedCount < TARGET_COUNT;
+		const pipelinePartial = partial || stages.skipped().length > 0;
 		await finalizeSession({
 			sessionId,
 			status: partial ? "partial" : "completed",
 			producedCount: savedCount,
 			iterations: orchestrated.iterations,
 		});
+		const pipelineCounts = {
+			new: savedCount,
+			updated: 0,
+			duplicate: 0,
+			failed: 0,
+			processed: savedCount,
+		};
+		if (pipelineRun) {
+			await (pipelinePartial
+				? pipelineRun.partial(
+					pipelineCounts,
+					stages.skipped().length > 0 ? "optional_stages_skipped" : "target_not_met",
+					stages.skipped().length > 0
+						? `Saved ${savedCount} candidates with ${stages.skipped().length} optional stage(s) skipped`
+						: `Saved ${savedCount} of ${TARGET_COUNT} requested discovery candidates`,
+				)
+				: pipelineRun.succeed(pipelineCounts)
+			).catch((recordErr) => {
+				console.warn(`[cron ${CONTEXT}] pipeline run finish failed:`, recordErr instanceof Error ? recordErr.message : String(recordErr));
+			});
+		}
 
 		try {
 			revalidateTag("discovery:home_shopping", "max");
@@ -288,6 +323,11 @@ export async function GET(req: NextRequest) {
 	} catch (err) {
 		const msg = err instanceof Error ? err.message : String(err);
 		console.error(`[cron ${CONTEXT}] failed:`, msg);
+		if (pipelineRun) {
+			await pipelineRun.fail("discovery_failed", msg).catch((recordErr) => {
+				console.warn(`[cron ${CONTEXT}] pipeline run failure record failed:`, recordErr instanceof Error ? recordErr.message : String(recordErr));
+			});
+		}
 		await finalizeSession({
 			sessionId,
 			status: "failed",

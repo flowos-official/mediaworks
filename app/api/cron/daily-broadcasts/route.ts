@@ -12,6 +12,7 @@ import {
 	type QvcProductLike,
 } from "@/lib/broadcasts/snapshot-enrichment";
 import { buildProgramId } from "@/lib/broadcasts/shopch-json";
+import { createPipelineRunRepository, startPipelineRun } from "@/lib/intelligence/pipeline-run";
 export const maxDuration = 180;
 
 function verifyCronAuth(req: NextRequest): boolean {
@@ -238,6 +239,20 @@ export async function GET(req: NextRequest) {
 	const start = Date.now();
 	const target = getYesterdayJST(new Date());
 	const targetIso = target.toISOString().slice(0, 10);
+	const pipelineRun = await startPipelineRun(
+		createPipelineRunRepository(getServiceClient()),
+		{
+			sourceType: "qvc_shopch",
+			jobType: "broadcast_schedule",
+			externalRunId: `${targetIso}:${crypto.randomUUID()}`,
+			targetScope: { date: targetIso },
+		},
+	).catch((err) => {
+		console.warn("[cron daily-broadcasts] pipeline run start failed:", err instanceof Error ? err.message : String(err));
+		return null;
+	});
+
+	try {
 
 	const summary = await scrapeAllForDate(target);
 
@@ -329,6 +344,42 @@ export async function GET(req: NextRequest) {
 	}
 
 	console.log(JSON.stringify(log));
+	const pipelineCounts = {
+		new: summary.totalInserted,
+		updated: summary.totalUpdated,
+		duplicate: 0,
+		failed: summary.totalErrors + enrich.failed,
+		processed: summary.results.reduce((total, result) => total + result.slots.length, 0),
+	};
+	if (pipelineRun) {
+		const successfulSources = summary.results.filter((result) => result.ok).length;
+		if (pipelineCounts.failed === 0 && successfulSources === summary.results.length) {
+			await pipelineRun.succeed(pipelineCounts).catch((recordErr) => {
+				console.warn("[cron daily-broadcasts] pipeline run finish failed:", recordErr instanceof Error ? recordErr.message : String(recordErr));
+			});
+		} else if (successfulSources > 0) {
+			await pipelineRun.partial(
+				pipelineCounts,
+				summary.totalErrors > 0 ? "source_partial" : "enrichment_partial",
+				`${summary.totalErrors} source scrape and ${enrich.failed} product enrichment error(s)`,
+			).catch((recordErr) => {
+				console.warn("[cron daily-broadcasts] pipeline run finish failed:", recordErr instanceof Error ? recordErr.message : String(recordErr));
+			});
+		} else {
+			await pipelineRun.fail("source_failed", `${summary.totalErrors} source scrape and ${enrich.failed} product enrichment error(s)`).catch((recordErr) => {
+				console.warn("[cron daily-broadcasts] pipeline run finish failed:", recordErr instanceof Error ? recordErr.message : String(recordErr));
+			});
+		}
+	}
 
 	return NextResponse.json({ ok: true, ...log });
+	} catch (err) {
+		if (pipelineRun) {
+			const message = err instanceof Error ? err.message : String(err);
+			await pipelineRun.fail("broadcast_schedule_failed", message).catch((recordErr) => {
+				console.warn("[cron daily-broadcasts] pipeline run failure record failed:", recordErr instanceof Error ? recordErr.message : String(recordErr));
+			});
+		}
+		throw err;
+	}
 }

@@ -7,6 +7,7 @@ import {
   type AnalyzeResult,
   type QueuedAnalysisSlot,
 } from "@/lib/broadcast-intel/analyze-one";
+import { createPipelineRunRepository, startPipelineRun } from "@/lib/intelligence/pipeline-run";
 
 export const maxDuration = 300;
 
@@ -32,16 +33,32 @@ export async function GET(req: NextRequest) {
 
   const sb = getServiceClient();
   const startedAt = Date.now();
+  const pipelineRun = await startPipelineRun(
+    createPipelineRunRepository(sb),
+    {
+      sourceType: "broadcast_archive",
+      jobType: "audio_analysis",
+      externalRunId: `analyze-broadcast-audio:${crypto.randomUUID()}`,
+      targetScope: { category: SLICE_CATEGORY },
+    },
+  ).catch((err) => {
+    console.warn("[analyze-broadcast-audio] pipeline run start failed:", err instanceof Error ? err.message : String(err));
+    return null;
+  });
   const summary = { recovered: 0, seeded: 0, processed: 0, done: 0, queued: 0, failed: 0, skipped: 0, batches: 0 };
+  let preflightFailures = 0;
 
+  try {
   try {
     summary.recovered = await recoverStaleAnalysis();
   } catch (err) {
+    preflightFailures++;
     console.warn("[analyze-broadcast-audio] stale recovery failed:", err);
   }
   try {
     summary.seeded = await seedAnalysisQueue({ limit: SEED_LIMIT, category: SLICE_CATEGORY });
   } catch (err) {
+    preflightFailures++;
     console.warn("[analyze-broadcast-audio] seed failed:", err);
   }
 
@@ -57,7 +74,14 @@ export async function GET(req: NextRequest) {
       .order("air_date", { ascending: false })
       .limit(CONCURRENCY);
 
-    if (error) return NextResponse.json({ error: error.message, ...summary }, { status: 500 });
+    if (error) {
+      if (pipelineRun) {
+        await pipelineRun.fail("queue_query_failed", error.message).catch((recordErr) => {
+          console.warn("[analyze-broadcast-audio] pipeline run failure record failed:", recordErr instanceof Error ? recordErr.message : String(recordErr));
+        });
+      }
+      return NextResponse.json({ error: error.message, ...summary }, { status: 500 });
+    }
 
     const queued = (slots ?? []) as QueuedAnalysisSlot[];
     if (queued.length === 0) break;
@@ -70,5 +94,37 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  if (pipelineRun) {
+    const pipelineCounts = {
+      new: summary.done,
+      updated: summary.recovered + summary.queued,
+      duplicate: summary.skipped,
+      failed: summary.failed + preflightFailures,
+      processed: summary.processed,
+    };
+    if (pipelineCounts.failed > 0 || summary.queued > 0) {
+      await pipelineRun.partial(
+        pipelineCounts,
+        "audio_analysis_partial",
+        `${pipelineCounts.failed} failed and ${summary.queued} requeued audio analysis result(s)`,
+      ).catch((recordErr) => {
+        console.warn("[analyze-broadcast-audio] pipeline run finish failed:", recordErr instanceof Error ? recordErr.message : String(recordErr));
+      });
+    } else {
+      await pipelineRun.succeed(pipelineCounts).catch((recordErr) => {
+        console.warn("[analyze-broadcast-audio] pipeline run finish failed:", recordErr instanceof Error ? recordErr.message : String(recordErr));
+      });
+    }
+  }
+
   return NextResponse.json({ ok: true, ...summary, duration_ms: Date.now() - startedAt });
+  } catch (err) {
+    if (pipelineRun) {
+      const message = err instanceof Error ? err.message : String(err);
+      await pipelineRun.fail("audio_analysis_failed", message).catch((recordErr) => {
+        console.warn("[analyze-broadcast-audio] pipeline run failure record failed:", recordErr instanceof Error ? recordErr.message : String(recordErr));
+      });
+    }
+    throw err;
+  }
 }
