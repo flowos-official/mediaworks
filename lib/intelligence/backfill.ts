@@ -748,6 +748,7 @@ export interface CanonicalBackfillRepository {
 	insertCanonical(row: DiscoveredProductBackfillRow): Promise<string>;
 	insertExactSourceLink(input: { canonicalProductId: string; row: DiscoveredProductBackfillRow }): Promise<void>;
 	deleteCanonical(canonicalProductId: string): Promise<void>;
+	repairCanonicalCategory?(canonicalProductId: string, normalizedCategory: string): Promise<boolean>;
 }
 
 export interface ExactCanonicalResolution {
@@ -758,6 +759,24 @@ export interface ExactCanonicalResolution {
 	exactSourceLinkCreated: boolean;
 	/** An exact source link created by another operation was reused. */
 	exactSourceLinkReused: boolean;
+	/** A null/blank canonical category was conditionally repaired by this invocation. */
+	canonicalCategoryUpdated: boolean;
+}
+
+async function repairResolvedCategory(
+	repository: CanonicalBackfillRepository,
+	resolution: Omit<ExactCanonicalResolution, "canonicalCategoryUpdated">,
+	row: DiscoveredProductBackfillRow,
+	eligible: boolean,
+): Promise<ExactCanonicalResolution> {
+	const normalizedCategory = row.normalizedCategory?.trim();
+	const canonicalCategoryUpdated = Boolean(
+		eligible
+		&& normalizedCategory
+		&& repository.repairCanonicalCategory
+		&& await repository.repairCanonicalCategory(resolution.canonicalProductId, normalizedCategory),
+	);
+	return { ...resolution, canonicalCategoryUpdated };
 }
 
 function isRestrictProtectedCleanup(error: unknown): boolean {
@@ -777,9 +796,14 @@ async function cleanupCreatedCanonical(
 			try {
 				const winner = await repository.findExactSourceLink(row);
 				if (winner) {
-					return winner.canonicalProductId === canonicalProductId
-						? { canonicalProductId, canonicalProductCreated: true, exactSourceLinkCreated: true, exactSourceLinkReused: false }
-						: { canonicalProductId: winner.canonicalProductId, canonicalProductCreated: true, exactSourceLinkCreated: false, exactSourceLinkReused: true };
+					return repairResolvedCategory(
+						repository,
+						winner.canonicalProductId === canonicalProductId
+							? { canonicalProductId, canonicalProductCreated: true, exactSourceLinkCreated: true, exactSourceLinkReused: false }
+							: { canonicalProductId: winner.canonicalProductId, canonicalProductCreated: true, exactSourceLinkCreated: false, exactSourceLinkReused: true },
+						row,
+						winner.canonicalProductId !== canonicalProductId,
+					);
 				}
 			} catch (lookupError) {
 				throw new Error(`${errorText(primaryError)}; orphan canonical cleanup protected (local canonical was not deleted): ${errorText(cleanupError)}; source-link race lookup failed: ${errorText(lookupError)}`);
@@ -798,17 +822,17 @@ export async function resolveExactCanonicalProduct(
 ): Promise<ExactCanonicalResolution> {
 	const existing = await repository.findExactSourceLink(row);
 	if (existing) {
-		return {
+		return repairResolvedCategory(repository, {
 			canonicalProductId: existing.canonicalProductId,
 			canonicalProductCreated: false,
 			exactSourceLinkCreated: false,
 			exactSourceLinkReused: true,
-		};
+		}, row, true);
 	}
 	const canonicalProductId = await repository.insertCanonical(row);
 	try {
 		await repository.insertExactSourceLink({ canonicalProductId, row });
-		return { canonicalProductId, canonicalProductCreated: true, exactSourceLinkCreated: true, exactSourceLinkReused: false };
+		return { canonicalProductId, canonicalProductCreated: true, exactSourceLinkCreated: true, exactSourceLinkReused: false, canonicalCategoryUpdated: false };
 	} catch (linkError) {
 		let winner: ExactSourceLink | null = null;
 		let lookupError: unknown;
@@ -819,7 +843,7 @@ export async function resolveExactCanonicalProduct(
 		}
 		if (winner) {
 			if (winner.canonicalProductId === canonicalProductId) {
-				return { canonicalProductId, canonicalProductCreated: true, exactSourceLinkCreated: true, exactSourceLinkReused: false };
+				return { canonicalProductId, canonicalProductCreated: true, exactSourceLinkCreated: true, exactSourceLinkReused: false, canonicalCategoryUpdated: false };
 			}
 			try {
 				await repository.deleteCanonical(canonicalProductId);
@@ -828,21 +852,21 @@ export async function resolveExactCanonicalProduct(
 					// A different source may now legitimately reference the local
 					// canonical. RESTRICT preserves that shared identity; the exact
 					// winning source link remains the truthful product resolution.
-					return {
+					return repairResolvedCategory(repository, {
 						canonicalProductId: winner.canonicalProductId,
 						canonicalProductCreated: true,
 						exactSourceLinkCreated: false,
 						exactSourceLinkReused: true,
-					};
+					}, row, true);
 				}
 				throw new Error(`${errorText(linkError)}; winning exact source link resolved to ${winner.canonicalProductId}; orphan canonical cleanup failed: ${errorText(cleanupError)}`);
 			}
-			return {
+			return repairResolvedCategory(repository, {
 				canonicalProductId: winner.canonicalProductId,
 				canonicalProductCreated: false,
 				exactSourceLinkCreated: false,
 				exactSourceLinkReused: true,
-			};
+			}, row, true);
 		}
 		return cleanupCreatedCanonical(repository, canonicalProductId, row, lookupError
 			? new Error(`${errorText(linkError)}; source-link race lookup failed: ${errorText(lookupError)}`)

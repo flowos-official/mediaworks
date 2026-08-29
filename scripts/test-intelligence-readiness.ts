@@ -123,6 +123,9 @@ class FakeQuery implements PromiseLike<{ data: Row[] | null; error: { message: s
 		if (this.table === "evidence_items_missing") {
 			return { data: null, error: { message: "relation evidence_items does not exist" }, count: null };
 		}
+		if (this.table === "evidence_items_unavailable_count") {
+			return { data: null, error: null, count: null };
+		}
 		let data = [...(this.client.rows[this.table] ?? [])];
 		for (const [column, value] of this.equals) data = data.filter((row) => row[column] === value);
 		for (const [column, values] of this.includes) data = data.filter((row) => values.includes(row[column]));
@@ -271,7 +274,8 @@ async function run(): Promise<void> {
 	assert.equal(client.calls.some((call) => call.includes("d-historical")), false, "historical Discovery products never enter the active denominator");
 	assert.ok(client.calls.includes("product_source_links:eq:source_type:internal_excel"), "internal coverage is sourced from active internal source links");
 	assert.ok(client.calls.includes("broadcasts:range:0:499"), "broadcast identity sets use pagination rather than PostgREST's default row cap");
-	assert.ok(client.calls.includes("evidence_items:select:count:head") && client.calls.includes("insight_snapshots:select:count:head"), "new-table counts use exact count heads");
+	assert.ok(client.calls.includes("evidence_items:select:count:body") && client.calls.includes("insight_snapshots:select:count:body"), "required-table counts use exact counts without a HEAD response that can mask relation failures");
+	assert.ok(client.calls.includes("evidence_items:limit:1") && client.calls.includes("insight_snapshots:limit:1"), "required-table probes read at most one row while obtaining the exact count");
 
 	for (const [telemetryId, jobType, externalRunId] of [["home-success", "home_shopping", null], ["live-success", "live_commerce", "   "]] as const) {
 		const missingExternalClient = new FakeReadinessClient({
@@ -327,6 +331,22 @@ async function run(): Promise<void> {
 		/evidence item count failed: relation evidence_items does not exist/,
 		"an unapplied new table is a visible loader failure, never fabricated zero coverage",
 	);
+	const unavailableCountClient = new FakeReadinessClient({ ...normalRows, evidence_items: [] });
+	const unavailableCountFrom = unavailableCountClient.from.bind(unavailableCountClient);
+	unavailableCountClient.from = ((table: string) => unavailableCountFrom(table === "evidence_items" ? "evidence_items_unavailable_count" : table)) as typeof unavailableCountClient.from;
+	await assert.rejects(
+		() => loadIntelligenceReadiness(unavailableCountClient as never, NOW),
+		/evidence item count failed: exact count unavailable/,
+		"an error-null/count-null required-table response is unavailable, never empty coverage",
+	);
+	const legitimateEmptyClient = new FakeReadinessClient({
+		...normalRows,
+		evidence_items: [],
+		insight_snapshots: [],
+	});
+	const legitimateEmpty = await loadIntelligenceReadiness(legitimateEmptyClient as never, NOW);
+	assert.equal(legitimateEmpty.coverage.evidenceItems, 0, "a successful exact count distinguishes a legitimate empty table");
+	assert.equal(legitimateEmpty.coverage.insightSnapshots, 0, "every required-table count preserves a real zero");
 	const emptyCoverage = await loadIntelligenceReadiness(
 		new FakeReadinessClient({
 			...normalRows,

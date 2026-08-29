@@ -310,17 +310,26 @@ async function verifyDryRun(): Promise<void> {
 		broadcastQueryFails?: boolean;
 		evidenceConflicts?: boolean;
 		race?: CliRaceScenario;
+		existingCanonicalCategory?: string | null;
+		categoryUpdateError?: string;
 	} = {}) {
 		const calls: string[] = [];
 		const race = options.race ?? "none";
+		const hasExistingCanonical = Object.prototype.hasOwnProperty.call(options, "existingCanonicalCategory");
 		let sourceLinkLookups = 0;
 		let evidenceId = 0;
 		const client = {
 			from(table: string) {
 				calls.push(`from:${table}`);
+				let updateValue: unknown;
 				const builder: any = {
 					select(columns: string) {
 						calls.push(`${table}:select:${columns}`);
+						if (table === "canonical_products" && updateValue !== undefined) {
+							return Promise.resolve(options.categoryUpdateError
+								? { data: null, error: { message: options.categoryUpdateError } }
+								: { data: [{ id: "existing-canonical" }], error: null });
+						}
 						if (table === "evidence_items") {
 							return {
 								in(column: string, keys: string[]) {
@@ -335,6 +344,7 @@ async function verifyDryRun(): Promise<void> {
 						return builder;
 					},
 					eq(column: string, value: string) { calls.push(`${table}:eq:${column}:${value}`); return builder; },
+					is(column: string, value: null) { calls.push(`${table}:is:${column}:${String(value)}`); return builder; },
 					gte(column: string, value: string) { calls.push(`${table}:gte:${column}:${value}`); return builder; },
 					in(column: string, value: string[]) { calls.push(`${table}:in:${column}:${value.join(",")}`); return builder; },
 					order(column: string) { calls.push(`${table}:order:${column}`); return builder; },
@@ -350,12 +360,19 @@ async function verifyDryRun(): Promise<void> {
 						throw new Error(`unexpected bounded query for ${table}`);
 					},
 					maybeSingle() {
+						if (table === "canonical_products") {
+							return Promise.resolve({ data: { id: "existing-canonical", normalized_category: options.existingCanonicalCategory ?? null }, error: null });
+						}
 						sourceLinkLookups += 1;
+						if (table === "product_source_links" && hasExistingCanonical) {
+							return Promise.resolve({ data: { canonical_product_id: "existing-canonical" }, error: null });
+						}
 						if (race !== "none" && sourceLinkLookups > 1) {
 							return Promise.resolve({ data: { canonical_product_id: "race-winner" }, error: null });
 						}
 						return Promise.resolve({ data: null, error: null });
 					},
+					update(value: unknown) { updateValue = value; calls.push(`${table}:update`); return builder; },
 					insert(value: unknown) {
 						calls.push(`${table}:insert`);
 						if (table === "canonical_products") {
@@ -454,6 +471,43 @@ async function verifyDryRun(): Promise<void> {
 	assert.ok(appliedCli.calls.includes("discovered_products:limit:1") && appliedCli.calls.includes("broadcast_speech_analyses:limit:1"), "actual CLI adapter keeps each source read bounded by the CLI limit");
 	assert.ok(appliedCli.calls.includes("evidence_items:upsert:5"), "actual CLI apply executes the production evidence upsert adapter against the injected client");
 
+	const categoryRepairCli = makeCliApplySupabase({ existingCanonicalCategory: null });
+	const categoryRepairResult = await runCliBackfill(
+		{ since: "2026-08-01T00:00:00.000Z", limit: 1, apply: true },
+		categoryRepairCli.client,
+		{
+			normalizeCategories: async () => new Map([["家電", ["家電"]]]),
+			startPipelineRun: async () => fakeRun,
+		},
+	);
+	assert.ok(categoryRepairResult.counts);
+	assert.equal(categoryRepairResult.counts.updated, 1, "an actual successful canonical category repair is reported as one update");
+	assert.ok(categoryRepairCli.calls.includes("canonical_products:update"), "the production adapter executes the conditional canonical repair");
+	assert.ok(categoryRepairCli.calls.includes("evidence_items:upsert:5"), "an exact-link category repair still writes all product evidence");
+
+	const categoryNoOverwriteCli = makeCliApplySupabase({ existingCanonicalCategory: "既存カテゴリ" });
+	const categoryNoOverwriteResult = await runCliBackfill(
+		{ since: "2026-08-01T00:00:00.000Z", limit: 1, apply: true },
+		categoryNoOverwriteCli.client,
+		{
+			normalizeCategories: async () => new Map([["家電", ["家電"]]]),
+			startPipelineRun: async () => fakeRun,
+		},
+	);
+	assert.ok(categoryNoOverwriteResult.counts);
+	assert.equal(categoryNoOverwriteResult.counts.updated, 0);
+	assert.equal(categoryNoOverwriteCli.calls.includes("canonical_products:update"), false, "a nonblank category is never offered to an overwrite query");
+
+	const categoryRepairFailureCli = makeCliApplySupabase({ existingCanonicalCategory: "", categoryUpdateError: "category update unavailable" });
+	await assert.rejects(() => runCliBackfill(
+		{ since: "2026-08-01T00:00:00.000Z", limit: 1, apply: true },
+		categoryRepairFailureCli.client,
+		{
+			normalizeCategories: async () => new Map([["家電", ["家電"]]]),
+			startPipelineRun: async () => fakeRun,
+		},
+	), /category update unavailable/, "a failed production repair is surfaced and cannot create a truthful update count");
+
 	const evidenceRaceCli = makeCliApplySupabase({ evidenceConflicts: true });
 	const evidenceRaceResult = await runCliBackfill(
 		{ since: "2026-08-01T00:00:00.000Z", limit: 1, apply: true },
@@ -474,7 +528,7 @@ async function verifyDryRun(): Promise<void> {
 			startPipelineRun: async () => fakeRun,
 		},
 	);
-	assert.deepEqual(linkRaceResult.counts, { new: 5, updated: 0, duplicate: 1, failed: 0, processed: 1 }, "actual CLI resolves a unique source-link race to the exact winner without counting reused links as updates");
+	assert.deepEqual(linkRaceResult.counts, { new: 5, updated: 1, duplicate: 1, failed: 0, processed: 1 }, "actual CLI resolves a unique source-link race and truthfully counts the winner's category repair");
 	assert.ok(linkRaceCli.calls.includes("canonical_products:delete"), "a normal source-link race removes only the just-created orphan canonical");
 
 	const restrictRaceCli = makeCliApplySupabase({ race: "source-link-restrict" });
@@ -486,7 +540,7 @@ async function verifyDryRun(): Promise<void> {
 			startPipelineRun: async () => fakeRun,
 		},
 	);
-	assert.deepEqual(restrictRaceResult.counts, { new: 6, updated: 0, duplicate: 1, failed: 0, processed: 1 }, "actual CLI counts its RESTRICT-protected local canonical while reusing the exact winning source link");
+	assert.deepEqual(restrictRaceResult.counts, { new: 6, updated: 1, duplicate: 1, failed: 0, processed: 1 }, "actual CLI counts its RESTRICT-protected local canonical and the winning category repair while reusing the exact source link");
 	assert.ok(restrictRaceCli.calls.includes("canonical_products:delete"), "RESTRICT cleanup attempts only the locally-created canonical through the injected client");
 
 	const resumedQueries: string[] = [];
@@ -638,13 +692,38 @@ async function verifyDryRun(): Promise<void> {
 		insertCanonical: async () => { throw new Error("existing source links need no canonical insert"); },
 		insertExactSourceLink: async () => { throw new Error("existing source links need no link insert"); },
 		deleteCanonical: async () => { throw new Error("existing source links need no cleanup"); },
+		repairCanonicalCategory: async (canonicalProductId, normalizedCategory) => {
+			assert.equal(canonicalProductId, "already-linked");
+			assert.equal(normalizedCategory, "家電");
+			return true;
+		},
 	}, productRow);
 	assert.deepEqual(existingResolution, {
 		canonicalProductId: "already-linked",
 		canonicalProductCreated: false,
 		exactSourceLinkCreated: false,
 		exactSourceLinkReused: true,
+		canonicalCategoryUpdated: true,
 	}, "an existing exact source link is only a reuse");
+
+	let noOverwriteRepairCalls = 0;
+	const noOverwriteResolution = await resolveExactCanonicalProduct({
+		findExactSourceLink: async () => ({ canonicalProductId: "categorized" }),
+		insertCanonical: async () => { throw new Error("existing source links need no canonical insert"); },
+		insertExactSourceLink: async () => { throw new Error("existing source links need no link insert"); },
+		deleteCanonical: async () => { throw new Error("existing source links need no cleanup"); },
+		repairCanonicalCategory: async () => { noOverwriteRepairCalls++; return false; },
+	}, productRow);
+	assert.equal(noOverwriteRepairCalls, 1, "the repository owns the race-safe null/blank check");
+	assert.equal(noOverwriteResolution.canonicalCategoryUpdated, false, "an existing nonblank category is never reported as updated");
+
+	await assert.rejects(() => resolveExactCanonicalProduct({
+		findExactSourceLink: async () => ({ canonicalProductId: "repair-fails" }),
+		insertCanonical: async () => { throw new Error("existing source links need no canonical insert"); },
+		insertExactSourceLink: async () => { throw new Error("existing source links need no link insert"); },
+		deleteCanonical: async () => { throw new Error("existing source links need no cleanup"); },
+		repairCanonicalCategory: async () => { throw new Error("canonical category update unavailable"); },
+	}, productRow), /canonical category update unavailable/, "a failed category repair cannot be counted as an observed update");
 
 	const normalIdentityResolution = await resolveExactCanonicalProduct({
 		findExactSourceLink: async () => null,
@@ -657,6 +736,7 @@ async function verifyDryRun(): Promise<void> {
 		canonicalProductCreated: true,
 		exactSourceLinkCreated: true,
 		exactSourceLinkReused: false,
+		canonicalCategoryUpdated: false,
 	}, "a normal local canonical and exact link are independently new rows");
 
 	const canonicalCalls: string[] = [];
@@ -671,6 +751,7 @@ async function verifyDryRun(): Promise<void> {
 		canonicalProductCreated: false,
 		exactSourceLinkCreated: false,
 		exactSourceLinkReused: true,
+		canonicalCategoryUpdated: false,
 	}, "a unique winner on another canonical leaves no local identity row after cleanup");
 	assert.deepEqual(canonicalCalls, ["canonical", "link", "delete:orphan"], "a source-link race cleans up only its orphan canonical");
 
@@ -693,6 +774,7 @@ async function verifyDryRun(): Promise<void> {
 			canonicalProductCreated: true,
 			exactSourceLinkCreated: false,
 			exactSourceLinkReused: true,
+			canonicalCategoryUpdated: false,
 		},
 		"a RESTRICT-protected locally-created canonical is never cascaded away while the exact winning link is reused",
 	);

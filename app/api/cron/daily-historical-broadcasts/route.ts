@@ -17,19 +17,33 @@ import { failPipelineRunWithKnownCounts, settlePipelineRunBestEffort, startPipel
 export const maxDuration = 300;
 
 export function historicalBroadcastPipelineCounts(input: {
-	inserted: number;
-	updated: number;
+	inserted: number | undefined;
+	updated: number | undefined;
 	skippedDuplicate: number;
 	persistErrors: number;
 	failedChannels: number;
 	processed: number;
 }) {
 	return {
-		new: input.inserted,
-		updated: input.updated,
+		...(input.inserted === undefined ? {} : { new: input.inserted }),
+		...(input.updated === undefined ? {} : { updated: input.updated }),
 		duplicate: input.skippedDuplicate,
 		failed: input.persistErrors + input.failedChannels,
 		processed: input.processed,
+	};
+}
+
+export function historicalBroadcastClassificationOutcome(input: {
+	counts: ReturnType<typeof historicalBroadcastPipelineCounts>;
+	unclassified: number;
+	classificationError?: string;
+}) {
+	if (input.unclassified <= 0) return null;
+	return {
+		status: "failed" as const,
+		counts: input.counts,
+		errorCode: "persist_classification_failed",
+		errorSummary: `${input.unclassified} persisted row(s) could not be classified as inserted or updated: ${input.classificationError ?? "classification unavailable"}`,
 	};
 }
 
@@ -132,14 +146,27 @@ export async function GET(req: NextRequest) {
 			failedChannels: channels.filter((channel) => !channel.ok).length,
 			processed: summary.totalRows,
 		});
+		const classificationOutcome = historicalBroadcastClassificationOutcome({
+			counts: pipelineCounts,
+			unclassified: summary.persist.unclassified,
+			classificationError: summary.persist.classificationError,
+		});
 		await settlePipelineRunBestEffort(
 			pipelineRun,
 			async (run) => {
-			if (status === "completed") {
-				await run.succeed(pipelineCounts);
+			if (classificationOutcome) {
+				await failPipelineRunWithKnownCounts(
+					run,
+					classificationOutcome.counts,
+					classificationOutcome.errorCode,
+					classificationOutcome.errorSummary,
+					reportPipelineRunError,
+				);
+			} else if (status === "completed") {
+				await run.succeed(pipelineCounts as Parameters<typeof run.succeed>[0]);
 			} else if (status === "partial") {
 				await run.partial(
-						pipelineCounts,
+						pipelineCounts as Parameters<typeof run.partial>[0],
 						"crawl_partial",
 						persistError ?? "One or more historical broadcast sources did not complete",
 					);
@@ -178,6 +205,7 @@ export async function GET(req: NextRequest) {
 				upserted: summary.persist.upserted,
 				skippedDuplicate: summary.persist.skippedDuplicate,
 				errors: summary.persist.errors,
+				unclassified: summary.persist.unclassified,
 			},
 			durationMs: Date.now() - start,
 		};

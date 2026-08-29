@@ -19,6 +19,8 @@ import {
 } from "../lib/intelligence/refresh-insights";
 import type { PipelineRunCounts, PipelineRunHandle } from "../lib/intelligence/pipeline-run";
 import {
+	acquireRefreshInsightsInvocation,
+	refreshInsightsInvocationBucket,
 	isRefreshInsightsCronAuthorized,
 	maxDuration as refreshInsightsMaxDuration,
 	runRefreshInsightsCron,
@@ -897,6 +899,7 @@ async function testCronRoute(): Promise<void> {
 			secret: "secret",
 			now: () => new Date(CUTOFF),
 			getClient: () => ({} as never),
+			acquireRun: async () => ({ status: "acquired", invocationBucket: CUTOFF, run: pipelineHandle([]) }),
 			refresh: async (_sb, cutoff, limit) => {
 				receivedCutoff = cutoff;
 				receivedLimit = limit;
@@ -957,6 +960,78 @@ async function testCronRoute(): Promise<void> {
 	});
 	assert.equal(unauthorized.status, 401);
 	assert.equal(unauthorizedRefreshCalled, false);
+
+	const firstBucket = refreshInsightsInvocationBucket(new Date("2026-08-29T00:14:59.999Z"));
+	assert.equal(firstBucket, "2026-08-29T00:00:00.000Z");
+	assert.equal(refreshInsightsInvocationBucket(new Date("2026-08-29T00:15:00.000Z")), "2026-08-29T00:15:00.000Z", "a later bounded window can retry instead of suppressing the whole day");
+
+	const reserved = new Set<string>();
+	let insertedRuns = 0;
+	const lockRepository = {
+		async insert(input: { externalRunId: string }) {
+			if (reserved.has(input.externalRunId)) throw Object.assign(new Error("duplicate invocation"), { code: "23505" });
+			reserved.add(input.externalRunId);
+			insertedRuns++;
+			return { id: `lock-${insertedRuns}` };
+		},
+		async update() {},
+	};
+	let concurrentRefreshCalls = 0;
+	let reusedRunIds: string[] = [];
+	const concurrentDependencies = {
+		secret: "secret",
+		now: () => new Date(CUTOFF),
+		getClient: () => ({} as never),
+		acquireRun: (_sb: unknown, cutoff: string, limit: number) => acquireRefreshInsightsInvocation(lockRepository, cutoff, limit),
+		refresh: async (_sb: unknown, cutoff: string, limit: number, dependencies: { startPipelineRun(): Promise<PipelineRunHandle | null> }) => {
+			concurrentRefreshCalls++;
+			const run = await dependencies.startPipelineRun();
+			reusedRunIds.push(run?.id ?? "missing");
+			return {
+				status: "succeeded" as const,
+				cutoff,
+				limit,
+				consideredSubjects: 0,
+				eligibleInsightSubjects: 0,
+				productSnapshots: 0,
+				categorySnapshots: 0,
+				skippedNoNewEvidence: 0,
+				unresolvedBroadcastIds: [],
+				errors: [],
+				counts: { new: 0, updated: 0, duplicate: 0, failed: 0, processed: 0 },
+				scannedEvidenceRows: 0,
+				scanWrapped: false,
+				scanTruncated: false,
+				scanState: INITIAL_INSIGHT_SCAN_STATE,
+				cursorPersisted: true,
+				telemetryFailures: [],
+			};
+		},
+	} as any;
+	const concurrentRequest = () => runRefreshInsightsCron(
+		new Request("https://example.test/api/cron/refresh-intelligence-insights", { headers: { authorization: "Bearer secret" } }),
+		concurrentDependencies,
+	);
+	const concurrentResponses = await Promise.all([concurrentRequest(), concurrentRequest()]);
+	assert.deepEqual(concurrentResponses.map((item) => item.status), [200, 200]);
+	assert.equal(concurrentRefreshCalls, 1, "only the unique-lock winner may scan or write");
+	assert.deepEqual(reusedRunIds, ["lock-1"], "the winner passes the acquired run into refresh instead of starting a second owner");
+	const concurrentBodies = await Promise.all(concurrentResponses.map((item) => item.json()));
+	assert.equal(concurrentBodies.filter((body) => body.skipped === "duplicate-invocation").length, 1, "the duplicate receives an explicit successful skipped response");
+
+	let refreshAfterLockFailure = false;
+	const lockFailure = await runRefreshInsightsCron(
+		new Request("https://example.test/api/cron/refresh-intelligence-insights", { headers: { authorization: "Bearer secret" } }),
+		{
+			secret: "secret",
+			now: () => new Date(CUTOFF),
+			getClient: () => ({} as never),
+			acquireRun: async () => { throw Object.assign(new Error("lock database unavailable"), { code: "08006" }); },
+			refresh: async () => { refreshAfterLockFailure = true; throw new Error("must not refresh"); },
+		} as any,
+	);
+	assert.equal(lockFailure.status, 500);
+	assert.equal(refreshAfterLockFailure, false, "a non-duplicate acquisition failure fails closed before scanning or writing");
 
 	const vercel = JSON.parse(readFileSync(new URL("../vercel.json", import.meta.url), "utf8")) as {
 		functions: Record<string, { maxDuration: number }>;

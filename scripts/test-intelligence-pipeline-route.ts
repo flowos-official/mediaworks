@@ -9,8 +9,14 @@ import {
 import type { PipelineRunHandle, PipelineRunRepository } from "../lib/intelligence/pipeline-run";
 import { discoveryHomePipelineCounts } from "../app/api/cron/daily-discovery-home/route";
 import { discoveryLivePipelineCounts } from "../app/api/cron/daily-discovery-live/route";
-import { dailyBroadcastPipelineCounts } from "../app/api/cron/daily-broadcasts/route";
-import { historicalBroadcastPipelineCounts } from "../app/api/cron/daily-historical-broadcasts/route";
+import {
+	dailyBroadcastPipelineCounts,
+	dailyBroadcastPipelineOutcome,
+} from "../app/api/cron/daily-broadcasts/route";
+import {
+	historicalBroadcastClassificationOutcome,
+	historicalBroadcastPipelineCounts,
+} from "../app/api/cron/daily-historical-broadcasts/route";
 import {
 	archiveVideosPipelineOutcome,
 	archiveVideosQueryFailure,
@@ -33,8 +39,42 @@ async function main() {
 	{
 		assert.deepEqual(discoveryHomePipelineCounts(4, 1), { new: 1, updated: 0, duplicate: 3, failed: 0, processed: 4 });
 		assert.deepEqual(discoveryLivePipelineCounts(0, 0), { new: 0, updated: 0, duplicate: 0, failed: 0, processed: 0 });
-		assert.deepEqual(dailyBroadcastPipelineCounts({ inserted: 1, updated: 2, sourceErrors: 1, enrichmentErrors: 1, processed: 5 }), { new: 1, updated: 2, duplicate: 0, failed: 2, processed: 5 });
+		assert.deepEqual(dailyBroadcastPipelineCounts({ inserted: 1, updated: 2, sourceErrors: 1, enrichmentErrors: 1, snapshotErrors: 3, processed: 5 }), { new: 1, updated: 2, duplicate: 0, failed: 5, processed: 5 });
 		assert.deepEqual(historicalBroadcastPipelineCounts({ inserted: 1, updated: 2, skippedDuplicate: 3, persistErrors: 1, failedChannels: 1, processed: 7 }), { new: 1, updated: 2, duplicate: 3, failed: 2, processed: 7 });
+		const unclassifiedCounts = historicalBroadcastPipelineCounts({ inserted: undefined, updated: undefined, skippedDuplicate: 3, persistErrors: 0, failedChannels: 0, processed: 7 });
+		assert.deepEqual(
+			unclassifiedCounts,
+			{ duplicate: 3, failed: 0, processed: 7 },
+			"unclassified persisted rows omit unknown new/updated keys from normalized telemetry",
+		);
+		assert.deepEqual(
+			historicalBroadcastClassificationOutcome({ counts: unclassifiedCounts, unclassified: 2, classificationError: "classification unavailable" }),
+			{
+				status: "failed",
+				counts: { duplicate: 3, failed: 0, processed: 7 },
+				errorCode: "persist_classification_failed",
+				errorSummary: "2 persisted row(s) could not be classified as inserted or updated: classification unavailable",
+			},
+			"successfully persisted but unclassified rows fail normalized telemetry without changing legacy persistence",
+		);
+		const snapshotFailure = dailyBroadcastPipelineOutcome({
+			inserted: 4,
+			updated: 1,
+			sourceErrors: 0,
+			enrichmentErrors: 0,
+			processed: 5,
+			successfulSources: 2,
+			totalSources: 2,
+			snapshotErrors: [
+				{ channel: "qvc", operation: "category_backfill", broadcastId: "qvc-1", message: "category write unavailable" },
+				{ channel: "shopch", operation: "video_status_update", broadcastId: "shopch-1", message: "video write unavailable" },
+			],
+		});
+		assert.equal(snapshotFailure.status, "partial", "a snapshot data-path write failure cannot be normalized as success");
+		assert.equal(snapshotFailure.counts.failed, 2);
+		assert.equal(snapshotFailure.errorCode, "snapshot_enrichment_partial");
+		assert.match(snapshotFailure.errorSummary ?? "", /category_backfill.*category write unavailable/);
+		assert.match(snapshotFailure.errorSummary ?? "", /video_status_update.*video write unavailable/);
 		assert.equal(archiveVideosPipelineOutcome({ processed: 1, archived: 0, queued: 0, abandoned: 0, deferred: 1, failed_unsupported: 0, stale_requeued: 0, stale_abandoned: 0 }, 0).status, "partial");
 		assert.equal(broadcastAudioPipelineOutcome({ recovered: 0, seeded: 1, processed: 0, done: 0, queued: 0, failed: 0, skipped: 0 }, 0).counts.new, 1);
 		console.log("✓ all six production route-owned mapping functions execute representative outcomes");

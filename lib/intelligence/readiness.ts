@@ -205,10 +205,11 @@ export function createIntelligenceReadinessRepository(sb: SupabaseClient): Intel
 		return rows;
 	}
 
-	async function countHead(table: "evidence_items" | "insight_snapshots", label: string): Promise<number> {
-		const { count, error } = await sb.from(table).select("id", { count: "exact", head: true });
+	async function countRequiredTable(table: "evidence_items" | "insight_snapshots", label: string): Promise<number> {
+		const { count, error } = await sb.from(table).select("id", { count: "exact" }).limit(1);
 		if (error) asError(label, error);
-		return count ?? 0;
+		if (count === null || count === undefined) asError(label, { message: "exact count unavailable" });
+		return count;
 	}
 
 	return {
@@ -311,8 +312,8 @@ export function createIntelligenceReadinessRepository(sb: SupabaseClient): Intel
 			).then((rows) => rows.map((row) => row.broadcast_id));
 		},
 
-		countEvidenceItems: () => countHead("evidence_items", "evidence item count"),
-		countInsightSnapshots: () => countHead("insight_snapshots", "insight snapshot count"),
+		countEvidenceItems: () => countRequiredTable("evidence_items", "evidence item count"),
+		countInsightSnapshots: () => countRequiredTable("insight_snapshots", "insight snapshot count"),
 	};
 }
 

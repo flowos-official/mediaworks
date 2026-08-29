@@ -3,15 +3,13 @@ import { revalidateTag } from "next/cache";
 import { scrapeAllForDate } from "@/lib/broadcasts";
 import { enrichQvcProducts } from "@/lib/qvc-products/enrich";
 import { getServiceClient } from "@/lib/supabase";
-import { loadWhitelist, isAllowed, normalizeCategory } from "@/lib/broadcasts/category-filter";
+import { loadWhitelist } from "@/lib/broadcasts/category-filter";
 import { getYesterdayJST, getJSTYearMonth } from "@/lib/broadcasts/jst-date";
 import {
-	buildQvcSnapshotRows,
-	buildShopChSnapshotRows,
-	pickBrandFromQvcProducts,
-	type QvcProductLike,
-} from "@/lib/broadcasts/snapshot-enrichment";
-import { buildProgramId } from "@/lib/broadcasts/shopch-json";
+	enrichQvcSlotSnapshots as enrichQvcSlotSnapshotsWithOutcome,
+	enrichShopChSlotSnapshots as enrichShopChSlotSnapshotsWithOutcome,
+	type DailySnapshotEnrichmentError,
+} from "@/lib/broadcasts/daily-snapshot-enrichment";
 import { createPipelineRunRepository } from "@/lib/intelligence/pipeline-run";
 import { failPipelineRunWithKnownCounts, settlePipelineRunBestEffort, startPipelineRunBestEffort } from "@/lib/intelligence/pipeline-run-route";
 export const maxDuration = 180;
@@ -21,14 +19,60 @@ export function dailyBroadcastPipelineCounts(input: {
 	updated: number;
 	sourceErrors: number;
 	enrichmentErrors: number;
+	snapshotErrors: number;
 	processed: number;
 }) {
 	return {
 		new: input.inserted,
 		updated: input.updated,
 		duplicate: 0,
-		failed: input.sourceErrors + input.enrichmentErrors,
+		failed: input.sourceErrors + input.enrichmentErrors + input.snapshotErrors,
 		processed: input.processed,
+	};
+}
+
+export function dailyBroadcastPipelineOutcome(input: {
+	inserted: number;
+	updated: number;
+	sourceErrors: number;
+	enrichmentErrors: number;
+	processed: number;
+	successfulSources: number;
+	totalSources: number;
+	snapshotErrors: DailySnapshotEnrichmentError[];
+}) {
+	const counts = dailyBroadcastPipelineCounts({
+		inserted: input.inserted,
+		updated: input.updated,
+		sourceErrors: input.sourceErrors,
+		enrichmentErrors: input.enrichmentErrors,
+		snapshotErrors: input.snapshotErrors.length,
+		processed: input.processed,
+	});
+	if (counts.failed === 0 && input.successfulSources === input.totalSources) {
+		return { status: "succeeded" as const, counts };
+	}
+	const snapshotSummary = input.snapshotErrors
+		.map((error) => `${error.channel}/${error.operation}${error.broadcastId ? `(${error.broadcastId})` : ""}: ${error.message}`)
+		.join("; ");
+	const errorSummary = [
+		`${input.sourceErrors} source scrape error(s)`,
+		`${input.enrichmentErrors} QVC product enrichment error(s)`,
+		`${input.snapshotErrors.length} snapshot enrichment error(s)`,
+		snapshotSummary,
+	].filter(Boolean).join("; ");
+	if (input.successfulSources === 0) {
+		return { status: "failed" as const, counts, errorCode: "source_failed", errorSummary };
+	}
+	return {
+		status: "partial" as const,
+		counts,
+		errorCode: input.sourceErrors > 0
+			? "source_partial"
+			: input.snapshotErrors.length > 0
+				? "snapshot_enrichment_partial"
+				: "enrichment_partial",
+		errorSummary,
 	};
 }
 
@@ -37,215 +81,6 @@ function verifyCronAuth(req: NextRequest): boolean {
 	if (!secret) return true; // dev mode
 	const header = req.headers.get("authorization");
 	return header === `Bearer ${secret}`;
-}
-
-/**
- * Enrich broadcast_products and broadcasts.brand_name for QVC slots.
- * Only processes slots that (a) have product_ids and (b) pass the whitelist check.
- */
-async function enrichQvcSlotSnapshots(
-	qvcSlots: Array<{ channel: string; air_date: string; start_time: string; product_ids: string[] | null; category: string | null }>,
-	broadcastIdMap: Map<string, string>,
-	whitelist: Map<string, Set<string>>,
-): Promise<{ snapshotRows: number; brandUpdates: number; videoQueued: number; videoDeferred: number; categoryBackfilled: number }> {
-	const sb = getServiceClient();
-	let snapshotRows = 0;
-	let brandUpdates = 0;
-	let videoQueued = 0;
-	let videoDeferred = 0;
-	let categoryBackfilled = 0;
-
-	// Consider ALL slots with products first. A brand-new product is unenriched
-	// at scrape time, so the slot's own category is NULL — but enrichQvcProducts
-	// (which ran just before this) has now populated qvc_products.category, so we
-	// resolve an effective category from the products and backfill the NULL
-	// broadcasts.category. Without this, new whitelist slots stay category-null
-	// and never enter the archive queue (fail-closed whitelist).
-	const slotsWithProducts = qvcSlots.filter((s) => s.product_ids && s.product_ids.length > 0);
-	if (slotsWithProducts.length === 0) return { snapshotRows, brandUpdates, videoQueued, videoDeferred, categoryBackfilled };
-
-	const allProductIds = [...new Set(slotsWithProducts.flatMap((s) => s.product_ids ?? []))];
-
-	// Fetch qvc_products rows for all needed IDs in one query (incl. category).
-	const { data: qvcProductRows, error: productError } = await sb
-		.from("qvc_products")
-		.select("id,name,image_url,price_text,brand,original_price_jpy,sale_label,video_url,category")
-		.in("id", allProductIds);
-
-	if (productError) {
-		console.warn("[snapshot] qvc_products fetch failed:", productError.message);
-		return { snapshotRows, brandUpdates, videoQueued, videoDeferred, categoryBackfilled };
-	}
-
-	const products = (qvcProductRows ?? []) as (QvcProductLike & { video_url?: string | null; category?: string | null })[];
-	const categoryById = new Map<string, string | null>();
-	for (const p of products) categoryById.set(p.id, p.category ?? null);
-
-	// Effective category: the slot's own when present, else the first product (in
-	// slot order) that carries a category. Mirrors the whitelist gate's intent.
-	const effectiveCategory = (s: { category: string | null; product_ids: string[] | null }): string | null => {
-		if (normalizeCategory(s.category)) return s.category;
-		for (const pid of s.product_ids ?? []) {
-			const c = categoryById.get(pid);
-			if (c) return c;
-		}
-		return null;
-	};
-
-	const eligibleSlots = slotsWithProducts.filter((s) => isAllowed(whitelist, "qvc", effectiveCategory(s)));
-	if (eligibleSlots.length === 0) return { snapshotRows, brandUpdates, videoQueued, videoDeferred, categoryBackfilled };
-
-	for (const slot of eligibleSlots) {
-		const key = `${slot.channel}|${slot.air_date}|${slot.start_time}`;
-		const broadcastId = broadcastIdMap.get(key);
-		if (!broadcastId) continue;
-
-		// Backfill a NULL broadcasts.category from the resolved product category so
-		// reconciliation (which reads DB category) and the UI gate see it. CAS on
-		// `category IS NULL` so we never overwrite a real value.
-		if (!normalizeCategory(slot.category)) {
-			const effCat = effectiveCategory(slot);
-			if (effCat) {
-				const { data: catUpd } = await sb
-					.from("broadcasts")
-					.update({ category: effCat })
-					.eq("id", broadcastId)
-					.is("category", null)
-					.select("id");
-				if (catUpd && catUpd.length > 0) categoryBackfilled++;
-			}
-		}
-
-		const productIds = slot.product_ids ?? [];
-		const slotProducts = products.filter((p) => productIds.includes(p.id));
-
-		// Build snapshot rows and upsert.
-		const rows = buildQvcSnapshotRows(broadcastId, productIds, slotProducts);
-		if (rows.length > 0) {
-			const { error: upsertErr } = await sb
-				.from("broadcast_products")
-				.upsert(rows, { onConflict: "broadcast_id,product_id" });
-			if (upsertErr) {
-				console.warn(`[snapshot] qvc broadcast_products upsert failed for ${broadcastId}:`, upsertErr.message);
-			} else {
-				snapshotRows += rows.length;
-			}
-		}
-
-		// Update brand_name unconditionally, but only set video_status for slots
-		// still in the initial 'pending' state. A re-run (manual backfill or
-		// re-scrape) must NOT reset an already-queued/downloading/archived slot
-		// back to 'queued' — that forces needless re-downloads and, since the
-		// archive cron processes newest-first, starves older days. CAS guard
-		// mirrors recoverQvcPending.
-		const brand = pickBrandFromQvcProducts(productIds, slotProducts);
-		const hasVideo = slotProducts.some((p) => p.video_url);
-		const videoStatus = hasVideo ? "queued" : "deferred";
-
-		if (brand) {
-			const { error: brandErr } = await sb
-				.from("broadcasts")
-				.update({ brand_name: brand })
-				.eq("id", broadcastId);
-			if (brandErr) {
-				console.warn(`[snapshot] qvc brand update failed for ${broadcastId}:`, brandErr.message);
-			} else {
-				brandUpdates++;
-			}
-		}
-
-		const { error: broadcastErr } = await sb
-			.from("broadcasts")
-			.update({ video_status: videoStatus })
-			.eq("id", broadcastId)
-			.eq("video_status", "pending");
-		if (broadcastErr) {
-			console.warn(`[snapshot] qvc video_status update failed for ${broadcastId}:`, broadcastErr.message);
-		} else {
-			if (hasVideo) videoQueued++;
-			else videoDeferred++;
-		}
-	}
-
-	return { snapshotRows, brandUpdates, videoQueued, videoDeferred, categoryBackfilled };
-}
-
-/**
- * Enrich broadcast_products and broadcasts.brand_name/brand_code for ShopCh slots.
- * Only processes slots that pass the whitelist check and have metadata in the map.
- */
-async function enrichShopChSlotSnapshots(
-	shopchSlots: Array<{ channel: string; air_date: string; start_time: string; category: string | null }>,
-	shopchMetadataByProgramId: Map<string, import("@/lib/broadcasts/shopch-json").ShopChSlotMetadata>,
-	broadcastIdMap: Map<string, string>,
-	whitelist: Map<string, Set<string>>,
-): Promise<{ snapshotRows: number; brandUpdates: number; videoQueued: number; videoDeferred: number }> {
-	const sb = getServiceClient();
-	let snapshotRows = 0;
-	let brandUpdates = 0;
-	let videoQueued = 0;
-	let videoDeferred = 0;
-
-	for (const slot of shopchSlots) {
-		if (!isAllowed(whitelist, "shopch", slot.category)) continue;
-
-		const programId = buildProgramId(slot.air_date, slot.start_time);
-		const meta = shopchMetadataByProgramId.get(programId);
-		if (!meta || meta.products.length === 0) continue;
-
-		const key = `${slot.channel}|${slot.air_date}|${slot.start_time}`;
-		const broadcastId = broadcastIdMap.get(key);
-		if (!broadcastId) continue;
-
-		// Build snapshot rows and upsert.
-		const rows = buildShopChSnapshotRows(broadcastId, meta.products);
-		if (rows.length > 0) {
-			const { error: upsertErr } = await sb
-				.from("broadcast_products")
-				.upsert(rows, { onConflict: "broadcast_id,product_id" });
-			if (upsertErr) {
-				console.warn(`[snapshot] shopch broadcast_products upsert failed for ${broadcastId}:`, upsertErr.message);
-			} else {
-				snapshotRows += rows.length;
-			}
-		}
-
-		// Update brand unconditionally; guard video_status to 'pending'-only so a
-		// re-run never resets an in-progress/archived slot (see QVC note above).
-		// pgmMovie (meta.videoPath) signals an aired-program video on shopch.jp;
-		// the archive cron derives the m3u8 URL from programId at run time.
-		const hasVideo = !!meta.videoPath;
-		const videoStatus = hasVideo ? "queued" : "deferred";
-
-		const brandUpdate: Record<string, string | null> = {};
-		if (meta.brandName) brandUpdate.brand_name = meta.brandName;
-		if (meta.brandCode) brandUpdate.brand_code = meta.brandCode;
-		if (Object.keys(brandUpdate).length > 0) {
-			const { error: brandErr } = await sb
-				.from("broadcasts")
-				.update(brandUpdate)
-				.eq("id", broadcastId);
-			if (brandErr) {
-				console.warn(`[snapshot] shopch brand update failed for ${broadcastId}:`, brandErr.message);
-			} else {
-				brandUpdates++;
-			}
-		}
-
-		const { error: broadcastErr } = await sb
-			.from("broadcasts")
-			.update({ video_status: videoStatus })
-			.eq("id", broadcastId)
-			.eq("video_status", "pending");
-		if (broadcastErr) {
-			console.warn(`[snapshot] shopch video_status update failed for ${broadcastId}:`, broadcastErr.message);
-		} else {
-			if (hasVideo) videoQueued++;
-			else videoDeferred++;
-		}
-	}
-
-	return { snapshotRows, brandUpdates, videoQueued, videoDeferred };
 }
 
 export async function GET(req: NextRequest) {
@@ -290,21 +125,22 @@ export async function GET(req: NextRequest) {
 	const shopchResult = summary.results.find((r) => r.channel === "shopch");
 
 	const qvcSnapshot = qvcResult?.ok
-		? await enrichQvcSlotSnapshots(
+		? await enrichQvcSlotSnapshotsWithOutcome(
 				qvcResult.slots as Array<{ channel: string; air_date: string; start_time: string; product_ids: string[] | null; category: string | null }>,
 				summary.broadcastIds,
 				whitelist,
 			)
-		: { snapshotRows: 0, brandUpdates: 0, videoQueued: 0, videoDeferred: 0, categoryBackfilled: 0 };
+		: { snapshotRows: 0, brandUpdates: 0, videoQueued: 0, videoDeferred: 0, categoryBackfilled: 0, errors: [] };
 
 	const shopchSnapshot = shopchResult?.ok && shopchResult.shopchMetadataByProgramId
-		? await enrichShopChSlotSnapshots(
+		? await enrichShopChSlotSnapshotsWithOutcome(
 				shopchResult.slots as Array<{ channel: string; air_date: string; start_time: string; category: string | null }>,
 				shopchResult.shopchMetadataByProgramId,
 				summary.broadcastIds,
 				whitelist,
 			)
-		: { snapshotRows: 0, brandUpdates: 0, videoQueued: 0, videoDeferred: 0 };
+		: { snapshotRows: 0, brandUpdates: 0, videoQueued: 0, videoDeferred: 0, categoryBackfilled: 0, errors: [] };
+	const snapshotErrors = [...qvcSnapshot.errors, ...shopchSnapshot.errors];
 
 	const log = {
 		event: "broadcasts.scrape.summary",
@@ -337,12 +173,14 @@ export async function GET(req: NextRequest) {
 				videoQueued: qvcSnapshot.videoQueued,
 				videoDeferred: qvcSnapshot.videoDeferred,
 				categoryBackfilled: qvcSnapshot.categoryBackfilled,
+				errors: qvcSnapshot.errors,
 			},
 			shopch: {
 				snapshotRows: shopchSnapshot.snapshotRows,
 				brandUpdates: shopchSnapshot.brandUpdates,
 				videoQueued: shopchSnapshot.videoQueued,
 				videoDeferred: shopchSnapshot.videoDeferred,
+				errors: shopchSnapshot.errors,
 			},
 		},
 		durationMs: Date.now() - start,
@@ -362,27 +200,29 @@ export async function GET(req: NextRequest) {
 	}
 
 	console.log(JSON.stringify(log));
-	const pipelineCounts = dailyBroadcastPipelineCounts({
+	const pipelineOutcome = dailyBroadcastPipelineOutcome({
 		inserted: summary.totalInserted,
 		updated: summary.totalUpdated,
 		sourceErrors: summary.totalErrors,
 		enrichmentErrors: enrich.failed,
+		snapshotErrors,
 		processed: summary.results.reduce((total, result) => total + result.slots.length, 0),
+		successfulSources: summary.results.filter((result) => result.ok).length,
+		totalSources: summary.results.length,
 	});
-	const successfulSources = summary.results.filter((result) => result.ok).length;
 	await settlePipelineRunBestEffort(
 		pipelineRun,
 		async (run) => {
-		if (pipelineCounts.failed === 0 && successfulSources === summary.results.length) {
-			await run.succeed(pipelineCounts);
-		} else if (successfulSources > 0) {
+		if (pipelineOutcome.status === "succeeded") {
+			await run.succeed(pipelineOutcome.counts);
+		} else if (pipelineOutcome.status === "partial") {
 			await run.partial(
-					pipelineCounts,
-					summary.totalErrors > 0 ? "source_partial" : "enrichment_partial",
-					`${summary.totalErrors} source scrape and ${enrich.failed} product enrichment error(s)`,
+					pipelineOutcome.counts,
+					pipelineOutcome.errorCode,
+					pipelineOutcome.errorSummary,
 				);
 		} else {
-			await failPipelineRunWithKnownCounts(run, pipelineCounts, "source_failed", `${summary.totalErrors} source scrape and ${enrich.failed} product enrichment error(s)`, reportPipelineRunError);
+			await failPipelineRunWithKnownCounts(run, pipelineOutcome.counts, pipelineOutcome.errorCode, pipelineOutcome.errorSummary, reportPipelineRunError);
 		}
 		},
 		reportPipelineRunError,

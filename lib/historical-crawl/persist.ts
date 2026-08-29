@@ -6,15 +6,29 @@ const BATCH = 500;
 const EXISTENCE_LOOKUP_PAGE_SIZE = 1_000;
 const EXISTENCE_LOOKUP_DATE_BATCH = 31;
 
-export interface PersistOutcome {
+interface PersistOutcomeBase {
 	upserted: number;
-	inserted: number;
-	updated: number;
 	skippedDuplicate: number;
 	errors: number;
 	/** First upsert error of the run, so the recorded run says WHY nothing landed. */
 	firstError?: string;
 }
+
+export type PersistOutcome = PersistOutcomeBase & (
+	| {
+		unclassified: 0;
+		inserted: number;
+		updated: number;
+		classificationError?: never;
+	}
+	| {
+		/** Rows that were durably attempted without a trustworthy insert/update split. */
+		unclassified: number;
+		inserted?: never;
+		updated?: never;
+		classificationError: string;
+	}
+);
 
 type ExistingRow = Pick<HistoricalRow, "channel" | "air_date" | "product_name">;
 
@@ -105,7 +119,7 @@ export async function persistRows(
 	repository: HistoricalPersistenceRepository = createHistoricalPersistenceRepository(getServiceClient()),
 ): Promise<PersistOutcome> {
 	if (rows.length === 0) {
-		return { upserted: 0, inserted: 0, updated: 0, skippedDuplicate: 0, errors: 0 };
+		return { upserted: 0, inserted: 0, updated: 0, skippedDuplicate: 0, errors: 0, unclassified: 0 };
 	}
 
 	const seen = new Set<string>();
@@ -123,26 +137,28 @@ export async function persistRows(
 	let updated = 0;
 	let errors = 0;
 	let firstError: string | undefined;
+	let unclassified = 0;
+	let classificationError: string | undefined;
 
 	for (let i = 0; i < unique.length; i += BATCH) {
 		const slice = unique.slice(i, i + BATCH);
-		let existingKeys: Set<string>;
+		let existingKeys: Set<string> | null = null;
 		try {
 			existingKeys = await existingKeysForRows(repository, slice);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			console.error("[persistRows] existence lookup error:", message);
-			errors += slice.length;
-			firstError ??= message;
-			continue;
+			classificationError ??= message;
 		}
 		try {
 			const { count } = await repository.upsert(slice);
 			const affected = count ?? slice.length;
 			upserted += affected;
-			const split = splitRowsByExistingKeys(slice, existingKeys);
-			inserted += split.inserted;
-			updated += split.updated;
+			if (existingKeys) {
+				const split = splitRowsByExistingKeys(slice, existingKeys);
+				inserted += split.inserted;
+				updated += split.updated;
+			} else unclassified += affected;
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			console.error("[persistRows] upsert error:", message);
@@ -150,7 +166,11 @@ export async function persistRows(
 			firstError ??= message;
 		}
 	}
-	return { upserted, inserted, updated, skippedDuplicate, errors, ...(firstError ? { firstError } : {}) };
+	const base = { upserted, skippedDuplicate, errors, ...(firstError ? { firstError } : {}) };
+	if (unclassified > 0) {
+		return { ...base, unclassified, classificationError: classificationError ?? "existing-row classification unavailable" };
+	}
+	return { ...base, inserted, updated, unclassified: 0 };
 }
 
 export const __test = { splitRowsByExistingKeys };

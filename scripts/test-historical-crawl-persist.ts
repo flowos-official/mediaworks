@@ -45,16 +45,17 @@ assert.equal(split.updated, 1);
 		upsert: async () => { upsertAttempts++; return { count: 1 }; },
 	};
 	const outcome = await persistRows(rows, unavailable);
-	assert.equal(upsertAttempts, 0);
+	assert.equal(upsertAttempts, 1, "an auxiliary classification read cannot block the core business upsert");
 	assert.deepEqual(outcome, {
-		upserted: 0,
-		inserted: 0,
-		updated: 0,
+		upserted: 1,
 		skippedDuplicate: 0,
-		errors: 2,
-		firstError: "classification unavailable",
+		errors: 0,
+		unclassified: 1,
+		classificationError: "classification unavailable",
 	});
-	console.log("✓ unavailable classification records truthful failures without attempting an unclassified upsert");
+	assert.equal("inserted" in outcome, false, "unknown inserted rows are omitted rather than reported as zero");
+	assert.equal("updated" in outcome, false, "unknown updated rows are omitted rather than reported as zero");
+	console.log("✓ unavailable classification preserves the business upsert and omits unknown inserted/updated totals");
 }
 
 console.log("PASS: historical persistence distinguishes inserted and updated conflict rows");

@@ -110,6 +110,7 @@
     "test:qvc-brand": "tsx scripts/test-qvc-fetcher-brand.ts",
     "test:shopch-products": "tsx scripts/test-shopch-products-snapshot.ts",
     "test:snapshot-enrichment": "tsx scripts/test-snapshot-enrichment.ts",
+    "test:daily-broadcast-enrichment": "tsx scripts/test-daily-broadcast-enrichment.ts",
     "test:qvc-enrich-pagination": "tsx --env-file=.env.local scripts/test-qvc-enrich-pagination.ts",
     "test:qvc-video-resolver": "tsx scripts/test-qvc-video-resolver.ts",
     "backfill:broadcast-products": "tsx --env-file=.env.local scripts/backfill-broadcast-products.ts",
