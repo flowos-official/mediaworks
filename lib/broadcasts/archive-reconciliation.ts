@@ -115,7 +115,7 @@ export interface ReconcileResult {
   duration_ms: number;
 }
 
-type ProbeFn = (slot: ReconcileSlot) => Promise<boolean>;
+type ProbeFn = (slot: ReconcileSlot, signal?: AbortSignal) => Promise<boolean>;
 type WebhookFn = (url: string, body: object) => Promise<{ ok: boolean; error?: string }>;
 
 export interface ReconcileOptions {
@@ -126,6 +126,7 @@ export interface ReconcileOptions {
   postWebhook?: WebhookFn;
   webhookUrl?: string;
   now?: Date;
+  signal?: AbortSignal;
 }
 
 const STUCK: ReadonlySet<VideoStatus> = new Set(["pending", "deferred", "abandoned", "failed", "failed_unsupported"]);
@@ -138,26 +139,33 @@ function jstDate(now: Date, offsetDays: number): string {
 /** Default probe: QVC = ANY product has a video_url (DB, shared resolver);
  *  ShopCh = m3u8 200/206 (HTTP). Sharing resolveQvcVideoUrl keeps the probe's
  *  "has video?" verdict identical to what the downloader will actually fetch. */
-export async function defaultProbeVideo(slot: ReconcileSlot): Promise<boolean> {
+export async function defaultProbeVideo(slot: ReconcileSlot, signal?: AbortSignal): Promise<boolean> {
+  signal?.throwIfAborted();
   if (slot.channel === "qvc") {
-    return !!(await resolveQvcVideoUrl(slot.product_ids));
+    return !!(await resolveQvcVideoUrl(slot.product_ids, signal));
   }
   const programId = buildProgramId(slot.air_date, slot.start_time);
   const url = `https://www.shopch.jp/m3u8/prog/${programId}/${programId}_jwplayer.m3u8`;
   try {
-    const res = await fetch(url, { method: "GET", headers: { Range: "bytes=0-0" } });
+    const res = await fetch(url, { method: "GET", headers: { Range: "bytes=0-0" }, signal });
     return res.status === 200 || res.status === 206;
-  } catch {
+  } catch (error) {
+    if (signal?.aborted) throw signal.reason ?? error;
     return false;
   }
 }
 
-async function loadPreviousGapIds(sb: ReturnType<typeof getServiceClient>): Promise<Set<string>> {
-  const { data } = await sb
+async function loadPreviousGapIds(
+  sb: ReturnType<typeof getServiceClient>,
+  signal?: AbortSignal,
+): Promise<Set<string>> {
+  let query = sb
     .from("archive_reconciliation_runs")
     .select("gaps")
     .order("ran_at", { ascending: false })
     .limit(1);
+  if (signal) query = query.abortSignal(signal);
+  const { data } = await query;
   const row = (data ?? [])[0] as { gaps: GapRecord[] } | undefined;
   return new Set((row?.gaps ?? []).map((g) => g.broadcast_id));
 }
@@ -167,7 +175,9 @@ export async function reconcileArchiveCoverage(opts?: ReconcileOptions): Promise
   const now = opts?.now ?? new Date();
   const t0 = Date.now();
   const lookbackDays = opts?.lookbackDays ?? (Number(process.env.RECONCILE_LOOKBACK_DAYS) || 7);
-  const whitelist = opts?.whitelist ?? (await loadWhitelist());
+  const signal = opts?.signal;
+  signal?.throwIfAborted();
+  const whitelist = opts?.whitelist ?? (await loadWhitelist(false, signal));
   const probeVideo = opts?.probeVideo ?? defaultProbeVideo;
   const postWebhookFn = opts?.postWebhook;
   const webhookUrl = opts?.webhookUrl ?? process.env.ALERT_WEBHOOK_URL ?? "";
@@ -182,13 +192,16 @@ export async function reconcileArchiveCoverage(opts?: ReconcileOptions): Promise
     const rawSlots: ReconcileSlot[] = [];
     let offset = 0;
     for (;;) {
-      const { data, error } = await sb
+      signal?.throwIfAborted();
+      let slotsQuery = sb
         .from("broadcasts")
         .select("id, channel, air_date, start_time, program_title, category, product_ids, video_status, archived_video_s3, video_download_attempts")
         .in("channel", ["qvc", "shopch"])
         .gte("air_date", window_from)
         .lt("air_date", window_to)
         .range(offset, offset + PAGE - 1);
+      if (signal) slotsQuery = slotsQuery.abortSignal(signal);
+      const { data, error } = await slotsQuery;
       if (error) throw new Error(`[reconcile] load failed: ${error.message}`);
       const batch = (data ?? []) as ReconcileSlot[];
       rawSlots.push(...batch);
@@ -207,8 +220,11 @@ export async function reconcileArchiveCoverage(opts?: ReconcileOptions): Promise
     )];
     const productCat = new Map<string, string | null>();
     for (let i = 0; i < qvcNullPids.length; i += 500) {
-      const { data: prods, error: pErr } = await sb
+      signal?.throwIfAborted();
+      let productsQuery = sb
         .from("qvc_products").select("id, category").in("id", qvcNullPids.slice(i, i + 500));
+      if (signal) productsQuery = productsQuery.abortSignal(signal);
+      const { data: prods, error: pErr } = await productsQuery;
       if (pErr) throw new Error(`[reconcile] qvc_products category load failed: ${pErr.message}`);
       for (const p of (prods ?? []) as { id: string; category: string | null }[]) productCat.set(p.id, p.category);
     }
@@ -228,6 +244,7 @@ export async function reconcileArchiveCoverage(opts?: ReconcileOptions): Promise
     let healed = 0, unhealable = 0, no_source = 0, probed = 0;
 
     for (const s of slots) {
+      signal?.throwIfAborted();
       const k = tallyKey(s);
       if (s.archived_video_s3 || s.video_status === "archived") {
         archivedByDay.set(k, (archivedByDay.get(k) ?? 0) + 1);
@@ -235,17 +252,19 @@ export async function reconcileArchiveCoverage(opts?: ReconcileOptions): Promise
       }
       if (!STUCK.has(s.video_status)) continue; // queued/downloading → in-flight, skip
       probed++;
-      const hasVideo = await probeVideo(s);
+      const hasVideo = await probeVideo(s, signal);
       const action = classifyCandidate(s.video_status, hasVideo);
       if (action === "skip") { no_source++; continue; } // no source video
       gapsByDay.set(k, (gapsByDay.get(k) ?? 0) + 1);
       if (action === "requeue") {
-        const { data: upd } = await sb
+        let updateQuery = sb
           .from("broadcasts")
           .update({ video_status: "queued", video_error: null })
           .eq("id", s.id)
           .in("video_status", ["pending", "deferred"]) // CAS
           .select("id");
+        if (signal) updateQuery = updateQuery.abortSignal(signal);
+        const { data: upd } = await updateQuery;
         if (upd && upd.length > 0) healed++;
         gaps.push({ broadcast_id: s.id, channel: s.channel, air_date: s.air_date, start_time: s.start_time, status: s.video_status, classification: "healed", reason: "requeued (video present)" });
       } else { // alert
@@ -283,7 +302,7 @@ export async function reconcileArchiveCoverage(opts?: ReconcileOptions): Promise
     const coverage_pct = expected_total === 0 ? 100 : Math.round((archived_total / expected_total) * 10000) / 100;
 
     // alert
-    const prevGapIds = await loadPreviousGapIds(sb);
+    const prevGapIds = await loadPreviousGapIds(sb, signal);
     const alertGaps = selectAlertWorthy(gaps, prevGapIds);
     let alerted = false;
     let alert_error: string | null = null;
@@ -305,7 +324,7 @@ export async function reconcileArchiveCoverage(opts?: ReconcileOptions): Promise
     };
 
     // persist
-    const { error: insErr } = await sb.from("archive_reconciliation_runs").insert({
+    let insertQuery = sb.from("archive_reconciliation_runs").insert({
       ran_at: now.toISOString(),
       window_from, window_to, channels: ["qvc", "shopch"],
       expected_total, archived_total, coverage_pct,
@@ -313,12 +332,15 @@ export async function reconcileArchiveCoverage(opts?: ReconcileOptions): Promise
       coverage_by_day, gaps, alerted, alert_error,
       duration_ms,
     });
+    if (signal) insertQuery = insertQuery.abortSignal(signal);
+    const { error: insErr } = await insertQuery;
     if (insErr) console.warn("[reconcile] run insert failed:", insErr.message);
 
     return result;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     try {
+      if (signal?.aborted) throw e;
       await sb.from("archive_reconciliation_runs").insert({
         ran_at: now.toISOString(), window_from, window_to, channels: ["qvc", "shopch"],
         error: msg, duration_ms: Date.now() - t0,

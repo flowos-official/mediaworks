@@ -15,6 +15,7 @@
 import { S3Client } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import type { Readable } from "node:stream";
+import { completeManagedUpload } from "./archive-deadline";
 
 function requireEnv(name: string): string {
 	const v = process.env[name];
@@ -44,6 +45,7 @@ export async function uploadStreamToS3(
 	body: Readable,
 	key: string,
 	contentType = "video/mp4",
+	signal?: AbortSignal,
 ): Promise<VideoUploadResult> {
 	const bucket = requireEnv("VIDEO_ARCHIVE_AWS_BUCKET");
 	let bytes = 0;
@@ -61,7 +63,7 @@ export async function uploadStreamToS3(
 		partSize: 16 * 1024 * 1024,
 		queueSize: 4,
 	});
-	await upload.done();
+	await completeManagedUpload(upload, signal);
 	return { key, bytes };
 }
 

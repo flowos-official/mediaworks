@@ -12,6 +12,11 @@ import { spawn } from "node:child_process";
 import { Readable } from "node:stream";
 import ffmpegInstaller from "@ffmpeg-installer/ffmpeg";
 import { getServiceClient } from "@/lib/supabase";
+import {
+	createArchiveDeadline,
+	killProcessOnAbort,
+	runArchiveTransfer,
+} from "./archive-deadline";
 import { buildProgramId } from "./shopch-json";
 import { resolveQvcVideoUrl } from "./qvc-video-resolver";
 import { broadcastVideoKey, uploadStreamToS3 } from "./video-storage";
@@ -41,9 +46,9 @@ export interface ArchiveResult {
  *  ShopCh: per-program video derived from programId (= air_date + start_time).
  *    Pattern confirmed against shop.jp on 2026-05-27 — public CloudFront,
  *    no auth/cookies/Referer required. */
-async function resolveVideoUrl(slot: QueuedSlot): Promise<string | null> {
+async function resolveVideoUrl(slot: QueuedSlot, signal?: AbortSignal): Promise<string | null> {
 	if (slot.channel === "qvc") {
-		return resolveQvcVideoUrl(slot.product_ids);
+		return resolveQvcVideoUrl(slot.product_ids, signal);
 	}
 	if (slot.channel === "shopch") {
 		const programId = buildProgramId(slot.air_date, slot.start_time);
@@ -55,7 +60,7 @@ async function resolveVideoUrl(slot: QueuedSlot): Promise<string | null> {
 /** Spawn ffmpeg to copy-mux the m3u8 into a fragmented MP4 on stdout.
  *  We use `-c copy` (no re-encode) and `-movflags frag_keyframe+empty_moov`
  *  so the MP4 stream is valid even when piped (no seekable index needed). */
-function spawnFfmpegStream(m3u8Url: string): {
+function spawnFfmpegStream(m3u8Url: string, signal?: AbortSignal): {
 	stream: Readable;
 	stderrChunks: string[];
 	wait: Promise<{ code: number | null }>;
@@ -75,25 +80,47 @@ function spawnFfmpegStream(m3u8Url: string): {
 
 	const stderrChunks: string[] = [];
 	proc.stderr.on("data", (c: Buffer) => stderrChunks.push(c.toString("utf-8")));
+	const unbindAbort = signal ? killProcessOnAbort(signal, proc) : undefined;
 	const wait = new Promise<{ code: number | null }>((resolve) => {
-		proc.on("close", (code) => resolve({ code }));
+		proc.on("close", (code) => {
+			unbindAbort?.();
+			resolve({ code });
+		});
 	});
 	return { stream: proc.stdout, stderrChunks, wait };
 }
 
+export interface ArchiveOptions {
+	/** Absolute Date.now()-scale deadline. Omit for unbounded local drains. */
+	deadlineMs?: number;
+	/** Route-wide work signal, active before claim/resolution as well as transfer. */
+	signal?: AbortSignal;
+	/** Longer-lived signal reserved for DB finalization/rollback after work aborts. */
+	cleanupSignal?: AbortSignal;
+}
+
 /** Archive one queued slot. Idempotent: a row already 'archived' is a no-op.
  *  Failures roll the status forward correctly. */
-export async function archiveOne(slot: QueuedSlot): Promise<ArchiveResult> {
+export async function archiveOne(
+	slot: QueuedSlot,
+	options: ArchiveOptions = {},
+): Promise<ArchiveResult> {
 	const sb = getServiceClient();
 	const broadcastId = slot.id;
+	if (options.signal?.aborted || (options.deadlineMs !== undefined && Date.now() >= options.deadlineMs)) {
+		return { broadcastId, status: "queued", error: "archive deadline elapsed before claim" };
+	}
+	const cleanupSignal = options.cleanupSignal ?? options.signal;
 
 	// Claim the slot so a parallel cron run doesn't double-process it.
-	const { data: claimed, error: claimErr } = await sb
+	let claimQuery = sb
 		.from("broadcasts")
 		.update({ video_status: "downloading" })
 		.eq("id", broadcastId)
 		.eq("video_status", "queued")
 		.select("id");
+	if (options.signal) claimQuery = claimQuery.abortSignal(options.signal);
+	const { data: claimed, error: claimErr } = await claimQuery;
 	if (claimErr) {
 		return { broadcastId, status: "queued", error: claimErr.message };
 	}
@@ -110,19 +137,29 @@ export async function archiveOne(slot: QueuedSlot): Promise<ArchiveResult> {
 	// next drain retries — never strand it in 'downloading' or wrongly defer it.
 	let videoUrl: string | null;
 	try {
-		videoUrl = await resolveVideoUrl(slot);
+		videoUrl = await resolveVideoUrl(slot, options.signal);
 	} catch (e) {
 		const msg = (e instanceof Error ? e.message : String(e)).slice(0, 500);
-		await sb.from("broadcasts")
+		let rollbackQuery = sb.from("broadcasts")
 			.update({ video_status: "queued", video_error: msg })
-			.eq("id", broadcastId).eq("video_status", "downloading");
+			.eq("id", broadcastId).eq("video_status", "downloading").select("id");
+		if (cleanupSignal) rollbackQuery = rollbackQuery.abortSignal(cleanupSignal);
+		const { data: rolledBack, error: rollbackError } = await rollbackQuery;
+		if (rollbackError) {
+			return { broadcastId, status: "queued", error: `${msg}; rollback failed: ${rollbackError.message}`.slice(0, 500) };
+		}
+		if (!rolledBack || rolledBack.length === 0) {
+			return { broadcastId, status: "queued", error: `${msg}; rollback skipped: slot was no longer downloading`.slice(0, 500) };
+		}
 		return { broadcastId, status: "queued", error: msg };
 	}
 	if (!videoUrl) {
-		const { data: updated, error: updateErr } = await sb.from("broadcasts").update({
+		let deferQuery = sb.from("broadcasts").update({
 			video_status: "deferred",
 			video_error: "no video_url for any product",
 		}).eq("id", broadcastId).eq("video_status", "downloading").select("id");
+		if (cleanupSignal) deferQuery = deferQuery.abortSignal(cleanupSignal);
+		const { data: updated, error: updateErr } = await deferQuery;
 		if (updateErr) {
 			return { broadcastId, status: "queued", error: updateErr.message };
 		}
@@ -137,19 +174,43 @@ export async function archiveOne(slot: QueuedSlot): Promise<ArchiveResult> {
 	}
 
 	const key = broadcastVideoKey(slot.channel, slot.air_date, slot.start_time, broadcastId);
-	const { stream, stderrChunks, wait } = spawnFfmpegStream(videoUrl);
+	if (options.signal?.aborted || (options.deadlineMs !== undefined && Date.now() >= options.deadlineMs)) {
+		let rollbackQuery = sb.from("broadcasts")
+			.update({ video_status: "queued", video_error: "archive deadline elapsed before transfer" })
+			.eq("id", broadcastId).eq("video_status", "downloading").select("id");
+		if (cleanupSignal) rollbackQuery = rollbackQuery.abortSignal(cleanupSignal);
+		const { data: rolledBack, error: rollbackError } = await rollbackQuery;
+		if (rollbackError) {
+			return { broadcastId, status: "queued", error: `archive deadline elapsed before transfer; rollback failed: ${rollbackError.message}`.slice(0, 500) };
+		}
+		if (!rolledBack || rolledBack.length === 0) {
+			return { broadcastId, status: "queued", error: "archive deadline elapsed before transfer; rollback skipped: slot was no longer downloading" };
+		}
+		return { broadcastId, status: "queued", error: "archive deadline elapsed before transfer" };
+	}
+	const deadline = options.signal || options.deadlineMs === undefined
+		? undefined
+		: createArchiveDeadline(options.deadlineMs);
+	const workSignal = options.signal ?? deadline?.signal;
+	let stderrChunks: string[] = [];
 
 	try {
-		const [{ bytes }, { code }] = await Promise.all([
-			uploadStreamToS3(stream, key),
-			wait,
-		]);
-		if (code !== 0) {
-			throw new Error(`ffmpeg exited with code ${code}: ${stderrChunks.join("").slice(-500)}`);
-		}
+		const [{ bytes }] = await runArchiveTransfer(workSignal, (transferSignal) => {
+			const ffmpeg = spawnFfmpegStream(videoUrl, transferSignal);
+			stderrChunks = ffmpeg.stderrChunks;
+			return {
+				upload: uploadStreamToS3(ffmpeg.stream, key, "video/mp4", transferSignal),
+				ffmpeg: ffmpeg.wait.then(({ code }) => {
+					if (code !== 0) {
+						throw new Error(`ffmpeg exited with code ${code}: ${stderrChunks.join("").slice(-500)}`);
+					}
+					return code;
+				}),
+			};
+		});
 		// ffmpeg writes a Duration line to stderr around stream start.
 		const durationSec = parseDurationFromStderr(stderrChunks.join(""));
-		const { data: updated, error: updateErr } = await sb.from("broadcasts").update({
+		let finalizeQuery = sb.from("broadcasts").update({
 			archived_video_s3: key,
 			video_size_bytes: bytes,
 			video_duration_sec: durationSec,
@@ -158,6 +219,8 @@ export async function archiveOne(slot: QueuedSlot): Promise<ArchiveResult> {
 			video_downloaded_at: new Date().toISOString(),
 			video_error: null,
 		}).eq("id", broadcastId).eq("video_status", "downloading").select("id");
+		if (cleanupSignal) finalizeQuery = finalizeQuery.abortSignal(cleanupSignal);
+		const { data: updated, error: updateErr } = await finalizeQuery;
 		if (updateErr) {
 			return { broadcastId, status: "queued", bytes, error: updateErr.message };
 		}
@@ -171,7 +234,11 @@ export async function archiveOne(slot: QueuedSlot): Promise<ArchiveResult> {
 		}
 		return { broadcastId, status: "archived", bytes };
 	} catch (e) {
-		const msg = (e instanceof Error ? e.message : String(e)).slice(0, 500);
+		const msg = (
+			workSignal?.aborted
+				? "archive deadline exceeded"
+				: e instanceof Error ? e.message : String(e)
+		).slice(0, 500);
 		// ShopCh's per-program m3u8 publishes only AFTER the program airs; a 403
 		// means the CloudFront object doesn't exist yet (not-yet-aired or publish
 		// lag), NOT a real failure. Roll back to 'deferred' WITHOUT consuming an
@@ -179,10 +246,12 @@ export async function archiveOne(slot: QueuedSlot): Promise<ArchiveResult> {
 		// otherwise a slot queued too early burns all 5 attempts on 403s and is
 		// wrongly abandoned.
 		if (slot.channel === "shopch" && /403 Forbidden/i.test(msg)) {
-			const { data: updated, error: updateErr } = await sb.from("broadcasts").update({
+			let deferQuery = sb.from("broadcasts").update({
 				video_status: "deferred",
 				video_error: msg,
 			}).eq("id", broadcastId).eq("video_status", "downloading").select("id");
+			if (cleanupSignal) deferQuery = deferQuery.abortSignal(cleanupSignal);
+			const { data: updated, error: updateErr } = await deferQuery;
 			if (updateErr) {
 				return { broadcastId, status: "queued", error: updateErr.message };
 			}
@@ -197,11 +266,13 @@ export async function archiveOne(slot: QueuedSlot): Promise<ArchiveResult> {
 		}
 		const attempts = (slot.video_download_attempts ?? 0) + 1;
 		const finalStatus = attempts >= MAX_ATTEMPTS ? "abandoned" : "queued";
-		const { data: updated, error: updateErr } = await sb.from("broadcasts").update({
+		let failureQuery = sb.from("broadcasts").update({
 			video_status: finalStatus,
 			video_download_attempts: attempts,
 			video_error: msg,
 		}).eq("id", broadcastId).eq("video_status", "downloading").select("id");
+		if (cleanupSignal) failureQuery = failureQuery.abortSignal(cleanupSignal);
+		const { data: updated, error: updateErr } = await failureQuery;
 		if (updateErr) {
 			return { broadcastId, status: "queued", error: updateErr.message };
 		}
@@ -213,6 +284,8 @@ export async function archiveOne(slot: QueuedSlot): Promise<ArchiveResult> {
 			};
 		}
 		return { broadcastId, status: finalStatus, error: msg };
+	} finally {
+		deadline?.dispose();
 	}
 }
 

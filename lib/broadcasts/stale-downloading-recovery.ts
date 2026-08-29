@@ -45,6 +45,7 @@ export function decideStaleRecovery(
 
 export async function recoverStaleDownloading(
 	staleMinutes = DEFAULT_STALE_MINUTES,
+	signal?: AbortSignal,
 ): Promise<StaleRecoveryResult> {
 	const sb = getServiceClient();
 	const cutoff = new Date(Date.now() - staleMinutes * 60_000).toISOString();
@@ -56,12 +57,15 @@ export async function recoverStaleDownloading(
 	// Page through stale rows. Recovered rows leave 'downloading', so each pass
 	// shrinks the set; re-query from offset 0 every loop to avoid skipping.
 	for (;;) {
-		const { data, error } = await sb
+		signal?.throwIfAborted();
+		let fetchQuery = sb
 			.from("broadcasts")
 			.select("id, video_download_attempts")
 			.eq("video_status", "downloading")
 			.lt("updated_at", cutoff)
 			.limit(PAGE);
+		if (signal) fetchQuery = fetchQuery.abortSignal(signal);
+		const { data, error } = await fetchQuery;
 
 		if (error) {
 			throw new Error(`recoverStaleDownloading fetch failed: ${error.message}`);
@@ -75,13 +79,14 @@ export async function recoverStaleDownloading(
 		scanned += rows.length;
 
 		for (const r of rows) {
+			signal?.throwIfAborted();
 			const { nextStatus, nextAttempts } = decideStaleRecovery(
 				r.video_download_attempts ?? 0,
 			);
 			// CAS: only act if the row is still the same stale claim. Guards against
 			// a concurrent worker that re-claimed (updated_at moves forward) or
 			// finished (status changes) between the SELECT and this UPDATE.
-			const { data: upd, error: updErr } = await sb
+			let updateQuery = sb
 				.from("broadcasts")
 				.update({
 					video_status: nextStatus,
@@ -92,6 +97,8 @@ export async function recoverStaleDownloading(
 				.eq("video_status", "downloading")
 				.lt("updated_at", cutoff)
 				.select("id");
+			if (signal) updateQuery = updateQuery.abortSignal(signal);
+			const { data: upd, error: updErr } = await updateQuery;
 			if (updErr) {
 				console.warn(
 					`[stale-recover] update ${r.id} failed:`,

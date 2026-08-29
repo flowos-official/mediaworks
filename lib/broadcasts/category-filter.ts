@@ -29,26 +29,32 @@ const CACHE_TTL_MS = 5 * 60 * 1000;
  */
 export async function loadWhitelist(
 	force = false,
+	signal?: AbortSignal,
 ): Promise<Map<string, Set<string>>> {
 	if (!force && cache && Date.now() - cache.loadedAt < CACHE_TTL_MS) {
 		return cache.byChannel;
 	}
 	const sb = getServiceClient();
-	const { data, error } = await sb
+	let query = sb
 		.from("channel_categories")
 		.select("channel, category")
 		.eq("is_allowed", true);
+	if (signal) query = query.abortSignal(signal);
+	const { data, error } = await query;
 
 	const byChannel = new Map<string, Set<string>>();
 	if (error || !data) {
-		console.warn("[category-filter] loadWhitelist failed:", error?.message);
-	} else {
-		for (const row of data as { channel: string; category: string }[]) {
-			const set = byChannel.get(row.channel) ?? new Set<string>();
-			const norm = normalizeCategory(row.category);
-			if (norm) set.add(norm);
-			byChannel.set(row.channel, set);
+		if (signal?.aborted) {
+			throw signal.reason ?? new Error("category whitelist load aborted");
 		}
+		console.warn("[category-filter] loadWhitelist failed:", error?.message);
+		return byChannel;
+	}
+	for (const row of data as { channel: string; category: string }[]) {
+		const set = byChannel.get(row.channel) ?? new Set<string>();
+		const norm = normalizeCategory(row.category);
+		if (norm) set.add(norm);
+		byChannel.set(row.channel, set);
 	}
 	cache = { byChannel, loadedAt: Date.now() };
 	return byChannel;

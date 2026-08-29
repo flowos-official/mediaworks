@@ -11,7 +11,15 @@
  * Run: npm run verify:pipeline
  * Exits 1 if any stage is stale, so it can gate a deploy or a morning check.
  */
+import { execFile } from "node:child_process";
 import { createClient } from "@supabase/supabase-js";
+import {
+	classifyStageHealth,
+	isCronDiscoveryRun,
+	latestRunProbe,
+	parseLatestVercelInvocation,
+	type VercelInvocation,
+} from "../lib/cron/pipeline-health";
 
 const sb = createClient(
 	process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -26,32 +34,70 @@ interface Stage {
 	schedule: string;
 	/** Older than this and the stage is stale. Allows one missed run plus slack. */
 	maxAgeMs: number;
-	probe: () => Promise<{ at: string | null; detail: string }>;
+	probe: () => Promise<{ at: string | null; detail: string; sourceHealthy?: boolean }>;
 }
 
 async function latestRun(context: string) {
-	const { data } = await sb
+	const { data, error } = await sb
 		.from("discovery_runs")
-		.select("run_at, completed_at, status, produced_count, error")
+		.select("run_at, completed_at, status, produced_count, category_plan, error")
 		.eq("context", context)
+		.or("produced_count.eq.0,category_plan.not.is.null")
 		.order("run_at", { ascending: false })
 		.limit(5);
-	const rows = data ?? [];
-	const ok = rows.find((r) => r.status === "completed" || r.status === "partial");
-	const newest = rows[0];
-	const failedSince = ok
-		? rows.filter((r) => r.status === "failed" && r.run_at > ok.run_at).length
-		: rows.filter((r) => r.status === "failed").length;
+	if (error) {
+		return { at: null, sourceHealthy: false, detail: `조회 실패: ${error.message}` };
+	}
+	const rows = (data ?? []).filter(isCronDiscoveryRun);
+	const run = latestRunProbe(rows, new Set(["completed", "partial"]));
+	const ok = rows.find((row) => row.run_at === run.at);
 	return {
-		at: ok?.run_at ?? null,
+		at: run.at ?? run.latestAt,
+		sourceHealthy: run.healthy,
 		detail: [
 			ok ? `${ok.status}, ${ok.produced_count}건` : "성공 기록 없음",
-			newest && newest !== ok ? `최근=${newest.status}` : "",
-			failedSince ? `이후 실패 ${failedSince}건` : "",
+			run.latestStatus && run.latestAt !== run.at ? `최근=${run.latestStatus}` : "",
 		]
 			.filter(Boolean)
 			.join(" · "),
 	};
+}
+
+function latestArchiveInvocation(): Promise<VercelInvocation | null> {
+	const project = process.env.VERCEL_PROJECT_NAME ?? "mediaworks";
+	const scope = process.env.VERCEL_SCOPE ?? "flow-os";
+	return new Promise((resolve, reject) => {
+		execFile(
+			"vercel",
+			[
+				"logs",
+				"--project", project,
+				"--scope", scope,
+				"--environment", "production",
+				"--since", "4h",
+				"--json",
+				"--limit", "300",
+				"--no-branch",
+				"--non-interactive",
+			],
+			{
+				maxBuffer: 4 * 1024 * 1024,
+				timeout: 30_000,
+				killSignal: "SIGKILL",
+			},
+			(error, stdout, stderr) => {
+				if (error) {
+					reject(new Error((stderr || error.message).trim()));
+					return;
+				}
+				try {
+					resolve(parseLatestVercelInvocation(stdout, "/api/cron/archive-videos"));
+				} catch (parseError) {
+					reject(parseError);
+				}
+			},
+		);
+	});
 }
 
 const STAGES: Stage[] = [
@@ -72,16 +118,24 @@ const STAGES: Stage[] = [
 		schedule: "0 8 / 30 16 * * *",
 		maxAgeMs: 20 * HOUR,
 		probe: async () => {
-			const { data } = await sb
+			const { data, error } = await sb
 				.from("historical_crawl_runs")
 				.select("run_at, status, total_rows, upserted")
-				.eq("status", "completed")
 				.order("run_at", { ascending: false })
-				.limit(1)
-				.maybeSingle();
+				.limit(5);
+			if (error) {
+				return { at: null, sourceHealthy: false, detail: `조회 실패: ${error.message}` };
+			}
+			const rows = data ?? [];
+			const run = latestRunProbe(rows, new Set(["completed"]));
+			const ok = rows.find((row) => row.run_at === run.at);
 			return {
-				at: data?.run_at ?? null,
-				detail: data ? `${data.total_rows}행 수집 / ${data.upserted}건 반영` : "성공 기록 없음",
+				at: run.at ?? run.latestAt,
+				sourceHealthy: run.healthy,
+				detail: [
+					ok ? `${ok.total_rows}행 수집 / ${ok.upserted}건 반영` : "성공 기록 없음",
+					run.latestStatus && run.latestAt !== run.at ? `최근=${run.latestStatus}` : "",
+				].filter(Boolean).join(" · "),
 			};
 		},
 	},
@@ -111,27 +165,31 @@ const STAGES: Stage[] = [
 	{
 		name: "영상 아카이브",
 		schedule: "0 */2 * * *",
-		maxAgeMs: 30 * HOUR,
+		maxAgeMs: 3 * HOUR,
 		probe: async () => {
-			const { data } = await sb
-				.from("broadcasts")
-				.select("video_downloaded_at")
-				.not("video_downloaded_at", "is", null)
-				.order("video_downloaded_at", { ascending: false })
-				.limit(1)
-				.maybeSingle();
-			const { count: queued } = await sb
-				.from("broadcasts")
-				.select("id", { count: "exact", head: true })
-				.eq("video_status", "queued");
-			const { count: archived } = await sb
-				.from("broadcasts")
-				.select("id", { count: "exact", head: true })
-				.not("archived_video_s3", "is", null);
-			return {
-				at: data?.video_downloaded_at ?? null,
-				detail: `보관 ${archived ?? 0}건 · 대기열 ${queued ?? 0}건`,
-			};
+			const [queuedResult, downloadingResult, archivedResult] = await Promise.all([
+				sb.from("broadcasts").select("id", { count: "exact", head: true }).eq("video_status", "queued"),
+				sb.from("broadcasts").select("id", { count: "exact", head: true }).eq("video_status", "downloading"),
+				sb.from("broadcasts").select("id", { count: "exact", head: true }).not("archived_video_s3", "is", null),
+			]);
+			const counts = `보관 ${archivedResult.count ?? 0}건 · 대기열 ${queuedResult.count ?? 0}건 · 다운로드중 ${downloadingResult.count ?? 0}건`;
+			try {
+				const invocation = await latestArchiveInvocation();
+				if (!invocation) {
+					return { at: null, sourceHealthy: false, detail: `최근 Vercel 실행 기록 없음 · ${counts}` };
+				}
+				return {
+					at: invocation.at,
+					sourceHealthy: invocation.healthy,
+					detail: `HTTP ${invocation.statusCode}${invocation.message ? ` · ${invocation.message}` : ""} · ${counts}`,
+				};
+			} catch (error) {
+				return {
+					at: null,
+					sourceHealthy: false,
+					detail: `Vercel 로그 조회 실패: ${error instanceof Error ? error.message : String(error)} · ${counts}`,
+				};
+			}
 		},
 	},
 	{
@@ -164,29 +222,34 @@ function age(from: string): { ms: number; text: string } {
 	console.log(`점검 시각: ${now.toISOString().replace("T", " ").slice(0, 19)}Z`);
 	console.log("크론 스케줄은 UTC 기준입니다 (23:00 UTC = 08:00 KST)\n");
 
-	let stale = 0;
+	let unhealthy = 0;
 	for (const s of STAGES) {
-		const { at, detail } = await s.probe();
+		const { at, detail, sourceHealthy = true } = await s.probe();
+		const state = classifyStageHealth({
+			at,
+			sourceHealthy,
+			maxAgeMs: s.maxAgeMs,
+			nowMs: now.getTime(),
+		});
+		if (state !== "healthy") unhealthy += 1;
 		if (!at) {
-			stale += 1;
 			console.log(`  [기록없음] ${s.name.padEnd(22)} ${s.schedule.padEnd(20)} ${detail}`);
 			continue;
 		}
 		const a = age(at);
-		const ok = a.ms <= s.maxAgeMs;
-		if (!ok) stale += 1;
+		const label = state === "healthy" ? "정상" : state === "stale" ? "지연" : "실패";
 		console.log(
-			`  [${ok ? "정상" : "지연"}]     ${s.name.padEnd(22)} ${s.schedule.padEnd(20)} ` +
+			`  [${label}]     ${s.name.padEnd(22)} ${s.schedule.padEnd(20)} ` +
 				`${a.text.padStart(8)} 전 · ${detail}`,
 		);
 	}
 
 	console.log(
-		stale === 0
+		unhealthy === 0
 			? "\n전 단계 정상입니다."
-			: `\n${stale}개 단계가 지연 상태입니다. 어느 프로젝트가 크론을 쏘는지부터 확인하세요:\n` +
+			: `\n${unhealthy}개 단계가 실패·지연 상태입니다. 어느 프로젝트가 크론을 쏘는지부터 확인하세요:\n` +
 					"  vercel logs --project mediaworks --scope flow-os --since 30m\n" +
 					"  크론 자체가 꺼져 있는지: GET /v9/projects/{id} 의 crons.disabledAt",
 	);
-	process.exit(stale === 0 ? 0 : 1);
+	process.exit(unhealthy === 0 ? 0 : 1);
 })();

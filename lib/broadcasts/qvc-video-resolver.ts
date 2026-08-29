@@ -38,13 +38,16 @@ export function pickFirstVideoUrl(
  * cached digest clips. Returns the first available (slot order), or null. */
 export async function resolveQvcVideoUrl(
 	productIds: readonly string[] | null | undefined,
+	signal?: AbortSignal,
 ): Promise<string | null> {
 	if (!productIds || productIds.length === 0) return null;
 	const sb = getServiceClient();
-	const { data, error } = await sb
+	let query = sb
 		.from("qvc_products")
 		.select("id, video_url")
 		.in("id", productIds as string[]);
+	if (signal) query = query.abortSignal(signal);
+	const { data, error } = await query;
 	// A transient query failure must NOT be silently read as "no video" — that
 	// would defer a slot (download) or mark it no_source (reconcile) when a video
 	// may well exist. Throw so the caller's retry/attempt logic handles it.
