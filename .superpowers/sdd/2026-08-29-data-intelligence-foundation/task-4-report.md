@@ -204,3 +204,43 @@ All exited 0:
 - The terminal-failure attempt now survives heartbeat rejection in both affected source-failure paths.
 - The tests execute route-module exports that GET uses for route-specific normalized mapping. Archive/audio early-return wrappers are also production-used and preserve exact response identity.
 - HTTP body/status behavior, domain tables, compact persistence lookup, and queue selection are unchanged.
+
+---
+
+## Review fix round 4/5
+
+### Finding addressed
+
+- Added exported, route-owned `archiveVideosThrownFailure()` and `broadcastAudioThrownFailure()` boundaries. The corresponding production GET catch blocks now call those exact functions instead of retaining separate inline settlement-and-rethrow code.
+- Each boundary derives the existing error summary, attempts the existing normalized terminal failure code through `throwAfterPipelineFailure()`, isolates recorder rejection through the existing reporter, and rethrows the identical primary error object.
+- The archive catch still awaits recorder settlement before its existing deadline cleanup runs in `finally`; response bodies/statuses, queue selection, domain behavior, and historical lookup code were not changed.
+
+### TDD and route-level coverage
+
+- RED: `npm run test:intelligence-pipeline-route` exited 1 with `TypeError: boundary.invoke is not a function` after the test imported and executed the two not-yet-implemented route-owned boundaries.
+- GREEN: the same command passed after the exports were implemented and the production catches were wired to them.
+- `scripts/test-intelligence-pipeline-route.ts` now executes both exact route exports with a recorder whose heartbeat and fail methods reject. For these catch paths heartbeat is not applicable and is asserted to have zero calls; terminal `fail()` is asserted to receive the existing normalized code and primary-error summary exactly once. The recorder rejection is reported once, never replaces the primary failure, and strict object identity proves the original `Error` is rethrown.
+
+### Exact verification run
+
+All commands exited 0:
+
+`npm run test:intelligence-pipeline-route` — all route integration contracts passed, including both production thrown-failure identity cases.
+`npm run test:intelligence-pipeline-run` — all recorder lifecycle and mapping contracts passed.
+`npm run test:video-archive-deadline` — `PASS: video archive deadline`.
+`npm run test:broadcast-intel` — all six schema, audio, aggregate, prompt, guard, and storage checks passed.
+`npx tsc --noEmit` — passed with no output.
+`git diff --check` — passed with no output.
+
+### Files changed
+
+- `app/api/cron/archive-videos/route.ts`
+- `app/api/cron/analyze-broadcast-audio/route.ts`
+- `scripts/test-intelligence-pipeline-route.ts`
+- `.superpowers/sdd/2026-08-29-data-intelligence-foundation/task-4-report.md`
+
+### Self-review
+
+- Removing either route export, changing either normalized failure code/summary, skipping terminal settlement, attempting it twice, or throwing the recorder error would fail the new route test.
+- The two production catch blocks no longer contain a differing inline settlement implementation; both use their tested route-owned boundary.
+- No unrelated route, response, queue, mapping, persistence, schema, or environment behavior changed. No known concerns remain.

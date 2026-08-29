@@ -9,7 +9,7 @@ import {
 } from "@/lib/broadcast-intel/analyze-one";
 import { createPipelineRunRepository } from "@/lib/intelligence/pipeline-run";
 import { audioPipelineOutcome } from "@/lib/intelligence/pipeline-run-mapping";
-import { returnAfterPipelineFailure, settlePipelineRunBestEffort, startPipelineRunBestEffort, type PipelineRunRouteReporter } from "@/lib/intelligence/pipeline-run-route";
+import { returnAfterPipelineFailure, settlePipelineRunBestEffort, startPipelineRunBestEffort, throwAfterPipelineFailure, type PipelineRunRouteReporter } from "@/lib/intelligence/pipeline-run-route";
 import type { PipelineRunHandle } from "@/lib/intelligence/pipeline-run";
 
 export const maxDuration = 300;
@@ -32,6 +32,11 @@ export function broadcastAudioPipelineOutcome(
 
 export function broadcastAudioQueryFailure<T>(run: PipelineRunHandle | null, summary: string, response: T, report: PipelineRunRouteReporter) {
 	return returnAfterPipelineFailure(run, "queue_query_failed", summary, response, report);
+}
+
+export function broadcastAudioThrownFailure(run: PipelineRunHandle | null, primaryError: unknown, report: PipelineRunRouteReporter) {
+	const summary = primaryError instanceof Error ? primaryError.message : String(primaryError);
+	return throwAfterPipelineFailure(run, "audio_analysis_failed", summary, primaryError, report);
 }
 
 function verifyCronAuth(req: NextRequest): boolean {
@@ -128,8 +133,6 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({ ok: true, ...summary, duration_ms: Date.now() - startedAt });
   } catch (err) {
-	const message = err instanceof Error ? err.message : String(err);
-	await settlePipelineRunBestEffort(pipelineRun, (run) => run.fail("audio_analysis_failed", message), reportPipelineRunError);
-    throw err;
+	return await broadcastAudioThrownFailure(pipelineRun, err, reportPipelineRunError);
   }
 }

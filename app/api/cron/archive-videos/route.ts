@@ -6,7 +6,7 @@ import { recoverStaleDownloading } from "@/lib/broadcasts/stale-downloading-reco
 import { reconcileArchiveCoverage } from "@/lib/broadcasts/archive-reconciliation";
 import { createPipelineRunRepository } from "@/lib/intelligence/pipeline-run";
 import { archivePipelineOutcome } from "@/lib/intelligence/pipeline-run-mapping";
-import { returnAfterPipelineFailure, settlePipelineRunBestEffort, startPipelineRunBestEffort, type PipelineRunRouteReporter } from "@/lib/intelligence/pipeline-run-route";
+import { returnAfterPipelineFailure, settlePipelineRunBestEffort, startPipelineRunBestEffort, throwAfterPipelineFailure, type PipelineRunRouteReporter } from "@/lib/intelligence/pipeline-run-route";
 import type { PipelineRunHandle } from "@/lib/intelligence/pipeline-run";
 
 export const maxDuration = 300;
@@ -26,6 +26,11 @@ export function archiveVideosPipelineOutcome(
 
 export function archiveVideosQueryFailure<T>(run: PipelineRunHandle | null, summary: string, response: T, report: PipelineRunRouteReporter) {
 	return returnAfterPipelineFailure(run, "queue_query_failed", summary, response, report);
+}
+
+export function archiveVideosThrownFailure(run: PipelineRunHandle | null, primaryError: unknown, report: PipelineRunRouteReporter) {
+	const summary = primaryError instanceof Error ? primaryError.message : String(primaryError);
+	return throwAfterPipelineFailure(run, "video_archive_failed", summary, primaryError, report);
 }
 
 function verifyCronAuth(req: NextRequest): boolean {
@@ -224,9 +229,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(result);
   } catch (err) {
-		const message = err instanceof Error ? err.message : String(err);
-		await settlePipelineRunBestEffort(pipelineRun, (run) => run.fail("video_archive_failed", message), reportPipelineRunError);
-    throw err;
+		return await archiveVideosThrownFailure(pipelineRun, err, reportPipelineRunError);
   } finally {
     workDeadline.dispose();
     cleanupDeadline.dispose();

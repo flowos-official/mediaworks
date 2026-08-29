@@ -5,15 +5,22 @@ import {
 	failPipelineRunWithKnownCounts,
 	settlePipelineRunBestEffort,
 	startPipelineRunBestEffort,
-	throwAfterPipelineFailure,
 } from "../lib/intelligence/pipeline-run-route";
 import type { PipelineRunHandle, PipelineRunRepository } from "../lib/intelligence/pipeline-run";
 import { discoveryHomePipelineCounts } from "../app/api/cron/daily-discovery-home/route";
 import { discoveryLivePipelineCounts } from "../app/api/cron/daily-discovery-live/route";
 import { dailyBroadcastPipelineCounts } from "../app/api/cron/daily-broadcasts/route";
 import { historicalBroadcastPipelineCounts } from "../app/api/cron/daily-historical-broadcasts/route";
-import { archiveVideosPipelineOutcome, archiveVideosQueryFailure } from "../app/api/cron/archive-videos/route";
-import { broadcastAudioPipelineOutcome, broadcastAudioQueryFailure } from "../app/api/cron/analyze-broadcast-audio/route";
+import {
+	archiveVideosPipelineOutcome,
+	archiveVideosQueryFailure,
+	archiveVideosThrownFailure,
+} from "../app/api/cron/archive-videos/route";
+import {
+	broadcastAudioPipelineOutcome,
+	broadcastAudioQueryFailure,
+	broadcastAudioThrownFailure,
+} from "../app/api/cron/analyze-broadcast-audio/route";
 
 const input = {
 	sourceType: "test",
@@ -97,13 +104,53 @@ async function main() {
 		);
 		assert.equal(result, primaryResponse);
 		assert.equal(failAttempts, 1);
-		const primaryError = new Error("existing thrown error");
-		await assert.rejects(
-			() => throwAfterPipelineFailure(run, "existing_failure", "failed", primaryError, () => undefined),
-			(error: unknown) => error === primaryError,
-		);
 		console.log("✓ handled query failure keeps the original response when recorder failure recording fails");
 	}
+
+	for (const boundary of [
+		{
+			name: "archive",
+			invoke: archiveVideosThrownFailure,
+			errorCode: "video_archive_failed",
+		},
+		{
+			name: "audio",
+			invoke: broadcastAudioThrownFailure,
+			errorCode: "audio_analysis_failed",
+		},
+	] as const) {
+		let heartbeatAttempts = 0;
+		const failCalls: Array<{ errorCode: string; summary: string }> = [];
+		const recorderError = new Error(`${boundary.name} recorder unavailable`);
+		const reports: Array<{ phase: "start" | "settle"; error: unknown }> = [];
+		const run: PipelineRunHandle = {
+			id: `${boundary.name}-thrown-failure`,
+			heartbeat: async () => {
+				heartbeatAttempts++;
+				throw new Error(`${boundary.name} heartbeat unavailable`);
+			},
+			succeed: async () => undefined,
+			partial: async () => undefined,
+			fail: async (errorCode, summary) => {
+				failCalls.push({ errorCode, summary });
+				throw recorderError;
+			},
+		};
+		const primaryError = new Error(`${boundary.name} primary failure`);
+
+		await assert.rejects(
+			() => boundary.invoke(run, primaryError, (phase, error) => reports.push({ phase, error })),
+			(error: unknown) => error === primaryError,
+		);
+		assert.equal(heartbeatAttempts, 0);
+		assert.deepEqual(failCalls, [
+			{ errorCode: boundary.errorCode, summary: primaryError.message },
+		]);
+		assert.equal(reports.length, 1);
+		assert.equal(reports[0]?.phase, "settle");
+		assert.equal(reports[0]?.error, recorderError);
+	}
+	console.log("✓ archive and audio production thrown-failure boundaries preserve primary error identity after one rejected terminal attempt");
 
 	for (const route of [
 		"app/api/cron/daily-discovery-home/route.ts",
