@@ -107,3 +107,56 @@ All commands exited 0:
 - Route HTTP bodies/statuses and existing discovery/historical run tables were not changed.
 - The public `PipelineRunCounts` numeric fields and public recorder signatures are unchanged.
 - The historical split is taken immediately before each upsert in bounded lookup requests. Concurrent writers between lookup and upsert remain a database race inherent to non-transactional client calls; the existing cron duplicate guard minimizes same-job overlap.
+
+---
+
+## Review fix round 2/5
+
+### Findings addressed
+
+- Replaced historical product-name `.or()` URL predicates with a compact, paginated lookup by bounded channel and air-date filters (31 dates/page, 1,000 returned rows/page). Product names are fetched in response bodies and classified locally, never placed in a query URL.
+- Added injected persistence coverage proving a 500-character product name does not enter lookup filters. When classification is unavailable, the complete batch is truthfully counted as failed, with zero `upserted`/`inserted`/`updated`, and no body upsert is attempted.
+- Added `lib/intelligence/pipeline-run-route.ts`, a dependency-injected best-effort route lifecycle helper. All six core cron routes now use shared start/settle handling; archive and audio early query-error returns use the helper that records failure before returning the unchanged primary `NextResponse`.
+- Added executable route-integration contracts proving recorder start/settle failures do not replace primary success, handled-response, or thrown errors, plus structural assertions that all six routes use the shared lifecycle.
+
+### TDD evidence
+
+- RED: `npm run test:historical-persist` initially failed because `createHistoricalPersistenceRepository` did not exist.
+- GREEN: it passed after compact lookup pagination, injected repository support, and truthful classification failure handling.
+- RED: `npm run test:intelligence-pipeline-route` initially failed with missing `pipeline-run-route` module.
+- GREEN: it passed after the shared best-effort helper was implemented and all six routes were wired to it.
+
+### Files added or changed in this round
+
+- `lib/historical-crawl/persist.ts`
+- `lib/intelligence/pipeline-run-route.ts`
+- `scripts/test-historical-crawl-persist.ts`
+- `scripts/test-intelligence-pipeline-route.ts`
+- `app/api/cron/daily-discovery-home/route.ts`
+- `app/api/cron/daily-discovery-live/route.ts`
+- `app/api/cron/daily-broadcasts/route.ts`
+- `app/api/cron/daily-historical-broadcasts/route.ts`
+- `app/api/cron/archive-videos/route.ts`
+- `app/api/cron/analyze-broadcast-audio/route.ts`
+- `package.json`
+
+### Exact verification run
+
+All commands exited 0:
+
+`npm run test:intelligence-pipeline-run`
+`npm run test:intelligence-pipeline-route`
+`npm run test:intelligence-snapshot-schema`
+`npm run test:historical-persist`
+`npm run test:pipeline-health`
+`npm run test:discovery-cron-budget`
+`npm run test:video-archive-deadline`
+`npm run test:broadcast-intel` (all six component checks passed)
+`npx tsc --noEmit`
+`git diff --check`
+
+### Self-review
+
+- Lookup URL size is independent of product-name length; each request contains only at most 31 ISO dates and the bounded source-channel set. Pagination avoids truncating existing rows.
+- The persistence lookup failure branch intentionally does not issue the previously working upsert: without classification it cannot truthfully report inserted versus updated counts.
+- Route response bodies/statuses, domain tables, queue selection, and primary thrown errors remain unchanged. The shared helper only isolates normalized recorder failures.

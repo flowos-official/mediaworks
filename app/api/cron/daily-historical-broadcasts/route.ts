@@ -11,7 +11,8 @@ import {
 import { maybeSendCrawlAlert, statusWithPersist } from "@/lib/historical-crawl/alert";
 import { isDuplicateInvocation, invocationOrigin } from "@/lib/cron/duplicate-guard";
 import { getServiceClient } from "@/lib/supabase";
-import { createPipelineRunRepository, startPipelineRun } from "@/lib/intelligence/pipeline-run";
+import { createPipelineRunRepository } from "@/lib/intelligence/pipeline-run";
+import { settlePipelineRunBestEffort, startPipelineRunBestEffort } from "@/lib/intelligence/pipeline-run-route";
 
 export const maxDuration = 300;
 
@@ -48,7 +49,10 @@ export async function GET(req: NextRequest) {
 	}
 
 	const runId = await startRun(date);
-	const pipelineRun = await startPipelineRun(
+	const reportPipelineRunError = (phase: "start" | "settle", error: unknown) => {
+		console.warn(`[cron daily-historical-broadcasts] pipeline run ${phase} failed:`, error instanceof Error ? error.message : String(error));
+	};
+	const pipelineRun = await startPipelineRunBestEffort(
 		createPipelineRunRepository(getServiceClient()),
 		{
 			sourceType: "oa_channels",
@@ -56,10 +60,8 @@ export async function GET(req: NextRequest) {
 			externalRunId: runId,
 			targetScope: { date },
 		},
-	).catch((err) => {
-		console.warn("[cron daily-historical-broadcasts] pipeline run start failed:", err instanceof Error ? err.message : String(err));
-		return null;
-	});
+		reportPipelineRunError,
+	);
 
 	try {
 		const summary = await crawlAll(date);
@@ -112,31 +114,27 @@ export async function GET(req: NextRequest) {
 			failed: summary.persist.errors + channels.filter((channel) => !channel.ok).length,
 			processed: summary.totalRows,
 		};
-		if (pipelineRun) {
+		await settlePipelineRunBestEffort(
+			pipelineRun,
+			async (run) => {
 			if (status === "completed") {
-				await pipelineRun.succeed(pipelineCounts).catch((recordErr) => {
-					console.warn("[cron daily-historical-broadcasts] pipeline run finish failed:", recordErr instanceof Error ? recordErr.message : String(recordErr));
-				});
+				await run.succeed(pipelineCounts);
 			} else if (status === "partial") {
-				await pipelineRun.partial(
-					pipelineCounts,
-					"crawl_partial",
-					persistError ?? "One or more historical broadcast sources did not complete",
-				).catch((recordErr) => {
-					console.warn("[cron daily-historical-broadcasts] pipeline run finish failed:", recordErr instanceof Error ? recordErr.message : String(recordErr));
-				});
-			} else {
-				await pipelineRun.heartbeat(pipelineCounts).catch((recordErr) => {
-					console.warn("[cron daily-historical-broadcasts] pipeline run count record failed:", recordErr instanceof Error ? recordErr.message : String(recordErr));
-				});
-				await pipelineRun.fail(
-					"crawl_failed",
-					persistError ?? "Historical broadcast crawl failed for all sources",
-				).catch((recordErr) => {
-					console.warn("[cron daily-historical-broadcasts] pipeline run finish failed:", recordErr instanceof Error ? recordErr.message : String(recordErr));
-				});
-			}
-		}
+				await run.partial(
+						pipelineCounts,
+						"crawl_partial",
+						persistError ?? "One or more historical broadcast sources did not complete",
+					);
+				} else {
+				await run.heartbeat(pipelineCounts);
+					await run.fail(
+						"crawl_failed",
+						persistError ?? "Historical broadcast crawl failed for all sources",
+					);
+				}
+			},
+			reportPipelineRunError,
+		);
 
 		// Keep the same console log shape so external log search continues to work.
 		const log = {
@@ -198,11 +196,7 @@ export async function GET(req: NextRequest) {
 		return NextResponse.json({ ok: true, ...log });
 	} catch (err) {
 		const msg = err instanceof Error ? err.message : String(err);
-		if (pipelineRun) {
-			await pipelineRun.fail("crawl_failed", msg).catch((recordErr) => {
-				console.warn("[cron daily-historical-broadcasts] pipeline run failure record failed:", recordErr instanceof Error ? recordErr.message : String(recordErr));
-			});
-		}
+		await settlePipelineRunBestEffort(pipelineRun, (run) => run.fail("crawl_failed", msg), reportPipelineRunError);
 		await finalizeRun({
 			runId,
 			status: "failed",

@@ -4,8 +4,9 @@ import { canStartArchiveBatch, createArchiveDeadline } from "@/lib/broadcasts/ar
 import { archiveOne, type QueuedSlot, type ArchiveResult } from "@/lib/broadcasts/video-archival";
 import { recoverStaleDownloading } from "@/lib/broadcasts/stale-downloading-recovery";
 import { reconcileArchiveCoverage } from "@/lib/broadcasts/archive-reconciliation";
-import { createPipelineRunRepository, startPipelineRun } from "@/lib/intelligence/pipeline-run";
+import { createPipelineRunRepository } from "@/lib/intelligence/pipeline-run";
 import { archivePipelineOutcome } from "@/lib/intelligence/pipeline-run-mapping";
+import { returnAfterPipelineFailure, settlePipelineRunBestEffort, startPipelineRunBestEffort } from "@/lib/intelligence/pipeline-run-route";
 
 export const maxDuration = 300;
 
@@ -52,7 +53,10 @@ export async function GET(req: NextRequest) {
   // Starting it after those steps let a slow preamble consume time outside the
   // 240s ceiling and could still push the function past Vercel's 300s limit.
   const startedAt = Date.now();
-  const pipelineRun = await startPipelineRun(
+	const reportPipelineRunError = (phase: "start" | "settle", error: unknown) => {
+		console.warn(`[archive-videos] pipeline run ${phase} failed:`, error instanceof Error ? error.message : String(error));
+	};
+	const pipelineRun = await startPipelineRunBestEffort(
     createPipelineRunRepository(getServiceClient()),
     {
       sourceType: "qvc_shopch",
@@ -60,10 +64,8 @@ export async function GET(req: NextRequest) {
       externalRunId: `archive-videos:${crypto.randomUUID()}`,
       targetScope: { invokedAt: new Date(startedAt).toISOString() },
     },
-  ).catch((err) => {
-    console.warn("[archive-videos] pipeline run start failed:", err instanceof Error ? err.message : String(err));
-    return null;
-  });
+		reportPipelineRunError,
+	);
   const deadlineMs = startedAt + BUDGET_MS;
   const workDeadline = createArchiveDeadline(deadlineMs);
   const cleanupDeadline = createArchiveDeadline(
@@ -157,13 +159,14 @@ export async function GET(req: NextRequest) {
         .limit(BATCH_SIZE)
         .abortSignal(workDeadline.signal);
 
-      if (error) {
-        if (pipelineRun) {
-          await pipelineRun.fail("queue_query_failed", error.message).catch((recordErr) => {
-            console.warn("[archive-videos] pipeline run failure record failed:", recordErr instanceof Error ? recordErr.message : String(recordErr));
-          });
-        }
-        return NextResponse.json({ error: error.message, ...summary }, { status: 500 });
+		if (error) {
+			return returnAfterPipelineFailure(
+				pipelineRun,
+				"queue_query_failed",
+				error.message,
+				NextResponse.json({ error: error.message, ...summary }, { status: 500 }),
+				reportPipelineRunError,
+			);
       }
 
       const queued = (slots ?? []) as QueuedSlot[];
@@ -191,31 +194,27 @@ export async function GET(req: NextRequest) {
     const result = { ...summary, reconcileHeal };
     console.log("[archive-videos]", JSON.stringify(result));
 
-    if (pipelineRun) {
-      const pipelineOutcome = archivePipelineOutcome(summary, preflightFailures);
-      if (pipelineOutcome.status === "partial") {
-        await pipelineRun.partial(
+		const pipelineOutcome = archivePipelineOutcome(summary, preflightFailures);
+		await settlePipelineRunBestEffort(
+			pipelineRun,
+			async (run) => {
+			if (pipelineOutcome.status === "partial") {
+				await run.partial(
           pipelineOutcome.counts,
           "archive_partial",
           `${pipelineOutcome.counts.failed} failed, ${summary.queued} requeued, and ${summary.deferred} deferred archive result(s)`,
-        ).catch((recordErr) => {
-          console.warn("[archive-videos] pipeline run finish failed:", recordErr instanceof Error ? recordErr.message : String(recordErr));
-        });
-      } else {
-        await pipelineRun.succeed(pipelineOutcome.counts).catch((recordErr) => {
-          console.warn("[archive-videos] pipeline run finish failed:", recordErr instanceof Error ? recordErr.message : String(recordErr));
-        });
-      }
-    }
+					);
+			} else {
+				await run.succeed(pipelineOutcome.counts);
+			}
+			},
+			reportPipelineRunError,
+		);
 
     return NextResponse.json(result);
   } catch (err) {
-    if (pipelineRun) {
-      const message = err instanceof Error ? err.message : String(err);
-      await pipelineRun.fail("video_archive_failed", message).catch((recordErr) => {
-        console.warn("[archive-videos] pipeline run failure record failed:", recordErr instanceof Error ? recordErr.message : String(recordErr));
-      });
-    }
+		const message = err instanceof Error ? err.message : String(err);
+		await settlePipelineRunBestEffort(pipelineRun, (run) => run.fail("video_archive_failed", message), reportPipelineRunError);
     throw err;
   } finally {
     workDeadline.dispose();

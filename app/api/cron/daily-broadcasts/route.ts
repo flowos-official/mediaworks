@@ -12,7 +12,8 @@ import {
 	type QvcProductLike,
 } from "@/lib/broadcasts/snapshot-enrichment";
 import { buildProgramId } from "@/lib/broadcasts/shopch-json";
-import { createPipelineRunRepository, startPipelineRun } from "@/lib/intelligence/pipeline-run";
+import { createPipelineRunRepository } from "@/lib/intelligence/pipeline-run";
+import { settlePipelineRunBestEffort, startPipelineRunBestEffort } from "@/lib/intelligence/pipeline-run-route";
 export const maxDuration = 180;
 
 function verifyCronAuth(req: NextRequest): boolean {
@@ -239,7 +240,10 @@ export async function GET(req: NextRequest) {
 	const start = Date.now();
 	const target = getYesterdayJST(new Date());
 	const targetIso = target.toISOString().slice(0, 10);
-	const pipelineRun = await startPipelineRun(
+	const reportPipelineRunError = (phase: "start" | "settle", error: unknown) => {
+		console.warn(`[cron daily-broadcasts] pipeline run ${phase} failed:`, error instanceof Error ? error.message : String(error));
+	};
+	const pipelineRun = await startPipelineRunBestEffort(
 		createPipelineRunRepository(getServiceClient()),
 		{
 			sourceType: "qvc_shopch",
@@ -247,10 +251,8 @@ export async function GET(req: NextRequest) {
 			externalRunId: `${targetIso}:${crypto.randomUUID()}`,
 			targetScope: { date: targetIso },
 		},
-	).catch((err) => {
-		console.warn("[cron daily-broadcasts] pipeline run start failed:", err instanceof Error ? err.message : String(err));
-		return null;
-	});
+		reportPipelineRunError,
+	);
 
 	try {
 
@@ -351,38 +353,30 @@ export async function GET(req: NextRequest) {
 		failed: summary.totalErrors + enrich.failed,
 		processed: summary.results.reduce((total, result) => total + result.slots.length, 0),
 	};
-	if (pipelineRun) {
-		const successfulSources = summary.results.filter((result) => result.ok).length;
+	const successfulSources = summary.results.filter((result) => result.ok).length;
+	await settlePipelineRunBestEffort(
+		pipelineRun,
+		async (run) => {
 		if (pipelineCounts.failed === 0 && successfulSources === summary.results.length) {
-			await pipelineRun.succeed(pipelineCounts).catch((recordErr) => {
-				console.warn("[cron daily-broadcasts] pipeline run finish failed:", recordErr instanceof Error ? recordErr.message : String(recordErr));
-			});
+			await run.succeed(pipelineCounts);
 		} else if (successfulSources > 0) {
-			await pipelineRun.partial(
-				pipelineCounts,
-				summary.totalErrors > 0 ? "source_partial" : "enrichment_partial",
-				`${summary.totalErrors} source scrape and ${enrich.failed} product enrichment error(s)`,
-			).catch((recordErr) => {
-				console.warn("[cron daily-broadcasts] pipeline run finish failed:", recordErr instanceof Error ? recordErr.message : String(recordErr));
-			});
-		} else {
-			await pipelineRun.heartbeat(pipelineCounts).catch((recordErr) => {
-				console.warn("[cron daily-broadcasts] pipeline run count record failed:", recordErr instanceof Error ? recordErr.message : String(recordErr));
-			});
-			await pipelineRun.fail("source_failed", `${summary.totalErrors} source scrape and ${enrich.failed} product enrichment error(s)`).catch((recordErr) => {
-				console.warn("[cron daily-broadcasts] pipeline run finish failed:", recordErr instanceof Error ? recordErr.message : String(recordErr));
-			});
+			await run.partial(
+					pipelineCounts,
+					summary.totalErrors > 0 ? "source_partial" : "enrichment_partial",
+					`${summary.totalErrors} source scrape and ${enrich.failed} product enrichment error(s)`,
+				);
+			} else {
+			await run.heartbeat(pipelineCounts);
+			await run.fail("source_failed", `${summary.totalErrors} source scrape and ${enrich.failed} product enrichment error(s)`);
 		}
-	}
+		},
+		reportPipelineRunError,
+	);
 
 	return NextResponse.json({ ok: true, ...log });
 	} catch (err) {
-		if (pipelineRun) {
-			const message = err instanceof Error ? err.message : String(err);
-			await pipelineRun.fail("broadcast_schedule_failed", message).catch((recordErr) => {
-				console.warn("[cron daily-broadcasts] pipeline run failure record failed:", recordErr instanceof Error ? recordErr.message : String(recordErr));
-			});
-		}
+		const message = err instanceof Error ? err.message : String(err);
+		await settlePipelineRunBestEffort(pipelineRun, (run) => run.fail("broadcast_schedule_failed", message), reportPipelineRunError);
 		throw err;
 	}
 }

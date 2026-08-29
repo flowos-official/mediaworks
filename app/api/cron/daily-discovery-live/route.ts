@@ -17,8 +17,9 @@ import {
 } from "@/lib/discovery/save";
 import { getServiceClient } from "@/lib/supabase";
 import { DEFAULT_LEARNING_STATE, type LearningState } from "@/lib/discovery/types";
-import { createPipelineRunRepository, startPipelineRun } from "@/lib/intelligence/pipeline-run";
+import { createPipelineRunRepository } from "@/lib/intelligence/pipeline-run";
 import { discoveryPipelineCounts } from "@/lib/intelligence/pipeline-run-mapping";
+import { settlePipelineRunBestEffort, startPipelineRunBestEffort } from "@/lib/intelligence/pipeline-run-route";
 
 
 
@@ -144,7 +145,10 @@ export async function GET(req: NextRequest) {
 	}
 
 	const stages = new OptionalStageTracker();
-	const pipelineRun = await startPipelineRun(
+	const reportPipelineRunError = (phase: "start" | "settle", error: unknown) => {
+		console.warn(`[cron ${CONTEXT}] pipeline run ${phase} failed:`, error instanceof Error ? error.message : String(error));
+	};
+	const pipelineRun = await startPipelineRunBestEffort(
 		createPipelineRunRepository(getServiceClient()),
 		{
 			sourceType: "discovery",
@@ -152,10 +156,8 @@ export async function GET(req: NextRequest) {
 			externalRunId: sessionId,
 			targetScope: { context: CONTEXT, targetCount: TARGET_COUNT },
 		},
-	).catch((err) => {
-		console.warn(`[cron ${CONTEXT}] pipeline run start failed:`, err instanceof Error ? err.message : String(err));
-		return null;
-	});
+		reportPipelineRunError,
+	);
 
 	try {
 		const orchestrated = await runStage1(learning, TARGET_COUNT, CONTEXT);
@@ -245,20 +247,19 @@ export async function GET(req: NextRequest) {
 			iterations: orchestrated.iterations,
 		});
 		const pipelineCounts = discoveryPipelineCounts(batch.length, savedCount);
-		if (pipelineRun) {
-			await (pipelinePartial
-				? pipelineRun.partial(
+		await settlePipelineRunBestEffort(
+			pipelineRun,
+			(run) => pipelinePartial
+				? run.partial(
 					pipelineCounts,
 					stages.skipped().length > 0 ? "optional_stages_skipped" : "target_not_met",
 					stages.skipped().length > 0
 						? `Saved ${savedCount} candidates with ${stages.skipped().length} optional stage(s) skipped`
 						: `Saved ${savedCount} of ${TARGET_COUNT} requested discovery candidates`,
 				)
-				: pipelineRun.succeed(pipelineCounts)
-			).catch((recordErr) => {
-				console.warn(`[cron ${CONTEXT}] pipeline run finish failed:`, recordErr instanceof Error ? recordErr.message : String(recordErr));
-			});
-		}
+				: run.succeed(pipelineCounts),
+			reportPipelineRunError,
+		);
 
 		try {
 			revalidateTag("discovery:live_commerce", "max");
@@ -285,11 +286,7 @@ export async function GET(req: NextRequest) {
 	} catch (err) {
 		const msg = err instanceof Error ? err.message : String(err);
 		console.error(`[cron ${CONTEXT}] failed:`, msg);
-		if (pipelineRun) {
-			await pipelineRun.fail("discovery_failed", msg).catch((recordErr) => {
-				console.warn(`[cron ${CONTEXT}] pipeline run failure record failed:`, recordErr instanceof Error ? recordErr.message : String(recordErr));
-			});
-		}
+		await settlePipelineRunBestEffort(pipelineRun, (run) => run.fail("discovery_failed", msg), reportPipelineRunError);
 		await finalizeSession({
 			sessionId,
 			status: "failed",
