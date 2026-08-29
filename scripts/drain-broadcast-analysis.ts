@@ -1,6 +1,6 @@
 /**
  * Local drain — the actual backfill path.
- * Usage: npm run drain:broadcast-analysis -- --limit=40 --category=家電 --channel=shopch
+ * Usage: npm run drain:broadcast-analysis -- --limit=40 [--category=家電] [--channel=shopch]
  *        …--reset=cold_storage   requeue slots abandoned for that reason first
  *
  * The cron cannot do this: at 100-200s per slot inside a 300s function it
@@ -9,6 +9,7 @@
 import { getServiceClient } from "@/lib/supabase";
 import { analyzeOne, MAX_ATTEMPTS, type QueuedAnalysisSlot } from "@/lib/broadcast-intel/analyze-one";
 import { recoverStaleAnalysis, resetAnalysisError, seedAnalysisQueue } from "@/lib/broadcast-intel/queue";
+import { buildDrainAnalysisScope } from "@/lib/broadcast-intel/drain-scope";
 import type { AnalysisErrorCode } from "@/lib/broadcast-intel/error-codes";
 
 /** Consecutive failed/requeued slots before the drain aborts. A dead Gemini
@@ -36,7 +37,7 @@ function parseLimit(raw: string | undefined, fallback: number): number {
 
 async function main(): Promise<void> {
 	const limit = parseLimit(flag("limit"), 40);
-	const category = flag("category") ?? "家電";
+	const category = flag("category");
 	// One channel at a time: QVC archives ~2-minute digest clips with no offer
 	// segment, ShopCh archives ~1-hour full programmes. Mixing them averages a
 	// highlight reel against a sales programme.
@@ -45,6 +46,7 @@ async function main(): Promise<void> {
 		throw new Error(`--channel must be qvc or shopch, got "${channelArg}"`);
 	}
 	const channel = channelArg as "qvc" | "shopch" | undefined;
+	const scope = buildDrainAnalysisScope(category, channel);
 	const concurrency = Number(process.env.BROADCAST_INTEL_BATCH_CONCURRENCY) || 2;
 	const sb = getServiceClient();
 
@@ -57,12 +59,13 @@ async function main(): Promise<void> {
 		if (!(RESETTABLE as readonly string[]).includes(resetArg)) {
 			throw new Error(`--reset must be one of ${RESETTABLE.join(", ")}; got "${resetArg}"`);
 		}
-		const n = await resetAnalysisError(resetArg as AnalysisErrorCode, { category, channel });
+		const n = await resetAnalysisError(resetArg as AnalysisErrorCode, scope);
 		console.log(`[drain] reset ${n} slot(s) from ${resetArg} back to pending`);
 	}
 
 	console.log(`[drain] recovered ${await recoverStaleAnalysis()} stale slot(s)`);
-	console.log(`[drain] seeded ${await seedAnalysisQueue({ limit, category, channel })} slot(s) for ${category}${channel ? ` / ${channel}` : ""}`);
+	const scopeLabel = category ?? "balanced categories";
+	console.log(`[drain] seeded ${await seedAnalysisQueue({ limit, ...scope })} slot(s) for ${scopeLabel}${channel ? ` / ${channel}` : ""}`);
 
 	const counts = { done: 0, failed: 0, skipped: 0, queued: 0 };
 	let processed = 0;
@@ -74,8 +77,8 @@ async function main(): Promise<void> {
 		let q = sb
 			.from("broadcasts")
 			.select("id, channel, air_date, category, archived_video_s3, analysis_attempts")
-			.eq("analysis_status", "queued")
-			.eq("category", category);
+			.eq("analysis_status", "queued");
+		if (category !== undefined) q = q.eq("category", category);
 		if (channel) q = q.eq("channel", channel);
 		const { data, error } = await q
 			.lt("analysis_attempts", MAX_ATTEMPTS)

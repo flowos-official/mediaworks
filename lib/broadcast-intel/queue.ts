@@ -9,13 +9,21 @@
  * NO `import "server-only"` — imported by the drain script under tsx.
  */
 import { getServiceClient } from "@/lib/supabase";
-import { CATEGORIES_BY_CHANNEL } from "@/lib/broadcasts/whitelist-gate";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AnalysisErrorCode } from "./error-codes";
+import {
+	chooseBalancedAnalysisSlots,
+	normalizeAnalysisCategory,
+	type AnalysisCandidate,
+} from "./priority";
+
+/** The queue never reads an unbounded archive into memory to fill one batch. */
+export const BALANCED_ANALYSIS_CANDIDATE_POOL_LIMIT = 200;
+export const ANALYZED_CATEGORY_PAGE_SIZE = 1_000;
 
 export interface SeedOptions {
 	limit: number;
-	/** Restrict to one broadcast category. Omit only when you intend to seed
-	 *  every whitelist category on both channels. */
+	/** Restrict to one broadcast category. Omit for category-balanced seeding. */
 	category?: string;
 	/** Restrict to one channel. The two channels archive different MEDIA, not
 	 *  merely different lengths: QVC stores ~2-minute per-product digest clips
@@ -27,43 +35,168 @@ export interface SeedOptions {
 	channel?: "qvc" | "shopch";
 }
 
-export async function seedAnalysisQueue({ limit, category, channel: only }: SeedOptions): Promise<number> {
-	const sb = getServiceClient();
-	let promoted = 0;
+export interface PendingAnalysisCandidate {
+	id: string;
+	channel: "qvc" | "shopch";
+	category: string | null;
+	airDate: string;
+	productIds: string[] | null;
+	programTitle: string | null;
+}
 
-	for (const channel of ["qvc", "shopch"] as const) {
-		if (only && channel !== only) continue;
-		const remaining = limit - promoted;
-		if (remaining <= 0) break;
+export interface AnalyzedCategoryRow {
+	broadcastId: string;
+	category: string | null;
+}
 
-		const whitelist = [...CATEGORIES_BY_CHANNEL[channel]] as string[];
-		// A null category cannot be attributed to an aggregate, so those rows
-		// stay 'pending' and become eligible once enrichment fills one in.
-		const categories = category ? whitelist.filter((c) => c === category) : whitelist;
-		if (categories.length === 0) continue;
+export interface AnalysisQueueRepository {
+	findPendingCandidates(input: { limit: number; category?: string; channel?: "qvc" | "shopch" }): Promise<PendingAnalysisCandidate[]>;
+	findAnalyzedCategories(input: { offset: number; limit: number }): Promise<AnalyzedCategoryRow[]>;
+	promotePending(ids: string[]): Promise<string[]>;
+}
 
-		const { data: ids, error: selErr } = await sb
-			.from("broadcasts")
-			.select("id")
-			.eq("analysis_status", "pending")
-			.eq("channel", channel)
-			.not("archived_video_s3", "is", null)
-			.in("category", categories)
-			.order("air_date", { ascending: false })
-			.limit(remaining);
-		if (selErr) throw new Error(`seed select failed for ${channel}: ${selErr.message}`);
-		if (!ids || ids.length === 0) continue;
+type BroadcastQueueRow = {
+	id: string;
+	channel: "qvc" | "shopch";
+	category: string | null;
+	air_date: string;
+	product_ids: string[] | null;
+	program_title: string | null;
+};
 
-		const { data, error: updErr } = await sb
-			.from("broadcasts")
-			.update({ analysis_status: "queued" })
-			.in("id", ids.map((r) => r.id))
-			.eq("analysis_status", "pending")
-			.select("id");
-		if (updErr) throw new Error(`seed update failed for ${channel}: ${updErr.message}`);
-		promoted += data?.length ?? 0;
+export function createAnalysisQueueRepository(supabase: SupabaseClient): AnalysisQueueRepository {
+	return {
+		async findPendingCandidates(input) {
+			let query = supabase
+				.from("broadcasts")
+				.select("id,channel,category,air_date,product_ids,program_title")
+				.eq("analysis_status", "pending")
+				.not("archived_video_s3", "is", null);
+			if (input.channel) query = query.eq("channel", input.channel);
+			else query = query.in("channel", ["qvc", "shopch"]);
+			if (input.category !== undefined) query = query.eq("category", input.category);
+
+			const { data, error } = await query
+				.order("air_date", { ascending: false })
+				.order("id", { ascending: true })
+				.limit(input.limit);
+			if (error) throw new Error(`seed select failed: ${error.message}`);
+			return ((data ?? []) as BroadcastQueueRow[]).map((row) => ({
+				id: row.id,
+				channel: row.channel,
+				category: row.category,
+				airDate: row.air_date,
+				productIds: row.product_ids,
+				programTitle: row.program_title,
+			}));
+		},
+		async findAnalyzedCategories(input) {
+			const { data, error } = await supabase
+				.from("broadcast_speech_analyses")
+				.select("broadcast_id,category")
+				.order("broadcast_id", { ascending: true })
+				.range(input.offset, input.offset + input.limit - 1);
+			if (error) throw new Error(`analyzed category select failed: ${error.message}`);
+			return ((data ?? []) as Array<{ broadcast_id: string; category: string | null }>).map((row) => ({
+				broadcastId: row.broadcast_id,
+				category: row.category,
+			}));
+		},
+		async promotePending(ids) {
+			if (ids.length === 0) return [];
+			const { data, error } = await supabase
+				.from("broadcasts")
+				.update({ analysis_status: "queued" })
+				.in("id", ids)
+				.eq("analysis_status", "pending")
+				.select("id");
+			if (error) throw new Error(`seed update failed: ${error.message}`);
+			return ((data ?? []) as Array<{ id: string }>).map((row) => row.id);
+		},
+	};
+}
+
+/**
+ * Count each completed analysis once, even if a response page accidentally
+ * contains a duplicated row. The primary key on broadcast_speech_analyses
+ * makes that defensive suppression normally a no-op, but it prevents a join
+ * or transport duplication from inflating a category's sampling level.
+ */
+export async function countDistinctAnalyzedCategories(
+	repository: AnalysisQueueRepository,
+): Promise<Map<string, number>> {
+	const seen = new Set<string>();
+	const counts = new Map<string, number>();
+	let offset = 0;
+	while (true) {
+		const page = await repository.findAnalyzedCategories({ offset, limit: ANALYZED_CATEGORY_PAGE_SIZE });
+		for (const row of page) {
+			if (seen.has(row.broadcastId)) continue;
+			seen.add(row.broadcastId);
+			const category = normalizeAnalysisCategory(row.category);
+			counts.set(category, (counts.get(category) ?? 0) + 1);
+		}
+		if (page.length < ANALYZED_CATEGORY_PAGE_SIZE) return counts;
+		offset += page.length;
 	}
-	return promoted;
+}
+
+/**
+ * A stored repetition signal: first the channel plus the sorted unique
+ * product_ids set, then the channel plus a whitespace-normalized program
+ * title, and finally the broadcast ID when neither signal exists. Counts are
+ * intentionally computed only from the already-bounded candidate pool.
+ */
+function repeatIdentity(row: PendingAnalysisCandidate): string {
+	const productIds = [...new Set((row.productIds ?? [])
+		.map((id) => id.trim())
+		.filter(Boolean))].sort();
+	if (productIds.length > 0) return JSON.stringify(["product_ids", row.channel, productIds]);
+
+	const title = row.programTitle?.trim().replace(/\s+/g, " ");
+	if (title) return JSON.stringify(["program_title", row.channel, title]);
+	return JSON.stringify(["broadcast_id", row.id]);
+}
+
+function candidatesWithRepeatCounts(rows: readonly PendingAnalysisCandidate[]): AnalysisCandidate[] {
+	const frequencies = new Map<string, number>();
+	for (const row of rows) {
+		const key = repeatIdentity(row);
+		frequencies.set(key, (frequencies.get(key) ?? 0) + 1);
+	}
+	return rows.map((row) => ({
+		id: row.id,
+		category: row.category,
+		airDate: row.airDate,
+		repeatCount: frequencies.get(repeatIdentity(row)) ?? 1,
+	}));
+}
+
+export async function seedAnalysisQueue(
+	{ limit, category, channel }: SeedOptions,
+	repository: AnalysisQueueRepository = createAnalysisQueueRepository(getServiceClient()),
+): Promise<number> {
+	if (!Number.isFinite(limit) || limit <= 0) return 0;
+	const requested = Math.floor(limit);
+	const candidateLimit = category === undefined
+		? Math.min(requested, BALANCED_ANALYSIS_CANDIDATE_POOL_LIMIT)
+		: requested;
+	const candidates = await repository.findPendingCandidates({
+		limit: candidateLimit,
+		...(category !== undefined ? { category } : {}),
+		...(channel ? { channel } : {}),
+	});
+	if (candidates.length === 0) return 0;
+
+	const selected = category === undefined
+		? chooseBalancedAnalysisSlots(
+			candidatesWithRepeatCounts(candidates),
+			await countDistinctAnalyzedCategories(repository),
+			requested,
+		)
+		: candidates.slice(0, requested);
+	const ids = [...new Set(selected.map((row) => row.id))];
+	return (await repository.promotePending(ids)).length;
 }
 
 /**

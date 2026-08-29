@@ -21,7 +21,11 @@ const BUDGET_MS = 240_000;
 const SLOT_BUDGET_MS = 200_000;
 const CONCURRENCY = Number(process.env.BROADCAST_INTEL_BATCH_CONCURRENCY) || 2;
 const SEED_LIMIT = 10;
-const SLICE_CATEGORY = process.env.BROADCAST_INTEL_CATEGORY || "家電";
+
+/** Production-used seed options for the cron's category-balanced queue path. */
+export function broadcastAudioSeedOptions() {
+	return { limit: SEED_LIMIT };
+}
 
 export function broadcastAudioPipelineOutcome(
 	summary: Parameters<typeof audioPipelineOutcome>[0],
@@ -61,7 +65,7 @@ export async function GET(req: NextRequest) {
       sourceType: "broadcast_archive",
       jobType: "audio_analysis",
       externalRunId: `analyze-broadcast-audio:${crypto.randomUUID()}`,
-      targetScope: { category: SLICE_CATEGORY },
+			targetScope: {},
     },
 		reportPipelineRunError,
 	);
@@ -76,7 +80,7 @@ export async function GET(req: NextRequest) {
     console.warn("[analyze-broadcast-audio] stale recovery failed:", err);
   }
   try {
-    summary.seeded = await seedAnalysisQueue({ limit: SEED_LIMIT, category: SLICE_CATEGORY });
+		summary.seeded = await seedAnalysisQueue(broadcastAudioSeedOptions());
   } catch (err) {
     preflightFailures++;
     console.warn("[analyze-broadcast-audio] seed failed:", err);
