@@ -25,6 +25,7 @@
     "test:pipeline-health": "tsx scripts/test-pipeline-health.ts",
     "test:migrations": "tsx --env-file=.env.local scripts/check-migrations.ts",
     "test:intelligence-identity-schema": "tsx scripts/test-intelligence-identity-schema.ts",
+    "test:intelligence-snapshot-schema": "tsx scripts/test-intelligence-snapshot-schema.ts",
     "test:broadcasts-shopch": "tsx --env-file=.env.local scripts/test-broadcasts-shopch-parser.ts",
     "test:broadcasts-qvc": "tsx --env-file=.env.local scripts/test-broadcasts-qvc-parser.ts",
     "test:broadcasts-parsers": "npm run test:broadcasts-shopch && npm run test:broadcasts-qvc",
