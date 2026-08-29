@@ -9,6 +9,7 @@
  * NO `import "server-only"` — imported by the drain script under tsx.
  */
 import { getServiceClient } from "@/lib/supabase";
+import { CATEGORIES_BY_CHANNEL } from "@/lib/broadcasts/whitelist-gate";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AnalysisErrorCode } from "./error-codes";
 import {
@@ -20,6 +21,41 @@ import {
 /** The queue never reads an unbounded archive into memory to fill one batch. */
 export const BALANCED_ANALYSIS_CANDIDATE_POOL_LIMIT = 200;
 export const ANALYZED_CATEGORY_PAGE_SIZE = 1_000;
+export const CURRENT_CATEGORY_ID_CHUNK_SIZE = 200;
+
+export interface EligibleAnalysisScope {
+	channel: "qvc" | "shopch";
+	categories: string[];
+}
+
+type CategoriesByChannel = Record<"qvc" | "shopch", readonly string[]>;
+
+/**
+ * Resolve only known, per-channel categories before the candidate query is
+ * capped. A malformed/unavailable whitelist is a configuration error; an
+ * explicit category absent from the whitelist simply has no eligible scope.
+ */
+export function buildEligibleAnalysisScopes(
+	category: string | undefined,
+	only: "qvc" | "shopch" | undefined,
+	whitelist: CategoriesByChannel | null | undefined = CATEGORIES_BY_CHANNEL,
+): EligibleAnalysisScope[] {
+	if (!whitelist || !Array.isArray(whitelist.qvc) || !Array.isArray(whitelist.shopch)) {
+		throw new Error("analysis category whitelist unavailable");
+	}
+	const explicitCategory = category?.trim();
+	if (category !== undefined && !explicitCategory) return [];
+
+	const scopes: EligibleAnalysisScope[] = [];
+	for (const channel of ["qvc", "shopch"] as const) {
+		if (only && channel !== only) continue;
+		const categories = whitelist[channel];
+		if (categories.length === 0) throw new Error(`analysis category whitelist unavailable for ${channel}`);
+		if (explicitCategory === undefined) scopes.push({ channel, categories: [...categories] });
+		else if (categories.includes(explicitCategory)) scopes.push({ channel, categories: [explicitCategory] });
+	}
+	return scopes;
+}
 
 export interface SeedOptions {
 	limit: number;
@@ -44,14 +80,15 @@ export interface PendingAnalysisCandidate {
 	programTitle: string | null;
 }
 
-export interface AnalyzedCategoryRow {
-	broadcastId: string;
+export interface CurrentBroadcastCategoryRow {
+	id: string;
 	category: string | null;
 }
 
 export interface AnalysisQueueRepository {
-	findPendingCandidates(input: { limit: number; category?: string; channel?: "qvc" | "shopch" }): Promise<PendingAnalysisCandidate[]>;
-	findAnalyzedCategories(input: { offset: number; limit: number }): Promise<AnalyzedCategoryRow[]>;
+	findPendingCandidates(input: { limit: number; scopes: readonly EligibleAnalysisScope[] }): Promise<PendingAnalysisCandidate[]>;
+	findCompletedAnalysisIds(input: { offset: number; limit: number }): Promise<string[]>;
+	findCurrentBroadcastCategories(input: { ids: string[] }): Promise<CurrentBroadcastCategoryRow[]>;
 	promotePending(ids: string[]): Promise<string[]>;
 }
 
@@ -64,17 +101,29 @@ type BroadcastQueueRow = {
 	program_title: string | null;
 };
 
+function postgrestInValue(value: string): string {
+	return `"${value.replace(/\\/g, "\\\\").replace(/"/g, "\\\"")}"`;
+}
+
+function scopeFilter(scope: EligibleAnalysisScope): string {
+	return `and(channel.eq.${scope.channel},category.in.(${scope.categories.map(postgrestInValue).join(",")}))`;
+}
+
 export function createAnalysisQueueRepository(supabase: SupabaseClient): AnalysisQueueRepository {
 	return {
 		async findPendingCandidates(input) {
+			if (input.scopes.length === 0) return [];
 			let query = supabase
 				.from("broadcasts")
 				.select("id,channel,category,air_date,product_ids,program_title")
 				.eq("analysis_status", "pending")
 				.not("archived_video_s3", "is", null);
-			if (input.channel) query = query.eq("channel", input.channel);
-			else query = query.in("channel", ["qvc", "shopch"]);
-			if (input.category !== undefined) query = query.eq("category", input.category);
+			if (input.scopes.length === 1) {
+				const scope = input.scopes[0]!;
+				query = query.eq("channel", scope.channel).in("category", scope.categories);
+			} else {
+				query = query.or(input.scopes.map(scopeFilter).join(","));
+			}
 
 			const { data, error } = await query
 				.order("air_date", { ascending: false })
@@ -90,17 +139,23 @@ export function createAnalysisQueueRepository(supabase: SupabaseClient): Analysi
 				programTitle: row.program_title,
 			}));
 		},
-		async findAnalyzedCategories(input) {
+		async findCompletedAnalysisIds(input) {
 			const { data, error } = await supabase
 				.from("broadcast_speech_analyses")
-				.select("broadcast_id,category")
+				.select("broadcast_id")
 				.order("broadcast_id", { ascending: true })
 				.range(input.offset, input.offset + input.limit - 1);
-			if (error) throw new Error(`analyzed category select failed: ${error.message}`);
-			return ((data ?? []) as Array<{ broadcast_id: string; category: string | null }>).map((row) => ({
-				broadcastId: row.broadcast_id,
-				category: row.category,
-			}));
+			if (error) throw new Error(`completed analysis select failed: ${error.message}`);
+			return ((data ?? []) as Array<{ broadcast_id: string }>).map((row) => row.broadcast_id);
+		},
+		async findCurrentBroadcastCategories(input) {
+			if (input.ids.length === 0) return [];
+			const { data, error } = await supabase
+				.from("broadcasts")
+				.select("id,category")
+				.in("id", input.ids);
+			if (error) throw new Error(`current broadcast category select failed: ${error.message}`);
+			return (data ?? []) as CurrentBroadcastCategoryRow[];
 		},
 		async promotePending(ids) {
 			if (ids.length === 0) return [];
@@ -117,28 +172,39 @@ export function createAnalysisQueueRepository(supabase: SupabaseClient): Analysi
 }
 
 /**
- * Count each completed analysis once, even if a response page accidentally
- * contains a duplicated row. The primary key on broadcast_speech_analyses
- * makes that defensive suppression normally a no-op, but it prevents a join
- * or transport duplication from inflating a category's sampling level.
+ * Count each completed analysis once, then resolve category from its current
+ * broadcast row. Analysis rows retain the category observed at processing
+ * time, so using that snapshot would keep priority stale after enrichment.
  */
 export async function countDistinctAnalyzedCategories(
 	repository: AnalysisQueueRepository,
 ): Promise<Map<string, number>> {
 	const seen = new Set<string>();
-	const counts = new Map<string, number>();
+	const completedIds: string[] = [];
 	let offset = 0;
 	while (true) {
-		const page = await repository.findAnalyzedCategories({ offset, limit: ANALYZED_CATEGORY_PAGE_SIZE });
-		for (const row of page) {
-			if (seen.has(row.broadcastId)) continue;
-			seen.add(row.broadcastId);
-			const category = normalizeAnalysisCategory(row.category);
-			counts.set(category, (counts.get(category) ?? 0) + 1);
+		const page = await repository.findCompletedAnalysisIds({ offset, limit: ANALYZED_CATEGORY_PAGE_SIZE });
+		for (const broadcastId of page) {
+			if (seen.has(broadcastId)) continue;
+			seen.add(broadcastId);
+			completedIds.push(broadcastId);
 		}
-		if (page.length < ANALYZED_CATEGORY_PAGE_SIZE) return counts;
+		if (page.length < ANALYZED_CATEGORY_PAGE_SIZE) break;
 		offset += page.length;
 	}
+
+	const counts = new Map<string, number>();
+	for (let offset = 0; offset < completedIds.length; offset += CURRENT_CATEGORY_ID_CHUNK_SIZE) {
+		const ids = completedIds.slice(offset, offset + CURRENT_CATEGORY_ID_CHUNK_SIZE);
+		const categories = new Map(
+			(await repository.findCurrentBroadcastCategories({ ids })).map((row) => [row.id, row.category]),
+		);
+		for (const id of ids) {
+			const category = normalizeAnalysisCategory(categories.get(id));
+			counts.set(category, (counts.get(category) ?? 0) + 1);
+		}
+	}
+	return counts;
 }
 
 /**
@@ -179,12 +245,13 @@ export async function seedAnalysisQueue(
 	if (!Number.isFinite(limit) || limit <= 0) return 0;
 	const requested = Math.floor(limit);
 	const candidateLimit = category === undefined
-		? Math.min(requested, BALANCED_ANALYSIS_CANDIDATE_POOL_LIMIT)
+		? BALANCED_ANALYSIS_CANDIDATE_POOL_LIMIT
 		: requested;
+	const scopes = buildEligibleAnalysisScopes(category, channel);
+	if (scopes.length === 0) return 0;
 	const candidates = await repository.findPendingCandidates({
 		limit: candidateLimit,
-		...(category !== undefined ? { category } : {}),
-		...(channel ? { channel } : {}),
+		scopes,
 	});
 	if (candidates.length === 0) return 0;
 

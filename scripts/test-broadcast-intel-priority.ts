@@ -6,14 +6,16 @@ import {
 } from "../lib/broadcast-intel/priority";
 import {
 	countDistinctAnalyzedCategories,
+	buildEligibleAnalysisScopes,
 	createAnalysisQueueRepository,
 	seedAnalysisQueue,
 	type AnalysisQueueRepository,
 	type PendingAnalysisCandidate,
 } from "../lib/broadcast-intel/queue";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { buildDrainAnalysisScope } from "../lib/broadcast-intel/drain-scope";
+import { buildDrainAnalysisScope, parseDrainCategory } from "../lib/broadcast-intel/drain-scope";
 import { broadcastAudioSeedOptions } from "../app/api/cron/analyze-broadcast-audio/route";
+import { CATEGORIES_BY_CHANNEL } from "../lib/broadcasts/whitelist-gate";
 
 async function main(): Promise<void> {
 function ids(rows: readonly AnalysisCandidate[]): string[] {
@@ -95,13 +97,21 @@ function memoryRepository(
 		async findPendingCandidates(input) {
 			candidateCalls.push(input);
 			return [...pending.values()]
-				.filter((row) => !input.category || row.category === input.category)
-				.filter((row) => !input.channel || row.channel === input.channel)
+				.filter((row) => input.scopes.some((scope) =>
+					scope.channel === row.channel && scope.categories.includes(row.category ?? ""),
+				))
 				.slice(0, input.limit);
 		},
-		async findAnalyzedCategories(input) {
+		async findCompletedAnalysisIds(input) {
 			countCalls.push(input);
-			return analyzed.slice(input.offset, input.offset + input.limit);
+			return analyzed.slice(input.offset, input.offset + input.limit).map((row) => row.broadcastId);
+		},
+		async findCurrentBroadcastCategories(input) {
+			const categories = new Map(analyzed.map((row) => [row.broadcastId, row.category]));
+			return input.ids.flatMap((id) => {
+				const category = categories.get(id);
+				return category === undefined ? [] : [{ id, category }];
+			});
 		},
 		async promotePending(idsToPromote) {
 			promotionCalls.push([...idsToPromote]);
@@ -128,11 +138,11 @@ function memoryRepository(
 			{ broadcastId: "blank-2", category: " " },
 		],
 	);
-	assert.equal(await seedAnalysisQueue({ limit: 4 }, repository), 4);
-	assert.deepEqual(repository.promotionCalls[0], ["fashion", "unclassified", "home-a", "home-b"]);
-	assert.deepEqual(repository.candidateCalls[0], { limit: 4 });
+	assert.equal(await seedAnalysisQueue({ limit: 4 }, repository), 3);
+	assert.deepEqual(repository.promotionCalls[0], ["fashion", "home-a", "home-b"]);
+	assert.equal(repository.candidateCalls[0]?.limit, 200);
 	assert.equal(await seedAnalysisQueue({ limit: 4 }, repository), 0, "a second seed must not promote an already queued row");
-	assert.deepEqual(repository.promotionCalls, [["fashion", "unclassified", "home-a", "home-b"]]);
+	assert.deepEqual(repository.promotionCalls, [["fashion", "home-a", "home-b"]]);
 	console.log("✓ balanced seeding is bounded and idempotently promotes only pending rows");
 }
 
@@ -153,8 +163,31 @@ function memoryRepository(
 {
 	const repository = memoryRepository([], []);
 	assert.equal(await seedAnalysisQueue({ limit: 500 }, repository), 0);
-	assert.deepEqual(repository.candidateCalls, [{ limit: 200 }]);
+	assert.equal(repository.candidateCalls[0]?.limit, 200);
 	console.log("✓ a large balanced request still bounds its database candidate pool");
+}
+
+{
+	const repository = memoryRepository(
+		[
+			...Array.from({ length: 10 }, (_, index) => ({
+				id: `home-${index}`,
+				channel: "qvc" as const,
+				category: "家電",
+				airDate: `2026-08-${String(29 - index).padStart(2, "0")}`,
+				productIds: [`home-${index}`],
+				programTitle: "home",
+			})),
+			{ id: "fashion-11", channel: "shopch", category: "ファッション", airDate: "2026-08-01", productIds: ["fashion"], programTitle: "fashion" },
+		],
+		[
+			...Array.from({ length: 20 }, (_, index) => ({ broadcastId: `completed-home-${index}`, category: "家電" })),
+		],
+	);
+	await seedAnalysisQueue({ limit: 10 }, repository);
+	assert.ok(repository.promotionCalls[0]?.includes("fashion-11"), "an alternative just beyond the requested output size must enter the balanced batch");
+	assert.equal(repository.candidateCalls[0]?.limit, 200);
+	console.log("✓ balanced selection sees its full bounded pool before taking the requested output size");
 }
 
 {
@@ -166,9 +199,74 @@ function memoryRepository(
 		[],
 	);
 	await seedAnalysisQueue({ limit: 1, category: "ファッション", channel: "shopch" }, repository);
-	assert.deepEqual(repository.candidateCalls, [{ limit: 1, category: "ファッション", channel: "shopch" }]);
+	assert.deepEqual(repository.candidateCalls, [{
+		limit: 1,
+		scopes: [{ channel: "shopch", categories: ["ファッション"] }],
+	}]);
 	assert.deepEqual(repository.promotionCalls, [["fashion"]]);
 	console.log("✓ an explicit drain category remains an exact operator scope");
+}
+
+{
+	assert.deepEqual(buildEligibleAnalysisScopes(undefined, undefined), [
+		{ channel: "qvc", categories: [...CATEGORIES_BY_CHANNEL.qvc] },
+		{ channel: "shopch", categories: [...CATEGORIES_BY_CHANNEL.shopch] },
+	]);
+	assert.deepEqual(buildEligibleAnalysisScopes("グルメ・お酒", undefined), [
+		{ channel: "shopch", categories: ["グルメ・お酒"] },
+	]);
+	assert.deepEqual(buildEligibleAnalysisScopes("   ", undefined), []);
+	assert.deepEqual(buildEligibleAnalysisScopes("not-a-whitelist-category", "qvc"), []);
+	assert.throws(
+		() => buildEligibleAnalysisScopes(undefined, undefined, null),
+		/whitelist unavailable/,
+	);
+	console.log("✓ whitelist scopes stay channel-specific, reject invalid categories, and surface unavailable configuration");
+}
+
+{
+	const repository = memoryRepository(
+		[
+			...Array.from({ length: 199 }, (_, index) => ({
+				id: `invalid-${index}`,
+				channel: "qvc" as const,
+				category: index === 0 ? " " : "not-a-whitelist-category",
+				airDate: `2026-08-${String(29 - (index % 20)).padStart(2, "0")}`,
+				productIds: [`invalid-${index}`],
+				programTitle: "invalid",
+			})),
+			{ id: "valid-qvc", channel: "qvc", category: "家電", airDate: "2026-07-01", productIds: ["qvc"], programTitle: "qvc" },
+			{ id: "valid-shopch", channel: "shopch", category: "グルメ・お酒", airDate: "2026-07-01", productIds: ["shopch"], programTitle: "shopch" },
+		],
+		[],
+	);
+	await seedAnalysisQueue({ limit: 2 }, repository);
+	assert.deepEqual(repository.candidateCalls, [{
+		limit: 200,
+		scopes: [
+			{ channel: "qvc", categories: [...CATEGORIES_BY_CHANNEL.qvc] },
+			{ channel: "shopch", categories: [...CATEGORIES_BY_CHANNEL.shopch] },
+		],
+	}]);
+	assert.deepEqual(repository.promotionCalls, [["valid-qvc", "valid-shopch"]]);
+	console.log("✓ whitelist eligibility is applied before the bounded balanced candidate pool");
+}
+
+{
+	const repository = memoryRepository(
+		[
+			{ id: "race-home", channel: "qvc", category: "家電", airDate: "2026-08-29", productIds: ["home"], programTitle: "home" },
+			{ id: "race-fashion", channel: "shopch", category: "ファッション", airDate: "2026-08-29", productIds: ["fashion"], programTitle: "fashion" },
+		],
+		[],
+	);
+	repository.promotePending = async (idsToPromote) => {
+		repository.promotionCalls.push([...idsToPromote]);
+		return idsToPromote.slice(0, 1);
+	};
+	assert.equal(await seedAnalysisQueue({ limit: 2 }, repository), 1);
+	assert.equal(repository.promotionCalls[0]?.length, 2);
+	console.log("✓ a partial concurrent promotion race reports only rows actually queued");
 }
 
 {
@@ -185,14 +283,68 @@ function memoryRepository(
 }
 
 {
+	const firstPage = [
+		{ broadcastId: "duplicate", category: "stale" },
+		...Array.from({ length: 998 }, (_, index) => ({ broadcastId: `current-${index}`, category: "stale" })),
+		{ broadcastId: "blank-current", category: "stale" },
+	];
+	const secondPage = [
+		{ broadcastId: "duplicate", category: "stale" },
+		{ broadcastId: "missing-current", category: "stale" },
+	];
+	const categoryCalls: string[][] = [];
+	const repository = {
+		async findAnalyzedCategories(input: { offset: number }) {
+			return input.offset === 0 ? firstPage : secondPage;
+		},
+		async findCompletedAnalysisIds(input: { offset: number }) {
+			return (input.offset === 0 ? firstPage : secondPage).map((row) => row.broadcastId);
+		},
+		async findCurrentBroadcastCategories(input: { ids: string[] }) {
+			categoryCalls.push(input.ids);
+			return input.ids.flatMap((id) => {
+				if (id === "duplicate") return [{ id, category: "corrected" }];
+				if (id.startsWith("current-")) return [{ id, category: "current" }];
+				if (id === "blank-current") return [{ id, category: " " }];
+				return [];
+			});
+		},
+	} as unknown as AnalysisQueueRepository;
+	const counts = await countDistinctAnalyzedCategories(repository);
+	assert.deepEqual([...counts.entries()].sort(), [
+		["corrected", 1],
+		["current", 998],
+		[UNCLASSIFIED_ANALYSIS_CATEGORY, 2],
+	].sort());
+	assert.equal(categoryCalls.flat().length, 1001, "each completed broadcast ID is resolved once after deduplication");
+	assert.ok(categoryCalls.every((ids) => ids.length <= 200), "current-category resolution stays in bounded ID chunks");
+	await assert.rejects(
+		() => countDistinctAnalyzedCategories({
+			findCompletedAnalysisIds: async () => { throw new Error("speech page unavailable"); },
+		} as unknown as AnalysisQueueRepository),
+		/speech page unavailable/,
+	);
+	await assert.rejects(
+		() => countDistinctAnalyzedCategories({
+			findCompletedAnalysisIds: async () => ["id-1"],
+			findCurrentBroadcastCategories: async () => { throw new Error("current category chunk unavailable"); },
+		} as unknown as AnalysisQueueRepository),
+		/current category chunk unavailable/,
+	);
+	console.log("✓ current categories replace stale analysis snapshots with bounded, failure-visible resolution");
+}
+
+{
 	const candidateFilters: Array<[string, unknown]> = [];
 	const candidateNotFilters: Array<[string, string, unknown]> = [];
+	const candidateOrFilters: string[] = [];
 	const updateFilters: Array<[string, unknown]> = [];
 	let candidateLimit: number | undefined;
 	const candidateQuery = {
 		select() { return this; },
 		eq(column: string, value: unknown) { candidateFilters.push([column, value]); return this; },
 		in(column: string, value: unknown) { candidateFilters.push([column, value]); return this; },
+		or(filter: string) { candidateOrFilters.push(filter); return this; },
 		not(column: string, operator: string, value: unknown) { candidateNotFilters.push([column, operator, value]); return this; },
 		order() { return this; },
 		async limit(limit: number) { candidateLimit = limit; return { data: [], error: null }; },
@@ -226,11 +378,19 @@ function memoryRepository(
 		},
 	};
 	const repository = createAnalysisQueueRepository(supabase as unknown as SupabaseClient);
-	await repository.findPendingCandidates({ limit: 12 });
+	await repository.findPendingCandidates({
+		limit: 12,
+		scopes: [
+			{ channel: "qvc", categories: ["家電"] },
+			{ channel: "shopch", categories: ["グルメ・お酒"] },
+		],
+	});
 	await repository.promotePending(["candidate-1"]);
 	assert.deepEqual(candidateFilters, [
 		["analysis_status", "pending"],
-		["channel", ["qvc", "shopch"]],
+	]);
+	assert.deepEqual(candidateOrFilters, [
+		'and(channel.eq.qvc,category.in.("家電")),and(channel.eq.shopch,category.in.("グルメ・お酒"))',
 	]);
 	assert.deepEqual(candidateNotFilters, [["archived_video_s3", "is", null]]);
 	assert.equal(candidateLimit, 12);
@@ -245,6 +405,14 @@ function memoryRepository(
 		{ category: "家電", channel: "shopch" },
 	);
 	console.log("✓ drain scope keeps an explicit category and omits it for balanced seeding");
+}
+
+{
+	assert.equal(parseDrainCategory(undefined), undefined);
+	assert.equal(parseDrainCategory(" 家電 "), "家電");
+	assert.throws(() => parseDrainCategory(""), /--category must be a nonblank value/);
+	assert.throws(() => parseDrainCategory(" \t "), /--category must be a nonblank value/);
+	console.log("✓ drain parser rejects blank operator categories before scope construction");
 }
 
 {

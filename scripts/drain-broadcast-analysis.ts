@@ -9,7 +9,7 @@
 import { getServiceClient } from "@/lib/supabase";
 import { analyzeOne, MAX_ATTEMPTS, type QueuedAnalysisSlot } from "@/lib/broadcast-intel/analyze-one";
 import { recoverStaleAnalysis, resetAnalysisError, seedAnalysisQueue } from "@/lib/broadcast-intel/queue";
-import { buildDrainAnalysisScope } from "@/lib/broadcast-intel/drain-scope";
+import { buildDrainAnalysisScope, parseDrainCategory } from "@/lib/broadcast-intel/drain-scope";
 import type { AnalysisErrorCode } from "@/lib/broadcast-intel/error-codes";
 
 /** Consecutive failed/requeued slots before the drain aborts. A dead Gemini
@@ -37,7 +37,7 @@ function parseLimit(raw: string | undefined, fallback: number): number {
 
 async function main(): Promise<void> {
 	const limit = parseLimit(flag("limit"), 40);
-	const category = flag("category");
+	const category = parseDrainCategory(flag("category"));
 	// One channel at a time: QVC archives ~2-minute digest clips with no offer
 	// segment, ShopCh archives ~1-hour full programmes. Mixing them averages a
 	// highlight reel against a sales programme.
@@ -78,7 +78,7 @@ async function main(): Promise<void> {
 			.from("broadcasts")
 			.select("id, channel, air_date, category, archived_video_s3, analysis_attempts")
 			.eq("analysis_status", "queued");
-		if (category !== undefined) q = q.eq("category", category);
+		if (scope.category !== undefined) q = q.eq("category", scope.category);
 		if (channel) q = q.eq("channel", channel);
 		const { data, error } = await q
 			.lt("analysis_attempts", MAX_ATTEMPTS)
