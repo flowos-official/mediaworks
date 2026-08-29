@@ -41,6 +41,28 @@ interface LegacyCategoryCoverage {
 	categoryPct: number | null;
 }
 
+export interface LegacyDiscoveryEligibilityInput {
+	source: string | null;
+	userAction: string | null;
+	tvChannelSource: string | null;
+}
+
+export function isLegacyFoundationEligible(input: LegacyDiscoveryEligibilityInput): boolean {
+	return input.source === "tv_channel"
+		&& (input.userAction === null || input.userAction === "sourced" || input.userAction === "interested")
+		&& isConnectedProductSource(input.tvChannelSource);
+}
+
+/** Gate on raw counts; percentages are rounded only when rendered. */
+export function passesRecentCategoryCoverage(categorized: number, eligible: number): boolean {
+	return Number.isInteger(categorized)
+		&& Number.isInteger(eligible)
+		&& eligible > 0
+		&& categorized >= 0
+		&& categorized <= eligible
+		&& categorized * 100 >= eligible * 95;
+}
+
 function errorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
 }
@@ -96,13 +118,22 @@ async function loadLegacyRecentCategoryCoverage(sb: SupabaseClient): Promise<Leg
 		.filter((id): id is string => typeof id === "string" && id.length > 0);
 	if (runIds.length === 0) return { rawActiveProducts: 0, activeProducts: 0, categorizedActive: 0, categoryPct: null };
 
-	const rawProducts = await readAll<{ id: string; tv_channel_source: string | null }>("latest legacy Discovery products", () => (sb as any)
+	const rawProducts = await readAll<{
+		id: string;
+		source: string | null;
+		user_action: string | null;
+		tv_channel_source: string | null;
+	}>("latest legacy Discovery products", () => (sb as any)
 		.from("discovered_products")
-		.select("id,tv_channel_source")
+		.select("id,source,user_action,tv_channel_source")
 		.in("session_id", runIds)
 		.or("user_action.is.null,user_action.in.(sourced,interested)")
 		.order("id", { ascending: true }));
-	const products = rawProducts.filter((product) => isConnectedProductSource(product.tv_channel_source));
+	const products = rawProducts.filter((product) => isLegacyFoundationEligible({
+		source: product.source,
+		userAction: product.user_action,
+		tvChannelSource: product.tv_channel_source,
+	}));
 	const productIds = [...new Set(products.map((product) => product.id))];
 	const links: Array<{ source_record_id: string; canonical_product_id: string }> = [];
 	for (const ids of chunks(productIds)) {
@@ -242,15 +273,7 @@ async function runVerification(sb: SupabaseClient): Promise<CheckResult[]> {
 		status: string;
 		started_at: string;
 	} | null;
-	const usesLegacyCoverage = readiness.coverage.categoryPct === null;
-	const categoryCoverage = usesLegacyCoverage
-		? legacyCategoryCoverage
-		: {
-			rawActiveProducts: readiness.coverage.activeProducts,
-			activeProducts: readiness.coverage.activeProducts,
-			categorizedActive: readiness.coverage.categorizedActive,
-			categoryPct: readiness.coverage.categoryPct,
-		};
+	const categoryCoverage = legacyCategoryCoverage;
 	const categoryPct = categoryCoverage.categoryPct;
 	const analysisPct = readiness.coverage.analysisPct;
 
@@ -269,8 +292,8 @@ async function runVerification(sb: SupabaseClient): Promise<CheckResult[]> {
 		},
 		{
 			name: "recent-active category coverage",
-			passed: categoryPct !== null && categoryPct >= 95,
-			detail: `source=${usesLegacyCoverage ? "latest successful legacy Discovery sessions" : "normalized Discovery runs"}, rawActive=${categoryCoverage.rawActiveProducts}, eligible=${categoryCoverage.activeProducts}, categorized=${categoryCoverage.categorizedActive}/${categoryCoverage.activeProducts}, categoryPct=${categoryPct ?? "null"}%, analysisPct=${analysisPct ?? "null"}% (${readiness.coverage.analyzedBroadcasts}/${readiness.coverage.archivedBroadcasts})`,
+			passed: passesRecentCategoryCoverage(categoryCoverage.categorizedActive, categoryCoverage.activeProducts),
+			detail: `source=latest successful legacy Discovery sessions, rawActive=${categoryCoverage.rawActiveProducts}, eligible=${categoryCoverage.activeProducts}, categorized=${categoryCoverage.categorizedActive}/${categoryCoverage.activeProducts}, categoryPct=${categoryPct ?? "null"}%, analysisPct=${analysisPct ?? "null"}% (${readiness.coverage.analyzedBroadcasts}/${readiness.coverage.archivedBroadcasts})`,
 		},
 		{
 			name: "evidence items",
