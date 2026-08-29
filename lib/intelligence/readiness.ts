@@ -169,7 +169,7 @@ export interface IntelligenceReadinessRepository {
 
 /**
  * Read-only Supabase adapter. Identity-bearing result sets are explicitly
- * paged; count-only metrics use PostgREST exact-count heads.
+ * paged; count-only metrics use one-row PostgREST exact-count body probes.
  */
 export function createIntelligenceReadinessRepository(sb: SupabaseClient): IntelligenceReadinessRepository {
 	async function readPagedRows<T>(

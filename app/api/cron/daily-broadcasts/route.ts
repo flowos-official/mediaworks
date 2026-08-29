@@ -18,6 +18,7 @@ export function dailyBroadcastPipelineCounts(input: {
 	inserted: number;
 	updated: number;
 	sourceErrors: number;
+	persistenceErrors: number;
 	enrichmentErrors: number;
 	snapshotErrors: number;
 	processed: number;
@@ -26,7 +27,7 @@ export function dailyBroadcastPipelineCounts(input: {
 		new: input.inserted,
 		updated: input.updated,
 		duplicate: 0,
-		failed: input.sourceErrors + input.enrichmentErrors + input.snapshotErrors,
+		failed: input.sourceErrors + input.persistenceErrors + input.enrichmentErrors + input.snapshotErrors,
 		processed: input.processed,
 	};
 }
@@ -34,7 +35,8 @@ export function dailyBroadcastPipelineCounts(input: {
 export function dailyBroadcastPipelineOutcome(input: {
 	inserted: number;
 	updated: number;
-	sourceErrors: number;
+	persistenceErrors: number;
+	sourceFailures: Array<{ channel: string; error?: string }>;
 	enrichmentErrors: number;
 	processed: number;
 	successfulSources: number;
@@ -44,7 +46,8 @@ export function dailyBroadcastPipelineOutcome(input: {
 	const counts = dailyBroadcastPipelineCounts({
 		inserted: input.inserted,
 		updated: input.updated,
-		sourceErrors: input.sourceErrors,
+		sourceErrors: input.sourceFailures.length,
+		persistenceErrors: input.persistenceErrors,
 		enrichmentErrors: input.enrichmentErrors,
 		snapshotErrors: input.snapshotErrors.length,
 		processed: input.processed,
@@ -55,8 +58,12 @@ export function dailyBroadcastPipelineOutcome(input: {
 	const snapshotSummary = input.snapshotErrors
 		.map((error) => `${error.channel}/${error.operation}${error.broadcastId ? `(${error.broadcastId})` : ""}: ${error.message}`)
 		.join("; ");
+	const sourceSummary = input.sourceFailures
+		.map((failure) => `${failure.channel}: ${(failure.error?.trim() || "source returned not-ok").slice(0, 160)}`)
+		.join("; ");
 	const errorSummary = [
-		`${input.sourceErrors} source scrape error(s)`,
+		`${input.sourceFailures.length} source scrape error(s)${sourceSummary ? `: ${sourceSummary}` : ""}`,
+		`${input.persistenceErrors} broadcast persistence error(s)`,
 		`${input.enrichmentErrors} QVC product enrichment error(s)`,
 		`${input.snapshotErrors.length} snapshot enrichment error(s)`,
 		snapshotSummary,
@@ -67,7 +74,7 @@ export function dailyBroadcastPipelineOutcome(input: {
 	return {
 		status: "partial" as const,
 		counts,
-		errorCode: input.sourceErrors > 0
+		errorCode: input.sourceFailures.length > 0
 			? "source_partial"
 			: input.snapshotErrors.length > 0
 				? "snapshot_enrichment_partial"
@@ -203,7 +210,10 @@ export async function GET(req: NextRequest) {
 	const pipelineOutcome = dailyBroadcastPipelineOutcome({
 		inserted: summary.totalInserted,
 		updated: summary.totalUpdated,
-		sourceErrors: summary.totalErrors,
+		persistenceErrors: summary.totalErrors,
+		sourceFailures: summary.results
+			.filter((result) => !result.ok)
+			.map((result) => ({ channel: result.channel, error: result.error })),
 		enrichmentErrors: enrich.failed,
 		snapshotErrors,
 		processed: summary.results.reduce((total, result) => total + result.slots.length, 0),

@@ -39,7 +39,7 @@ async function main() {
 	{
 		assert.deepEqual(discoveryHomePipelineCounts(4, 1), { new: 1, updated: 0, duplicate: 3, failed: 0, processed: 4 });
 		assert.deepEqual(discoveryLivePipelineCounts(0, 0), { new: 0, updated: 0, duplicate: 0, failed: 0, processed: 0 });
-		assert.deepEqual(dailyBroadcastPipelineCounts({ inserted: 1, updated: 2, sourceErrors: 1, enrichmentErrors: 1, snapshotErrors: 3, processed: 5 }), { new: 1, updated: 2, duplicate: 0, failed: 5, processed: 5 });
+		assert.deepEqual(dailyBroadcastPipelineCounts({ inserted: 1, updated: 2, sourceErrors: 1, persistenceErrors: 0, enrichmentErrors: 1, snapshotErrors: 3, processed: 5 }), { new: 1, updated: 2, duplicate: 0, failed: 5, processed: 5 });
 		assert.deepEqual(historicalBroadcastPipelineCounts({ inserted: 1, updated: 2, skippedDuplicate: 3, persistErrors: 1, failedChannels: 1, processed: 7 }), { new: 1, updated: 2, duplicate: 3, failed: 2, processed: 7 });
 		const unclassifiedCounts = historicalBroadcastPipelineCounts({ inserted: undefined, updated: undefined, skippedDuplicate: 3, persistErrors: 0, failedChannels: 0, processed: 7 });
 		assert.deepEqual(
@@ -60,7 +60,8 @@ async function main() {
 		const snapshotFailure = dailyBroadcastPipelineOutcome({
 			inserted: 4,
 			updated: 1,
-			sourceErrors: 0,
+			persistenceErrors: 0,
+			sourceFailures: [],
 			enrichmentErrors: 0,
 			processed: 5,
 			successfulSources: 2,
@@ -75,6 +76,94 @@ async function main() {
 		assert.equal(snapshotFailure.errorCode, "snapshot_enrichment_partial");
 		assert.match(snapshotFailure.errorSummary ?? "", /category_backfill.*category write unavailable/);
 		assert.match(snapshotFailure.errorSummary ?? "", /video_status_update.*video write unavailable/);
+		const qvcParserError = `unexpected QVC schedule markup ${"x".repeat(200)} END_OF_UNBOUNDED_ERROR`;
+		const mixedSourceFailure = dailyBroadcastPipelineOutcome({
+			inserted: 3,
+			updated: 1,
+			persistenceErrors: 0,
+			sourceFailures: [{ channel: "qvc", error: qvcParserError }],
+			enrichmentErrors: 0,
+			processed: 4,
+			successfulSources: 1,
+			totalSources: 2,
+			snapshotErrors: [],
+		});
+		const mixedSourceAndPersistenceFailure = dailyBroadcastPipelineOutcome({
+			inserted: 2,
+			updated: 0,
+			persistenceErrors: 2,
+			sourceFailures: [{ channel: "qvc", error: "QVC parser returned no schedule rows" }],
+			enrichmentErrors: 0,
+			processed: 2,
+			successfulSources: 1,
+			totalSources: 2,
+			snapshotErrors: [],
+		});
+		const allSourcesFailed = dailyBroadcastPipelineOutcome({
+			inserted: 0,
+			updated: 0,
+			persistenceErrors: 0,
+			sourceFailures: [
+				{ channel: "shopch", error: "Shop Channel upstream timeout" },
+				{ channel: "qvc", error: "QVC markup changed" },
+			],
+			enrichmentErrors: 0,
+			processed: 0,
+			successfulSources: 0,
+			totalSources: 2,
+			snapshotErrors: [],
+		});
+		assert.deepEqual(
+			[
+				{
+					status: mixedSourceFailure.status,
+					failed: mixedSourceFailure.counts.failed,
+					errorCode: mixedSourceFailure.errorCode,
+					hasSourceContext: /qvc: unexpected QVC schedule markup/.test(mixedSourceFailure.errorSummary ?? ""),
+					claimsZeroSourceErrors: /0 source scrape error/.test(mixedSourceFailure.errorSummary ?? ""),
+					leaksUnboundedTail: /END_OF_UNBOUNDED_ERROR/.test(mixedSourceFailure.errorSummary ?? ""),
+				},
+				{
+					status: mixedSourceAndPersistenceFailure.status,
+					failed: mixedSourceAndPersistenceFailure.counts.failed,
+					errorCode: mixedSourceAndPersistenceFailure.errorCode,
+					hasSourceContext: /qvc: QVC parser returned no schedule rows/.test(mixedSourceAndPersistenceFailure.errorSummary ?? ""),
+					hasPersistenceCount: /2 broadcast persistence error/.test(mixedSourceAndPersistenceFailure.errorSummary ?? ""),
+				},
+				{
+					status: allSourcesFailed.status,
+					failed: allSourcesFailed.counts.failed,
+					errorCode: allSourcesFailed.errorCode,
+					hasShopChContext: /shopch: Shop Channel upstream timeout/.test(allSourcesFailed.errorSummary ?? ""),
+					hasQvcContext: /qvc: QVC markup changed/.test(allSourcesFailed.errorSummary ?? ""),
+				},
+			],
+			[
+				{
+					status: "partial",
+					failed: 1,
+					errorCode: "source_partial",
+					hasSourceContext: true,
+					claimsZeroSourceErrors: false,
+					leaksUnboundedTail: false,
+				},
+				{
+					status: "partial",
+					failed: 3,
+					errorCode: "source_partial",
+					hasSourceContext: true,
+					hasPersistenceCount: true,
+				},
+				{
+					status: "failed",
+					failed: 2,
+					errorCode: "source_failed",
+					hasShopChContext: true,
+					hasQvcContext: true,
+				},
+			],
+			"source/parser failures are counted and bounded separately from persistence failures",
+		);
 		assert.equal(archiveVideosPipelineOutcome({ processed: 1, archived: 0, queued: 0, abandoned: 0, deferred: 1, failed_unsupported: 0, stale_requeued: 0, stale_abandoned: 0 }, 0).status, "partial");
 		assert.equal(broadcastAudioPipelineOutcome({ recovered: 0, seeded: 1, processed: 0, done: 0, queued: 0, failed: 0, skipped: 0 }, 0).counts.new, 1);
 		console.log("✓ all six production route-owned mapping functions execute representative outcomes");
