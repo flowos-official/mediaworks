@@ -2,14 +2,22 @@ import assert from "node:assert/strict";
 
 import {
 	buildBackfillCursor,
+	buildSourcePageQuery,
+	CONNECTED_PRODUCT_SOURCE_CHANNELS,
 	executeBackfillPage,
+	initialBackfillCursor,
+	isConnectedProductSource,
 	mapBroadcastAnalysisEvidence,
 	mapDiscoveredProductEvidence,
 	parseBackfillArgs,
 	parseBackfillCursor,
+	resolveExactCanonicalProduct,
+	runFoundationBackfill,
 	type BroadcastAnalysisBackfillRow,
 	type DiscoveredProductBackfillRow,
+	type PipelineRunHandle,
 } from "../lib/intelligence/backfill";
+import { runCliBackfill } from "./backfill-intelligence-foundation";
 
 const PRODUCT_OBSERVED_AT = "2026-08-29T01:02:03.000Z";
 
@@ -106,7 +114,8 @@ for (const predicate of ["air_date", "duration_sec", "segment_pattern", "selling
 }
 
 const argsCursor = buildBackfillCursor({
-	products: { observedAt: "2026-08-01T00:00:00.000Z", id: "discovered-product-0" },
+	products: { done: false, position: { observedAt: "2026-08-01T00:00:00.000Z", id: "discovered-product-0" } },
+	broadcasts: { done: true },
 });
 const parsed = parseBackfillArgs([
 	"--since=2026-08-01",
@@ -127,12 +136,12 @@ assert.throws(() => parseBackfillArgs(["--limit=0"]), /positive integer/);
 assert.throws(() => parseBackfillArgs(["--since=nope"]), /ISO date or timestamp/);
 
 const cursor = buildBackfillCursor({
-	products: { observedAt: PRODUCT_OBSERVED_AT, id: "discovered-product-1" },
-	broadcasts: { observedAt: "2026-08-29T02:03:04.000Z", id: "broadcast-1" },
+	products: { done: false, position: { observedAt: PRODUCT_OBSERVED_AT, id: "discovered-product-1" } },
+	broadcasts: { done: false, position: { observedAt: "2026-08-29T02:03:04.000Z", id: "broadcast-1" } },
 });
 assert.deepEqual(parseBackfillCursor(cursor), {
-	products: { observedAt: PRODUCT_OBSERVED_AT, id: "discovered-product-1" },
-	broadcasts: { observedAt: "2026-08-29T02:03:04.000Z", id: "broadcast-1" },
+	products: { done: false, position: { observedAt: PRODUCT_OBSERVED_AT, id: "discovered-product-1" } },
+	broadcasts: { done: false, position: { observedAt: "2026-08-29T02:03:04.000Z", id: "broadcast-1" } },
 });
 assert.equal(buildBackfillCursor(parseBackfillCursor(cursor)), cursor, "cursor serialization is deterministic");
 assert.throws(() => parseBackfillCursor("not-a-cursor"), /invalid cursor/);
@@ -165,6 +174,269 @@ async function verifyDryRun(): Promise<void> {
 	});
 	assert.equal(reviewOnly.reviewNeeded.missingNormalizedCategory, 1);
 	assert.deepEqual(reviewOnly.reviewNeededCategories, ["家電"], "unclassified raw categories are reported for review");
+
+	assert.throws(() => parseBackfillArgs(["--since=2026-02-30"]), /ISO date or timestamp/);
+	assert.throws(() => parseBackfillArgs(["--since=August 1, 2026"]), /ISO date or timestamp/);
+	assert.throws(
+		() => parseBackfillCursor(Buffer.from(JSON.stringify({ v: 2, products: { done: true } })).toString("base64url")),
+		/invalid cursor/,
+	);
+
+	const activeCursor = initialBackfillCursor();
+	assert.deepEqual(activeCursor, { products: { done: false }, broadcasts: { done: false } });
+	const completedProductsCursor = buildBackfillCursor({
+		products: { done: true },
+		broadcasts: { done: false, position: { observedAt: "2026-08-29T02:03:04.000Z", id: "broadcast-1" } },
+	});
+	assert.deepEqual(parseBackfillCursor(completedProductsCursor), {
+		products: { done: true },
+		broadcasts: { done: false, position: { observedAt: "2026-08-29T02:03:04.000Z", id: "broadcast-1" } },
+	});
+	assert.throws(
+		() => parseBackfillCursor(Buffer.from(JSON.stringify({ v: 2, products: { done: true } })).toString("base64url")),
+		/invalid cursor/,
+		"one-sided cursors are rejected rather than restarting the omitted source",
+	);
+
+	const equalTimestampQuery = buildSourcePageQuery(
+		"products",
+		{ since: "2026-08-01T00:00:00.000Z", limit: 2 },
+		{ done: false, position: { observedAt: "2026-08-29T02:03:04.000Z", id: "product-b" } },
+	);
+	assert.equal(equalTimestampQuery.orderBy[0]?.column, "created_at");
+	assert.equal(equalTimestampQuery.orderBy[1]?.column, "id");
+	assert.equal(
+		equalTimestampQuery.cursorFilter,
+		"created_at.lt.2026-08-29T02:03:04.000Z,and(created_at.eq.2026-08-29T02:03:04.000Z,id.lt.product-b)",
+		"same-timestamp rows resume using the deterministic id tie-breaker",
+	);
+	assert.equal(equalTimestampQuery.limit, 2, "the product source query is bounded by the requested limit");
+	assert.equal(buildSourcePageQuery("broadcasts", { since: "2026-08-01T00:00:00.000Z", limit: 2 }, { done: false }).limit, 2);
+
+	assert.deepEqual(
+		[...CONNECTED_PRODUCT_SOURCE_CHANNELS].sort(),
+		["dinos", "ichiban", "japanet", "junsanpo", "kantv", "ntv", "qvc", "rakurakum", "senobura", "shopch", "tbs"],
+		"only connected QVC, Shop Channel, and OA source slugs are in scope",
+	);
+	for (const slug of CONNECTED_PRODUCT_SOURCE_CHANNELS) {
+		assert.equal(isConnectedProductSource(slug), true, `${slug} is accepted by the actual source-scope guard`);
+	}
+	assert.equal(isConnectedProductSource("rakuraku"), false, "the disconnected calendar alias is not accepted");
+
+	const tvObservedAt = "2026-08-29T04:05:06.000Z";
+	const tvDraft = mapDiscoveredProductEvidence({
+		...productRow,
+		observedAt: "2026-08-01T00:00:00.000Z",
+		tvEvidenceAt: tvObservedAt,
+		tvEvidence: { airing_count: 4, matched_at: "2026-08-28T04:05:06.000Z" },
+	}).find((draft) => draft.predicate === "tv_airing_count");
+	assert.equal(tvDraft?.observedAt, tvObservedAt, "TV airing evidence keeps its own observation time");
+
+	const eventLog: string[] = [];
+	const fakeRun: PipelineRunHandle = {
+		id: "run-1",
+		heartbeat: async () => { eventLog.push("heartbeat"); },
+		succeed: async () => { eventLog.push("succeed"); },
+		partial: async () => { eventLog.push("partial"); },
+		fail: async () => { eventLog.push("fail"); },
+	};
+	const runnerDry = await runFoundationBackfill({
+		args: { since: "2026-08-01T00:00:00.000Z", limit: 1, apply: false },
+		cursor: initialBackfillCursor(),
+		fetchProducts: async () => ({ rows: [productRow], exhausted: true, readCount: 1 }),
+		fetchBroadcasts: async () => ({ rows: [broadcastRow], exhausted: false, readCount: 1, next: { observedAt: broadcastRow.observedAt, id: broadcastRow.broadcastId } }),
+		loadCachedCategories: async () => new Map([["家電", ["家電"]]]),
+		normalizeCategories: async () => { throw new Error("dry-run must not normalize/write"); },
+		startPipelineRun: async () => { throw new Error("dry-run must not create a run"); },
+		writeProduct: async () => { throw new Error("dry-run must not write products"); },
+		writeBroadcast: async () => { throw new Error("dry-run must not write broadcasts"); },
+	});
+	assert.deepEqual(runnerDry.nextCursor, {
+		products: { done: true },
+		broadcasts: { done: false, position: { observedAt: broadcastRow.observedAt, id: broadcastRow.broadcastId } },
+	});
+	assert.deepEqual(eventLog, [], "real dry-run orchestration reaches no write dependency");
+
+	const cliReads: string[] = [];
+	const cliProduct = {
+		id: "cli-product-1",
+		name: productRow.name,
+		category: productRow.category,
+		product_url: productRow.productUrl,
+		price_jpy: productRow.priceJpy,
+		review_count: productRow.reviewCount,
+		tv_evidence: productRow.tvEvidence,
+		tv_evidence_at: null,
+		created_at: productRow.observedAt,
+		tv_channel_source: "qvc",
+		user_action: null,
+	};
+	const cliSupabase = {
+		from(table: string) {
+			cliReads.push(`from:${table}`);
+			const builder: any = {
+				select: () => builder,
+				eq: () => builder,
+				gte: () => builder,
+				order: () => builder,
+				or: () => builder,
+				limit: () => Promise.resolve({
+					data: table === "discovered_products" ? [cliProduct] : [],
+					error: null,
+				}),
+				in: () => {
+					if (table === "discovered_category_normalization") {
+						return Promise.resolve({ data: [{ raw_category: "家電", whitelist_categories: ["家電"] }], error: null });
+					}
+					return builder;
+				},
+			};
+			return builder;
+		},
+	};
+	const cliDry = await runCliBackfill(
+		{ since: "2026-08-01T00:00:00.000Z", limit: 1, apply: false },
+		cliSupabase as never,
+	);
+	assert.equal(cliDry.summary.productRowsWritten, 0);
+	assert.deepEqual(
+		cliReads.sort(),
+		["from:broadcast_speech_analyses", "from:discovered_category_normalization", "from:discovered_products"],
+		"the actual CLI dry-run adapter performs only the bounded source/cache reads",
+	);
+
+	const resumedQueries: string[] = [];
+	await runFoundationBackfill({
+		args: { since: "2026-08-01T00:00:00.000Z", limit: 1, apply: false },
+		cursor: runnerDry.nextCursor,
+		fetchProducts: async () => { resumedQueries.push("products"); throw new Error("done source must not be queried"); },
+		fetchBroadcasts: async (state) => {
+			resumedQueries.push(`broadcasts:${state.position?.id}`);
+			return { rows: [], exhausted: true, readCount: 0 };
+		},
+		loadCachedCategories: async () => new Map(),
+		normalizeCategories: async () => new Map(),
+		startPipelineRun: async () => fakeRun,
+		writeProduct: async () => ({ new: 0, duplicate: 0 }),
+		writeBroadcast: async () => ({ new: 0, duplicate: 0 }),
+	});
+	assert.deepEqual(resumedQueries, ["broadcasts:broadcast-1"], "an exhausted source is never queried again");
+
+	const applyEvents: string[] = [];
+	const applyRun: PipelineRunHandle = {
+		id: "run-apply",
+		heartbeat: async () => { applyEvents.push("heartbeat"); },
+		succeed: async () => { applyEvents.push("succeed"); },
+		partial: async () => { applyEvents.push("partial"); },
+		fail: async () => { applyEvents.push("fail"); },
+	};
+	const applyResult = await runFoundationBackfill({
+		args: { since: "2026-08-01T00:00:00.000Z", limit: 1, apply: true },
+		cursor: initialBackfillCursor(),
+		startPipelineRun: async () => { applyEvents.push("start"); return applyRun; },
+		fetchProducts: async () => { applyEvents.push("products"); return { rows: [productRow], exhausted: true, readCount: 1 }; },
+		fetchBroadcasts: async () => { applyEvents.push("broadcasts"); return { rows: [], exhausted: true, readCount: 0 }; },
+		loadCachedCategories: async () => new Map(),
+		normalizeCategories: async () => { applyEvents.push("normalize"); return new Map([["家電", ["家電"]]]); },
+		writeProduct: async () => { applyEvents.push("write-product"); return { new: 2, duplicate: 3 }; },
+		writeBroadcast: async () => ({ new: 0, duplicate: 0 }),
+	});
+	assert.ok(applyEvents.indexOf("start") < applyEvents.indexOf("products"), "apply creates the run before source queries");
+	assert.ok(applyEvents.indexOf("heartbeat") < applyEvents.indexOf("write-product"), "observed page counts are heartbeated before writes");
+	assert.deepEqual(applyEvents.slice(-1), ["succeed"]);
+	assert.deepEqual(applyResult.counts, { new: 2, updated: 0, duplicate: 3, failed: 0, processed: 1 }, "reused links/evidence are duplicates, never labeled updates");
+
+	const partialEvents: string[] = [];
+	let partialCounts: unknown;
+	const partialRun: PipelineRunHandle = {
+		id: "run-partial",
+		heartbeat: async () => { partialEvents.push("heartbeat"); },
+		succeed: async () => { partialEvents.push("succeed"); },
+		partial: async (counts) => { partialEvents.push("partial"); partialCounts = counts; },
+		fail: async () => { partialEvents.push("fail"); },
+	};
+	await assert.rejects(() => runFoundationBackfill({
+		args: { since: "2026-08-01T00:00:00.000Z", limit: 1, apply: true },
+		cursor: initialBackfillCursor(),
+		startPipelineRun: async () => partialRun,
+		fetchProducts: async () => ({ rows: [productRow], exhausted: true, readCount: 1 }),
+		fetchBroadcasts: async () => ({ rows: [broadcastRow], exhausted: true, readCount: 1 }),
+		loadCachedCategories: async () => new Map(),
+		normalizeCategories: async () => new Map([["家電", ["家電"]]]),
+		writeProduct: async () => ({ new: 2, duplicate: 0 }),
+		writeBroadcast: async () => { throw new Error("evidence write failed"); },
+	}), /recorded as partial/);
+	assert.ok(partialEvents.includes("partial"), "a post-write failure is terminally partial");
+	assert.equal(partialEvents.includes("fail"), false, "a post-write failure is never mislabeled failed");
+	assert.deepEqual(partialCounts, { new: 2, updated: 0, duplicate: 0, failed: 1, processed: 2 }, "partial settlement carries all observed counts");
+
+	const failureEvents: string[] = [];
+	const failureRun: PipelineRunHandle = {
+		id: "run-failure",
+		heartbeat: async () => { failureEvents.push("heartbeat"); },
+		succeed: async () => { failureEvents.push("succeed"); },
+		partial: async () => { failureEvents.push("partial"); },
+		fail: async () => { failureEvents.push("fail"); },
+	};
+	await assert.rejects(() => runFoundationBackfill({
+		args: { since: "2026-08-01T00:00:00.000Z", limit: 1, apply: true },
+		cursor: initialBackfillCursor(),
+		startPipelineRun: async () => { failureEvents.push("start"); return failureRun; },
+		fetchProducts: async () => { failureEvents.push("products"); throw new Error("source unavailable"); },
+		fetchBroadcasts: async () => ({ rows: [], exhausted: true, readCount: 0 }),
+		loadCachedCategories: async () => new Map(),
+		normalizeCategories: async () => new Map(),
+		writeProduct: async () => ({ new: 0, duplicate: 0 }),
+		writeBroadcast: async () => ({ new: 0, duplicate: 0 }),
+	}), /recorded as failed/);
+	assert.ok(failureEvents.indexOf("start") < failureEvents.indexOf("products"), "query failures have an already-created run to settle");
+	assert.equal(failureEvents.includes("fail"), true, "a pre-write query failure settles as failed");
+
+	let successSettles = 0;
+	const telemetryRun: PipelineRunHandle = {
+		id: "run-telemetry",
+		heartbeat: async () => undefined,
+		succeed: async () => { successSettles += 1; throw new Error("recorder unavailable"); },
+		partial: async () => { throw new Error("must not change successful data to partial"); },
+		fail: async () => { throw new Error("must not change successful data to failed"); },
+	};
+	await assert.rejects(() => runFoundationBackfill({
+		args: { since: "2026-08-01T00:00:00.000Z", limit: 1, apply: true },
+		cursor: initialBackfillCursor(),
+		startPipelineRun: async () => telemetryRun,
+		fetchProducts: async () => ({ rows: [], exhausted: true, readCount: 0 }),
+		fetchBroadcasts: async () => ({ rows: [], exhausted: true, readCount: 0 }),
+		loadCachedCategories: async () => new Map(),
+		normalizeCategories: async () => new Map(),
+		writeProduct: async () => ({ new: 0, duplicate: 0 }),
+		writeBroadcast: async () => ({ new: 0, duplicate: 0 }),
+	}), /success telemetry settlement failed/);
+	assert.equal(successSettles, 2, "the intended success settlement is retried once and never flipped to fail");
+
+	const canonicalCalls: string[] = [];
+	const raceResolution = await resolveExactCanonicalProduct({
+		findExactSourceLink: async () => canonicalCalls.includes("link") ? { canonicalProductId: "winner" } : null,
+		insertCanonical: async () => { canonicalCalls.push("canonical"); return "orphan"; },
+		insertExactSourceLink: async () => { canonicalCalls.push("link"); throw new Error("duplicate key"); },
+		deleteCanonical: async (id) => { canonicalCalls.push(`delete:${id}`); },
+	}, productRow);
+	assert.deepEqual(raceResolution, { canonicalProductId: "winner", canonicalCreated: false, sourceLinkDuplicate: true });
+	assert.deepEqual(canonicalCalls, ["canonical", "link", "delete:orphan"], "a source-link race cleans up only its orphan canonical");
+
+	const cleanupCalls: string[] = [];
+	await assert.rejects(() => resolveExactCanonicalProduct({
+		findExactSourceLink: async () => null,
+		insertCanonical: async () => "orphan-2",
+		insertExactSourceLink: async () => { throw new Error("link validation failure"); },
+		deleteCanonical: async (id) => { cleanupCalls.push(id); },
+	}, productRow), /link validation failure/);
+	assert.deepEqual(cleanupCalls, ["orphan-2"], "non-race source-link errors clean up their just-created canonical");
+	await assert.rejects(() => resolveExactCanonicalProduct({
+		findExactSourceLink: async () => null,
+		insertCanonical: async () => "orphan-3",
+		insertExactSourceLink: async () => { throw new Error("link validation failure"); },
+		deleteCanonical: async () => { throw new Error("delete unavailable"); },
+	}, productRow), /link validation failure; orphan canonical cleanup failed: delete unavailable/);
 
 	console.log("PASS: intelligence foundation backfill");
 }

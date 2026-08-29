@@ -5,40 +5,31 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { normalizeCategoriesBatch } from "../lib/discovery/category-normalize";
 import {
 	buildBackfillCursor,
-	executeBackfillPage,
+	buildSourcePageQuery,
+	initialBackfillCursor,
+	isConnectedProductSource,
 	mapBroadcastAnalysisEvidence,
 	mapDiscoveredProductEvidence,
 	parseBackfillArgs,
 	parseBackfillCursor,
+	resolveExactCanonicalProduct,
+	runFoundationBackfill,
 	type BackfillArgs,
-	type BackfillCursor,
-	type BackfillCursorPosition,
+	type BackfillSourceCursor,
+	type BackfillSourcePageQuery,
 	type BroadcastAnalysisBackfillRow,
 	type DiscoveredProductBackfillRow,
+	type FoundationBackfillResult,
+	type FoundationSourcePage,
+	type FoundationWriteOutcome,
 } from "../lib/intelligence/backfill";
+import { evidenceDedupeKey } from "../lib/intelligence/evidence";
 import { upsertEvidence } from "../lib/intelligence/repository";
-import {
-	createPipelineRunRepository,
-	startPipelineRun,
-	type PipelineRunCounts,
-} from "../lib/intelligence/pipeline-run";
+import { createPipelineRunRepository, startPipelineRun } from "../lib/intelligence/pipeline-run";
 import { getServiceClient } from "../lib/supabase";
 
 const PRODUCT_SOURCE_TABLE = "discovered_products";
 const PRODUCT_SOURCE_TYPE = "discovery";
-const CONNECTED_SOURCE_CHANNELS = new Set([
-	"qvc",
-	"shopch",
-	"japanet",
-	"junsanpo",
-	"ntv",
-	"tbs",
-	"dinos",
-	"senobura",
-	"kantv",
-	"rakuraku",
-	"ichiban",
-]);
 
 interface RawProductRow {
 	id: string;
@@ -47,7 +38,8 @@ interface RawProductRow {
 	product_url: string | null;
 	price_jpy: number | null;
 	review_count: number | null;
-	tv_evidence: { airing_count?: unknown } | null;
+	tv_evidence: { airing_count?: unknown; matched_at?: unknown } | null;
+	tv_evidence_at: string | null;
 	created_at: string;
 	tv_channel_source: string | null;
 	user_action: "sourced" | "interested" | "rejected" | "duplicate" | null;
@@ -67,36 +59,8 @@ interface RawBroadcastAnalysisRow {
 	broadcasts: { source_url: string | null } | Array<{ source_url: string | null }> | null;
 }
 
-interface ProductPage {
-	rows: DiscoveredProductBackfillRow[];
-	next?: BackfillCursorPosition;
-}
-
-interface BroadcastPage {
-	rows: BroadcastAnalysisBackfillRow[];
-	next?: BackfillCursorPosition;
-}
-
-interface CanonicalResolution {
-	canonicalProductId: string;
-	created: boolean;
-	reusedLink: boolean;
-}
-
-interface EvidenceWriteCounts {
-	attempted: number;
-}
-
-function message(error: unknown): string {
+function errorText(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
-}
-
-function sourceChannels(value: string | null | undefined): string[] {
-	return (value ?? "").split(",").map((item) => item.trim()).filter(Boolean);
-}
-
-function isConnectedProductSource(value: string | null | undefined): boolean {
-	return sourceChannels(value).some((channel) => CONNECTED_SOURCE_CHANNELS.has(channel));
 }
 
 function isActiveProduct(row: RawProductRow): boolean {
@@ -112,8 +76,9 @@ function asProductRow(row: RawProductRow): DiscoveredProductBackfillRow {
 		priceJpy: row.price_jpy,
 		reviewCount: row.review_count,
 		tvEvidence: row.tv_evidence,
-		// discovered_products has no updated_at. created_at is the stable
-		// source observation timestamp and keyset field available to this job.
+		tvEvidenceAt: row.tv_evidence_at,
+		// discovered_products has no updated_at. created_at remains the only
+		// stable source-row recency and fallback observation time available.
 		observedAt: row.created_at,
 		sourceType: PRODUCT_SOURCE_TYPE,
 		sourceTable: PRODUCT_SOURCE_TABLE,
@@ -141,71 +106,56 @@ function asBroadcastRow(row: RawBroadcastAnalysisRow): BroadcastAnalysisBackfill
 	};
 }
 
-function afterCursorFilter(column: string, cursor: BackfillCursorPosition): string {
-	return `${column}.lt.${cursor.observedAt},and(${column}.eq.${cursor.observedAt},id.lt.${cursor.id})`;
+async function executePageQuery(
+	sb: SupabaseClient,
+	plan: BackfillSourcePageQuery,
+): Promise<unknown[]> {
+	let query: any = sb.from(plan.table).select(plan.select);
+	for (const filter of plan.filters) {
+		if (filter.kind === "eq") query = query.eq(filter.column, filter.value as string);
+		if (filter.kind === "gte") query = query.gte(filter.column, filter.value as string);
+		if (filter.kind === "in") query = query.in(filter.column, filter.value as string[]);
+	}
+	for (const order of plan.orderBy) query = query.order(order.column, { ascending: order.ascending });
+	if (plan.cursorFilter) query = query.or(plan.cursorFilter);
+	const { data, error } = await query.limit(plan.limit);
+	if (error) throw new Error(`${plan.table} page query failed: ${error.message}`);
+	return data ?? [];
 }
 
 async function loadProductPage(
 	sb: SupabaseClient,
 	args: BackfillArgs,
-	cursor: BackfillCursor,
-): Promise<ProductPage> {
-	let query = sb
-		.from(PRODUCT_SOURCE_TABLE)
-		.select("id,name,category,product_url,price_jpy,review_count,tv_evidence,created_at,tv_channel_source,user_action")
-		.eq("source", "tv_channel")
-		.gte("created_at", args.since)
-		.order("created_at", { ascending: false })
-		.order("id", { ascending: false })
-		.limit(args.limit);
-	if (cursor.products) query = query.or(afterCursorFilter("created_at", cursor.products));
-
-	const { data, error } = await query;
-	if (error) throw new Error(`discovered_products page query failed: ${error.message}`);
-	const fetched = (data ?? []) as RawProductRow[];
+	state: BackfillSourceCursor,
+): Promise<FoundationSourcePage<DiscoveredProductBackfillRow>> {
+	const plan = buildSourcePageQuery("products", args, state);
+	const fetched = await executePageQuery(sb, plan) as RawProductRow[];
 	const last = fetched.at(-1);
 	return {
-		rows: fetched
-			.filter((row) => isActiveProduct(row) && isConnectedProductSource(row.tv_channel_source))
-			.map(asProductRow),
-		...(last && fetched.length === args.limit
-			? { next: { observedAt: last.created_at, id: last.id } }
-			: {}),
+		rows: fetched.filter((row) => isActiveProduct(row) && isConnectedProductSource(row.tv_channel_source)).map(asProductRow),
+		readCount: fetched.length,
+		exhausted: fetched.length < args.limit,
+		...(last && fetched.length === args.limit ? { next: { observedAt: last.created_at, id: last.id } } : {}),
 	};
 }
 
 async function loadBroadcastPage(
 	sb: SupabaseClient,
 	args: BackfillArgs,
-	cursor: BackfillCursor,
-): Promise<BroadcastPage> {
-	let query = sb
-		.from("broadcast_speech_analyses")
-		.select("broadcast_id,channel,air_date,duration_sec,segments,selling_points,evidence_cues,objection_handlings,offer_timeline,analyzed_at,broadcasts(source_url)")
-		.in("channel", ["qvc", "shopch"])
-		.gte("analyzed_at", args.since)
-		.order("analyzed_at", { ascending: false })
-		.order("broadcast_id", { ascending: false })
-		.limit(args.limit);
-	if (cursor.broadcasts) {
-		query = query.or(
-			`analyzed_at.lt.${cursor.broadcasts.observedAt},and(analyzed_at.eq.${cursor.broadcasts.observedAt},broadcast_id.lt.${cursor.broadcasts.id})`,
-		);
-	}
-
-	const { data, error } = await query;
-	if (error) throw new Error(`broadcast_speech_analyses page query failed: ${error.message}`);
-	const fetched = (data ?? []) as RawBroadcastAnalysisRow[];
+	state: BackfillSourceCursor,
+): Promise<FoundationSourcePage<BroadcastAnalysisBackfillRow>> {
+	const plan = buildSourcePageQuery("broadcasts", args, state);
+	const fetched = await executePageQuery(sb, plan) as RawBroadcastAnalysisRow[];
 	const last = fetched.at(-1);
 	return {
 		rows: fetched.map(asBroadcastRow),
-		...(last && fetched.length === args.limit
-			? { next: { observedAt: last.analyzed_at, id: last.broadcast_id } }
-			: {}),
+		readCount: fetched.length,
+		exhausted: fetched.length < args.limit,
+		...(last && fetched.length === args.limit ? { next: { observedAt: last.analyzed_at, id: last.broadcast_id } } : {}),
 	};
 }
 
-/** Read only already-cached mappings; never classify or cache in dry-run mode. */
+/** Read only the category cache; dry runs never invoke the mutating normalizer. */
 async function loadCachedCategories(
 	sb: SupabaseClient,
 	rawCategories: string[],
@@ -224,231 +174,161 @@ async function loadCachedCategories(
 	return result;
 }
 
-async function resolveCanonicalProduct(
-	sb: SupabaseClient,
-	row: DiscoveredProductBackfillRow,
-): Promise<CanonicalResolution> {
-	const { data: existing, error: existingError } = await sb
-		.from("product_source_links")
-		.select("canonical_product_id")
-		.eq("source_type", PRODUCT_SOURCE_TYPE)
-		.eq("source_table", PRODUCT_SOURCE_TABLE)
-		.eq("source_record_id", row.id)
-		.maybeSingle();
-	if (existingError) throw new Error(`product source-link lookup failed: ${existingError.message}`);
-	if (existing?.canonical_product_id) {
-		return { canonicalProductId: String(existing.canonical_product_id), created: false, reusedLink: true };
-	}
-
-	const displayName = row.name?.trim();
-	if (!displayName) throw new Error(`cannot create a canonical product for ${row.id}: product name is missing`);
-	const { data: canonical, error: canonicalError } = await sb
-		.from("canonical_products")
-		.insert({
-			display_name: displayName,
-			normalized_category: row.normalizedCategory ?? null,
-			attributes: { source_table: PRODUCT_SOURCE_TABLE, source_record_id: row.id },
-		})
-		.select("id")
-		.single();
-	if (canonicalError) throw new Error(`canonical product insert failed: ${canonicalError.message}`);
-	if (!canonical?.id) throw new Error("canonical product insert returned no id");
-
-	const { data: linked, error: linkError } = await sb
-		.from("product_source_links")
-		.insert({
-			canonical_product_id: canonical.id,
-			source_type: PRODUCT_SOURCE_TYPE,
-			source_table: PRODUCT_SOURCE_TABLE,
-			source_record_id: row.id,
-			source_product_id: null,
-			raw_name: displayName,
-			match_method: "exact_id",
-			confidence: 1,
-			confirmed: false,
-		})
-		.select("canonical_product_id")
-		.single();
-	if (!linkError && linked?.canonical_product_id) {
-		return { canonicalProductId: String(linked.canonical_product_id), created: true, reusedLink: false };
-	}
-
-	// A concurrent apply can win after the first lookup. Reuse only that exact
-	// source link; no similarity matching or implicit product merging occurs.
-	const { data: concurrent, error: concurrentError } = await sb
-		.from("product_source_links")
-		.select("canonical_product_id")
-		.eq("source_type", PRODUCT_SOURCE_TYPE)
-		.eq("source_table", PRODUCT_SOURCE_TABLE)
-		.eq("source_record_id", row.id)
-		.maybeSingle();
-	if (concurrentError || !concurrent?.canonical_product_id) {
-		throw new Error(`product source-link insert failed: ${linkError?.message ?? "no canonical product id returned"}`);
-	}
-	return { canonicalProductId: String(concurrent.canonical_product_id), created: false, reusedLink: true };
+function canonicalRepository(sb: SupabaseClient) {
+	return {
+		async findExactSourceLink(row: DiscoveredProductBackfillRow) {
+			const { data, error } = await sb
+				.from("product_source_links")
+				.select("canonical_product_id")
+				.eq("source_type", PRODUCT_SOURCE_TYPE)
+				.eq("source_table", PRODUCT_SOURCE_TABLE)
+				.eq("source_record_id", row.id)
+				.maybeSingle();
+			if (error) throw new Error(`product source-link lookup failed: ${error.message}`);
+			return data?.canonical_product_id ? { canonicalProductId: String(data.canonical_product_id) } : null;
+		},
+		async insertCanonical(row: DiscoveredProductBackfillRow) {
+			const displayName = row.name?.trim();
+			if (!displayName) throw new Error(`cannot create a canonical product for ${row.id}: product name is missing`);
+			const { data, error } = await sb
+				.from("canonical_products")
+				.insert({
+					display_name: displayName,
+					normalized_category: row.normalizedCategory ?? null,
+					attributes: { source_table: PRODUCT_SOURCE_TABLE, source_record_id: row.id },
+				})
+				.select("id")
+				.single();
+			if (error) throw new Error(`canonical product insert failed: ${error.message}`);
+			if (!data?.id) throw new Error("canonical product insert returned no id");
+			return String(data.id);
+		},
+		async insertExactSourceLink(input: { canonicalProductId: string; row: DiscoveredProductBackfillRow }) {
+			const displayName = input.row.name?.trim();
+			if (!displayName) throw new Error(`cannot link a canonical product for ${input.row.id}: product name is missing`);
+			const { error } = await sb.from("product_source_links").insert({
+				canonical_product_id: input.canonicalProductId,
+				source_type: PRODUCT_SOURCE_TYPE,
+				source_table: PRODUCT_SOURCE_TABLE,
+				source_record_id: input.row.id,
+				source_product_id: null,
+				raw_name: displayName,
+				match_method: "exact_id",
+				confidence: 1,
+				confirmed: false,
+			});
+			if (error) throw new Error(`product source-link insert failed: ${error.message}`);
+		},
+		async deleteCanonical(canonicalProductId: string) {
+			const { error } = await sb.from("canonical_products").delete().eq("id", canonicalProductId);
+			if (error) throw new Error(`orphan canonical cleanup failed: ${error.message}`);
+		},
+	};
 }
 
-async function writeProductEvidence(
+async function upsertEvidenceWithCounts(
 	sb: SupabaseClient,
-	row: DiscoveredProductBackfillRow,
-): Promise<EvidenceWriteCounts & CanonicalResolution> {
-	const canonical = await resolveCanonicalProduct(sb, row);
-	const drafts = mapDiscoveredProductEvidence({ ...row, canonicalProductId: canonical.canonicalProductId });
+	drafts: import("../lib/intelligence/types").EvidenceDraft[],
+): Promise<FoundationWriteOutcome> {
+	const keys = [...new Set(drafts.map(evidenceDedupeKey))];
+	if (keys.length === 0) return { new: 0, duplicate: 0 };
+	const { data, error } = await sb
+		.from("evidence_items")
+		.select("dedupe_key")
+		.in("dedupe_key", keys);
+	if (error) throw new Error(`evidence dedupe lookup failed: ${error.message}`);
+	const existing = new Set((data ?? []).map((row) => String(row.dedupe_key)));
 	await upsertEvidence(sb, drafts);
-	return { ...canonical, attempted: drafts.length };
+	return { new: keys.length - existing.size, duplicate: existing.size };
 }
 
-async function writeBroadcastEvidence(
+async function writeProduct(
+	sb: SupabaseClient,
+	row: DiscoveredProductBackfillRow,
+): Promise<FoundationWriteOutcome> {
+	const resolved = await resolveExactCanonicalProduct(canonicalRepository(sb), row);
+	const evidence = await upsertEvidenceWithCounts(
+		sb,
+		mapDiscoveredProductEvidence({ ...row, canonicalProductId: resolved.canonicalProductId }),
+	);
+	return {
+		new: evidence.new + (resolved.canonicalCreated ? 2 : 0),
+		updated: 0,
+		duplicate: evidence.duplicate + Number(resolved.sourceLinkDuplicate),
+	};
+}
+
+async function writeBroadcast(
 	sb: SupabaseClient,
 	row: BroadcastAnalysisBackfillRow,
-): Promise<EvidenceWriteCounts> {
-	const drafts = mapBroadcastAnalysisEvidence(row);
-	await upsertEvidence(sb, drafts);
-	return { attempted: drafts.length };
+): Promise<FoundationWriteOutcome> {
+	return upsertEvidenceWithCounts(sb, mapBroadcastAnalysisEvidence(row));
 }
 
-function printSummary(input: {
-	args: BackfillArgs;
-	productPage: ProductPage;
-	broadcastPage: BroadcastPage;
-	summary: Awaited<ReturnType<typeof executeBackfillPage>>;
-	write: boolean;
-	canonicalCreated?: number;
-	sourceLinksReused?: number;
-	evidenceAttempted?: number;
-}): void {
-	const nextCursor = buildNextCursor(input.productPage.next, input.broadcastPage.next);
+function nextCursorText(result: FoundationBackfillResult): string | null {
+	return result.nextCursor.products.done && result.nextCursor.broadcasts.done
+		? null
+		: buildBackfillCursor(result.nextCursor);
+}
+
+function printSummary(args: BackfillArgs, result: FoundationBackfillResult): void {
 	console.log(JSON.stringify({
 		event: "intelligence_foundation_backfill.summary",
-		write: input.write,
-		since: input.args.since,
-		limitPerSource: input.args.limit,
+		write: args.apply,
+		since: args.since,
+		limitPerSource: args.limit,
 		productRecencyField: "created_at",
-		productsRead: input.productPage.rows.length,
-		broadcastAnalysesRead: input.broadcastPage.rows.length,
-		canonicalProductsProposed: input.productPage.rows.filter((row) => Boolean(row.name?.trim())).length,
-		sourceLinksProposed: input.productPage.rows.filter((row) => Boolean(row.name?.trim())).length,
-		evidenceProposed: input.summary.productEvidenceCount + input.summary.broadcastEvidenceCount,
-		canonicalProductsCreated: input.canonicalCreated,
-		sourceLinksReused: input.sourceLinksReused,
-		evidenceAttempted: input.evidenceAttempted,
-		productRowsWritten: input.summary.productRowsWritten,
-		broadcastRowsWritten: input.summary.broadcastRowsWritten,
-		reviewNeeded: input.summary.reviewNeeded,
-		reviewNeededCategories: input.summary.reviewNeededCategories,
-		nextCursor,
+		productsRead: result.productPage.rows.length,
+		broadcastAnalysesRead: result.broadcastPage.rows.length,
+		canonicalProductsProposed: result.productPage.rows.filter((row) => Boolean(row.name?.trim())).length,
+		sourceLinksProposed: result.productPage.rows.filter((row) => Boolean(row.name?.trim())).length,
+		evidenceProposed: result.summary.productEvidenceCount + result.summary.broadcastEvidenceCount,
+		pipelineCounts: result.counts,
+		productRowsWritten: result.summary.productRowsWritten,
+		broadcastRowsWritten: result.summary.broadcastRowsWritten,
+		reviewNeeded: result.summary.reviewNeeded,
+		reviewNeededCategories: result.summary.reviewNeededCategories,
+		nextCursor: nextCursorText(result),
 	}, null, 2));
 }
 
-function buildNextCursor(
-	products: BackfillCursorPosition | undefined,
-	broadcasts: BackfillCursorPosition | undefined,
-): string | null {
-	return products || broadcasts ? buildBackfillCursor({ ...(products ? { products } : {}), ...(broadcasts ? { broadcasts } : {}) }) : null;
-}
-
-function runCounts(input: {
-	processed: number;
-	created: number;
-	reused: number;
-}): PipelineRunCounts {
-	return {
-		new: input.created,
-		updated: input.reused,
-		duplicate: 0,
-		failed: 0,
-		processed: input.processed,
-	};
+export async function runCliBackfill(
+	args: BackfillArgs,
+	sb: SupabaseClient = getServiceClient(),
+): Promise<FoundationBackfillResult> {
+	const cursor = args.cursor ? parseBackfillCursor(args.cursor) : initialBackfillCursor();
+	return runFoundationBackfill({
+		args,
+		cursor,
+		fetchProducts: (state) => loadProductPage(sb, args, state),
+		fetchBroadcasts: (state) => loadBroadcastPage(sb, args, state),
+		loadCachedCategories: (rawCategories) => loadCachedCategories(sb, rawCategories),
+		normalizeCategories: (rawCategories) => normalizeCategoriesBatch(sb, rawCategories),
+		startPipelineRun: () => startPipelineRun(createPipelineRunRepository(sb), {
+			sourceType: "intelligence_foundation",
+			jobType: "intelligence_foundation_backfill",
+			externalRunId: `intelligence-foundation-backfill:${randomUUID()}`,
+			targetScope: {
+				since: args.since,
+				limit_per_source: args.limit,
+				cursor,
+				sources: ["qvc", "shopch", "oa"],
+			},
+		}),
+		writeProduct: (row) => writeProduct(sb, row),
+		writeBroadcast: (row) => writeBroadcast(sb, row),
+	});
 }
 
 async function main(): Promise<void> {
 	const args = parseBackfillArgs(process.argv.slice(2));
-	const cursor = args.cursor ? parseBackfillCursor(args.cursor) : {};
-	const sb = getServiceClient();
-	const [productPage, broadcastPage] = await Promise.all([
-		loadProductPage(sb, args, cursor),
-		loadBroadcastPage(sb, args, cursor),
-	]);
-
-	if (!args.apply) {
-		const summary = await executeBackfillPage({
-			products: productPage.rows,
-			broadcasts: broadcastPage.rows,
-			normalizeCategories: (rawCategories) => loadCachedCategories(sb, rawCategories),
-			write: false,
-		});
-		printSummary({ args, productPage, broadcastPage, summary, write: false });
-		return;
-	}
-
-	const externalRunId = `intelligence-foundation-backfill:${randomUUID()}`;
-	let pipelineRun;
-	try {
-		pipelineRun = await startPipelineRun(createPipelineRunRepository(sb), {
-			sourceType: "intelligence_foundation",
-			jobType: "intelligence_foundation_backfill",
-			externalRunId,
-			targetScope: {
-				since: args.since,
-				limit_per_source: args.limit,
-				cursor: cursor,
-				sources: ["qvc", "shopch", "oa"],
-			},
-		});
-	} catch (error) {
-		throw new Error(`pipeline recorder start failed; no canonical/source-link/evidence writes were attempted: ${message(error)}`);
-	}
-
-	let canonicalCreated = 0;
-	let sourceLinksReused = 0;
-	let evidenceAttempted = 0;
-	try {
-		const summary = await executeBackfillPage({
-			products: productPage.rows,
-			broadcasts: broadcastPage.rows,
-			normalizeCategories: (rawCategories) => normalizeCategoriesBatch(sb, rawCategories),
-			write: true,
-			applyProduct: async (row) => {
-				const outcome = await writeProductEvidence(sb, row);
-				canonicalCreated += Number(outcome.created);
-				sourceLinksReused += Number(outcome.reusedLink);
-				evidenceAttempted += outcome.attempted;
-			},
-			applyBroadcast: async (row) => {
-				const outcome = await writeBroadcastEvidence(sb, row);
-				evidenceAttempted += outcome.attempted;
-			},
-		});
-		const counts = runCounts({
-			processed: summary.productRowsWritten + summary.broadcastRowsWritten,
-			created: canonicalCreated,
-			reused: sourceLinksReused,
-		});
-		await pipelineRun.succeed(counts);
-		printSummary({
-			args,
-			productPage,
-			broadcastPage,
-			summary,
-			write: true,
-			canonicalCreated,
-			sourceLinksReused,
-			evidenceAttempted,
-		});
-	} catch (error) {
-		const writeFailure = message(error);
-		try {
-			await pipelineRun.fail("intelligence_foundation_backfill_failed", writeFailure);
-		} catch (recorderError) {
-			throw new Error(
-				`backfill failed after possible partial writes: ${writeFailure}; pipeline recorder failed to settle the run: ${message(recorderError)}`,
-			);
-		}
-		throw new Error(`backfill failed after possible partial writes; pipeline run recorded as failed: ${writeFailure}`);
-	}
+	const result = await runCliBackfill(args);
+	printSummary(args, result);
 }
 
-main().catch((error) => {
-	console.error(`FATAL: ${message(error)}`);
-	process.exitCode = 1;
-});
+if (require.main === module) {
+	main().catch((error) => {
+		console.error(`FATAL: ${errorText(error)}`);
+		process.exitCode = 1;
+	});
+}
