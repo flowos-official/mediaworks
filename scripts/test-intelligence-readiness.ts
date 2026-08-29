@@ -10,6 +10,7 @@ import {
 import { intelligenceStatusGet } from "../app/api/intelligence/status/route";
 
 const NOW = new Date("2026-08-29T12:00:00.000Z");
+const HOUR = 3_600_000;
 
 function iso(hoursAgo: number): string {
 	return new Date(NOW.getTime() - hoursAgo * 3_600_000).toISOString();
@@ -21,6 +22,7 @@ function pipelineRun(input: {
 	jobType: string;
 	status: "succeeded" | "partial" | "failed" | "running";
 	hoursAgo: number;
+	externalRunId?: string | null;
 	errorCode?: string | null;
 	errorSummary?: string | null;
 }) {
@@ -28,6 +30,7 @@ function pipelineRun(input: {
 		id: input.id,
 		source_type: input.sourceType,
 		job_type: input.jobType,
+		external_run_id: input.externalRunId ?? `external:${input.id}`,
 		status: input.status,
 		started_at: iso(input.hoursAgo),
 		finished_at: input.status === "running" ? null : iso(Math.max(0, input.hoursAgo - 0.01)),
@@ -140,10 +143,10 @@ class FakeQuery implements PromiseLike<{ data: Row[] | null; error: { message: s
 
 const normalRows: Record<string, Row[]> = {
 	data_pipeline_runs: [
-		pipelineRun({ id: "home-success", sourceType: "discovery", jobType: "home_shopping", status: "succeeded", hoursAgo: 1 }),
+		pipelineRun({ id: "home-success", externalRunId: "discovery-session-home", sourceType: "discovery", jobType: "home_shopping", status: "succeeded", hoursAgo: 1 }),
 		pipelineRun({ id: "home-old-failure", sourceType: "discovery", jobType: "home_shopping", status: "failed", hoursAgo: 30, errorCode: "home_old", errorSummary: "old home failure" }),
 		pipelineRun({ id: "live-failure", sourceType: "discovery", jobType: "live_commerce", status: "failed", hoursAgo: 1, errorCode: "live_failed", errorSummary: "latest live failed" }),
-		pipelineRun({ id: "live-success", sourceType: "discovery", jobType: "live_commerce", status: "succeeded", hoursAgo: 5 }),
+		pipelineRun({ id: "live-success", externalRunId: "discovery-session-live", sourceType: "discovery", jobType: "live_commerce", status: "succeeded", hoursAgo: 5 }),
 		pipelineRun({ id: "other-discovery", sourceType: "discovery", jobType: "other", status: "succeeded", hoursAgo: 0.1 }),
 		pipelineRun({ id: "schedule-success", sourceType: "qvc_shopch", jobType: "broadcast_schedule", status: "succeeded", hoursAgo: 2 }),
 		pipelineRun({ id: "crawl-success", sourceType: "oa_channels", jobType: "historical_broadcast_crawl", status: "succeeded", hoursAgo: 2 }),
@@ -162,12 +165,12 @@ const normalRows: Record<string, Row[]> = {
 		})),
 	],
 	discovered_products: [
-		{ id: "d-home", session_id: "home-success" },
-		{ id: "d-shared", session_id: "home-success" },
-		{ id: "d-unlinked", session_id: "home-success" },
-		{ id: "d-shared", session_id: "live-success" },
-		{ id: "d-live", session_id: "live-success" },
-		{ id: "d-historical", session_id: "home-old-failure" },
+		{ id: "d-home", session_id: "discovery-session-home" },
+		{ id: "d-shared", session_id: "discovery-session-home" },
+		{ id: "d-unlinked", session_id: "discovery-session-home" },
+		{ id: "d-shared", session_id: "discovery-session-live" },
+		{ id: "d-live", session_id: "discovery-session-live" },
+		{ id: "d-historical", session_id: "external:home-old-failure" },
 	],
 	product_source_links: [
 		{ id: "link-home", source_type: "discovery", source_table: "discovered_products", source_record_id: "d-home", canonical_product_id: "canonical-home" },
@@ -202,6 +205,17 @@ const normalRows: Record<string, Row[]> = {
 	insight_snapshots: Array.from({ length: 3 }, (_, index) => ({ id: `insight-${index}` })),
 };
 
+function withCrawlRun(crawl: Row, laterAttempt?: Row): Record<string, Row[]> {
+	return {
+		...normalRows,
+		data_pipeline_runs: [
+			...normalRows.data_pipeline_runs.filter((row) => row.id !== "crawl-success"),
+			crawl,
+			...(laterAttempt ? [laterAttempt] : []),
+		],
+	};
+}
+
 async function run(): Promise<void> {
 	assert.equal(percent(0, 0), null, "an unknown denominator is not 0%");
 	assert.equal(percent(95, 100), 95);
@@ -217,6 +231,8 @@ async function run(): Promise<void> {
 	assert.equal(classifyReadiness({ latestAttemptAt: iso(1), latestSuccessAt: iso(5), latestStatus: "partial", maxAgeMs: 26 * 3_600_000, nowMs: classifierNow }), "failed", "a partial latest attempt is not healthy");
 	assert.equal(classifyReadiness({ latestAttemptAt: null, latestSuccessAt: null, latestStatus: null, maxAgeMs: 26 * 3_600_000, nowMs: classifierNow }), "missing");
 	assert.equal(classifyReadiness({ latestAttemptAt: new Date(classifierNow + 1_000).toISOString(), latestSuccessAt: new Date(classifierNow + 1_000).toISOString(), latestStatus: "succeeded", maxAgeMs: 26 * 3_600_000, nowMs: classifierNow }), "failed", "future clock skew is never fresh success");
+	assert.equal(classifyReadiness({ latestAttemptAt: new Date(classifierNow - 20 * HOUR).toISOString(), latestSuccessAt: new Date(classifierNow - 20 * HOUR).toISOString(), latestStatus: "succeeded", maxAgeMs: 20 * HOUR, nowMs: classifierNow }), "healthy", "the twice-daily OA cutoff is inclusive at 20 hours");
+	assert.equal(classifyReadiness({ latestAttemptAt: new Date(classifierNow - 20 * HOUR - 1).toISOString(), latestSuccessAt: new Date(classifierNow - 20 * HOUR - 1).toISOString(), latestStatus: "succeeded", maxAgeMs: 20 * HOUR, nowMs: classifierNow }), "stale", "OA becomes stale immediately beyond the 20-hour boundary");
 
 	const client = new FakeReadinessClient(normalRows);
 	const readiness = await loadIntelligenceReadiness(client as never, NOW);
@@ -250,11 +266,58 @@ async function run(): Promise<void> {
 	assert.equal(readiness.failures[0]?.startedAt, iso(1), "recent failures are newest first");
 	assert.ok(client.calls.includes("data_pipeline_runs:eq:source_type:discovery") && client.calls.includes("data_pipeline_runs:eq:job_type:home_shopping"), "latest telemetry scopes each source and job type together");
 	assert.ok(client.calls.includes("data_pipeline_runs:limit:10"), "failure history is limited at query time");
-	assert.ok(client.calls.some((call) => call === "discovered_products:in:session_id:home-success,live-success"), "only the latest successful home/live run IDs define Discovery coverage");
+	assert.ok(client.calls.some((call) => call === "discovered_products:in:session_id:discovery-session-home,discovery-session-live"), "only the distinct latest-success Discovery external run IDs define membership");
+	assert.equal(client.calls.some((call) => call === "discovered_products:in:session_id:home-success,live-success"), false, "telemetry UUIDs never leak into Discovery session membership queries");
 	assert.equal(client.calls.some((call) => call.includes("d-historical")), false, "historical Discovery products never enter the active denominator");
 	assert.ok(client.calls.includes("product_source_links:eq:source_type:internal_excel"), "internal coverage is sourced from active internal source links");
 	assert.ok(client.calls.includes("broadcasts:range:0:499"), "broadcast identity sets use pagination rather than PostgREST's default row cap");
 	assert.ok(client.calls.includes("evidence_items:select:count:head") && client.calls.includes("insight_snapshots:select:count:head"), "new-table counts use exact count heads");
+
+	for (const [telemetryId, jobType, externalRunId] of [["home-success", "home_shopping", null], ["live-success", "live_commerce", "   "]] as const) {
+		const missingExternalClient = new FakeReadinessClient({
+			...normalRows,
+			data_pipeline_runs: normalRows.data_pipeline_runs.map((row) => row.id === telemetryId ? { ...row, external_run_id: externalRunId } : row),
+		});
+		await assert.rejects(
+			() => loadIntelligenceReadiness(missingExternalClient as never, NOW),
+			new RegExp(`latest successful Discovery ${jobType} run is missing external_run_id`),
+			"a successful Discovery telemetry row without its session identifier is an integrity error, not an empty denominator",
+		);
+	}
+
+	const exactlyTwentyHours = new Date(NOW.getTime() - 20 * HOUR).toISOString();
+	const oaBoundary = await loadIntelligenceReadiness(
+		new FakeReadinessClient(withCrawlRun({
+			...normalRows.data_pipeline_runs.find((row) => row.id === "crawl-success")!,
+			started_at: exactlyTwentyHours,
+			finished_at: exactlyTwentyHours,
+		})) as never,
+		NOW,
+	);
+	assert.equal(oaBoundary.sources.find((source) => source.key === "historical_broadcast_crawl")?.status, "healthy", "OA is healthy exactly 20 hours after a successful crawl");
+	const oaMissed = await loadIntelligenceReadiness(
+		new FakeReadinessClient(withCrawlRun({
+			...normalRows.data_pipeline_runs.find((row) => row.id === "crawl-success")!,
+			started_at: new Date(NOW.getTime() - 20 * HOUR - 1).toISOString(),
+			finished_at: new Date(NOW.getTime() - 20 * HOUR - 1).toISOString(),
+		})) as never,
+		NOW,
+	);
+	assert.equal(oaMissed.sources.find((source) => source.key === "historical_broadcast_crawl")?.status, "stale", "a missed second OA invocation is stale immediately after 20 hours");
+	for (const status of ["partial", "failed"] as const) {
+		const oaLatestFailure = await loadIntelligenceReadiness(
+			new FakeReadinessClient(withCrawlRun(
+				{
+					...normalRows.data_pipeline_runs.find((row) => row.id === "crawl-success")!,
+					started_at: exactlyTwentyHours,
+					finished_at: exactlyTwentyHours,
+				},
+				pipelineRun({ id: `crawl-${status}`, sourceType: "oa_channels", jobType: "historical_broadcast_crawl", status, hoursAgo: 1 }),
+			)) as never,
+			NOW,
+		);
+		assert.equal(oaLatestFailure.sources.find((source) => source.key === "historical_broadcast_crawl")?.status, "failed", `a latest OA ${status} attempt is failed even with a fresh older success`);
+	}
 
 	const missingEvidenceClient = new FakeReadinessClient({ ...normalRows, evidence_items: [] });
 	const originalFrom = missingEvidenceClient.from.bind(missingEvidenceClient);

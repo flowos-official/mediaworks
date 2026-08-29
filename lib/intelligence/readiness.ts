@@ -37,6 +37,7 @@ interface PipelineRunRow {
 	id: string;
 	source_type: string;
 	job_type: string;
+	external_run_id: string | null;
 	status: string;
 	started_at: string;
 	finished_at: string | null;
@@ -69,14 +70,15 @@ const RECENT_FAILURE_LIMIT = 10;
 
 /**
  * Freshness is based on the Vercel schedules: daily sources receive a two-hour
- * execution cushion, archive runs every two hours receive a one-hour cushion,
- * and the foundation backfill is deliberately on-demand rather than periodic.
+ * execution cushion, the twice-daily OA crawl receives a 20-hour interval,
+ * archive runs every two hours receive a one-hour cushion, and the foundation
+ * backfill is deliberately on-demand rather than periodic.
  */
 export const INTELLIGENCE_READINESS_SOURCES = [
 	{ key: "discovery_home_shopping", sourceType: "discovery", jobType: "home_shopping", maxAgeMs: 26 * HOUR, cadence: "daily (26h tolerance)" },
 	{ key: "discovery_live_commerce", sourceType: "discovery", jobType: "live_commerce", maxAgeMs: 26 * HOUR, cadence: "daily (26h tolerance)" },
 	{ key: "broadcast_schedule", sourceType: "qvc_shopch", jobType: "broadcast_schedule", maxAgeMs: 26 * HOUR, cadence: "daily (26h tolerance)" },
-	{ key: "historical_broadcast_crawl", sourceType: "oa_channels", jobType: "historical_broadcast_crawl", maxAgeMs: 26 * HOUR, cadence: "daily (26h tolerance)" },
+	{ key: "historical_broadcast_crawl", sourceType: "oa_channels", jobType: "historical_broadcast_crawl", maxAgeMs: 20 * HOUR, cadence: "twice daily (20h tolerance)" },
 	{ key: "broadcast_video_archive", sourceType: "qvc_shopch", jobType: "video_archive", maxAgeMs: 3 * HOUR, cadence: "every 2h (3h tolerance)" },
 	{ key: "broadcast_audio_analysis", sourceType: "broadcast_archive", jobType: "audio_analysis", maxAgeMs: 26 * HOUR, cadence: "daily (26h tolerance)" },
 	{ key: "intelligence_foundation_backfill", sourceType: "intelligence_foundation", jobType: "intelligence_foundation_backfill", maxAgeMs: null, cadence: "on demand" },
@@ -137,6 +139,14 @@ function categoryName(value: string | null): string {
 
 function timestampForSuccess(row: PipelineRunRow | null): string | null {
 	return row ? row.finished_at ?? row.started_at : null;
+}
+
+/** Discovery products reference discovery_runs.id, persisted as telemetry external_run_id. */
+function discoverySessionId(jobType: "home_shopping" | "live_commerce", row: PipelineRunRow | null): string | null {
+	if (!row) return null;
+	const sessionId = row.external_run_id?.trim();
+	if (!sessionId) throw new Error(`latest successful Discovery ${jobType} run is missing external_run_id`);
+	return sessionId;
 }
 
 export interface LatestPipelineRunPair {
@@ -206,7 +216,7 @@ export function createIntelligenceReadinessRepository(sb: SupabaseClient): Intel
 			const [attemptResult, successResult] = await Promise.all([
 				sb
 					.from("data_pipeline_runs")
-					.select("id,source_type,job_type,status,started_at,finished_at,error_code,error_summary")
+					.select("id,source_type,job_type,external_run_id,status,started_at,finished_at,error_code,error_summary")
 					.eq("source_type", sourceType)
 					.eq("job_type", jobType)
 					.order("started_at", { ascending: false })
@@ -214,7 +224,7 @@ export function createIntelligenceReadinessRepository(sb: SupabaseClient): Intel
 					.maybeSingle(),
 				sb
 					.from("data_pipeline_runs")
-					.select("id,source_type,job_type,status,started_at,finished_at,error_code,error_summary")
+					.select("id,source_type,job_type,external_run_id,status,started_at,finished_at,error_code,error_summary")
 					.eq("source_type", sourceType)
 					.eq("job_type", jobType)
 					.eq("status", "succeeded")
@@ -324,14 +334,9 @@ export async function loadIntelligenceReadiness(
 	const nowMs = now.getTime();
 	if (!Number.isFinite(nowMs)) throw new Error("readiness clock is invalid");
 
-	const [latestRuns, recentFailures, internalLinks, archivedBroadcasts, evidenceItems, insightSnapshots] = await Promise.all([
-		Promise.all(INTELLIGENCE_READINESS_SOURCES.map((source) => repository.loadLatestPipelineRun(source.sourceType, source.jobType))),
-		repository.loadRecentFailures(RECENT_FAILURE_LIMIT),
-		repository.loadInternalSourceLinks(),
-		repository.loadArchivedBroadcasts(),
-		repository.countEvidenceItems(),
-		repository.countInsightSnapshots(),
-	]);
+	const latestRuns = await Promise.all(
+		INTELLIGENCE_READINESS_SOURCES.map((source) => repository.loadLatestPipelineRun(source.sourceType, source.jobType)),
+	);
 
 	const sourceRuns = new Map(INTELLIGENCE_READINESS_SOURCES.map((source, index) => [source.key, latestRuns[index]]));
 	const sources = INTELLIGENCE_READINESS_SOURCES.map((source) => {
@@ -349,8 +354,15 @@ export async function loadIntelligenceReadiness(
 	});
 
 	const discoveryRunIds = uniqueNonEmpty([
-		sourceRuns.get("discovery_home_shopping")?.latestSuccess?.id,
-		sourceRuns.get("discovery_live_commerce")?.latestSuccess?.id,
+		discoverySessionId("home_shopping", sourceRuns.get("discovery_home_shopping")?.latestSuccess ?? null),
+		discoverySessionId("live_commerce", sourceRuns.get("discovery_live_commerce")?.latestSuccess ?? null),
+	]);
+	const [recentFailures, internalLinks, archivedBroadcasts, evidenceItems, insightSnapshots] = await Promise.all([
+		repository.loadRecentFailures(RECENT_FAILURE_LIMIT),
+		repository.loadInternalSourceLinks(),
+		repository.loadArchivedBroadcasts(),
+		repository.countEvidenceItems(),
+		repository.countInsightSnapshots(),
 	]);
 	const discoveryProducts = await repository.loadDiscoveryProducts(discoveryRunIds);
 	const discoveryProductIds = uniqueNonEmpty(discoveryProducts.map((product) => product.id));
