@@ -32,6 +32,7 @@
     "test:intelligence-backfill": "tsx scripts/test-intelligence-backfill.ts",
     "test:intelligence-insights": "tsx scripts/test-intelligence-insights.ts",
     "test:intelligence-readiness": "tsx scripts/test-intelligence-readiness.ts",
+    "test:pipeline-readiness-view": "tsx scripts/test-pipeline-readiness-view.ts",
     "backfill:intelligence": "tsx --env-file=.env.local scripts/backfill-intelligence-foundation.ts",
     "test:broadcasts-shopch": "tsx --env-file=.env.local scripts/test-broadcasts-shopch-parser.ts",
     "test:broadcasts-qvc": "tsx --env-file=.env.local scripts/test-broadcasts-qvc-parser.ts",

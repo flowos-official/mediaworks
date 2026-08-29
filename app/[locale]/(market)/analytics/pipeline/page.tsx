@@ -2,9 +2,11 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getTranslations, getLocale } from "next-intl/server";
 import { requireUser } from "@/lib/auth/require-user";
+import { loadIntelligenceReadiness } from "@/lib/intelligence/readiness";
 import type { BoardData, BoardCard } from "@/lib/selections/types";
+import { getServiceClient } from "@/lib/supabase";
+import { DataReadinessDashboard, type ReadinessDashboardCopy } from "@/components/pipeline/DataReadinessDashboard";
 import { KanbanBoard } from "@/components/pipeline/KanbanBoard";
-import { DataIntelligenceFlow } from "@/components/pipeline/DataIntelligenceFlow";
 
 export const dynamic = "force-dynamic";
 
@@ -47,7 +49,9 @@ export default async function PipelinePage() {
   ]);
   if ("error" in auth) redirect(`/${locale}/login`);
 
-  const board = await loadBoard(auth.sb);
+  const boardPromise = loadBoard(auth.sb);
+  const readinessPromise = loadIntelligenceReadiness(getServiceClient(), new Date());
+  const [board, readiness] = await Promise.all([boardPromise, readinessPromise]);
   const canWrite = auth.role !== "viewer";
 
   return (
@@ -58,7 +62,11 @@ export default async function PipelinePage() {
         <p className="mt-1 text-xs text-muted-foreground sm:text-sm">{t("pageSubtitle")}</p>
       </header>
 
-      <DataIntelligenceFlow />
+      <DataReadinessDashboard
+        readiness={readiness}
+        copy={t.raw("readiness") as ReadinessDashboardCopy}
+        locale={locale}
+      />
 
       <section aria-labelledby="selection-operations-title" className="space-y-3">
         <header className="flex flex-col gap-1 px-0.5 sm:flex-row sm:items-end sm:justify-between sm:gap-4">

@@ -299,8 +299,8 @@
     "pageKicker": "市場データから放送実行まで",
     "pageTitle": "データ活用パイプライン",
     "pageSubtitle": "他社テレビ通販データが商品発掘と番組台本につながる全体フローを示します。",
-    "boardKicker": "商品選定オペレーション",
-    "boardTitle": "商品選定オペレーションボード",
+    "boardKicker": "実際に取り扱うと決めた商品の運用",
+    "boardTitle": "実際に取り扱うと決めた商品の運用",
     "emptyTitle": "パイプラインはまだ空です",
     "emptyHint": "新規発掘で候補商品を選定すると、仕入れ・放送予定・終了までここで追跡できます。",
     "emptyViewerHint": "担当の商品が追加されると、ここに進行状況が表示されます。",
@@ -345,6 +345,56 @@
     "confirm": "関連付ける",
     "dragInstructions": "スペースキーで商品を持ち上げ、矢印キーで移動し、もう一度スペースキーで配置します。",
     "mobileScrollHint": "横にスクロールして各段階を確認できます",
+    "readiness": {
+      "title": "データ準備状況",
+      "description": "収集・正規化・根拠・洞察の現在の準備状況を確認します。",
+      "sources": "データソース",
+      "coverage": "カバレッジ",
+      "categories": "カテゴリ別の放送分析",
+      "failures": "最近の失敗",
+      "noFailures": "最近の失敗はありません。",
+      "notRequestedIsNormal": "推薦、Research、台本の実行が0件でも、データパイプラインの失敗ではありません。必要になった時点で実行します。",
+      "generatedAt": "集計時刻",
+      "latestAttempt": "最新試行",
+      "latestSuccess": "最新成功",
+      "statusLabel": "状態",
+      "status": {
+        "healthy": "正常",
+        "stale": "期限超過",
+        "failed": "失敗",
+        "missing": "未実行"
+      },
+      "metric": {
+        "canonicalLink": "統合商品リンク",
+        "category": "カテゴリ正規化",
+        "broadcastAnalysis": "放送分析",
+        "evidence": "根拠アイテム",
+        "insights": "洞察スナップショット"
+      },
+      "categoryColumns": {
+        "category": "カテゴリ",
+        "analyzed": "分析済み",
+        "total": "アーカイブ",
+        "coverage": "分析率"
+      },
+      "noCategories": "分析対象のアーカイブ放送はまだありません。",
+      "failureColumns": {
+        "source": "ソース",
+        "startedAt": "発生時刻",
+        "error": "内容"
+      },
+      "noData": "—",
+      "sourcesByKey": {
+        "discovery_home_shopping": "ホームショッピング発掘",
+        "discovery_live_commerce": "ライブコマース発掘",
+        "broadcast_schedule": "放送編成収集",
+        "historical_broadcast_crawl": "過去放送収集",
+        "broadcast_video_archive": "放送映像アーカイブ",
+        "broadcast_audio_analysis": "放送音声分析",
+        "intelligence_foundation_backfill": "インテリジェンス基盤バックフィル",
+        "intelligence_insight_refresh": "インサイト更新"
+      }
+    },
     "vision": {
       "kicker": "データインテリジェンス・パイプライン",
       "previewBadge": "活用設計プレビュー",

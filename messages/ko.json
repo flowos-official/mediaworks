@@ -299,8 +299,8 @@
     "pageKicker": "시장 데이터에서 방송 실행까지",
     "pageTitle": "데이터 활용 파이프라인",
     "pageSubtitle": "타사 홈쇼핑 데이터가 상품 발굴과 방송 대본으로 이어지는 전체 흐름을 보여줍니다.",
-    "boardKicker": "상품 선정 운영",
-    "boardTitle": "상품 선정 운영 보드",
+    "boardKicker": "실제 취급을 결정한 상품 운영",
+    "boardTitle": "실제 취급을 결정한 상품 운영",
     "emptyTitle": "파이프라인이 아직 비어 있습니다",
     "emptyHint": "신규 상품 발굴에서 후보를 선택하면 소싱, 방송 예정, 종료까지 여기서 추적할 수 있습니다.",
     "emptyViewerHint": "담당 상품이 추가되면 진행 상태가 여기에 표시됩니다.",
@@ -345,6 +345,56 @@
     "confirm": "연결",
     "dragInstructions": "스페이스 키로 상품을 들어 올리고, 화살표 키로 이동한 다음 스페이스 키로 배치합니다.",
     "mobileScrollHint": "좌우로 스크롤하여 각 단계를 확인할 수 있습니다",
+    "readiness": {
+      "title": "데이터 준비 상태",
+      "description": "수집·정규화·근거·인사이트의 현재 준비 상태를 확인합니다.",
+      "sources": "데이터 소스",
+      "coverage": "커버리지",
+      "categories": "카테고리별 방송 분석",
+      "failures": "최근 실패",
+      "noFailures": "최근 실패가 없습니다.",
+      "notRequestedIsNormal": "추천, Research, 대본 실행이 0건이어도 데이터 파이프라인 실패가 아닙니다. 필요해진 시점에 실행합니다.",
+      "generatedAt": "집계 시각",
+      "latestAttempt": "최근 시도",
+      "latestSuccess": "최근 성공",
+      "statusLabel": "상태",
+      "status": {
+        "healthy": "정상",
+        "stale": "기한 초과",
+        "failed": "실패",
+        "missing": "미실행"
+      },
+      "metric": {
+        "canonicalLink": "통합 상품 연결",
+        "category": "카테고리 정규화",
+        "broadcastAnalysis": "방송 분석",
+        "evidence": "근거 항목",
+        "insights": "인사이트 스냅샷"
+      },
+      "categoryColumns": {
+        "category": "카테고리",
+        "analyzed": "분석 완료",
+        "total": "아카이브",
+        "coverage": "분석률"
+      },
+      "noCategories": "분석 대상 아카이브 방송이 아직 없습니다.",
+      "failureColumns": {
+        "source": "소스",
+        "startedAt": "발생 시각",
+        "error": "내용"
+      },
+      "noData": "—",
+      "sourcesByKey": {
+        "discovery_home_shopping": "홈쇼핑 발굴",
+        "discovery_live_commerce": "라이브커머스 발굴",
+        "broadcast_schedule": "방송 편성 수집",
+        "historical_broadcast_crawl": "과거 방송 수집",
+        "broadcast_video_archive": "방송 영상 아카이브",
+        "broadcast_audio_analysis": "방송 음성 분석",
+        "intelligence_foundation_backfill": "인텔리전스 기반 백필",
+        "intelligence_insight_refresh": "인사이트 갱신"
+      }
+    },
     "vision": {
       "kicker": "데이터 인텔리전스 파이프라인",
       "previewBadge": "활용 설계 미리보기",
