@@ -35,6 +35,10 @@ const OPTIONAL_STAGE_MIN_SAVE_BUDGET_MS = Number(
 );
 const LIVE_BOOST_TOTAL_CAP = Number(process.env.LIVE_BOOST_TOTAL_CAP ?? 15);
 
+export function discoveryLivePipelineCounts(attempted: number, saved: number) {
+	return discoveryPipelineCounts(attempted, saved);
+}
+
 async function loadLearningState(): Promise<LearningState> {
 	try {
 		const sb = getServiceClient();
@@ -246,7 +250,7 @@ export async function GET(req: NextRequest) {
 			producedCount: savedCount,
 			iterations: orchestrated.iterations,
 		});
-		const pipelineCounts = discoveryPipelineCounts(batch.length, savedCount);
+		const pipelineCounts = discoveryLivePipelineCounts(batch.length, savedCount);
 		await settlePipelineRunBestEffort(
 			pipelineRun,
 			(run) => pipelinePartial

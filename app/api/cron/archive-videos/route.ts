@@ -6,7 +6,8 @@ import { recoverStaleDownloading } from "@/lib/broadcasts/stale-downloading-reco
 import { reconcileArchiveCoverage } from "@/lib/broadcasts/archive-reconciliation";
 import { createPipelineRunRepository } from "@/lib/intelligence/pipeline-run";
 import { archivePipelineOutcome } from "@/lib/intelligence/pipeline-run-mapping";
-import { returnAfterPipelineFailure, settlePipelineRunBestEffort, startPipelineRunBestEffort } from "@/lib/intelligence/pipeline-run-route";
+import { returnAfterPipelineFailure, settlePipelineRunBestEffort, startPipelineRunBestEffort, type PipelineRunRouteReporter } from "@/lib/intelligence/pipeline-run-route";
+import type { PipelineRunHandle } from "@/lib/intelligence/pipeline-run";
 
 export const maxDuration = 300;
 
@@ -15,6 +16,17 @@ const CLEANUP_BUDGET_MS = 285_000;
 const SLOT_BUDGET_MS = 200_000;
 const CONCURRENCY = 4;
 const BATCH_SIZE = CONCURRENCY;
+
+export function archiveVideosPipelineOutcome(
+	summary: Parameters<typeof archivePipelineOutcome>[0],
+	preflightFailures: number,
+) {
+	return archivePipelineOutcome(summary, preflightFailures);
+}
+
+export function archiveVideosQueryFailure<T>(run: PipelineRunHandle | null, summary: string, response: T, report: PipelineRunRouteReporter) {
+	return returnAfterPipelineFailure(run, "queue_query_failed", summary, response, report);
+}
 
 function verifyCronAuth(req: NextRequest): boolean {
   const secret = process.env.CRON_SECRET;
@@ -160,9 +172,8 @@ export async function GET(req: NextRequest) {
         .abortSignal(workDeadline.signal);
 
 		if (error) {
-			return returnAfterPipelineFailure(
+			return archiveVideosQueryFailure(
 				pipelineRun,
-				"queue_query_failed",
 				error.message,
 				NextResponse.json({ error: error.message, ...summary }, { status: 500 }),
 				reportPipelineRunError,
@@ -194,7 +205,7 @@ export async function GET(req: NextRequest) {
     const result = { ...summary, reconcileHeal };
     console.log("[archive-videos]", JSON.stringify(result));
 
-		const pipelineOutcome = archivePipelineOutcome(summary, preflightFailures);
+		const pipelineOutcome = archiveVideosPipelineOutcome(summary, preflightFailures);
 		await settlePipelineRunBestEffort(
 			pipelineRun,
 			async (run) => {

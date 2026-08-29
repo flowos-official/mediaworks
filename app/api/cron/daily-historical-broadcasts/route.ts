@@ -12,9 +12,26 @@ import { maybeSendCrawlAlert, statusWithPersist } from "@/lib/historical-crawl/a
 import { isDuplicateInvocation, invocationOrigin } from "@/lib/cron/duplicate-guard";
 import { getServiceClient } from "@/lib/supabase";
 import { createPipelineRunRepository } from "@/lib/intelligence/pipeline-run";
-import { settlePipelineRunBestEffort, startPipelineRunBestEffort } from "@/lib/intelligence/pipeline-run-route";
+import { failPipelineRunWithKnownCounts, settlePipelineRunBestEffort, startPipelineRunBestEffort } from "@/lib/intelligence/pipeline-run-route";
 
 export const maxDuration = 300;
+
+export function historicalBroadcastPipelineCounts(input: {
+	inserted: number;
+	updated: number;
+	skippedDuplicate: number;
+	persistErrors: number;
+	failedChannels: number;
+	processed: number;
+}) {
+	return {
+		new: input.inserted,
+		updated: input.updated,
+		duplicate: input.skippedDuplicate,
+		failed: input.persistErrors + input.failedChannels,
+		processed: input.processed,
+	};
+}
 
 function verifyCronAuth(req: NextRequest): boolean {
 	const secret = process.env.CRON_SECRET;
@@ -107,13 +124,14 @@ export async function GET(req: NextRequest) {
 			durationMs: Date.now() - start,
 			...(persistError ? { error: persistError } : {}),
 		});
-		const pipelineCounts = {
-			new: summary.persist.inserted,
+		const pipelineCounts = historicalBroadcastPipelineCounts({
+			inserted: summary.persist.inserted,
 			updated: summary.persist.updated,
-			duplicate: summary.persist.skippedDuplicate,
-			failed: summary.persist.errors + channels.filter((channel) => !channel.ok).length,
+			skippedDuplicate: summary.persist.skippedDuplicate,
+			persistErrors: summary.persist.errors,
+			failedChannels: channels.filter((channel) => !channel.ok).length,
 			processed: summary.totalRows,
-		};
+		});
 		await settlePipelineRunBestEffort(
 			pipelineRun,
 			async (run) => {
@@ -125,12 +143,14 @@ export async function GET(req: NextRequest) {
 						"crawl_partial",
 						persistError ?? "One or more historical broadcast sources did not complete",
 					);
-				} else {
-				await run.heartbeat(pipelineCounts);
-					await run.fail(
-						"crawl_failed",
-						persistError ?? "Historical broadcast crawl failed for all sources",
-					);
+			} else {
+				await failPipelineRunWithKnownCounts(
+					run,
+					pipelineCounts,
+					"crawl_failed",
+					persistError ?? "Historical broadcast crawl failed for all sources",
+					reportPipelineRunError,
+				);
 				}
 			},
 			reportPipelineRunError,

@@ -160,3 +160,47 @@ All commands exited 0:
 - Lookup URL size is independent of product-name length; each request contains only at most 31 ISO dates and the bounded source-channel set. Pagination avoids truncating existing rows.
 - The persistence lookup failure branch intentionally does not issue the previously working upsert: without classification it cannot truthfully report inserted versus updated counts.
 - Route response bodies/statuses, domain tables, queue selection, and primary thrown errors remain unchanged. The shared helper only isolates normalized recorder failures.
+
+---
+
+## Review fix round 3/5
+
+### Findings addressed
+
+- Added `failPipelineRunWithKnownCounts()`. It independently catches a count-heartbeat rejection and then attempts terminal `fail()`; a terminal failure is also isolated, so neither can replace the route’s primary result.
+- Daily broadcast and historical all-source-failure paths now use that primitive instead of chaining heartbeat/fail in one callback.
+- Added production-used named mapping functions in every one of the six route modules. `scripts/test-intelligence-pipeline-route.ts` imports the six route modules and executes their actual count/outcome functions rather than relying only on helper-name regexes.
+- Added production-used archive/audio early-return functions and identity tests proving their unchanged primary response objects are returned even when recorder fail recording rejects.
+
+### Covering tests and results
+
+- `scripts/test-intelligence-pipeline-route.ts`: heartbeat-reject/fail-success and both-reject settlement cases; all six imported route mappings; archive/audio actual early-return response identity; shared start/settle and thrown-error identity contracts. Passed.
+- `scripts/test-intelligence-pipeline-run.ts`: existing recorder lifecycle suite. Passed.
+- `scripts/test-historical-crawl-persist.ts`: compact long-name lookup and classification-unavailable persistence behavior. Passed.
+
+### Verification commands
+
+All exited 0:
+
+`npm run test:intelligence-pipeline-run`
+`npm run test:intelligence-pipeline-route`
+`npm run test:historical-persist`
+`npm run test:pipeline-health`
+`npm run test:discovery-cron-budget`
+`npm run test:video-archive-deadline`
+`npm run test:broadcast-intel`
+`npx tsc --noEmit`
+`git diff --check`
+
+### Files changed
+
+- `lib/intelligence/pipeline-run-route.ts`
+- `scripts/test-intelligence-pipeline-route.ts`
+- six Task 4 cron route files
+- `.superpowers/sdd/2026-08-29-data-intelligence-foundation/task-4-report.md`
+
+### Self-review
+
+- The terminal-failure attempt now survives heartbeat rejection in both affected source-failure paths.
+- The tests execute route-module exports that GET uses for route-specific normalized mapping. Archive/audio early-return wrappers are also production-used and preserve exact response identity.
+- HTTP body/status behavior, domain tables, compact persistence lookup, and queue selection are unchanged.

@@ -39,6 +39,26 @@ export async function settlePipelineRunBestEffort(
 	}
 }
 
+export async function failPipelineRunWithKnownCounts(
+	run: PipelineRunHandle | null,
+	counts: Parameters<PipelineRunHandle["heartbeat"]>[0],
+	errorCode: string,
+	summary: string,
+	report: PipelineRunRouteReporter,
+): Promise<void> {
+	if (!run) return;
+	try {
+		await run.heartbeat(counts);
+	} catch (error) {
+		report("settle", error);
+	}
+	try {
+		await run.fail(errorCode, summary);
+	} catch (error) {
+		report("settle", error);
+	}
+}
+
 export async function returnAfterPipelineFailure<T>(
 	run: PipelineRunHandle | null,
 	errorCode: string,

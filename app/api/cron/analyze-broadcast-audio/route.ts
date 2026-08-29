@@ -9,7 +9,8 @@ import {
 } from "@/lib/broadcast-intel/analyze-one";
 import { createPipelineRunRepository } from "@/lib/intelligence/pipeline-run";
 import { audioPipelineOutcome } from "@/lib/intelligence/pipeline-run-mapping";
-import { returnAfterPipelineFailure, settlePipelineRunBestEffort, startPipelineRunBestEffort } from "@/lib/intelligence/pipeline-run-route";
+import { returnAfterPipelineFailure, settlePipelineRunBestEffort, startPipelineRunBestEffort, type PipelineRunRouteReporter } from "@/lib/intelligence/pipeline-run-route";
+import type { PipelineRunHandle } from "@/lib/intelligence/pipeline-run";
 
 export const maxDuration = 300;
 
@@ -21,6 +22,17 @@ const SLOT_BUDGET_MS = 200_000;
 const CONCURRENCY = Number(process.env.BROADCAST_INTEL_BATCH_CONCURRENCY) || 2;
 const SEED_LIMIT = 10;
 const SLICE_CATEGORY = process.env.BROADCAST_INTEL_CATEGORY || "家電";
+
+export function broadcastAudioPipelineOutcome(
+	summary: Parameters<typeof audioPipelineOutcome>[0],
+	preflightFailures: number,
+) {
+	return audioPipelineOutcome(summary, preflightFailures);
+}
+
+export function broadcastAudioQueryFailure<T>(run: PipelineRunHandle | null, summary: string, response: T, report: PipelineRunRouteReporter) {
+	return returnAfterPipelineFailure(run, "queue_query_failed", summary, response, report);
+}
 
 function verifyCronAuth(req: NextRequest): boolean {
   const secret = process.env.CRON_SECRET;
@@ -78,9 +90,8 @@ export async function GET(req: NextRequest) {
       .limit(CONCURRENCY);
 
 		if (error) {
-			return returnAfterPipelineFailure(
+			return broadcastAudioQueryFailure(
 				pipelineRun,
-				"queue_query_failed",
 				error.message,
 				NextResponse.json({ error: error.message, ...summary }, { status: 500 }),
 				reportPipelineRunError,
@@ -98,7 +109,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-	const pipelineOutcome = audioPipelineOutcome(summary, preflightFailures);
+	const pipelineOutcome = broadcastAudioPipelineOutcome(summary, preflightFailures);
 	await settlePipelineRunBestEffort(
 		pipelineRun,
 		async (run) => {

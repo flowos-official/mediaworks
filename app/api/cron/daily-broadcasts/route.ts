@@ -13,8 +13,24 @@ import {
 } from "@/lib/broadcasts/snapshot-enrichment";
 import { buildProgramId } from "@/lib/broadcasts/shopch-json";
 import { createPipelineRunRepository } from "@/lib/intelligence/pipeline-run";
-import { settlePipelineRunBestEffort, startPipelineRunBestEffort } from "@/lib/intelligence/pipeline-run-route";
+import { failPipelineRunWithKnownCounts, settlePipelineRunBestEffort, startPipelineRunBestEffort } from "@/lib/intelligence/pipeline-run-route";
 export const maxDuration = 180;
+
+export function dailyBroadcastPipelineCounts(input: {
+	inserted: number;
+	updated: number;
+	sourceErrors: number;
+	enrichmentErrors: number;
+	processed: number;
+}) {
+	return {
+		new: input.inserted,
+		updated: input.updated,
+		duplicate: 0,
+		failed: input.sourceErrors + input.enrichmentErrors,
+		processed: input.processed,
+	};
+}
 
 function verifyCronAuth(req: NextRequest): boolean {
 	const secret = process.env.CRON_SECRET;
@@ -346,13 +362,13 @@ export async function GET(req: NextRequest) {
 	}
 
 	console.log(JSON.stringify(log));
-	const pipelineCounts = {
-		new: summary.totalInserted,
+	const pipelineCounts = dailyBroadcastPipelineCounts({
+		inserted: summary.totalInserted,
 		updated: summary.totalUpdated,
-		duplicate: 0,
-		failed: summary.totalErrors + enrich.failed,
+		sourceErrors: summary.totalErrors,
+		enrichmentErrors: enrich.failed,
 		processed: summary.results.reduce((total, result) => total + result.slots.length, 0),
-	};
+	});
 	const successfulSources = summary.results.filter((result) => result.ok).length;
 	await settlePipelineRunBestEffort(
 		pipelineRun,
@@ -365,9 +381,8 @@ export async function GET(req: NextRequest) {
 					summary.totalErrors > 0 ? "source_partial" : "enrichment_partial",
 					`${summary.totalErrors} source scrape and ${enrich.failed} product enrichment error(s)`,
 				);
-			} else {
-			await run.heartbeat(pipelineCounts);
-			await run.fail("source_failed", `${summary.totalErrors} source scrape and ${enrich.failed} product enrichment error(s)`);
+		} else {
+			await failPipelineRunWithKnownCounts(run, pipelineCounts, "source_failed", `${summary.totalErrors} source scrape and ${enrich.failed} product enrichment error(s)`, reportPipelineRunError);
 		}
 		},
 		reportPipelineRunError,
