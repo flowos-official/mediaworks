@@ -35,6 +35,7 @@
     "test:intelligence-readiness": "tsx scripts/test-intelligence-readiness.ts",
     "test:pipeline-readiness-view": "tsx scripts/test-pipeline-readiness-view.ts",
     "backfill:intelligence": "tsx --env-file=.env.local scripts/backfill-intelligence-foundation.ts",
+    "verify:intelligence-foundation": "tsx --env-file=.env.local scripts/verify-intelligence-foundation.ts",
     "test:broadcasts-shopch": "tsx --env-file=.env.local scripts/test-broadcasts-shopch-parser.ts",
     "test:broadcasts-qvc": "tsx --env-file=.env.local scripts/test-broadcasts-qvc-parser.ts",
     "test:broadcasts-parsers": "npm run test:broadcasts-shopch && npm run test:broadcasts-qvc",

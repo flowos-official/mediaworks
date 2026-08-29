@@ -229,3 +229,46 @@ curl -X POST https://<vercel-url>/api/discovery/manual-trigger \
 | ライブ 전략 생성/히스토리 | `/ja/analytics/strategy/live` |
 | 매출 개요 | `/ja/analytics/overview` |
 | 상품 분석 | `/ja/analytics/products` |
+
+---
+
+## 🧠 データインテリジェンス基盤の運用（管理者）
+
+このパイプラインは、収集済みの商品・放送情報を正規化し、出典と観測時刻を持つエビデンスおよびインサイトとして継続的に蓄積します。商品推薦、Research、取扱商品の選定、放送台本は、利用者が必要なときに保存済みデータを使って生成するオンデマンド成果物です。バックフィルやインサイト更新が、これらの成果物を自動生成することはありません。
+
+最近のデータについて、書き込み前に対象件数を確認します。
+
+```bash
+npm run backfill:intelligence -- --since=2026-08-01 --limit=200
+```
+
+`write=false`、sourceごとの読取行数、予定エビデンス数、要確認カテゴリーを確認してください。反映するときだけ `--apply` を追加します。
+
+```bash
+npm run backfill:intelligence -- --since=2026-08-01 --limit=200 --apply
+```
+
+1回の実行はsourceごとに最大200行です。出力の `nextCursor` が文字列の場合は、同じ `--since` と `--limit` にその値をそのまま渡して再開します。`nextCursor` が `null` になれば、その期間の処理は完了です。
+
+```bash
+npm run backfill:intelligence -- --since=2026-08-01 --limit=200 --cursor='<nextCursor>' --apply
+```
+
+反映とインサイト更新の後、読み取り専用の検証を実行します。
+
+```bash
+npm run verify:intelligence-foundation
+```
+
+検証では、additive migration、最新のpipeline試行、canonical link、最近のアクティブ商品のカテゴリー網羅率、エビデンス件数、インサイトとエビデンスリンク数の一致、known/non-known値の整合性を確認します。`rawActive` は最新の成功Discoveryセッションにあるアクティブ候補全体、`eligible` は現在のQVC・Shop Channel・接続済みOA source範囲でバックフィル可能な候補数です。放送分析の実測カバレッジも表示しますが、推薦や台本の生成件数は合格条件ではありません。
+
+パイプライン画面の状態は次の意味です。
+
+| 状態 | 意味 |
+| --- | --- |
+| 正常 | 最新の成功実行がsource別の許容時間内にある |
+| 古い | 成功履歴はあるが許容時間を超えている |
+| 失敗 | 最新試行が失敗または部分完了。過去の成功では隠さない |
+| 実行履歴なし | 新しい正規化runがない、またはその処理をまだ実行していない |
+
+分母がない割合は `0%` ではなく `—` と表示します。推薦、Research、取扱商品選定、台本が0件でも、まだ依頼されていないだけならパイプライン障害ではありません。
