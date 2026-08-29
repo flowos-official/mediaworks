@@ -305,6 +305,190 @@ async function verifyDryRun(): Promise<void> {
 		"the actual CLI dry-run adapter performs only the bounded source/cache reads",
 	);
 
+	type CliRaceScenario = "none" | "source-link-winner" | "source-link-restrict";
+	function makeCliApplySupabase(options: {
+		broadcastQueryFails?: boolean;
+		evidenceConflicts?: boolean;
+		race?: CliRaceScenario;
+	} = {}) {
+		const calls: string[] = [];
+		const race = options.race ?? "none";
+		let sourceLinkLookups = 0;
+		let evidenceId = 0;
+		const client = {
+			from(table: string) {
+				calls.push(`from:${table}`);
+				const builder: any = {
+					select(columns: string) {
+						calls.push(`${table}:select:${columns}`);
+						if (table === "evidence_items") {
+							return {
+								in(column: string, keys: string[]) {
+									assert.equal(column, "dedupe_key");
+									return Promise.resolve({
+										data: keys.map((dedupeKey) => ({ id: `resolved:${dedupeKey}`, dedupe_key: dedupeKey })),
+										error: null,
+									});
+								},
+							};
+						}
+						return builder;
+					},
+					eq(column: string, value: string) { calls.push(`${table}:eq:${column}:${value}`); return builder; },
+					gte(column: string, value: string) { calls.push(`${table}:gte:${column}:${value}`); return builder; },
+					in(column: string, value: string[]) { calls.push(`${table}:in:${column}:${value.join(",")}`); return builder; },
+					order(column: string) { calls.push(`${table}:order:${column}`); return builder; },
+					or(value: string) { calls.push(`${table}:or:${value}`); return builder; },
+					limit(value: number) {
+						calls.push(`${table}:limit:${value}`);
+						if (table === "discovered_products") return Promise.resolve({ data: [cliProduct], error: null });
+						if (table === "broadcast_speech_analyses") {
+							return Promise.resolve(options.broadcastQueryFails
+								? { data: null, error: { message: "broadcast query unavailable" } }
+								: { data: [], error: null });
+						}
+						throw new Error(`unexpected bounded query for ${table}`);
+					},
+					maybeSingle() {
+						sourceLinkLookups += 1;
+						if (race !== "none" && sourceLinkLookups > 1) {
+							return Promise.resolve({ data: { canonical_product_id: "race-winner" }, error: null });
+						}
+						return Promise.resolve({ data: null, error: null });
+					},
+					insert(value: unknown) {
+						calls.push(`${table}:insert`);
+						if (table === "canonical_products") {
+							return { select: () => ({ single: () => Promise.resolve({ data: { id: "local-canonical" }, error: null }) }) };
+						}
+						if (table === "product_source_links") {
+							return Promise.resolve(race === "none"
+								? { error: null }
+								: { error: { message: "duplicate source link" } });
+						}
+						throw new Error(`unexpected insert for ${table}: ${JSON.stringify(value)}`);
+					},
+					delete() {
+						return {
+							eq() {
+								calls.push(`${table}:delete`);
+								return Promise.resolve(race === "source-link-restrict"
+									? { error: { message: "RESTRICT foreign-key constraint" } }
+									: { error: null });
+							},
+						};
+					},
+					upsert(rows: Array<{ dedupe_key: string }>) {
+						calls.push(`${table}:upsert:${rows.length}`);
+						return {
+							select(columns: string) {
+								assert.equal(columns, "id,dedupe_key");
+								return Promise.resolve({
+									data: options.evidenceConflicts
+										? []
+										: rows.map((row) => ({ id: `inserted:${++evidenceId}`, dedupe_key: row.dedupe_key })),
+									error: null,
+								});
+							},
+						};
+					},
+				};
+				return builder;
+			},
+		};
+		return { client: client as never, calls };
+	}
+
+	const failedPeer = makeCliApplySupabase({ broadcastQueryFails: true });
+	const failedPeerHeartbeats: Array<{ processed?: number }> = [];
+	const failedPeerEvents: string[] = [];
+	await assert.rejects(() => runCliBackfill(
+		{ since: "2026-08-01T00:00:00.000Z", limit: 1, apply: true },
+		failedPeer.client,
+		{
+			normalizeCategories: async () => new Map(),
+			startPipelineRun: async () => ({
+				id: "cli-failed-peer",
+				heartbeat: async (counts) => { failedPeerHeartbeats.push(counts ?? {}); },
+				succeed: async () => { failedPeerEvents.push("succeed"); },
+				partial: async () => { failedPeerEvents.push("partial"); },
+				fail: async () => { failedPeerEvents.push("fail"); },
+			}),
+		},
+	), /recorded as failed/);
+	assert.ok(failedPeerHeartbeats.some((counts) => counts.processed === 1), "actual CLI retains the successful peer source read count after a query error");
+	assert.deepEqual(failedPeerEvents, ["fail"], "actual CLI applies a failed terminal state after a pre-write query error");
+	assert.equal(failedPeer.calls.includes("canonical_products:insert"), false, "a failed source query reaches no data writer");
+
+	const appliedCli = makeCliApplySupabase();
+	const appliedCliEvents: string[] = [];
+	let appliedHeartbeats = 0;
+	let appliedSuccesses = 0;
+	const telemetryReports: string[] = [];
+	const appliedResult = await runCliBackfill(
+		{ since: "2026-08-01T00:00:00.000Z", limit: 1, apply: true },
+		appliedCli.client,
+		{
+			normalizeCategories: async () => new Map([["家電", ["家電"]]]),
+			startPipelineRun: async () => ({
+				id: "cli-apply",
+				heartbeat: async () => {
+					appliedHeartbeats += 1;
+					if (appliedHeartbeats === 1) throw new Error("temporary heartbeat outage");
+				},
+				succeed: async () => {
+					appliedSuccesses += 1;
+					if (appliedSuccesses === 1) throw new Error("first success settlement failed");
+					appliedCliEvents.push("succeed");
+				},
+				partial: async () => { appliedCliEvents.push("partial"); },
+				fail: async () => { appliedCliEvents.push("fail"); },
+			}),
+			reportTelemetryFailure: (phase) => { telemetryReports.push(phase); },
+		},
+	);
+	assert.deepEqual(appliedResult.counts, { new: 7, updated: 0, duplicate: 0, failed: 0, processed: 1 });
+	assert.deepEqual(telemetryReports, ["heartbeat"], "actual CLI reports but does not promote heartbeat failure into data failure");
+	assert.equal(appliedSuccesses, 2, "actual CLI retries only the intended success terminal settlement once");
+	assert.deepEqual(appliedCliEvents, ["succeed"], "success settlement rejection never flips the data operation to another terminal state");
+	assert.ok(appliedCli.calls.includes("discovered_products:limit:1") && appliedCli.calls.includes("broadcast_speech_analyses:limit:1"), "actual CLI adapter keeps each source read bounded by the CLI limit");
+	assert.ok(appliedCli.calls.includes("evidence_items:upsert:5"), "actual CLI apply executes the production evidence upsert adapter against the injected client");
+
+	const evidenceRaceCli = makeCliApplySupabase({ evidenceConflicts: true });
+	const evidenceRaceResult = await runCliBackfill(
+		{ since: "2026-08-01T00:00:00.000Z", limit: 1, apply: true },
+		evidenceRaceCli.client,
+		{
+			normalizeCategories: async () => new Map([["家電", ["家電"]]]),
+			startPipelineRun: async () => fakeRun,
+		},
+	);
+	assert.deepEqual(evidenceRaceResult.counts, { new: 2, updated: 0, duplicate: 5, failed: 0, processed: 1 }, "actual CLI counts an ignore-duplicate evidence race as duplicates, never new");
+
+	const linkRaceCli = makeCliApplySupabase({ race: "source-link-winner" });
+	const linkRaceResult = await runCliBackfill(
+		{ since: "2026-08-01T00:00:00.000Z", limit: 1, apply: true },
+		linkRaceCli.client,
+		{
+			normalizeCategories: async () => new Map([["家電", ["家電"]]]),
+			startPipelineRun: async () => fakeRun,
+		},
+	);
+	assert.deepEqual(linkRaceResult.counts, { new: 5, updated: 0, duplicate: 1, failed: 0, processed: 1 }, "actual CLI resolves a unique source-link race to the exact winner without counting reused links as updates");
+	assert.ok(linkRaceCli.calls.includes("canonical_products:delete"), "a normal source-link race removes only the just-created orphan canonical");
+
+	const restrictRaceCli = makeCliApplySupabase({ race: "source-link-restrict" });
+	const restrictRaceResult = await runCliBackfill(
+		{ since: "2026-08-01T00:00:00.000Z", limit: 1, apply: true },
+		restrictRaceCli.client,
+		{
+			normalizeCategories: async () => new Map([["家電", ["家電"]]]),
+			startPipelineRun: async () => fakeRun,
+		},
+	);
+	assert.deepEqual(restrictRaceResult.counts, { new: 5, updated: 0, duplicate: 1, failed: 0, processed: 1 }, "actual CLI reuses the winning exact source link when RESTRICT protects shared identity");
+	assert.ok(restrictRaceCli.calls.includes("canonical_products:delete"), "RESTRICT cleanup attempts only the locally-created canonical through the injected client");
+
 	const resumedQueries: string[] = [];
 	await runFoundationBackfill({
 		args: { since: "2026-08-01T00:00:00.000Z", limit: 1, apply: false },
@@ -371,9 +555,13 @@ async function verifyDryRun(): Promise<void> {
 	assert.deepEqual(partialCounts, { new: 2, updated: 0, duplicate: 0, failed: 1, processed: 2 }, "partial settlement carries all observed counts");
 
 	const failureEvents: string[] = [];
+	const failureHeartbeats: Array<{ failed: number; processed: number }> = [];
 	const failureRun: PipelineRunHandle = {
 		id: "run-failure",
-		heartbeat: async () => { failureEvents.push("heartbeat"); },
+		heartbeat: async (counts) => {
+			failureEvents.push("heartbeat");
+			failureHeartbeats.push({ failed: counts?.failed ?? 0, processed: counts?.processed ?? 0 });
+		},
 		succeed: async () => { failureEvents.push("succeed"); },
 		partial: async () => { failureEvents.push("partial"); },
 		fail: async () => { failureEvents.push("fail"); },
@@ -383,7 +571,7 @@ async function verifyDryRun(): Promise<void> {
 		cursor: initialBackfillCursor(),
 		startPipelineRun: async () => { failureEvents.push("start"); return failureRun; },
 		fetchProducts: async () => { failureEvents.push("products"); throw new Error("source unavailable"); },
-		fetchBroadcasts: async () => ({ rows: [], exhausted: true, readCount: 0 }),
+		fetchBroadcasts: async () => ({ rows: [], exhausted: true, readCount: 7 }),
 		loadCachedCategories: async () => new Map(),
 		normalizeCategories: async () => new Map(),
 		writeProduct: async () => ({ new: 0, duplicate: 0 }),
@@ -391,6 +579,38 @@ async function verifyDryRun(): Promise<void> {
 	}), /recorded as failed/);
 	assert.ok(failureEvents.indexOf("start") < failureEvents.indexOf("products"), "query failures have an already-created run to settle");
 	assert.equal(failureEvents.includes("fail"), true, "a pre-write query failure settles as failed");
+	assert.ok(
+		failureHeartbeats.some((counts) => counts.processed === 7),
+		"a failed peer query retains the successful bounded peer read count for audit telemetry",
+	);
+
+	const rejectedHeartbeatEvents: string[] = [];
+	let rejectedHeartbeatCalls = 0;
+	const rejectedHeartbeatRun: PipelineRunHandle = {
+		id: "run-heartbeat-rejection",
+		heartbeat: async () => {
+			rejectedHeartbeatCalls += 1;
+			rejectedHeartbeatEvents.push("heartbeat");
+			if (rejectedHeartbeatCalls === 1) throw new Error("temporary recorder outage");
+		},
+		succeed: async () => { rejectedHeartbeatEvents.push("succeed"); },
+		partial: async () => { rejectedHeartbeatEvents.push("partial"); },
+		fail: async () => { rejectedHeartbeatEvents.push("fail"); },
+	};
+	await runFoundationBackfill({
+		args: { since: "2026-08-01T00:00:00.000Z", limit: 1, apply: true },
+		cursor: initialBackfillCursor(),
+		startPipelineRun: async () => rejectedHeartbeatRun,
+		fetchProducts: async () => ({ rows: [productRow], exhausted: true, readCount: 1 }),
+		fetchBroadcasts: async () => ({ rows: [], exhausted: true, readCount: 0 }),
+		loadCachedCategories: async () => new Map(),
+		normalizeCategories: async () => new Map([["家電", ["家電"]]]),
+		writeProduct: async () => { rejectedHeartbeatEvents.push("write-product"); return { new: 1, duplicate: 0 }; },
+		writeBroadcast: async () => ({ new: 0, duplicate: 0 }),
+	});
+	assert.ok(rejectedHeartbeatEvents.includes("write-product"), "heartbeat telemetry rejection never blocks durable data work");
+	assert.equal(rejectedHeartbeatEvents.includes("fail"), false, "heartbeat telemetry rejection never mislabels data work as failed");
+	assert.deepEqual(rejectedHeartbeatEvents.slice(-1), ["succeed"], "the terminal success settlement still executes after heartbeat rejection");
 
 	let successSettles = 0;
 	const telemetryRun: PipelineRunHandle = {
@@ -422,6 +642,33 @@ async function verifyDryRun(): Promise<void> {
 	}, productRow);
 	assert.deepEqual(raceResolution, { canonicalProductId: "winner", canonicalCreated: false, sourceLinkDuplicate: true });
 	assert.deepEqual(canonicalCalls, ["canonical", "link", "delete:orphan"], "a source-link race cleans up only its orphan canonical");
+
+	let protectedLookupCount = 0;
+	const protectedCleanupResolution = await resolveExactCanonicalProduct({
+		findExactSourceLink: async () => {
+			protectedLookupCount += 1;
+			return protectedLookupCount === 1 ? null : { canonicalProductId: "winner-after-restrict" };
+		},
+		insertCanonical: async () => "shared-canonical",
+		insertExactSourceLink: async () => { throw new Error("duplicate key"); },
+		deleteCanonical: async () => {
+			throw new Error("update violates RESTRICT foreign-key constraint: shared-canonical remains linked");
+		},
+	}, productRow);
+	assert.deepEqual(
+		protectedCleanupResolution,
+		{ canonicalProductId: "winner-after-restrict", canonicalCreated: false, sourceLinkDuplicate: true },
+		"a RESTRICT-protected locally-created canonical is never cascaded away while the exact winning link is reused",
+	);
+
+	await assert.rejects(() => resolveExactCanonicalProduct({
+		findExactSourceLink: async () => null,
+		insertCanonical: async () => "shared-no-winner",
+		insertExactSourceLink: async () => { throw new Error("link validation failure"); },
+		deleteCanonical: async () => {
+			throw new Error("update violates RESTRICT foreign-key constraint: shared-no-winner remains linked");
+		},
+	}, productRow), /cleanup protected/);
 
 	const cleanupCalls: string[] = [];
 	await assert.rejects(() => resolveExactCanonicalProduct({

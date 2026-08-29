@@ -530,6 +530,8 @@ export interface FoundationBackfillDependencies {
 	startPipelineRun(): Promise<PipelineRunHandle>;
 	writeProduct(row: DiscoveredProductBackfillRow, evidence: EvidenceDraft[]): Promise<FoundationWriteOutcome>;
 	writeBroadcast(row: BroadcastAnalysisBackfillRow, evidence: EvidenceDraft[]): Promise<FoundationWriteOutcome>;
+	/** Best-effort operational reporting for non-terminal recorder failures. */
+	reportTelemetryFailure?(phase: "heartbeat", error: unknown): void;
 }
 
 export interface FoundationBackfillResult {
@@ -584,6 +586,41 @@ function unqueriedPage<Row>(): FoundationSourcePage<Row> {
 	return { rows: [], exhausted: true, readCount: 0 };
 }
 
+interface LoadedPages {
+	productPage?: FoundationSourcePage<DiscoveredProductBackfillRow>;
+	broadcastPage?: FoundationSourcePage<BroadcastAnalysisBackfillRow>;
+	errors: Array<{ source: BackfillSource; error: unknown }>;
+}
+
+function requireSuccessfulPages(loaded: LoadedPages): {
+	productPage: FoundationSourcePage<DiscoveredProductBackfillRow>;
+	broadcastPage: FoundationSourcePage<BroadcastAnalysisBackfillRow>;
+} {
+	if (loaded.errors.length > 0) {
+		throw new Error(loaded.errors.map(({ source, error }) => `${source}: ${errorText(error)}`).join("; "));
+	}
+	if (!loaded.productPage || !loaded.broadcastPage) {
+		throw new Error("source page query completed without both source results");
+	}
+	return { productPage: loaded.productPage, broadcastPage: loaded.broadcastPage };
+}
+
+async function heartbeatBestEffort(
+	run: PipelineRunHandle,
+	counts: PipelineRunCounts,
+	reportTelemetryFailure: FoundationBackfillDependencies["reportTelemetryFailure"],
+): Promise<void> {
+	try {
+		await run.heartbeat(counts);
+	} catch (error) {
+		try {
+			reportTelemetryFailure?.("heartbeat", error);
+		} catch {
+			// Observability must never turn a recorder heartbeat failure into data failure.
+		}
+	}
+}
+
 /**
  * Dependency-injected orchestration boundary for the CLI. It is intentionally
  * the only place that decides source querying, dry-run write suppression,
@@ -592,16 +629,23 @@ function unqueriedPage<Row>(): FoundationSourcePage<Row> {
 export async function runFoundationBackfill(
 	input: FoundationBackfillDependencies,
 ): Promise<FoundationBackfillResult> {
-	const loadPages = async () => {
-		const [productPage, broadcastPage] = await Promise.all([
+	const loadPages = async (): Promise<LoadedPages> => {
+		const [productResult, broadcastResult] = await Promise.allSettled([
 			input.cursor.products.done ? Promise.resolve(unqueriedPage<DiscoveredProductBackfillRow>()) : input.fetchProducts(input.cursor.products),
 			input.cursor.broadcasts.done ? Promise.resolve(unqueriedPage<BroadcastAnalysisBackfillRow>()) : input.fetchBroadcasts(input.cursor.broadcasts),
 		]);
-		return { productPage, broadcastPage };
+		return {
+			...(productResult.status === "fulfilled" ? { productPage: productResult.value } : {}),
+			...(broadcastResult.status === "fulfilled" ? { broadcastPage: broadcastResult.value } : {}),
+			errors: [
+				...(productResult.status === "rejected" ? [{ source: "products" as const, error: productResult.reason }] : []),
+				...(broadcastResult.status === "rejected" ? [{ source: "broadcasts" as const, error: broadcastResult.reason }] : []),
+			],
+		};
 	};
 
 	if (!input.args.apply) {
-		const { productPage, broadcastPage } = await loadPages();
+		const { productPage, broadcastPage } = requireSuccessfulPages(await loadPages());
 		const nextCursor = {
 			products: nextSourceCursor(input.cursor.products, productPage, "products"),
 			broadcasts: nextSourceCursor(input.cursor.broadcasts, broadcastPage, "broadcasts"),
@@ -633,13 +677,14 @@ export async function runFoundationBackfill(
 	let summary: BackfillPageSummary | undefined;
 	let nextCursor: BackfillCursor | undefined;
 	try {
-		pages = await loadPages();
+		const loaded = await loadPages();
+		counts = emptyCounts((loaded.productPage?.readCount ?? 0) + (loaded.broadcastPage?.readCount ?? 0));
+		await heartbeatBestEffort(run, counts, input.reportTelemetryFailure);
+		pages = requireSuccessfulPages(loaded);
 		nextCursor = {
 			products: nextSourceCursor(input.cursor.products, pages.productPage, "products"),
 			broadcasts: nextSourceCursor(input.cursor.broadcasts, pages.broadcastPage, "broadcasts"),
 		};
-		counts = emptyCounts(pages.productPage.readCount + pages.broadcastPage.readCount);
-		await run.heartbeat(counts);
 		summary = await executeBackfillPage({
 			products: pages.productPage.rows,
 			broadcasts: pages.broadcastPage.rows,
@@ -651,12 +696,12 @@ export async function runFoundationBackfill(
 			applyProduct: async (row, evidence) => {
 				writeAttempted = true;
 				addWriteOutcome(counts, await input.writeProduct(row, evidence));
-				await run.heartbeat(counts);
+				await heartbeatBestEffort(run, counts, input.reportTelemetryFailure);
 			},
 			applyBroadcast: async (row, evidence) => {
 				writeAttempted = true;
 				addWriteOutcome(counts, await input.writeBroadcast(row, evidence));
-				await run.heartbeat(counts);
+				await heartbeatBestEffort(run, counts, input.reportTelemetryFailure);
 			},
 		});
 	} catch (dataError) {
@@ -670,8 +715,8 @@ export async function runFoundationBackfill(
 			}
 			throw new Error(`backfill data failure after possible durable writes; pipeline run recorded as partial: ${failure}`);
 		}
+		await heartbeatBestEffort(run, counts, input.reportTelemetryFailure);
 		try {
-			await run.heartbeat(counts);
 			await retryTerminalSettlement(() => run.fail("intelligence_foundation_backfill_failed", failure));
 		} catch (telemetryError) {
 			throw new Error(`backfill data failure before durable writes: ${failure}; failed telemetry settlement failed: ${errorText(telemetryError)}`);
@@ -711,14 +756,32 @@ export interface ExactCanonicalResolution {
 	sourceLinkDuplicate: boolean;
 }
 
+function isRestrictProtectedCleanup(error: unknown): boolean {
+	return /foreign[ -]?key|on delete restrict|\brestrict\b/i.test(errorText(error));
+}
+
 async function cleanupCreatedCanonical(
 	repository: CanonicalBackfillRepository,
 	canonicalProductId: string,
+	row: DiscoveredProductBackfillRow,
 	primaryError: unknown,
-): Promise<never> {
+): Promise<ExactCanonicalResolution> {
 	try {
 		await repository.deleteCanonical(canonicalProductId);
 	} catch (cleanupError) {
+		if (isRestrictProtectedCleanup(cleanupError)) {
+			try {
+				const winner = await repository.findExactSourceLink(row);
+				if (winner) {
+					return winner.canonicalProductId === canonicalProductId
+						? { canonicalProductId, canonicalCreated: true, sourceLinkDuplicate: false }
+						: { canonicalProductId: winner.canonicalProductId, canonicalCreated: false, sourceLinkDuplicate: true };
+				}
+			} catch (lookupError) {
+				throw new Error(`${errorText(primaryError)}; orphan canonical cleanup protected (local canonical was not deleted): ${errorText(cleanupError)}; source-link race lookup failed: ${errorText(lookupError)}`);
+			}
+			throw new Error(`${errorText(primaryError)}; orphan canonical cleanup protected (local canonical was not deleted): ${errorText(cleanupError)}`);
+		}
 		throw new Error(`${errorText(primaryError)}; orphan canonical cleanup failed: ${errorText(cleanupError)}`);
 	}
 	throw primaryError;
@@ -750,11 +813,17 @@ export async function resolveExactCanonicalProduct(
 			try {
 				await repository.deleteCanonical(canonicalProductId);
 			} catch (cleanupError) {
+				if (isRestrictProtectedCleanup(cleanupError)) {
+					// A different source may now legitimately reference the local
+					// canonical. RESTRICT preserves that shared identity; the exact
+					// winning source link remains the truthful product resolution.
+					return { canonicalProductId: winner.canonicalProductId, canonicalCreated: false, sourceLinkDuplicate: true };
+				}
 				throw new Error(`${errorText(linkError)}; winning exact source link resolved to ${winner.canonicalProductId}; orphan canonical cleanup failed: ${errorText(cleanupError)}`);
 			}
 			return { canonicalProductId: winner.canonicalProductId, canonicalCreated: false, sourceLinkDuplicate: true };
 		}
-		return cleanupCreatedCanonical(repository, canonicalProductId, lookupError
+		return cleanupCreatedCanonical(repository, canonicalProductId, row, lookupError
 			? new Error(`${errorText(linkError)}; source-link race lookup failed: ${errorText(lookupError)}`)
 			: linkError);
 	}

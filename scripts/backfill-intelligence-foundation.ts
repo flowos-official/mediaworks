@@ -23,9 +23,8 @@ import {
 	type FoundationSourcePage,
 	type FoundationWriteOutcome,
 } from "../lib/intelligence/backfill";
-import { evidenceDedupeKey } from "../lib/intelligence/evidence";
-import { upsertEvidence } from "../lib/intelligence/repository";
-import { createPipelineRunRepository, startPipelineRun } from "../lib/intelligence/pipeline-run";
+import { upsertEvidenceDetailed } from "../lib/intelligence/repository";
+import { createPipelineRunRepository, startPipelineRun, type PipelineRunHandle } from "../lib/intelligence/pipeline-run";
 import { getServiceClient } from "../lib/supabase";
 
 const PRODUCT_SOURCE_TABLE = "discovered_products";
@@ -230,16 +229,11 @@ async function upsertEvidenceWithCounts(
 	sb: SupabaseClient,
 	drafts: import("../lib/intelligence/types").EvidenceDraft[],
 ): Promise<FoundationWriteOutcome> {
-	const keys = [...new Set(drafts.map(evidenceDedupeKey))];
-	if (keys.length === 0) return { new: 0, duplicate: 0 };
-	const { data, error } = await sb
-		.from("evidence_items")
-		.select("dedupe_key")
-		.in("dedupe_key", keys);
-	if (error) throw new Error(`evidence dedupe lookup failed: ${error.message}`);
-	const existing = new Set((data ?? []).map((row) => String(row.dedupe_key)));
-	await upsertEvidence(sb, drafts);
-	return { new: keys.length - existing.size, duplicate: existing.size };
+	const result = await upsertEvidenceDetailed(sb, drafts);
+	return {
+		new: result.insertedDedupeKeys.length,
+		duplicate: result.duplicateDedupeKeys.length,
+	};
 }
 
 async function writeProduct(
@@ -292,9 +286,17 @@ function printSummary(args: BackfillArgs, result: FoundationBackfillResult): voi
 	}, null, 2));
 }
 
+/** Injectable seams used by focused orchestration tests; production uses defaults. */
+export interface CliBackfillDependencies {
+	normalizeCategories?(rawCategories: string[]): Promise<Map<string, string[]>>;
+	startPipelineRun?(): Promise<PipelineRunHandle>;
+	reportTelemetryFailure?(phase: "heartbeat", error: unknown): void;
+}
+
 export async function runCliBackfill(
 	args: BackfillArgs,
 	sb: SupabaseClient = getServiceClient(),
+	dependencies: CliBackfillDependencies = {},
 ): Promise<FoundationBackfillResult> {
 	const cursor = args.cursor ? parseBackfillCursor(args.cursor) : initialBackfillCursor();
 	return runFoundationBackfill({
@@ -303,8 +305,8 @@ export async function runCliBackfill(
 		fetchProducts: (state) => loadProductPage(sb, args, state),
 		fetchBroadcasts: (state) => loadBroadcastPage(sb, args, state),
 		loadCachedCategories: (rawCategories) => loadCachedCategories(sb, rawCategories),
-		normalizeCategories: (rawCategories) => normalizeCategoriesBatch(sb, rawCategories),
-		startPipelineRun: () => startPipelineRun(createPipelineRunRepository(sb), {
+		normalizeCategories: dependencies.normalizeCategories ?? ((rawCategories) => normalizeCategoriesBatch(sb, rawCategories)),
+		startPipelineRun: dependencies.startPipelineRun ?? (() => startPipelineRun(createPipelineRunRepository(sb), {
 			sourceType: "intelligence_foundation",
 			jobType: "intelligence_foundation_backfill",
 			externalRunId: `intelligence-foundation-backfill:${randomUUID()}`,
@@ -314,9 +316,16 @@ export async function runCliBackfill(
 				cursor,
 				sources: ["qvc", "shopch", "oa"],
 			},
-		}),
+		})),
 		writeProduct: (row) => writeProduct(sb, row),
 		writeBroadcast: (row) => writeBroadcast(sb, row),
+		reportTelemetryFailure: dependencies.reportTelemetryFailure ?? ((phase, error) => {
+			console.error(JSON.stringify({
+				event: "intelligence_foundation_backfill.telemetry_failure",
+				phase,
+				error: errorText(error),
+			}));
+		}),
 	});
 }
 

@@ -14,7 +14,7 @@ create table canonical_products (
 
 create table product_source_links (
   id uuid primary key default gen_random_uuid(),
-  canonical_product_id uuid not null references canonical_products(id) on delete cascade,
+  canonical_product_id uuid not null references canonical_products(id) on delete restrict,
   source_type text not null check (source_type in ('qvc','shopch','oa','discovery','research','internal_excel')),
   source_table text not null,
   source_record_id text not null,

@@ -4,6 +4,7 @@ import { buildEvidenceDraft, evidenceDedupeKey } from "../lib/intelligence/evide
 import {
 	createKnowledgeSnapshot,
 	upsertEvidence,
+	upsertEvidenceDetailed,
 } from "../lib/intelligence/repository";
 
 async function main(): Promise<void> {
@@ -62,7 +63,7 @@ const evidenceClient = {
 				evidenceCalls.push({ table, rows, options });
 				return {
 					select() {
-						return Promise.resolve({ data: [{ id: "evidence-1" }], error: null });
+						return Promise.resolve({ data: [{ id: "evidence-1", dedupe_key: evidenceDedupeKey(draft) }], error: null });
 					},
 				};
 			},
@@ -133,6 +134,60 @@ const duplicateEvidenceClient = {
 assert.deepEqual(
 	await upsertEvidence(duplicateEvidenceClient, [draft, draft]),
 	["existing-evidence-1", "existing-evidence-1"],
+);
+
+const concurrentKey = evidenceDedupeKey({ ...draft, predicate: "concurrent_predicate" });
+let concurrentQueries = 0;
+const concurrentEvidenceClient = {
+	from(table: string) {
+		assert.equal(table, "evidence_items");
+		concurrentQueries += 1;
+		if (concurrentQueries === 1) {
+			return {
+				upsert() {
+					return {
+						select(columns: string) {
+							assert.equal(columns, "id,dedupe_key");
+							// This is the actual RETURNING payload from an ignore-duplicate
+							// upsert: only the first key was durably inserted by us.
+							return Promise.resolve({
+								data: [{ id: "inserted-now", dedupe_key: evidenceDedupeKey(draft) }],
+								error: null,
+							});
+						},
+					};
+				},
+			};
+		}
+		return {
+			select(columns: string) {
+				assert.equal(columns, "id,dedupe_key");
+				return {
+					in(column: string, keys: string[]) {
+						assert.equal(column, "dedupe_key");
+						assert.deepEqual(keys.sort(), [evidenceDedupeKey(draft), concurrentKey].sort());
+						return Promise.resolve({
+							data: [
+								{ id: "inserted-now", dedupe_key: evidenceDedupeKey(draft) },
+								{ id: "won-concurrently", dedupe_key: concurrentKey },
+							],
+							error: null,
+						});
+					},
+				};
+			},
+		};
+	},
+} as unknown as SupabaseClient;
+
+const concurrentDraft = { ...draft, predicate: "concurrent_predicate" };
+const detailed = await upsertEvidenceDetailed(concurrentEvidenceClient, [draft, concurrentDraft, draft]);
+assert.deepEqual(detailed.ids, ["inserted-now", "won-concurrently", "inserted-now"]);
+assert.deepEqual(detailed.insertedDedupeKeys, [evidenceDedupeKey(draft)]);
+assert.deepEqual(
+	detailed.duplicateDedupeKeys,
+	[concurrentKey, evidenceDedupeKey(draft)],
+	"a concurrent conflict and repeated input are both truthfully counted as duplicates",
 );
 
 const snapshotCalls: Array<{ table: string; operation: string; payload?: unknown }> = [];

@@ -35,23 +35,59 @@ function evidenceRow(draft: EvidenceDraft) {
 	};
 }
 
-export async function upsertEvidence(
+/**
+ * The actual `RETURNING` rows from the ignore-duplicate upsert are the only
+ * reliable source of insertion counts: a pre-read can lose a concurrent race.
+ * Keys remain occurrence-based so repeated drafts are not accidentally
+ * reported as one new row.
+ */
+export interface EvidenceUpsertResult {
+	/** Resolved evidence IDs in the same order as the supplied drafts. */
+	ids: string[];
+	/** Input-key occurrences that this invocation actually inserted. */
+	insertedDedupeKeys: string[];
+	/** Input-key occurrences that were already present or conflicted. */
+	duplicateDedupeKeys: string[];
+}
+
+export async function upsertEvidenceDetailed(
 	sb: SupabaseClient,
 	drafts: EvidenceDraft[],
-): Promise<string[]> {
-	if (drafts.length === 0) return [];
+): Promise<EvidenceUpsertResult> {
+	if (drafts.length === 0) {
+		return { ids: [], insertedDedupeKeys: [], duplicateDedupeKeys: [] };
+	}
 
 	const rows = drafts.map(evidenceRow);
 	const dedupeKeys = rows.map((row) => row.dedupe_key);
-	const { error } = await sb
+	const { data: inserted, error } = await sb
 		.from("evidence_items")
 		.upsert(rows, {
 			onConflict: "dedupe_key",
 			ignoreDuplicates: true,
 		})
-		.select("id");
+		.select("id,dedupe_key");
 
 	if (error) throw new Error(`upsertEvidence failed: ${error.message}`);
+	const remainingInserted = new Map<string, number>();
+	for (const row of inserted ?? []) {
+		const key = typeof row.dedupe_key === "string" ? row.dedupe_key : "";
+		if (!key || !dedupeKeys.includes(key)) {
+			throw new Error("upsertEvidence returned an invalid dedupe key");
+		}
+		remainingInserted.set(key, (remainingInserted.get(key) ?? 0) + 1);
+	}
+	const insertedDedupeKeys: string[] = [];
+	const duplicateDedupeKeys: string[] = [];
+	for (const dedupeKey of dedupeKeys) {
+		const remaining = remainingInserted.get(dedupeKey) ?? 0;
+		if (remaining > 0) {
+			insertedDedupeKeys.push(dedupeKey);
+			remainingInserted.set(dedupeKey, remaining - 1);
+		} else {
+			duplicateDedupeKeys.push(dedupeKey);
+		}
+	}
 
 	const { data: resolved, error: resolveError } = await sb
 		.from("evidence_items")
@@ -60,11 +96,20 @@ export async function upsertEvidence(
 	if (resolveError) throw new Error(`upsertEvidence resolution failed: ${resolveError.message}`);
 
 	const idsByKey = new Map((resolved ?? []).map((row) => [String(row.dedupe_key), String(row.id)]));
-	return dedupeKeys.map((dedupeKey) => {
+	const ids = dedupeKeys.map((dedupeKey) => {
 		const id = idsByKey.get(dedupeKey);
 		if (!id) throw new Error(`upsertEvidence resolution missing id for dedupe key: ${dedupeKey}`);
 		return id;
 	});
+	return { ids, insertedDedupeKeys, duplicateDedupeKeys };
+}
+
+/** Backwards-compatible ID-only facade for existing consumers. */
+export async function upsertEvidence(
+	sb: SupabaseClient,
+	drafts: EvidenceDraft[],
+): Promise<string[]> {
+	return (await upsertEvidenceDetailed(sb, drafts)).ids;
 }
 
 function validateKnowledgeSnapshotItems(draft: KnowledgeSnapshotDraft): void {
