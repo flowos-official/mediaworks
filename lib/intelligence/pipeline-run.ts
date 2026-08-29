@@ -38,6 +38,7 @@ export function createPipelineRunRepository(
 					job_type: input.jobType,
 					external_run_id: input.externalRunId,
 					target_scope: input.targetScope,
+					counts: {},
 					status: "running",
 				})
 				.select("id")
@@ -95,7 +96,7 @@ export async function startPipelineRun(
 		try {
 			await repository.update(id, {
 				status,
-				...(Object.keys(nextCounts).length > 0 ? { counts: nextCounts } : {}),
+				counts: nextCounts,
 				finished_at: timestamp(),
 				...(error
 					? {

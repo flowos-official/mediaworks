@@ -1,5 +1,15 @@
 import assert from "node:assert/strict";
-import { startPipelineRun, type PipelineRunRepository } from "../lib/intelligence/pipeline-run";
+import {
+	createPipelineRunRepository,
+	startPipelineRun,
+	type PipelineRunRepository,
+} from "../lib/intelligence/pipeline-run";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+	audioPipelineOutcome,
+	archivePipelineOutcome,
+	discoveryPipelineCounts,
+} from "../lib/intelligence/pipeline-run-mapping";
 
 type Patch = Record<string, unknown>;
 
@@ -42,6 +52,94 @@ async function expectRejects(fn: () => Promise<unknown>, message: string) {
 }
 
 async function main() {
+	{
+		assert.deepEqual(discoveryPipelineCounts(5, 2), {
+			new: 2,
+			updated: 0,
+			duplicate: 3,
+			failed: 0,
+			processed: 5,
+		});
+		assert.deepEqual(discoveryPipelineCounts(2, 5), {
+			new: 2,
+			updated: 0,
+			duplicate: 0,
+			failed: 0,
+			processed: 2,
+		});
+		console.log("✓ discovery mapping records attempted rows and only safe duplicate counts");
+	}
+
+	{
+		assert.deepEqual(
+			archivePipelineOutcome({
+				processed: 2,
+				archived: 1,
+				queued: 0,
+				abandoned: 0,
+				deferred: 1,
+				failed_unsupported: 0,
+				stale_requeued: 1,
+				stale_abandoned: 2,
+			}, 0),
+			{
+				status: "partial",
+				counts: { new: 1, updated: 2, duplicate: 0, failed: 2, processed: 5 },
+			},
+		);
+		console.log("✓ archive mapping treats deferred and stale abandoned work as partial observed outcomes");
+	}
+
+	{
+		assert.deepEqual(
+			audioPipelineOutcome({
+				recovered: 1,
+				seeded: 3,
+				processed: 2,
+				done: 1,
+				queued: 0,
+				failed: 0,
+				skipped: 1,
+			}, 0),
+			{
+				status: "succeeded",
+				counts: { new: 4, updated: 1, duplicate: 1, failed: 0, processed: 6 },
+			},
+		);
+		console.log("✓ audio mapping includes seeded queue work in nonzero normalized counts");
+	}
+
+	{
+		let inserted: Record<string, unknown> | undefined;
+		let updated: Record<string, unknown> | undefined;
+		const supabase = {
+			from() {
+				return {
+					insert(payload: Record<string, unknown>) {
+						inserted = payload;
+						return {
+							select() {
+								return { single: async () => ({ data: { id: "adapter-run-1" }, error: null }) };
+							},
+						};
+					},
+					update(payload: Record<string, unknown>) {
+						updated = payload;
+						return { eq: async () => ({ error: null }) };
+					},
+				};
+			},
+		};
+		const handle = await startPipelineRun(
+			createPipelineRunRepository(supabase as unknown as SupabaseClient),
+			input,
+		);
+		assert.deepEqual(inserted?.counts, {});
+		await handle.fail("before_work", "failed before observing work");
+		assert.deepEqual(updated?.counts, {});
+		console.log("✓ adapter inserts and preserves empty observed counts on immediate failure");
+	}
+
 	{
 		const repository = new FakeRepository();
 		const handle = await startPipelineRun(repository, input);
@@ -120,6 +218,15 @@ async function main() {
 		await assert.rejects(() => handle.heartbeat({ processed: 1 }), /repository update failure/);
 		assert.deepEqual(repository.updates, []);
 		console.log("✓ update repository errors propagate without recording a false heartbeat");
+	}
+
+	{
+		const repository = new FakeRepository();
+		const handle = await startPipelineRun(repository, input);
+		await handle.heartbeat({ processed: 4, duplicate: 1 });
+		await handle.fail("source_failed", "all sources failed");
+		assert.deepEqual(repository.updates[1]?.patch.counts, { processed: 4, duplicate: 1 });
+		console.log("✓ failures retain counts observed before the terminal transition");
 	}
 }
 

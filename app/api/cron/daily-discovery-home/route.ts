@@ -17,6 +17,7 @@ import {
 import { getServiceClient } from "@/lib/supabase";
 import { DEFAULT_LEARNING_STATE, type LearningState } from "@/lib/discovery/types";
 import { createPipelineRunRepository, startPipelineRun } from "@/lib/intelligence/pipeline-run";
+import { discoveryPipelineCounts } from "@/lib/intelligence/pipeline-run-mapping";
 
 
 
@@ -276,13 +277,7 @@ export async function GET(req: NextRequest) {
 			producedCount: savedCount,
 			iterations: orchestrated.iterations,
 		});
-		const pipelineCounts = {
-			new: savedCount,
-			updated: 0,
-			duplicate: 0,
-			failed: 0,
-			processed: savedCount,
-		};
+		const pipelineCounts = discoveryPipelineCounts(batch.length, savedCount);
 		if (pipelineRun) {
 			await (pipelinePartial
 				? pipelineRun.partial(

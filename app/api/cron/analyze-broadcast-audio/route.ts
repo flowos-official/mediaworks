@@ -8,6 +8,7 @@ import {
   type QueuedAnalysisSlot,
 } from "@/lib/broadcast-intel/analyze-one";
 import { createPipelineRunRepository, startPipelineRun } from "@/lib/intelligence/pipeline-run";
+import { audioPipelineOutcome } from "@/lib/intelligence/pipeline-run-mapping";
 
 export const maxDuration = 300;
 
@@ -95,23 +96,17 @@ export async function GET(req: NextRequest) {
   }
 
   if (pipelineRun) {
-    const pipelineCounts = {
-      new: summary.done,
-      updated: summary.recovered + summary.queued,
-      duplicate: summary.skipped,
-      failed: summary.failed + preflightFailures,
-      processed: summary.processed,
-    };
-    if (pipelineCounts.failed > 0 || summary.queued > 0) {
+    const pipelineOutcome = audioPipelineOutcome(summary, preflightFailures);
+    if (pipelineOutcome.status === "partial") {
       await pipelineRun.partial(
-        pipelineCounts,
+        pipelineOutcome.counts,
         "audio_analysis_partial",
-        `${pipelineCounts.failed} failed and ${summary.queued} requeued audio analysis result(s)`,
+        `${pipelineOutcome.counts.failed} failed and ${summary.queued} requeued audio analysis result(s)`,
       ).catch((recordErr) => {
         console.warn("[analyze-broadcast-audio] pipeline run finish failed:", recordErr instanceof Error ? recordErr.message : String(recordErr));
       });
     } else {
-      await pipelineRun.succeed(pipelineCounts).catch((recordErr) => {
+      await pipelineRun.succeed(pipelineOutcome.counts).catch((recordErr) => {
         console.warn("[analyze-broadcast-audio] pipeline run finish failed:", recordErr instanceof Error ? recordErr.message : String(recordErr));
       });
     }

@@ -41,6 +41,7 @@
     "test:historical-ichiban-parser": "tsx scripts/test-historical-ichiban-parser.ts",
     "test:historical-rakuraku-parser": "tsx scripts/test-historical-rakuraku-parser.ts",
     "test:historical-crawl-alert": "tsx scripts/test-historical-crawl-alert.ts",
+    "test:historical-persist": "tsx scripts/test-historical-crawl-persist.ts",
     "test:og-image-extractor": "tsx scripts/test-og-image-extractor.ts",
     "test:ntv-image-extractor": "tsx scripts/test-ntv-image-extractor.ts",
     "test:oa-images-live": "tsx scripts/test-oa-images-live.ts",

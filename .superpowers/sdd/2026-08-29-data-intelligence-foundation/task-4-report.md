@@ -57,3 +57,53 @@ Executed successfully:
 ## Concerns
 
 No known blockers. The recorder is intentionally an operational mirror, so direct `data_pipeline_runs` database integration was not run; the task's required focused/relevant regressions and typecheck passed.
+
+---
+
+## Review fix round 1/5
+
+### Review findings addressed
+
+- Changed the unshipped `data_pipeline_runs.counts` default from the invented numeric-zero object to `{}`. The Supabase adapter now explicitly inserts `{}`, and every terminal update writes the currently observed count object, including a fresh failure before any work.
+- Added executable recorder contracts for adapter insert/fresh failure, known-count preservation before failure, discovery attempted-versus-saved counting, archive deferred/stale-abandoned partial outcomes, and audio seeded queue work.
+- Discovery routes now record `processed=batch.length`, `new=savedCount`, and `duplicate=max(0, batch.length-savedCount)` without changing session behavior.
+- Archive normalized outcomes now include `deferred` as unfinished/partial and include `stale_abandoned` in both failed and processed accounting.
+- Audio normalized outcomes now include seeded queue entries in `new` and processed accounting; queue selection remains unchanged.
+- Historical persistence now performs bounded (50-row) pre-upsert existence lookups, returns actual `inserted`/`updated` split counts, and the normalized historical route uses those values. Lookup failures are recorded as persistence errors and do not invent a split.
+- Daily broadcasts and all-source historical failures heartbeat their known counts before their required public `fail()` call.
+
+### TDD evidence
+
+- RED: adapter/fresh-failure test failed with `undefined !== {}`; schema test failed because the migration still contained the numeric-zero default.
+- GREEN: both passed after the migration and adapter/terminal count changes.
+- RED: mapping contract failed because `pipeline-run-mapping` did not exist; historical persistence contract failed because `__test.splitRowsByExistingKeys` was absent.
+- GREEN: mapping and historical persistence tests passed after the pure mapping module and bounded existence classification were implemented.
+
+### Additional files changed
+
+- `lib/intelligence/pipeline-run-mapping.ts`
+- `lib/historical-crawl/persist.ts`
+- `scripts/test-historical-crawl-persist.ts`
+- `scripts/test-intelligence-snapshot-schema.ts`
+- `supabase/migrations/20260829131000_intelligence_snapshots_runs.sql`
+
+### Exact verification run
+
+All commands exited 0:
+
+`npm run test:intelligence-pipeline-run` — recorder lifecycle, adapter empty counts, failure count preservation, discovery/archive/audio mappings passed.
+`npm run test:intelligence-snapshot-schema` — schema contract passed.
+`npm run test:historical-persist` — inserted/updated conflict split passed.
+`npm run test:pipeline-health` — passed.
+`npm run test:discovery-cron-budget` — passed.
+`npm run test:video-archive-deadline` — passed.
+`npm run test:broadcast-intel` — all six component checks passed.
+`npx tsc --noEmit` — passed.
+`git diff --check` — passed.
+
+### Review self-check
+
+- The migration is unshipped and was edited in place as required; no environment file changed.
+- Route HTTP bodies/statuses and existing discovery/historical run tables were not changed.
+- The public `PipelineRunCounts` numeric fields and public recorder signatures are unchanged.
+- The historical split is taken immediately before each upsert in bounded lookup requests. Concurrent writers between lookup and upsert remain a database race inherent to non-transactional client calls; the existing cron duplicate guard minimizes same-job overlap.

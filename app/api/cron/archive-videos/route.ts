@@ -5,6 +5,7 @@ import { archiveOne, type QueuedSlot, type ArchiveResult } from "@/lib/broadcast
 import { recoverStaleDownloading } from "@/lib/broadcasts/stale-downloading-recovery";
 import { reconcileArchiveCoverage } from "@/lib/broadcasts/archive-reconciliation";
 import { createPipelineRunRepository, startPipelineRun } from "@/lib/intelligence/pipeline-run";
+import { archivePipelineOutcome } from "@/lib/intelligence/pipeline-run-mapping";
 
 export const maxDuration = 300;
 
@@ -191,23 +192,17 @@ export async function GET(req: NextRequest) {
     console.log("[archive-videos]", JSON.stringify(result));
 
     if (pipelineRun) {
-      const pipelineCounts = {
-        new: summary.archived,
-        updated: summary.queued + summary.stale_requeued,
-        duplicate: 0,
-        failed: summary.abandoned + summary.failed_unsupported + preflightFailures,
-        processed: summary.processed,
-      };
-      if (pipelineCounts.failed > 0 || summary.queued > 0) {
+      const pipelineOutcome = archivePipelineOutcome(summary, preflightFailures);
+      if (pipelineOutcome.status === "partial") {
         await pipelineRun.partial(
-          pipelineCounts,
+          pipelineOutcome.counts,
           "archive_partial",
-          `${pipelineCounts.failed} failed and ${summary.queued} requeued archive result(s)`,
+          `${pipelineOutcome.counts.failed} failed, ${summary.queued} requeued, and ${summary.deferred} deferred archive result(s)`,
         ).catch((recordErr) => {
           console.warn("[archive-videos] pipeline run finish failed:", recordErr instanceof Error ? recordErr.message : String(recordErr));
         });
       } else {
-        await pipelineRun.succeed(pipelineCounts).catch((recordErr) => {
+        await pipelineRun.succeed(pipelineOutcome.counts).catch((recordErr) => {
           console.warn("[archive-videos] pipeline run finish failed:", recordErr instanceof Error ? recordErr.message : String(recordErr));
         });
       }

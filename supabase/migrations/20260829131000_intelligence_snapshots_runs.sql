@@ -54,7 +54,7 @@ create table data_pipeline_runs (
   status text not null check (status in ('queued','running','succeeded','partial','failed')),
   cursor_json jsonb,
   target_scope jsonb not null default '{}'::jsonb,
-  counts jsonb not null default '{"new":0,"updated":0,"duplicate":0,"failed":0}'::jsonb,
+  counts jsonb not null default '{}'::jsonb,
   started_at timestamptz not null default now(),
   heartbeat_at timestamptz,
   finished_at timestamptz,

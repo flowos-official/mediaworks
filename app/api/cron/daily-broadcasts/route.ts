@@ -366,6 +366,9 @@ export async function GET(req: NextRequest) {
 				console.warn("[cron daily-broadcasts] pipeline run finish failed:", recordErr instanceof Error ? recordErr.message : String(recordErr));
 			});
 		} else {
+			await pipelineRun.heartbeat(pipelineCounts).catch((recordErr) => {
+				console.warn("[cron daily-broadcasts] pipeline run count record failed:", recordErr instanceof Error ? recordErr.message : String(recordErr));
+			});
 			await pipelineRun.fail("source_failed", `${summary.totalErrors} source scrape and ${enrich.failed} product enrichment error(s)`).catch((recordErr) => {
 				console.warn("[cron daily-broadcasts] pipeline run finish failed:", recordErr instanceof Error ? recordErr.message : String(recordErr));
 			});

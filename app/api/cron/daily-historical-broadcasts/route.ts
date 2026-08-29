@@ -106,8 +106,8 @@ export async function GET(req: NextRequest) {
 			...(persistError ? { error: persistError } : {}),
 		});
 		const pipelineCounts = {
-			new: summary.persist.upserted,
-			updated: 0,
+			new: summary.persist.inserted,
+			updated: summary.persist.updated,
 			duplicate: summary.persist.skippedDuplicate,
 			failed: summary.persist.errors + channels.filter((channel) => !channel.ok).length,
 			processed: summary.totalRows,
@@ -126,6 +126,9 @@ export async function GET(req: NextRequest) {
 					console.warn("[cron daily-historical-broadcasts] pipeline run finish failed:", recordErr instanceof Error ? recordErr.message : String(recordErr));
 				});
 			} else {
+				await pipelineRun.heartbeat(pipelineCounts).catch((recordErr) => {
+					console.warn("[cron daily-historical-broadcasts] pipeline run count record failed:", recordErr instanceof Error ? recordErr.message : String(recordErr));
+				});
 				await pipelineRun.fail(
 					"crawl_failed",
 					persistError ?? "Historical broadcast crawl failed for all sources",
