@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { load } from "cheerio";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { IntelligenceReadiness } from "../lib/intelligence/readiness";
 
@@ -16,6 +17,7 @@ const copy = {
 	generatedAt: "集計時刻",
 	latestAttempt: "最新試行",
 	latestSuccess: "最新成功",
+	sourceDetail: "詳細",
 	statusLabel: "状態",
 	status: {
 		healthy: "正常",
@@ -40,7 +42,8 @@ const copy = {
 	failureColumns: {
 		source: "ソース",
 		startedAt: "発生時刻",
-		error: "内容",
+		errorCode: "エラーコード",
+		errorSummary: "概要",
 	},
 	noData: "—",
 	sourcesByKey: {
@@ -76,12 +79,12 @@ const readiness: IntelligenceReadiness = {
 	coverage: {
 		activeProducts: 10,
 		canonicalLinked: 8,
-		canonicalLinkPct: 80,
+		canonicalLinkPct: null,
 		categorizedActive: 5,
 		categoryPct: null,
 		archivedBroadcasts: 3,
 		analyzedBroadcasts: 1,
-		analysisPct: 33,
+		analysisPct: Number.NaN,
 		evidenceItems: 12,
 		insightSnapshots: 2,
 	},
@@ -89,6 +92,9 @@ const readiness: IntelligenceReadiness = {
 		{ category: "B: measured", total: 10, analyzed: 2, pct: 20 },
 		{ category: "C: lowest measured", total: 10, analyzed: 1, pct: 10 },
 		{ category: "A: no denominator", total: 0, analyzed: 0, pct: null },
+		{ category: "D: NaN", total: 10, analyzed: 0, pct: Number.NaN },
+		{ category: "E: positive infinity", total: 10, analyzed: 0, pct: Number.POSITIVE_INFINITY },
+		{ category: "F: negative infinity", total: 10, analyzed: 0, pct: Number.NEGATIVE_INFINITY },
 	],
 	failures: [
 		{
@@ -141,18 +147,75 @@ async function main() {
 		"An empty product selection board must not be interpreted as failed intelligence readiness.",
 	);
 
-	const { DataReadinessDashboard } = await import("../components/pipeline/DataReadinessDashboard");
+	const { DataReadinessDashboard, sortReadinessCategorySamples } = await import("../components/pipeline/DataReadinessDashboard");
+	const sortProbe = [
+		{ category: "Zulu finite", total: 10, analyzed: 2, pct: 20 },
+		{ category: "Beta NaN", total: 10, analyzed: 0, pct: Number.NaN },
+		{ category: "Gamma positive infinity", total: 10, analyzed: 0, pct: Number.POSITIVE_INFINITY },
+		{ category: "Alpha undefined", total: 0, analyzed: 0, pct: undefined },
+		{ category: "Delta negative infinity", total: 10, analyzed: 0, pct: Number.NEGATIVE_INFINITY },
+		{ category: "Epsilon null", total: 0, analyzed: 0, pct: null },
+		{ category: "Beta finite tie", total: 10, analyzed: 5, pct: 50 },
+		{ category: "Alpha finite tie", total: 10, analyzed: 5, pct: 50 },
+	] as unknown as IntelligenceReadiness["categorySamples"];
+	const sortProbeInputOrder = sortProbe.map((sample) => sample.category);
+	assert.deepEqual(
+		sortReadinessCategorySamples(sortProbe).map((sample) => sample.category),
+		[
+			"Alpha undefined",
+			"Beta NaN",
+			"Delta negative infinity",
+			"Epsilon null",
+			"Gamma positive infinity",
+			"Zulu finite",
+			"Alpha finite tie",
+			"Beta finite tie",
+		],
+		"Category sorting must put every insufficient percentage first, then finite percentages and deterministic category ties.",
+	);
+	assert.deepEqual(
+		sortProbe.map((sample) => sample.category),
+		sortProbeInputOrder,
+		"Category sorting must not mutate readiness props.",
+	);
 	const props = { readiness, copy, locale: "ja" } as Parameters<typeof DataReadinessDashboard>[0];
 	const markup = renderToStaticMarkup(DataReadinessDashboard(props));
+	const $ = load(markup);
+	const metricValue = (key: string) => {
+		const metric = $(`[data-readiness-metric="${key}"]`);
+		assert.equal(metric.length, 1, `Expected one rendered ${key} coverage metric.`);
+		return metric.find("[data-readiness-metric-value]").text();
+	};
 	assert.match(markup, /カテゴリ正規化/, "Coverage metrics must include category normalization.");
-	assert.match(markup, />—</, "Null coverage must render as an em dash, not zero percent.");
+	assert.equal(metricValue("canonical-link"), "—", "Null canonical-link coverage must render as an em dash, never 0%.");
+	assert.equal(metricValue("category"), "—", "Null category coverage must render as an em dash, never 0%.");
+	assert.equal(metricValue("broadcast-analysis"), "—", "NaN broadcast-analysis coverage must render as an em dash.");
+	assert.equal($("[data-readiness-category='D: NaN'] td").last().text(), "—", "NaN category coverage must render as an em dash.");
+	assert.equal($("[data-readiness-category='E: positive infinity'] td").last().text(), "—", "Positive infinite category coverage must render as an em dash.");
+	assert.equal($("[data-readiness-category='F: negative infinity'] td").last().text(), "—", "Negative infinite category coverage must render as an em dash.");
 	assert.match(markup, /aria-label="状態: 失敗"/, "Failed source status must have an accessible text label.");
+	assert.match(markup, /discovery\/home_shopping: daily \(26h tolerance\)\./, "Source cards must render readiness detail.");
+	assert.match(markup, /timeout/, "Failure rows must render a non-null error code.");
+	assert.match(markup, /audio worker timed out/, "Failure rows must render a non-null error summary.");
 	assert.ok(
 		markup.indexOf("A: no denominator") < markup.indexOf("C: lowest measured")
 			&& markup.indexOf("C: lowest measured") < markup.indexOf("B: measured"),
 		"Category samples must show insufficient coverage before measured percentages, then ascending percentage.",
 	);
 	assert.match(markup, /推薦、Research、台本の実行が0件でも/, "On-demand runs must be explained as normal.");
+
+	const emptyFieldMarkup = renderToStaticMarkup(DataReadinessDashboard({
+		...props,
+		readiness: {
+			...readiness,
+			sources: [{ ...readiness.sources[0], detail: "" }],
+			failures: [{ ...readiness.failures[0], errorCode: null, errorSummary: null }],
+		},
+	}));
+	const emptyFieldMarkupDocument = load(emptyFieldMarkup);
+	assert.equal(emptyFieldMarkupDocument("[data-readiness-source-detail]").text(), "—", "An empty source detail must use the safe empty fallback.");
+	assert.equal(emptyFieldMarkupDocument("[data-readiness-failure-code]").text(), "—", "A missing failure error code must use the safe empty fallback.");
+	assert.equal(emptyFieldMarkupDocument("[data-readiness-failure-summary]").text(), "—", "A missing failure error summary must use the safe empty fallback.");
 
 	const noFailuresMarkup = renderToStaticMarkup(DataReadinessDashboard({ ...props, readiness: { ...readiness, failures: [] } }));
 	assert.match(noFailuresMarkup, /最近の失敗はありません。/, "An empty failure list must render its truthful normal state.");

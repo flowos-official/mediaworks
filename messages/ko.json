@@ -357,6 +357,7 @@
       "generatedAt": "집계 시각",
       "latestAttempt": "최근 시도",
       "latestSuccess": "최근 성공",
+      "sourceDetail": "상세",
       "statusLabel": "상태",
       "status": {
         "healthy": "정상",
@@ -381,7 +382,8 @@
       "failureColumns": {
         "source": "소스",
         "startedAt": "발생 시각",
-        "error": "내용"
+        "errorCode": "오류 코드",
+        "errorSummary": "요약"
       },
       "noData": "—",
       "sourcesByKey": {

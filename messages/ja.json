@@ -357,6 +357,7 @@
       "generatedAt": "集計時刻",
       "latestAttempt": "最新試行",
       "latestSuccess": "最新成功",
+      "sourceDetail": "詳細",
       "statusLabel": "状態",
       "status": {
         "healthy": "正常",
@@ -381,7 +382,8 @@
       "failureColumns": {
         "source": "ソース",
         "startedAt": "発生時刻",
-        "error": "内容"
+        "errorCode": "エラーコード",
+        "errorSummary": "概要"
       },
       "noData": "—",
       "sourcesByKey": {

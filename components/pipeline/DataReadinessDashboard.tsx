@@ -12,6 +12,7 @@ export interface ReadinessDashboardCopy {
 	generatedAt: string;
 	latestAttempt: string;
 	latestSuccess: string;
+	sourceDetail: string;
 	statusLabel: string;
 	status: Record<ReadinessStatus, string>;
 	metric: {
@@ -31,7 +32,8 @@ export interface ReadinessDashboardCopy {
 	failureColumns: {
 		source: string;
 		startedAt: string;
-		error: string;
+		errorCode: string;
+		errorSummary: string;
 	};
 	noData: string;
 	sourcesByKey: Record<string, string>;
@@ -52,18 +54,24 @@ const STATUS_CLASS: Record<ReadinessStatus, string> = {
 	missing: "border-border bg-muted text-muted-foreground",
 };
 
+function isFinitePercentage(value: unknown): value is number {
+	return typeof value === "number" && Number.isFinite(value);
+}
+
 export function sortReadinessCategorySamples(samples: readonly CategorySample[]): CategorySample[] {
 	return [...samples].sort((left, right) => {
-		const leftInsufficient = left.pct === null;
-		const rightInsufficient = right.pct === null;
-		if (leftInsufficient !== rightInsufficient) return leftInsufficient ? -1 : 1;
-		if (left.pct !== null && right.pct !== null && left.pct !== right.pct) return left.pct - right.pct;
+		const leftPct = left.pct;
+		const rightPct = right.pct;
+		const leftFinite = isFinitePercentage(leftPct);
+		const rightFinite = isFinitePercentage(rightPct);
+		if (leftFinite !== rightFinite) return leftFinite ? 1 : -1;
+		if (leftFinite && rightFinite && leftPct !== rightPct) return leftPct - rightPct;
 		return left.category < right.category ? -1 : left.category > right.category ? 1 : 0;
 	});
 }
 
-function formatPercent(value: number | null, noData: string): string {
-	return value === null ? noData : `${value}%`;
+function formatPercent(value: unknown, noData: string): string {
+	return isFinitePercentage(value) ? `${value}%` : noData;
 }
 
 function formatDate(value: string | null, formatter: Intl.DateTimeFormat, noData: string): string {
@@ -71,19 +79,25 @@ function formatDate(value: string | null, formatter: Intl.DateTimeFormat, noData
 	return formatter.format(new Date(value));
 }
 
+function textOrNoData(value: string | null | undefined, noData: string): string {
+	return value?.trim() || noData;
+}
+
 function MetricCard({
+	metricKey,
 	label,
 	value,
 	detail,
 }: {
+	metricKey: string;
 	label: string;
 	value: string;
 	detail: string;
 }) {
 	return (
-		<article className="mw-panel min-w-0 p-3">
+		<article data-readiness-metric={metricKey} className="mw-panel min-w-0 p-3">
 			<h4 className="text-xs font-medium text-muted-foreground">{label}</h4>
-			<div className="mt-1 text-2xl font-semibold tabular-nums text-foreground">{value}</div>
+			<div data-readiness-metric-value className="mt-1 text-2xl font-semibold tabular-nums text-foreground">{value}</div>
 			<p className="mt-1 text-xs tabular-nums text-muted-foreground">{detail}</p>
 		</article>
 	);
@@ -179,6 +193,14 @@ export function DataReadinessDashboard({ readiness, copy, locale }: DataReadines
 										</dd>
 									</div>
 								</dl>
+								<dl className="mt-2 border-t border-border pt-2 text-xs">
+									<div className="space-y-0.5">
+										<dt className="text-muted-foreground">{copy.sourceDetail}</dt>
+										<dd data-readiness-source-detail className="break-words text-foreground">
+											{textOrNoData(source.detail, copy.noData)}
+										</dd>
+									</div>
+								</dl>
 							</article>
 						);
 					})}
@@ -191,7 +213,7 @@ export function DataReadinessDashboard({ readiness, copy, locale }: DataReadines
 				</h3>
 				<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
 					{metrics.map(({ key, ...metric }) => (
-						<MetricCard key={key} {...metric} />
+						<MetricCard key={key} metricKey={key} {...metric} />
 					))}
 				</div>
 			</section>
@@ -216,7 +238,7 @@ export function DataReadinessDashboard({ readiness, copy, locale }: DataReadines
 							</thead>
 							<tbody>
 								{categories.map((sample) => (
-									<tr key={sample.category} className="border-t border-border">
+									<tr key={sample.category} data-readiness-category={sample.category} className="border-t border-border">
 										<td className="px-3 py-2 font-medium text-foreground">{sample.category}</td>
 										<td className="px-3 py-2 text-right font-mono text-xs tabular-nums text-foreground">{formatNumber(sample.analyzed)}</td>
 										<td className="px-3 py-2 text-right font-mono text-xs tabular-nums text-muted-foreground">{formatNumber(sample.total)}</td>
@@ -237,13 +259,14 @@ export function DataReadinessDashboard({ readiness, copy, locale }: DataReadines
 					<p className="mw-panel px-4 py-3 text-sm text-muted-foreground">{copy.noFailures}</p>
 				) : (
 					<div className="mw-table-shell overflow-x-auto">
-						<table className="min-w-[560px] w-full text-sm">
+						<table className="min-w-[680px] w-full text-sm">
 							<caption className="sr-only">{copy.failures}</caption>
 							<thead className="bg-muted text-xs text-muted-foreground">
 								<tr>
 									<th scope="col" className="px-3 py-2 text-left font-medium">{copy.failureColumns.source}</th>
 									<th scope="col" className="px-3 py-2 text-left font-medium">{copy.failureColumns.startedAt}</th>
-									<th scope="col" className="px-3 py-2 text-left font-medium">{copy.failureColumns.error}</th>
+									<th scope="col" className="px-3 py-2 text-left font-medium">{copy.failureColumns.errorCode}</th>
+									<th scope="col" className="px-3 py-2 text-left font-medium">{copy.failureColumns.errorSummary}</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -253,7 +276,12 @@ export function DataReadinessDashboard({ readiness, copy, locale }: DataReadines
 										<td className="whitespace-nowrap px-3 py-2 font-mono text-xs tabular-nums text-muted-foreground">
 											{formatDate(failure.startedAt, dateFormatter, copy.noData)}
 										</td>
-										<td className="px-3 py-2 text-xs text-foreground">{failure.errorSummary ?? failure.errorCode ?? copy.noData}</td>
+										<td data-readiness-failure-code className="px-3 py-2 font-mono text-xs text-foreground">
+											{textOrNoData(failure.errorCode, copy.noData)}
+										</td>
+										<td data-readiness-failure-summary className="px-3 py-2 text-xs text-foreground">
+											{textOrNoData(failure.errorSummary, copy.noData)}
+										</td>
 									</tr>
 								))}
 							</tbody>

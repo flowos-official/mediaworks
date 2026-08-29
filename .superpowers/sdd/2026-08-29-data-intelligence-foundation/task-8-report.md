@@ -40,3 +40,38 @@
 ## Concerns
 
 No live loader call or server was started because the intelligence migrations remain unapplied. No environment files were changed.
+
+## Round 1 Fix Evidence
+
+### Root cause
+
+- The category comparator classified only `null` as insufficient. `NaN`, `Infinity`, `-Infinity`, and runtime `undefined` reached subtraction; a `NaN` comparator result is treated as equality and skipped the deterministic tie-break.
+- The percentage formatter handled only `null`, so non-finite values could render as `NaN%` or infinity text.
+- `source.detail` and `failure.errorCode` existed in `IntelligenceReadiness` but were not rendered; the failure table selected only one error field.
+
+### TDD evidence
+
+1. Added the sort probe before changing the comparator. RED output: `AssertionError [ERR_ASSERTION]: Category sorting must put every insufficient percentage first, then finite percentages and deterministic category ties.`
+2. Implemented a copied, finite-safe comparator. GREEN output: `PASS: pipeline readiness page structure`.
+3. Added production-render assertions for identifiable metric values, non-finite category cells, source detail, both failure fields, and empty fallbacks. RED output: `AssertionError [ERR_ASSERTION]: Expected one rendered canonical-link coverage metric.` with `0 !== 1`.
+4. Added the metric identifiers, finite-safe percentage formatter, source detail, separate error-code/summary cells, and localized copy. GREEN output: `PASS: pipeline readiness page structure`.
+
+### Round 1 files
+
+- `components/pipeline/DataReadinessDashboard.tsx`
+- `messages/ja.json`
+- `messages/ko.json`
+- `scripts/test-pipeline-readiness-view.ts`
+
+### Round 1 self-review
+
+- The comparator copies its input, treats `null`, `undefined`, and every non-finite percentage as insufficient, sorts those first, then finite percentages, and breaks all ties with locale-independent string comparisons.
+- Targeted rendered metric assertions prevent unrelated em dashes from satisfying null-coverage tests. The harness also verifies `NaN`, positive infinity, negative infinity, equal finite percentages, deterministic ties, and input-array nonmutation.
+- All source/failure fields now have visible labels or cells and safe `—` fallbacks. Server-component boundaries, direct concurrent loaders, timestamps, Kanban queries, semantics, and responsive table overflow remain unchanged.
+
+### Round 1 verification outputs
+
+- `npm run test:pipeline-readiness-view` — `PASS: pipeline readiness page structure`
+- `npm run check:i18n` — `OK — 1333 keys match`
+- `npx tsc --noEmit` — exit 0
+- `git diff --check` — exit 0
