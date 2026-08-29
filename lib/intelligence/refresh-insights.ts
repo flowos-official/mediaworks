@@ -127,7 +127,7 @@ export interface RefreshIntelligenceInsightsResult {
 export interface RefreshInsightsDependencies {
 	repository?: InsightRefreshRepository;
 	startPipelineRun?: () => Promise<PipelineRunHandle | null>;
-	reportTelemetryFailure?: (phase: InsightTelemetryPhase, error: unknown) => void;
+	reportTelemetryFailure?: (phase: InsightTelemetryPhase, error: unknown) => void | Promise<void>;
 }
 
 interface RefreshCandidate {
@@ -176,6 +176,14 @@ function cursorForEvidence(item: EvidenceItem): EvidenceScanCursor {
 		subjectId: item.subjectId,
 		evidenceId: item.id,
 	};
+}
+
+/** Negative means the evidence row sorts before the cursor in refresh order. */
+function compareEvidenceToCursor(item: EvidenceItem, cursor: EvidenceScanCursor): number {
+	return cursor.observedAt.localeCompare(item.observedAt)
+		|| item.subjectType.localeCompare(cursor.subjectType)
+		|| item.subjectId.localeCompare(cursor.subjectId)
+		|| item.id.localeCompare(cursor.evidenceId);
 }
 
 function parseScanState(value: unknown): EvidenceScanState {
@@ -543,10 +551,10 @@ export async function refreshIntelligenceInsights(
 	const reporter = dependencies.reportTelemetryFailure ?? ((phase: InsightTelemetryPhase, error: unknown) => {
 		console.warn(`[intelligence insights] pipeline run ${phase} failed:`, errorMessage(error));
 	});
-	const recordTelemetryFailure = (phase: InsightTelemetryPhase, error: unknown): void => {
+	const recordTelemetryFailure = async (phase: InsightTelemetryPhase, error: unknown): Promise<void> => {
 		telemetryFailures.push({ phase, error: errorMessage(error) });
 		try {
-			reporter(phase, error);
+			await Promise.resolve(reporter(phase, error));
 		} catch (reporterError) {
 			console.warn(`[intelligence insights] telemetry reporter failed during ${phase}:`, errorMessage(reporterError));
 		}
@@ -564,7 +572,7 @@ export async function refreshIntelligenceInsights(
 			},
 		)))();
 	} catch (error) {
-		recordTelemetryFailure("start", error);
+		await recordTelemetryFailure("start", error);
 	}
 
 	let counts = observedCounts({ created: 0, duplicate: 0, failed: 0 });
@@ -573,7 +581,7 @@ export async function refreshIntelligenceInsights(
 		try {
 			await run.heartbeat(counts);
 		} catch (error) {
-			recordTelemetryFailure("heartbeat", error);
+			await recordTelemetryFailure("heartbeat", error);
 		}
 	};
 
@@ -582,11 +590,12 @@ export async function refreshIntelligenceInsights(
 		try {
 			loadedState = await repository.loadScanState(run?.id ?? null);
 		} catch (error) {
-			recordTelemetryFailure("cursor-load", error);
+			await recordTelemetryFailure("cursor-load", error);
 			throw error;
 		}
 		let cursor = loadedState.position;
-		const canWrap = loadedState.position !== null;
+		const originalResumeBoundary = loadedState.position;
+		const canWrap = originalResumeBoundary !== null;
 		let scanWrapped = false;
 		let scanFinishedCycle = false;
 		let scannedEvidenceRows = 0;
@@ -606,14 +615,28 @@ export async function refreshIntelligenceInsights(
 					scanWrapped = true;
 					continue;
 				}
-				cursor = null;
+				cursor = scanWrapped ? originalResumeBoundary : null;
+				scanFinishedCycle = true;
+				break;
+			}
+			let cycleBoundaryReached = false;
+			let pageEvidence = page.evidence;
+			if (scanWrapped && originalResumeBoundary) {
+				const boundaryIndex = pageEvidence.findIndex((item) => compareEvidenceToCursor(item, originalResumeBoundary) >= 0);
+				if (boundaryIndex >= 0) {
+					pageEvidence = pageEvidence.slice(0, boundaryIndex);
+					cycleBoundaryReached = true;
+				}
+			}
+			if (pageEvidence.length === 0 && cycleBoundaryReached) {
+				cursor = originalResumeBoundary;
 				scanFinishedCycle = true;
 				break;
 			}
 
 			const potentialProducts = new Set<string>();
 			const potentialBroadcasts = new Set<string>();
-			for (const item of page.evidence) {
+			for (const item of pageEvidence) {
 				if (seenEvidenceSubjects.has(evidenceSubjectKey(item))) continue;
 				if (item.subjectType === "broadcast") potentialBroadcasts.add(item.subjectId);
 				else potentialProducts.add(item.subjectId);
@@ -631,7 +654,7 @@ export async function refreshIntelligenceInsights(
 				latestCutoffs.set(key, loadedLatest.get(key) ?? null);
 			}
 
-			for (const item of page.evidence) {
+			for (const item of pageEvidence) {
 				cursor = cursorForEvidence(item);
 				scannedEvidenceRows += 1;
 				const rawSubjectKey = evidenceSubjectKey(item);
@@ -682,30 +705,36 @@ export async function refreshIntelligenceInsights(
 				if (scannedEvidenceRows >= MAX_INSIGHT_SCAN_ROWS) break;
 			}
 
-			if (stoppedAtLimit || scannedEvidenceRows >= MAX_INSIGHT_SCAN_ROWS) break;
+			if (stoppedAtLimit) break;
+			if (cycleBoundaryReached) {
+				cursor = originalResumeBoundary;
+				scanFinishedCycle = true;
+				break;
+			}
+			if (scannedEvidenceRows >= MAX_INSIGHT_SCAN_ROWS) break;
 			if (page.reachedEnd) {
 				if (cursor && canWrap && !scanWrapped) {
 					cursor = null;
 					scanWrapped = true;
 					continue;
 				}
-				cursor = null;
+				cursor = scanWrapped ? originalResumeBoundary : null;
 				scanFinishedCycle = true;
 				break;
 			}
 		}
 
 		const scanTruncated = scannedEvidenceRows >= MAX_INSIGHT_SCAN_ROWS && !scanFinishedCycle && !stoppedAtLimit;
-		const scanState: EvidenceScanState = { v: 1, position: scanFinishedCycle ? null : cursor };
+		const scanState: EvidenceScanState = { v: 1, position: scanFinishedCycle ? originalResumeBoundary : cursor };
 		let cursorPersisted = false;
 		if (!run) {
-			recordTelemetryFailure("cursor-save", new Error("pipeline run unavailable; insight scan cursor was not persisted"));
+			await recordTelemetryFailure("cursor-save", new Error("pipeline run unavailable; insight scan cursor was not persisted"));
 		} else {
 			try {
 				await repository.saveScanState(run.id, scanState);
 				cursorPersisted = true;
 			} catch (error) {
-				recordTelemetryFailure("cursor-save", error);
+				await recordTelemetryFailure("cursor-save", error);
 			}
 		}
 
@@ -757,7 +786,7 @@ export async function refreshIntelligenceInsights(
 					await run.succeed(counts);
 				}
 			} catch (error) {
-				recordTelemetryFailure("settle", error);
+				await recordTelemetryFailure("settle", error);
 			}
 		}
 
@@ -786,7 +815,7 @@ export async function refreshIntelligenceInsights(
 			try {
 				await run.fail("insight_refresh_failed", errorMessage(error));
 			} catch (settleError) {
-				recordTelemetryFailure("settle", settleError);
+				await recordTelemetryFailure("settle", settleError);
 			}
 		}
 		throw error;

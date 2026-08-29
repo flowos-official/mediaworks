@@ -263,10 +263,12 @@ function memoryRefreshRepository(input: {
 	evidence: EvidenceItem[];
 	latest?: Map<string, string>;
 	categories?: Map<string, string | null>;
+	state?: EvidenceScanState;
 }) {
-	let state: EvidenceScanState = INITIAL_INSIGHT_SCAN_STATE;
+	let state: EvidenceScanState = input.state ?? INITIAL_INSIGHT_SCAN_STATE;
 	const writes: Array<{ subjectType: string; subjectId: string; evidenceIds: string[] }> = [];
 	const loadedBroadcastGroups: string[][] = [];
+	const latestRequests: string[][] = [];
 	const latest = input.latest ?? new Map<string, string>();
 	const categories = input.categories ?? new Map<string, string | null>();
 	const repo = repository({
@@ -281,6 +283,7 @@ function memoryRefreshRepository(input: {
 			return new Map(ids.map((id) => [id, categories.get(id) ?? null]));
 		},
 		async loadLatestInsightCutoffs(subjects: Array<{ subjectType: "product" | "category"; subjectId: string }>) {
+			latestRequests.push(subjects.map((subject) => subject.subjectId));
 			return new Map(subjects.flatMap((subject) => {
 				const value = latest.get(`${subject.subjectType}\u0000${subject.subjectId}`);
 				return value ? [[`${subject.subjectType}\u0000${subject.subjectId}`, value] as const] : [];
@@ -303,7 +306,7 @@ function memoryRefreshRepository(input: {
 			return `written-${draft.subjectId}`;
 		},
 	});
-	return { repository: repo, writes, loadedBroadcastGroups, latest, get state() { return state; } };
+	return { repository: repo, writes, loadedBroadcastGroups, latestRequests, latest, get state() { return state; } };
 }
 
 async function testRefreshRound1(): Promise<void> {
@@ -585,6 +588,88 @@ async function testRefreshRound1(): Promise<void> {
 	}
 
 	{
+		const rows = [
+			evidence({ id: "cycle-a", subjectId: "cycle-a", predicate: "price_jpy", value: 1_000, observedAt: "2026-08-28T03:00:00.000Z" }),
+			evidence({ id: "cycle-b", subjectId: "cycle-b", predicate: "price_jpy", value: 1_000, observedAt: "2026-08-28T02:00:00.000Z" }),
+			evidence({ id: "cycle-c", subjectId: "cycle-c", predicate: "price_jpy", value: 1_000, observedAt: "2026-08-28T01:00:00.000Z" }),
+		];
+		const boundary: EvidenceScanState = { v: 1, position: {
+			observedAt: rows[1].observedAt,
+			subjectType: "product",
+			subjectId: rows[1].subjectId,
+			evidenceId: rows[1].id,
+		} };
+		const latest = new Map(rows.map((item) => [`product\u0000${item.subjectId}`, CUTOFF]));
+		const memory = memoryRefreshRepository({ evidence: rows, latest, state: boundary });
+		const first = await refreshIntelligenceInsights({} as never, CUTOFF, 200, {
+			repository: memory.repository,
+			startPipelineRun: async () => pipelineHandle([]),
+		});
+		assert.equal(first.scanWrapped, true);
+		assert.equal(first.scannedEvidenceRows, 2, "resuming at B scans tail C then wrapped head A, never B/C again");
+		assert.deepEqual(memory.latestRequests.flat(), ["cycle-c", "cycle-a"]);
+		assert.deepEqual(memory.state, boundary, "a no-eligible full cycle retains its original safe resume boundary");
+
+		const inserted = evidence({ id: "cycle-new", subjectId: "cycle-new", predicate: "price_jpy", value: 2_000, observedAt: "2026-08-28T04:00:00.000Z" });
+		rows.unshift(inserted);
+		const second = await refreshIntelligenceInsights({} as never, CUTOFF, 1, {
+			repository: memory.repository,
+			startPipelineRun: async () => pipelineHandle([]),
+		});
+		assert.deepEqual(memory.writes.map((write) => write.subjectId), ["cycle-new"], "the retained boundary still discovers a newly inserted head on the next wrap");
+		assert.equal(second.scanWrapped, true);
+	}
+
+	{
+		const boundary: EvidenceScanCursor = {
+			observedAt: "2026-08-28T02:00:00.000Z",
+			subjectType: "internal_product",
+			subjectId: "middle",
+			evidenceId: "deleted-boundary",
+		};
+		const headNewer = evidence({ id: "mixed-newer", subjectId: "mixed-newer", predicate: "price_jpy", value: 1_000, observedAt: "2026-08-28T03:00:00.000Z" });
+		const headSameTime = evidence({ id: "mixed-broadcast", subjectType: "broadcast", subjectId: "mixed-broadcast", predicate: "segment_pattern", value: [], observedAt: boundary.observedAt });
+		const headSameSubject = evidence({ id: "aaa-before-deleted", subjectType: "internal_product", subjectId: boundary.subjectId, predicate: "gross_profit_jpy", value: 1_000, evidenceClass: "internal_input", observedAt: boundary.observedAt });
+		const tailSameType = evidence({ id: "mixed-internal-z", subjectType: "internal_product", subjectId: "z-last", predicate: "gross_profit_jpy", value: 1_000, evidenceClass: "internal_input", observedAt: boundary.observedAt });
+		const tailLaterType = evidence({ id: "mixed-product", subjectId: "mixed-product", predicate: "price_jpy", value: 1_000, observedAt: boundary.observedAt });
+		const latest = new Map([
+			["product\u0000mixed-newer", CUTOFF],
+			["product\u0000middle", CUTOFF],
+			["product\u0000z-last", CUTOFF],
+			["product\u0000mixed-product", CUTOFF],
+		]);
+		let calls = 0;
+		const latestRequests: string[] = [];
+		const repo = repository({
+			async loadScanState() { return { v: 1, position: boundary }; },
+			async scanActiveEvidencePage(_cutoff: string, cursor: EvidenceScanCursor | null) {
+				calls += 1;
+				return cursor
+					? { evidence: [tailSameType, tailLaterType], reachedEnd: true }
+					: { evidence: [headNewer, headSameTime, headSameSubject, tailSameType, tailLaterType], reachedEnd: true };
+			},
+			async resolveBroadcastCategories(ids: string[]) { return new Map(ids.map((id) => [id, null])); },
+			async loadLatestInsightCutoffs(subjects: Array<{ subjectId: string }>) {
+				latestRequests.push(...subjects.map((subject) => subject.subjectId));
+				return new Map(subjects.flatMap((subject) => {
+					const productCutoff = latest.get(`product\u0000${subject.subjectId}`);
+					return productCutoff ? [[`product\u0000${subject.subjectId}`, productCutoff] as const] : [];
+				}));
+			},
+		});
+		let saved: EvidenceScanState | undefined;
+		repo.saveScanState = async (_runId, state) => { saved = state; };
+		const result = await refreshIntelligenceInsights({} as never, CUTOFF, 200, {
+			repository: repo,
+			startPipelineRun: async () => pipelineHandle([]),
+		});
+		assert.equal(calls, 2);
+		assert.equal(result.scannedEvidenceRows, 5, "a deleted boundary is crossed by tuple order without rescanning the tail");
+		assert.deepEqual(latestRequests, ["z-last", "mixed-product", "mixed-newer", "middle"]);
+		assert.deepEqual(saved, { v: 1, position: boundary }, "mixed-direction tuple comparison retains the deleted resume boundary after a full cycle");
+	}
+
+	{
 		const rows = Array.from({ length: 205 }, (_, index) => evidence({
 			id: `bounded-${String(index).padStart(3, "0")}`,
 			subjectId: `bounded-${String(index).padStart(3, "0")}`,
@@ -620,6 +705,37 @@ async function testRefreshRound1(): Promise<void> {
 		assert.equal(memory.state.position?.evidenceId, rows[9_999].id);
 		assert.equal(memory.writes.length, 0);
 		assert.deepEqual(result.counts, { new: 0, updated: 0, duplicate: 10_000, failed: 0, processed: 10_000 });
+	}
+
+	{
+		const rows = Array.from({ length: 10_001 }, (_, index) => evidence({
+			id: `wrapped-cap-${String(index).padStart(5, "0")}`,
+			subjectId: `wrapped-cap-${String(index).padStart(5, "0")}`,
+			predicate: "price_jpy",
+			value: 1_000,
+			observedAt: new Date(Date.parse("2026-08-28T23:59:59.000Z") - index).toISOString(),
+		}));
+		const boundaryRow = rows[5_000];
+		const latest = new Map(rows.map((item) => [`product\u0000${item.subjectId}`, CUTOFF]));
+		const memory = memoryRefreshRepository({
+			evidence: rows,
+			latest,
+			state: { v: 1, position: {
+				observedAt: boundaryRow.observedAt,
+				subjectType: "product",
+				subjectId: boundaryRow.subjectId,
+				evidenceId: boundaryRow.id,
+			} },
+		});
+		const result = await refreshIntelligenceInsights({} as never, CUTOFF, 200, {
+			repository: memory.repository,
+			startPipelineRun: async () => pipelineHandle([]),
+		});
+		const requestedSubjects = memory.latestRequests.flat();
+		assert.equal(result.scannedEvidenceRows, 10_000);
+		assert.equal(requestedSubjects.length, 10_000);
+		assert.equal(new Set(requestedSubjects).size, 10_000, "the 10,000-row allowance contains only unique rows across a wrap");
+		assert.equal(memory.state.position?.evidenceId, rows[4_999].id);
 	}
 
 	{
@@ -697,13 +813,22 @@ async function testRefreshRound1(): Promise<void> {
 		const row = evidence({ id: "telemetry-product", subjectId: "telemetry-product", predicate: "price_jpy", value: 5_000, observedAt: "2026-08-28T00:00:00.000Z" });
 		const originalWarn = console.warn;
 		const fallbackWarnings: string[] = [];
+		const reportedPhases: string[] = [];
+		const unhandledRejections: unknown[] = [];
+		const rejectReporter = async (phase: string): Promise<void> => {
+			reportedPhases.push(phase);
+			await Promise.resolve();
+			throw new Error(`async reporter unavailable during ${phase}`);
+		};
+		const onUnhandledRejection = (reason: unknown): void => { unhandledRejections.push(reason); };
+		process.on("unhandledRejection", onUnhandledRejection);
 		console.warn = (...values: unknown[]) => { fallbackWarnings.push(values.map(String).join(" ")); };
 		try {
 			const startFailure = memoryRefreshRepository({ evidence: [row] });
 			const startResult = await refreshIntelligenceInsights({} as never, CUTOFF, 1, {
 				repository: startFailure.repository,
 				startPipelineRun: async () => { throw new Error("start unavailable"); },
-				reportTelemetryFailure: () => { throw new Error("reporter unavailable"); },
+				reportTelemetryFailure: rejectReporter,
 			});
 			assert.equal(startResult.productSnapshots, 1);
 			assert.equal(startResult.cursorPersisted, false);
@@ -720,7 +845,7 @@ async function testRefreshRound1(): Promise<void> {
 					async succeed() { throw new Error("terminal unavailable"); },
 					async partial() { throw new Error("terminal unavailable"); },
 				}),
-				reportTelemetryFailure: () => { throw new Error("reporter unavailable"); },
+				reportTelemetryFailure: rejectReporter,
 			});
 			assert.equal(telemetryResult.productSnapshots, 1, "throwing telemetry and reporter paths never replace the completed data write");
 			assert.equal(telemetryResult.cursorPersisted, false);
@@ -739,13 +864,19 @@ async function testRefreshRound1(): Promise<void> {
 						async heartbeat() { throw new Error("heartbeat unavailable"); },
 						async fail() { throw new Error("terminal unavailable"); },
 					}),
-					reportTelemetryFailure: () => { throw new Error("reporter unavailable"); },
+					reportTelemetryFailure: rejectReporter,
 				}),
 				/cursor state corrupt/,
 				"throwing heartbeat, terminal telemetry, and reporter paths never replace the primary data error",
 			);
+			await new Promise<void>((resolve) => setImmediate(resolve));
+			for (const phase of ["start", "heartbeat", "cursor-save", "settle", "cursor-load"]) {
+				assert.ok(reportedPhases.includes(phase), `async rejection coverage did not reach ${phase}`);
+			}
+			assert.deepEqual(unhandledRejections, [], "async telemetry reporter rejections are awaited and contained");
 			assert.ok(fallbackWarnings.length >= 1, "throwing telemetry reporters are isolated and fall back to diagnostics");
 		} finally {
+			process.off("unhandledRejection", onUnhandledRejection);
 			console.warn = originalWarn;
 		}
 	}
