@@ -49,6 +49,7 @@ next-env.d.ts
 
 # Claude Code harness — team-shared files (agents/skills/commands/hooks/settings.json/README)
 # are tracked. Worktree state and personal overrides stay local.
+.worktrees/
 .claude/worktrees/
 .claude/settings.local.json
 .claude/projects/
