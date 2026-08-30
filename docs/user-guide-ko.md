@@ -362,7 +362,7 @@ npm run backfill:intelligence -- --since=2026-08-01 --limit=200
 npm run backfill:intelligence -- --since=2026-08-01 --limit=200 --apply
 ```
 
-한 번의 실행은 source별 최대 200행으로 제한한다. 출력의 `nextCursor`가 문자열이면 같은 `--since`, `--limit`과 함께 정확히 다시 전달한다. `nextCursor`가 `null`일 때 해당 범위가 끝난다.
+한 번의 실행은 source별 200행이 기본값이며, `--limit` 은 최대 2,000행까지 지정할 수 있다. 출력의 `nextCursor`가 문자열이면 같은 `--since`, `--limit`과 함께 정확히 다시 전달한다. `nextCursor`가 `null`일 때 해당 범위가 끝난다.
 
 ```bash
 npm run backfill:intelligence -- --since=2026-08-01 --limit=200 --cursor='<nextCursor>' --apply
@@ -381,8 +381,19 @@ npm run verify:intelligence-foundation
 | 상태 | 의미 |
 | --- | --- |
 | 정상 | 최근 성공 실행이 source별 허용 시간 안에 있음 |
-| 오래됨 | 성공 기록은 있지만 허용 시간보다 오래됨 |
-| 실패 | 가장 최근 시도가 대기·실행 중·부분 완료·실패 상태임. 이전 성공으로 가리지 않음 |
-| 실행 기록 없음 | 새 정규화 run이 아직 없거나 해당 작업을 아직 실행하지 않음 |
+| 일부 저하 | 최근 시도가 부분 완료. 동작은 하지만 확인이 필요함 |
+| 실행 중 | 최근 시도가 진행 중이고 heartbeat가 최신임 |
+| 기한 초과 | 성공 기록은 있지만 허용 시간보다 오래됨 |
+| 실패 | 최근 시도가 실패했거나, 30분 넘게 heartbeat가 없는 실행 중 상태. 이전 성공으로 가리지 않음 |
+| 미실행 | 새 정규화 run이 아직 없거나 해당 작업을 아직 실행하지 않음 |
+
+근거의 중복 키 정의를 바꾼 경우에는 다음 백필 전에 한 번 재계산을 실행한다. 실행하지 않으면 같은 사실이 새 행으로 중복 적재된다. 쓰기 없이 차이를 확인한 뒤 `--apply` 를 붙인다.
+
+```bash
+npm run rekey:intelligence-evidence
+npm run rekey:intelligence-evidence -- --apply
+```
+
+인사이트 갱신은 JST 05:00 크론으로 자동 실행된다. 위 백필은 과거 데이터를 채우거나 장애에서 복구할 때 쓰는 수동 작업이다.
 
 분모가 없는 비율은 `0%`가 아니라 `—`로 표시한다. 추천, Research, 취급 상품 선택, 대본이 0건이어도 아직 요청하지 않은 상태라면 파이프라인 실패가 아니다.

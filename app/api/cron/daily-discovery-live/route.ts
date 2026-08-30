@@ -8,6 +8,7 @@ import { applyHashtagMentionBoost } from "@/lib/discovery/hashtag-mention-boost"
 import { clampLiveBoosts } from "@/lib/discovery/live-boost-clamp";
 import { runStage1 } from "@/lib/discovery/orchestrator";
 import { OptionalStageTracker, runOptionalStage } from "@/lib/discovery/cron-budget";
+import { linkDiscoverySessionProducts } from "@/lib/intelligence/link-discovery-products";
 import {
 	attachPlanToSession,
 	createSession,
@@ -240,6 +241,29 @@ export async function GET(req: NextRequest) {
 		}));
 		const savedCount = await saveDiscoveredProducts(sessionId, batch, {
 			categoryEnrichmentDeadlineMs: startedAt + SAVE_FINALIZE_DEADLINE_MS,
+		});
+
+		// Give the candidates this session just produced a canonical identity and
+		// evidence. Until now `product_source_links` was written only by the
+		// manual CLI backfill, while the readiness denominator is the newest
+		// discovery session — which this cron replaces every night. That pinned
+		// canonical-link and category coverage at 0% no matter how much evidence
+		// existed. Optional by design: identity is telemetry-grade, and losing it
+		// must never cost a night's candidates.
+		await runOptionalStage({
+			label: `${CONTEXT}:canonical-link`,
+			startedAtMs: startedAt,
+			deadlineMs: SAVE_FINALIZE_DEADLINE_MS,
+			minSaveBudgetMs: OPTIONAL_STAGE_MIN_SAVE_BUDGET_MS,
+			fallback: null,
+			task: async () => {
+				const linked = await linkDiscoverySessionProducts(getServiceClient(), sessionId, {
+					deadlineAtMs: startedAt + SAVE_FINALIZE_DEADLINE_MS,
+				});
+				console.log(`[cron ${CONTEXT}] canonical link`, JSON.stringify(linked));
+				return null;
+			},
+			onOutcome: stages.record,
 		});
 
 		const partial = savedCount < TARGET_COUNT;

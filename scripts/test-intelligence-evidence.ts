@@ -344,6 +344,45 @@ await assert.rejects(
 	/cleanup failed/,
 );
 
+{
+	// The same instant, spelled three ways. Postgres stores one value for all of
+	// them, so hashing the raw string made a re-run of the same backfill mint a
+	// duplicate — and selectActiveEvidence keeps every row at the newest
+	// timestamp, so both then counted.
+	const base = {
+		subjectType: "product" as const,
+		subjectId: "product-1",
+		predicate: "price_jpy",
+		value: 1_200,
+		valueState: "known" as const,
+		evidenceClass: "source_claim" as const,
+		sourceType: "discovery",
+		sourceTable: "discovered_products",
+		sourceRecordId: "row-1",
+		confidence: 1,
+	};
+	const spellings = ["2026-08-29T00:00:00+00:00", "2026-08-29T00:00:00.000Z", "2026-08-29T00:00:00Z"];
+	const keys = new Set(spellings.map((observedAt) => evidenceDedupeKey({ ...base, observedAt })));
+	assert.equal(keys.size, 1, "one instant spelled three ways is one fact");
+
+	// unit and evidence class are part of a fact's identity. The repository
+	// upserts with ignoreDuplicates, so a collision here silently drops the
+	// later draft and hands its caller the earlier row's id.
+	const jpy = evidenceDedupeKey({ ...base, observedAt: spellings[0], unit: "JPY" });
+	const usd = evidenceDedupeKey({ ...base, observedAt: spellings[0], unit: "USD" });
+	assert.notEqual(jpy, usd, "the same number in different units is not the same fact");
+
+	const verified = evidenceDedupeKey({ ...base, observedAt: spellings[0], evidenceClass: "verified" });
+	const proxy = evidenceDedupeKey({ ...base, observedAt: spellings[0], evidenceClass: "proxy" });
+	assert.notEqual(verified, proxy, "a measurement and a proxy signal must never collapse into one row");
+
+	assert.equal(
+		evidenceDedupeKey({ ...base, observedAt: spellings[0] }),
+		evidenceDedupeKey({ ...base, observedAt: spellings[0], unit: undefined }),
+		"an absent unit is stable rather than a third variant",
+	);
+}
+
 console.log("PASS: intelligence evidence contracts");
 }
 

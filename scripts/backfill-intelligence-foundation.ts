@@ -24,6 +24,11 @@ import {
 	type FoundationWriteOutcome,
 } from "../lib/intelligence/backfill";
 import { upsertEvidenceDetailed } from "../lib/intelligence/repository";
+// Identity resolution moved to lib so the discovery crons resolve it the same
+// way this CLI does; re-exported because the smoke test reaches for it here.
+import { createCanonicalProductRepository } from "../lib/intelligence/link-discovery-products";
+
+export { createCanonicalProductRepository as canonicalRepository };
 import { createPipelineRunRepository, startPipelineRun, type PipelineRunHandle } from "../lib/intelligence/pipeline-run";
 import { getServiceClient } from "../lib/supabase";
 
@@ -173,78 +178,6 @@ async function loadCachedCategories(
 	return result;
 }
 
-export function canonicalRepository(sb: SupabaseClient) {
-	return {
-		async findExactSourceLink(row: DiscoveredProductBackfillRow) {
-			const { data, error } = await sb
-				.from("product_source_links")
-				.select("canonical_product_id")
-				.eq("source_type", PRODUCT_SOURCE_TYPE)
-				.eq("source_table", PRODUCT_SOURCE_TABLE)
-				.eq("source_record_id", row.id)
-				.maybeSingle();
-			if (error) throw new Error(`product source-link lookup failed: ${error.message}`);
-			return data?.canonical_product_id ? { canonicalProductId: String(data.canonical_product_id) } : null;
-		},
-		async insertCanonical(row: DiscoveredProductBackfillRow) {
-			const displayName = row.name?.trim();
-			if (!displayName) throw new Error(`cannot create a canonical product for ${row.id}: product name is missing`);
-			const { data, error } = await sb
-				.from("canonical_products")
-				.insert({
-					display_name: displayName,
-					normalized_category: row.normalizedCategory ?? null,
-					attributes: { source_table: PRODUCT_SOURCE_TABLE, source_record_id: row.id },
-				})
-				.select("id")
-				.single();
-			if (error) throw new Error(`canonical product insert failed: ${error.message}`);
-			if (!data?.id) throw new Error("canonical product insert returned no id");
-			return String(data.id);
-		},
-		async insertExactSourceLink(input: { canonicalProductId: string; row: DiscoveredProductBackfillRow }) {
-			const displayName = input.row.name?.trim();
-			if (!displayName) throw new Error(`cannot link a canonical product for ${input.row.id}: product name is missing`);
-			const { error } = await sb.from("product_source_links").insert({
-				canonical_product_id: input.canonicalProductId,
-				source_type: PRODUCT_SOURCE_TYPE,
-				source_table: PRODUCT_SOURCE_TABLE,
-				source_record_id: input.row.id,
-				source_product_id: null,
-				raw_name: displayName,
-				match_method: "exact_id",
-				confidence: 1,
-				confirmed: false,
-			});
-			if (error) throw new Error(`product source-link insert failed: ${error.message}`);
-		},
-		async deleteCanonical(canonicalProductId: string) {
-			const { error } = await sb.from("canonical_products").delete().eq("id", canonicalProductId);
-			if (error) throw new Error(`orphan canonical cleanup failed: ${error.message}`);
-		},
-		async repairCanonicalCategory(canonicalProductId: string, normalizedCategory: string) {
-			const { data: current, error: readError } = await sb
-				.from("canonical_products")
-				.select("id,normalized_category")
-				.eq("id", canonicalProductId)
-				.maybeSingle();
-			if (readError) throw new Error(`canonical category read failed: ${readError.message}`);
-			if (!current?.id) throw new Error(`canonical category read returned no product for ${canonicalProductId}`);
-			const currentCategory = typeof current.normalized_category === "string" ? current.normalized_category : null;
-			if (currentCategory?.trim()) return false;
-			let update = sb
-				.from("canonical_products")
-				.update({ normalized_category: normalizedCategory })
-				.eq("id", canonicalProductId);
-			update = currentCategory === null
-				? update.is("normalized_category", null)
-				: update.eq("normalized_category", currentCategory);
-			const { data, error } = await update.select("id");
-			if (error) throw new Error(`canonical category update failed: ${error.message}`);
-			return (data ?? []).length > 0;
-		},
-	};
-}
 
 async function upsertEvidenceWithCounts(
 	sb: SupabaseClient,
@@ -261,7 +194,7 @@ async function writeProduct(
 	sb: SupabaseClient,
 	row: DiscoveredProductBackfillRow,
 ): Promise<FoundationWriteOutcome> {
-	const resolved = await resolveExactCanonicalProduct(canonicalRepository(sb), row);
+	const resolved = await resolveExactCanonicalProduct(createCanonicalProductRepository(sb), row);
 	const evidence = await upsertEvidenceWithCounts(
 		sb,
 		mapDiscoveredProductEvidence({ ...row, canonicalProductId: resolved.canonicalProductId }),

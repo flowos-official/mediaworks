@@ -2,6 +2,7 @@
  * Local drain — the actual backfill path.
  * Usage: npm run drain:broadcast-analysis -- --limit=40 [--category=家電] [--channel=shopch]
  *        …--reset=cold_storage   requeue slots abandoned for that reason first
+ *                                (requires --category or --channel)
  *
  * The cron cannot do this: at 100-200s per slot inside a 300s function it
  * clears 2-4 per run.
@@ -9,7 +10,7 @@
 import { getServiceClient } from "@/lib/supabase";
 import { analyzeOne, MAX_ATTEMPTS, type QueuedAnalysisSlot } from "@/lib/broadcast-intel/analyze-one";
 import { recoverStaleAnalysis, resetAnalysisError, seedAnalysisQueue } from "@/lib/broadcast-intel/queue";
-import { buildDrainAnalysisScope, parseDrainCategory } from "@/lib/broadcast-intel/drain-scope";
+import { assertResettableScope, buildDrainAnalysisScope, parseDrainCategory } from "@/lib/broadcast-intel/drain-scope";
 import type { AnalysisErrorCode } from "@/lib/broadcast-intel/error-codes";
 
 /** Consecutive failed/requeued slots before the drain aborts. A dead Gemini
@@ -59,6 +60,7 @@ async function main(): Promise<void> {
 		if (!(RESETTABLE as readonly string[]).includes(resetArg)) {
 			throw new Error(`--reset must be one of ${RESETTABLE.join(", ")}; got "${resetArg}"`);
 		}
+		assertResettableScope(scope, resetArg);
 		const n = await resetAnalysisError(resetArg as AnalysisErrorCode, scope);
 		console.log(`[drain] reset ${n} slot(s) from ${resetArg} back to pending`);
 	}

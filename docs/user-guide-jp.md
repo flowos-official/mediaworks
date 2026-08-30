@@ -248,7 +248,7 @@ npm run backfill:intelligence -- --since=2026-08-01 --limit=200
 npm run backfill:intelligence -- --since=2026-08-01 --limit=200 --apply
 ```
 
-1回の実行はsourceごとに最大200行です。出力の `nextCursor` が文字列の場合は、同じ `--since` と `--limit` にその値をそのまま渡して再開します。`nextCursor` が `null` になれば、その期間の処理は完了です。
+1回の実行はsourceごとに200行が既定で、`--limit` は最大2,000行まで指定できます。出力の `nextCursor` が文字列の場合は、同じ `--since` と `--limit` にその値をそのまま渡して再開します。`nextCursor` が `null` になれば、その期間の処理は完了です。
 
 ```bash
 npm run backfill:intelligence -- --since=2026-08-01 --limit=200 --cursor='<nextCursor>' --apply
@@ -267,8 +267,19 @@ npm run verify:intelligence-foundation
 | 状態 | 意味 |
 | --- | --- |
 | 正常 | 最新の成功実行がsource別の許容時間内にある |
-| 古い | 成功履歴はあるが許容時間を超えている |
-| 失敗 | 最新試行が待機中・実行中・部分完了・失敗の状態。過去の成功では隠さない |
-| 実行履歴なし | 新しい正規化runがない、またはその処理をまだ実行していない |
+| 一部劣化 | 最新試行が部分完了。処理は動いているが確認が要る |
+| 実行中 | 最新試行が進行中で、heartbeatが新しい |
+| 期限超過 | 成功履歴はあるが許容時間を超えている |
+| 失敗 | 最新試行が失敗、または30分以上heartbeatのない実行中。過去の成功では隠さない |
+| 未実行 | 新しい正規化runがない、またはその処理をまだ実行していない |
+
+根拠の重複キー定義を変更した場合は、次のバックフィルの前に一度だけ再計算を実行します。実行しないと、同じ事実が新しい行として二重に入ります。書き込みなしで差分を確認してから `--apply` を付けます。
+
+```bash
+npm run rekey:intelligence-evidence
+npm run rekey:intelligence-evidence -- --apply
+```
+
+インサイト更新はJST 05:00の定期実行で自動的に動きます。上のバックフィルは、過去データを取り込むときや障害から復旧するときの手動操作です。
 
 分母がない割合は `0%` ではなく `—` と表示します。推薦、Research、取扱商品選定、台本が0件でも、まだ依頼されていないだけならパイプライン障害ではありません。
