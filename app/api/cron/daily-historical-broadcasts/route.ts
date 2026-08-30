@@ -33,16 +33,31 @@ export function historicalBroadcastPipelineCounts(input: {
 	};
 }
 
+/**
+ * A row that could not be classified as inserted-vs-updated was still upserted.
+ * `unclassified` only rises when the auxiliary existence lookup fails, so this
+ * is a loss of telemetry precision, not of data — the business rows are in the
+ * table and `historical_crawl_runs` rightly records `completed`.
+ *
+ * Reporting it as `failed` therefore made the two mirrors contradict each other
+ * over the same execution. The pipeline row is a projection of the domain row
+ * and must never be worse than it, so this can only downgrade a `completed`
+ * crawl to `partial`; a genuinely failed crawl keeps its own status and
+ * message.
+ */
 export function historicalBroadcastClassificationOutcome(input: {
 	counts: ReturnType<typeof historicalBroadcastPipelineCounts>;
 	unclassified: number;
 	classificationError?: string;
+	/** `running` cannot reach here — the crawl has finished by settle time. */
+	domainStatus?: "completed" | "partial" | "failed" | "running";
 }) {
 	if (input.unclassified <= 0) return null;
+	if (input.domainStatus !== undefined && input.domainStatus !== "completed") return null;
 	return {
-		status: "failed" as const,
+		status: "partial" as const,
 		counts: input.counts,
-		errorCode: "persist_classification_failed",
+		errorCode: "persist_classification_unavailable",
 		errorSummary: `${input.unclassified} persisted row(s) could not be classified as inserted or updated: ${input.classificationError ?? "classification unavailable"}`,
 	};
 }
@@ -150,17 +165,16 @@ export async function GET(req: NextRequest) {
 			counts: pipelineCounts,
 			unclassified: summary.persist.unclassified,
 			classificationError: summary.persist.classificationError,
+			domainStatus: status,
 		});
 		await settlePipelineRunBestEffort(
 			pipelineRun,
 			async (run) => {
 			if (classificationOutcome) {
-				await failPipelineRunWithKnownCounts(
-					run,
-					classificationOutcome.counts,
+				await run.partial(
+					classificationOutcome.counts as Parameters<typeof run.partial>[0],
 					classificationOutcome.errorCode,
 					classificationOutcome.errorSummary,
-					reportPipelineRunError,
 				);
 			} else if (status === "completed") {
 				await run.succeed(pipelineCounts as Parameters<typeof run.succeed>[0]);

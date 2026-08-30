@@ -1,4 +1,5 @@
 // lib/auth/require-user.ts
+import { timingSafeEqual } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import type { SupabaseClient, User } from '@supabase/supabase-js';
 import { getServerClient } from '@/lib/supabase/server';
@@ -37,8 +38,22 @@ export async function requireUser(allowed: Role[]): Promise<RequireUserResult> {
  * triggers (analyze -> synthesize, enrich -> worker). Reuses CRON_SECRET to
  * avoid introducing a new env var.
  */
-export function hasInternalSecret(req: Request): boolean {
+export function hasInternalSecret(req: Pick<Request, 'headers'>): boolean {
   const secret = process.env.CRON_SECRET;
   if (!secret) return false;
-  return req.headers.get('authorization') === `Bearer ${secret}`;
+  return timingSafeMatches(req.headers.get('authorization') ?? '', `Bearer ${secret}`);
+}
+
+/**
+ * Compare in constant time so a wrong header cannot be refined one byte at a
+ * time from response timing. Length is compared first because timingSafeEqual
+ * throws on a mismatch, and the length of a bearer token is not the secret.
+ */
+function timingSafeMatches(candidate: string, expected: string): boolean {
+  const candidateBytes = Buffer.from(candidate);
+  const expectedBytes = Buffer.from(expected);
+  return (
+    candidateBytes.length === expectedBytes.length &&
+    timingSafeEqual(candidateBytes, expectedBytes)
+  );
 }

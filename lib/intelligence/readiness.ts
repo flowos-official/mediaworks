@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-export type ReadinessStatus = "healthy" | "stale" | "failed" | "missing";
+export type ReadinessStatus = "healthy" | "degraded" | "running" | "stale" | "failed" | "missing";
 
 export interface IntelligenceReadiness {
 	generatedAt: string;
@@ -45,11 +45,12 @@ interface PipelineRunRow {
 	external_run_id: string | null;
 	status: string;
 	started_at: string;
+	heartbeat_at: string | null;
 	finished_at: string | null;
 	error_code: string | null;
 }
 
-const PIPELINE_RUN_COLUMNS = "id,source_type,job_type,external_run_id,status,started_at,finished_at,error_code";
+const PIPELINE_RUN_COLUMNS = "id,source_type,job_type,external_run_id,status,started_at,heartbeat_at,finished_at,error_code";
 
 interface SourceLinkRow {
 	id: string;
@@ -99,15 +100,38 @@ export function percent(numerator: number, denominator: number): number | null {
 	return Math.round((Math.max(0, numerator) / denominator) * 100);
 }
 
-/** A newest non-successful attempt is intentionally never masked by an older success. */
+/**
+ * A run is considered alive while its heartbeat is fresh. Past this it is
+ * treated as orphaned — Vercel killed the function at `maxDuration` and nothing
+ * ever wrote a terminal status — and reported as failed rather than as work
+ * still in progress. Matches `recoverStaleAnalysis`'s 30-minute threshold.
+ */
+export const ORPHANED_RUN_AFTER_MS = 30 * 60_000;
+
+/**
+ * A newest non-successful attempt is intentionally never masked by an older
+ * success. That intent was right; the vocabulary was too narrow. Collapsing
+ * every non-`succeeded` status into `failed` meant a `partial` run — which
+ * after the mapping fix means genuinely degraded, and before it meant nothing
+ * at all — was indistinguishable from an outage, and an in-flight run looked
+ * like one too.
+ */
 export function classifyReadiness(input: {
 	latestAttemptAt: string | null;
 	latestSuccessAt: string | null;
 	latestStatus: string | null;
+	latestHeartbeatAt?: string | null;
 	maxAgeMs: number | null;
 	nowMs: number;
 }): ReadinessStatus {
 	if (!input.latestAttemptAt && !input.latestSuccessAt) return "missing";
+
+	if (input.latestStatus === "running" || input.latestStatus === "queued") {
+		const aliveSince = Date.parse(input.latestHeartbeatAt ?? input.latestAttemptAt ?? "");
+		if (Number.isFinite(aliveSince) && input.nowMs - aliveSince <= ORPHANED_RUN_AFTER_MS) return "running";
+		return "failed";
+	}
+	if (input.latestStatus === "partial") return "degraded";
 	if (input.latestStatus !== "succeeded" || !input.latestAttemptAt || !input.latestSuccessAt) return "failed";
 
 	const attemptMs = Date.parse(input.latestAttemptAt);
@@ -250,8 +274,11 @@ export function createIntelligenceReadinessRepository(sb: SupabaseClient): Intel
 		async loadRecentFailures(limit) {
 			const { data, error } = await sb
 				.from("data_pipeline_runs")
-				.select("source_type,job_type,error_code,started_at")
-				.eq("status", "failed")
+				.select("source_type,job_type,status,error_code,started_at")
+				// A degraded run carries the error code an operator needs. Narrowing
+				// the mapping alone would have left `partial` out of this table
+				// entirely, which is how a red badge ended up beside an empty list.
+				.in("status", ["failed", "partial"])
 				.order("started_at", { ascending: false })
 				.limit(limit);
 			if (error) asError("recent pipeline failures", error);
@@ -328,9 +355,15 @@ interface ActiveProduct {
 	canonicalProductId: string | null;
 }
 
-function sourceDetail(source: ReadinessSource, status: ReadinessStatus): string {
+/**
+ * A red badge with only a cadence beside it tells an operator nothing about
+ * why. `error_code` is a string this codebase chooses, so it is safe to surface
+ * here — unlike `error_summary`, which is revoked at the database.
+ */
+function sourceDetail(source: ReadinessSource, status: ReadinessStatus, errorCode: string | null): string {
 	if (status === "missing") return `${source.sourceType}/${source.jobType}: no recorded attempt (${source.cadence}).`;
-	return `${source.sourceType}/${source.jobType}: ${source.cadence}.`;
+	const reason = status !== "healthy" && status !== "running" && errorCode?.trim() ? ` — ${errorCode.trim()}` : "";
+	return `${source.sourceType}/${source.jobType}: ${source.cadence}.${reason}`;
 }
 
 export async function loadIntelligenceReadiness(
@@ -354,10 +387,17 @@ export async function loadIntelligenceReadiness(
 			latestAttemptAt,
 			latestSuccessAt,
 			latestStatus: runs.latestAttempt?.status ?? null,
+			latestHeartbeatAt: runs.latestAttempt?.heartbeat_at ?? null,
 			maxAgeMs: source.maxAgeMs,
 			nowMs,
 		});
-		return { key: source.key, latestAttemptAt, latestSuccessAt, status, detail: sourceDetail(source, status) };
+		return {
+			key: source.key,
+			latestAttemptAt,
+			latestSuccessAt,
+			status,
+			detail: sourceDetail(source, status, runs.latestAttempt?.error_code ?? null),
+		};
 	});
 
 	const discoveryRunIds = uniqueNonEmpty([

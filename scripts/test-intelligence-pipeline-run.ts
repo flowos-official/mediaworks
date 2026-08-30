@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
 	createPipelineRunRepository,
+	reapOrphanedPipelineRuns,
 	startPipelineRun,
 	type PipelineRunRepository,
 } from "../lib/intelligence/pipeline-run";
@@ -10,6 +11,14 @@ import {
 	archivePipelineOutcome,
 	discoveryPipelineCounts,
 } from "../lib/intelligence/pipeline-run-mapping";
+
+/** The narrow slice of the PostgREST builder the orphan sweep actually uses. */
+interface SweepBuilder {
+	update(payload: Record<string, unknown>): SweepBuilder;
+	in(column: string, values: unknown[]): SweepBuilder;
+	or(expression: string): SweepBuilder;
+	select(): Promise<{ data: Array<{ id: string }> | null; error: { message: string } | null }>;
+}
 
 type Patch = Record<string, unknown>;
 
@@ -84,10 +93,29 @@ async function main() {
 			}, 0),
 			{
 				status: "partial",
-				counts: { new: 1, updated: 2, duplicate: 0, failed: 2, processed: 5 },
+				// stale_requeued returns to the queue and may be drained again by
+				// this same run, so it counts as an update, never as processed work.
+				counts: { new: 1, updated: 2, duplicate: 0, failed: 2, processed: 4 },
 			},
 		);
-		console.log("✓ archive mapping treats deferred and stale abandoned work as partial observed outcomes");
+		assert.deepEqual(
+			archivePipelineOutcome({
+				processed: 3,
+				archived: 1,
+				queued: 2,
+				abandoned: 0,
+				deferred: 4,
+				failed_unsupported: 0,
+				stale_requeued: 0,
+				stale_abandoned: 0,
+			}, 0),
+			{
+				status: "succeeded",
+				counts: { new: 1, updated: 6, duplicate: 0, failed: 0, processed: 3 },
+			},
+			"deferred is the normal outcome for a slot with no video and queued is ordinary backpressure — neither degrades a run",
+		);
+		console.log("✓ archive mapping downgrades only on real failures, and counts requeued work once");
 	}
 
 	{
@@ -102,11 +130,22 @@ async function main() {
 				skipped: 1,
 			}, 0),
 			{
+				// Seeding and stale recovery hand their slots to the drain loop, so
+				// counting them as processed counted the same slot twice; only
+				// `done` is new output.
 				status: "succeeded",
-				counts: { new: 4, updated: 1, duplicate: 1, failed: 0, processed: 6 },
+				counts: { new: 1, updated: 4, duplicate: 1, failed: 0, processed: 2 },
 			},
 		);
-		console.log("✓ audio mapping includes seeded queue work in nonzero normalized counts");
+		assert.deepEqual(
+			audioPipelineOutcome({ recovered: 0, seeded: 0, processed: 1, done: 0, queued: 1, failed: 0, skipped: 0 }, 0),
+			{
+				status: "succeeded",
+				counts: { new: 0, updated: 1, duplicate: 0, failed: 0, processed: 1 },
+			},
+			"a slot waiting its turn in the queue is not a degraded run",
+		);
+		console.log("✓ audio mapping counts each slot once and downgrades only on real failures");
 	}
 
 	{
@@ -227,6 +266,55 @@ async function main() {
 		await handle.fail("source_failed", "all sources failed");
 		assert.deepEqual(repository.updates[1]?.patch.counts, { processed: 4, duplicate: 1 });
 		console.log("✓ failures retain counts observed before the terminal transition");
+
+	{
+		// A function killed at maxDuration leaves `running` behind forever. Those
+		// rows are not merely untidy: the insight refresh resumes from the newest
+		// run carrying a cursor, and the duplicate-guard trigger treats a live run
+		// as holding the slot.
+		let updatePayload: Record<string, unknown> | undefined;
+		let statusFilter: unknown[] = [];
+		let orFilter = "";
+		const sweeper = {
+			from() {
+				const builder: SweepBuilder = {
+					update(payload) { updatePayload = payload; return builder; },
+					in(_column, values) { statusFilter = values; return builder; },
+					or(expression) { orFilter = expression; return builder; },
+					select: async () => ({ data: [{ id: "orphan-1" }, { id: "orphan-2" }], error: null }),
+				};
+				return builder;
+			},
+		};
+		const now = new Date("2026-08-30T12:00:00.000Z");
+		const reaped = await reapOrphanedPipelineRuns(sweeper as unknown as SupabaseClient, now);
+		assert.equal(reaped, 2);
+		assert.deepEqual(statusFilter, ["running", "queued"], "only unsettled runs are swept");
+		assert.equal(updatePayload?.status, "failed");
+		assert.equal(updatePayload?.error_code, "orphaned");
+		assert.equal(updatePayload?.finished_at, now.toISOString(), "a swept run gets a terminal timestamp so it stops looking in-flight");
+		const cutoff = new Date(now.getTime() - 30 * 60_000).toISOString();
+		assert.ok(orFilter.includes(`heartbeat_at.lt.${cutoff}`), "a run that beat recently is left alone");
+		assert.ok(orFilter.includes("heartbeat_at.is.null"), "a run that never beat falls back to its start time");
+
+		const failing = {
+			from() {
+				const builder: SweepBuilder = {
+					update: () => builder,
+					in: () => builder,
+					or: () => builder,
+					select: async () => ({ data: null, error: { message: "sweep unavailable" } }),
+				};
+				return builder;
+			},
+		};
+		await assert.rejects(
+			() => reapOrphanedPipelineRuns(failing as unknown as SupabaseClient, now),
+			/sweep unavailable/,
+			"the sweep surfaces its own failure so the caller can decide to carry on",
+		);
+		console.log("✓ orphan sweep settles unheartbeated runs and reports its own failures");
+	}
 	}
 }
 

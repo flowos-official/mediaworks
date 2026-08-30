@@ -12,6 +12,9 @@ const ALLOWED = [
 	"lib/broadcast-intel/persist.ts",
 	"scripts/test-broadcast-intel-guard.ts",
 	"scripts/test-broadcast-intel-live.ts",
+	// Names the table only to say what must NOT cross into evidence_items: it
+	// pins the evidence predicate whitelist so the verbatim half stays here.
+	"scripts/test-intelligence-evidence-predicates.ts",
 	"scripts/check-migrations.ts",
 	"docs/superpowers/specs/2026-08-24-broadcast-selling-language-design.md",
 	"docs/superpowers/plans/2026-08-24-broadcast-selling-language.md",

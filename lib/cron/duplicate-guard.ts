@@ -104,5 +104,5 @@ export async function waitForBlockingRun(
 /** True when an insert was refused by the duplicate-run trigger. */
 export function isDuplicateRunError(err: unknown): boolean {
 	const message = err instanceof Error ? err.message : String(err ?? "");
-	return /duplicate (crawl|discovery) invocation/i.test(message);
+	return /duplicate (crawl|discovery|pipeline) invocation/i.test(message);
 }

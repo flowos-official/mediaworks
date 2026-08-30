@@ -48,6 +48,10 @@ type CategorySample = IntelligenceReadiness["categorySamples"][number];
 
 const STATUS_CLASS: Record<ReadinessStatus, string> = {
 	healthy: "border-emerald-600/30 bg-emerald-600/10 text-emerald-700 dark:text-emerald-300",
+	// Degraded shares the amber tier with stale: the job ran and produced, but
+	// something in it needs looking at. Only an outage earns red.
+	degraded: "border-amber-600/30 bg-amber-600/10 text-amber-700 dark:text-amber-300",
+	running: "border-sky-600/30 bg-sky-600/10 text-sky-700 dark:text-sky-300",
 	stale: "border-amber-600/30 bg-amber-600/10 text-amber-700 dark:text-amber-300",
 	failed: "border-red-600/30 bg-red-600/10 text-red-700 dark:text-red-300",
 	missing: "border-border bg-muted text-muted-foreground",

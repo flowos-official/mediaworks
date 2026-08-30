@@ -17,10 +17,11 @@ function pipelineRun(input: {
 	id: string;
 	sourceType: string;
 	jobType: string;
-	status: "succeeded" | "partial" | "failed" | "running";
+	status: "succeeded" | "partial" | "failed" | "running" | "queued";
 	hoursAgo: number;
 	externalRunId?: string | null;
 	errorCode?: string | null;
+	heartbeatHoursAgo?: number;
 }) {
 	return {
 		id: input.id,
@@ -29,6 +30,7 @@ function pipelineRun(input: {
 		external_run_id: input.externalRunId ?? `external:${input.id}`,
 		status: input.status,
 		started_at: iso(input.hoursAgo),
+		heartbeat_at: input.heartbeatHoursAgo === undefined ? null : iso(input.heartbeatHoursAgo),
 		finished_at: input.status === "running" ? null : iso(Math.max(0, input.hoursAgo - 0.01)),
 		error_code: input.errorCode ?? null,
 	};
@@ -225,7 +227,15 @@ async function run(): Promise<void> {
 	assert.equal(classifyReadiness({ latestAttemptAt: iso(27), latestSuccessAt: iso(27), latestStatus: "succeeded", maxAgeMs: 26 * 3_600_000, nowMs: classifierNow }), "stale");
 	assert.equal(classifyReadiness({ latestAttemptAt: iso(26), latestSuccessAt: iso(26), latestStatus: "succeeded", maxAgeMs: 26 * 3_600_000, nowMs: classifierNow }), "healthy", "the cutoff is inclusive");
 	assert.equal(classifyReadiness({ latestAttemptAt: iso(1), latestSuccessAt: iso(5), latestStatus: "failed", maxAgeMs: 26 * 3_600_000, nowMs: classifierNow }), "failed", "a latest failure stays failed despite a recent older success");
-	assert.equal(classifyReadiness({ latestAttemptAt: iso(1), latestSuccessAt: iso(5), latestStatus: "partial", maxAgeMs: 26 * 3_600_000, nowMs: classifierNow }), "failed", "a partial latest attempt is not healthy");
+	// `partial` now means genuinely degraded rather than merely busy, so it gets
+	// its own state. Folding it into `failed` put a red badge on healthy runs —
+	// seven of the archive job's last nine, each with zero failures — beside an
+	// empty failure table, which is how a signal stops being read.
+	assert.equal(classifyReadiness({ latestAttemptAt: iso(1), latestSuccessAt: iso(5), latestStatus: "partial", maxAgeMs: 26 * 3_600_000, nowMs: classifierNow }), "degraded", "a partial latest attempt is degraded, not an outage");
+	assert.equal(classifyReadiness({ latestAttemptAt: iso(0.01), latestSuccessAt: iso(5), latestStatus: "running", latestHeartbeatAt: iso(0.01), maxAgeMs: 26 * 3_600_000, nowMs: classifierNow }), "running", "a live run is in flight, not failed");
+	assert.equal(classifyReadiness({ latestAttemptAt: iso(2), latestSuccessAt: iso(5), latestStatus: "running", latestHeartbeatAt: iso(2), maxAgeMs: 26 * 3_600_000, nowMs: classifierNow }), "failed", "a run whose heartbeat went quiet was killed, and says so");
+	assert.equal(classifyReadiness({ latestAttemptAt: iso(0.01), latestSuccessAt: iso(5), latestStatus: "running", latestHeartbeatAt: null, maxAgeMs: 26 * 3_600_000, nowMs: classifierNow }), "running", "a run that has not beaten yet falls back to its start time");
+	assert.equal(classifyReadiness({ latestAttemptAt: iso(2), latestSuccessAt: iso(5), latestStatus: "queued", latestHeartbeatAt: null, maxAgeMs: 26 * 3_600_000, nowMs: classifierNow }), "failed", "a queued run that never started is orphaned on the same threshold");
 	assert.equal(classifyReadiness({ latestAttemptAt: null, latestSuccessAt: null, latestStatus: null, maxAgeMs: 26 * 3_600_000, nowMs: classifierNow }), "missing");
 	assert.equal(classifyReadiness({ latestAttemptAt: new Date(classifierNow + 1_000).toISOString(), latestSuccessAt: new Date(classifierNow + 1_000).toISOString(), latestStatus: "succeeded", maxAgeMs: 26 * 3_600_000, nowMs: classifierNow }), "failed", "future clock skew is never fresh success");
 	assert.equal(classifyReadiness({ latestAttemptAt: new Date(classifierNow - 20 * HOUR).toISOString(), latestSuccessAt: new Date(classifierNow - 20 * HOUR).toISOString(), latestStatus: "succeeded", maxAgeMs: 20 * HOUR, nowMs: classifierNow }), "healthy", "the twice-daily OA cutoff is inclusive at 20 hours");
@@ -239,7 +249,9 @@ async function run(): Promise<void> {
 	assert.equal(liveSource?.latestAttemptAt, iso(1));
 	assert.equal(liveSource?.latestSuccessAt, iso(4.99), "the latest successful run remains available for the active-product denominator");
 	assert.equal(readiness.sources.find((source) => source.key === "discovery_home_shopping")?.status, "healthy", "a newer unrelated Discovery job type cannot leak into home-shopping telemetry");
-	assert.equal(readiness.sources.find((source) => source.key === "broadcast_audio_analysis")?.status, "failed", "partial attempts are not healthy");
+	const audioSource = readiness.sources.find((source) => source.key === "broadcast_audio_analysis");
+	assert.equal(audioSource?.status, "degraded", "a partial attempt is degraded, not healthy and not an outage");
+	assert.match(audioSource?.detail ?? "", /partial/, "a non-healthy source carries its error code, so the badge says why");
 	assert.equal(readiness.sources.find((source) => source.key === "intelligence_foundation_backfill")?.status, "healthy", "on-demand backfill does not become stale merely because it is not scheduled");
 	assert.deepEqual(readiness.coverage, {
 		activeProducts: 5,
@@ -302,7 +314,9 @@ async function run(): Promise<void> {
 		NOW,
 	);
 	assert.equal(oaMissed.sources.find((source) => source.key === "historical_broadcast_crawl")?.status, "stale", "a missed second OA invocation is stale immediately after 20 hours");
-	for (const status of ["partial", "failed"] as const) {
+	// The rule an older success never masks a newer non-success still holds; what
+	// changed is that the newer non-success now says which kind it is.
+	for (const [status, expected] of [["partial", "degraded"], ["failed", "failed"]] as const) {
 		const oaLatestFailure = await loadIntelligenceReadiness(
 			new FakeReadinessClient(withCrawlRun(
 				{
@@ -314,7 +328,7 @@ async function run(): Promise<void> {
 			)) as never,
 			NOW,
 		);
-		assert.equal(oaLatestFailure.sources.find((source) => source.key === "historical_broadcast_crawl")?.status, "failed", `a latest OA ${status} attempt is failed even with a fresh older success`);
+		assert.equal(oaLatestFailure.sources.find((source) => source.key === "historical_broadcast_crawl")?.status, expected, `a latest OA ${status} attempt is not masked by a fresh older success`);
 	}
 
 	const missingEvidenceClient = new FakeReadinessClient({ ...normalRows, evidence_items: [] });

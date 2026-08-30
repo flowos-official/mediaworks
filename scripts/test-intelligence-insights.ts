@@ -20,10 +20,10 @@ import {
 import type { PipelineRunCounts, PipelineRunHandle } from "../lib/intelligence/pipeline-run";
 import {
 	acquireRefreshInsightsInvocation,
-	refreshInsightsInvocationBucket,
 	isRefreshInsightsCronAuthorized,
 	maxDuration as refreshInsightsMaxDuration,
 	runRefreshInsightsCron,
+	type RefreshInsightsCronDependencies,
 } from "../app/api/cron/refresh-intelligence-insights/route";
 
 const CUTOFF = "2026-08-29T00:00:00.000Z";
@@ -400,12 +400,17 @@ async function testRefreshRound1(): Promise<void> {
 		};
 		let savedPayload: Record<string, unknown> | undefined;
 		let excludedRun = "";
+		let statusFilter: string[] = [];
 		const client = {
 			from(table: string) {
 				assert.equal(table, "data_pipeline_runs");
 				const builder: any = {
 					select: () => builder,
 					eq: () => builder,
+					in(column: string, values: string[]) {
+						if (column === "status") statusFilter = values;
+						return builder;
+					},
 					not: () => builder,
 					neq(_column: string, value: string) { excludedRun = value; return builder; },
 					order: () => builder,
@@ -422,6 +427,13 @@ async function testRefreshRound1(): Promise<void> {
 		await production.saveScanState("current-run", INITIAL_INSIGHT_SCAN_STATE);
 		assert.equal(excludedRun, "current-run");
 		assert.deepEqual(savedPayload, { cursor_json: INITIAL_INSIGHT_SCAN_STATE });
+		// An unsettled run's cursor is never trusted: it either belongs to a run
+		// still in flight or to one Vercel killed, and nothing distinguishes them.
+		assert.deepEqual(
+			statusFilter,
+			["succeeded", "partial"],
+			"the scan resumes only from a run that reached a terminal status",
+		);
 	}
 
 	{
@@ -756,10 +768,14 @@ async function testRefreshRound1(): Promise<void> {
 		assert.equal(memory.writes.length, 1);
 		assert.equal(memory.writes[0].subjectId, "家電");
 		assert.deepEqual(result.unresolvedBroadcastIds, ["missing"]);
-		assert.deepEqual(result.counts, { new: 1, updated: 0, duplicate: 0, failed: 1, processed: 2 });
+		// A broadcast with no resolvable category is a coverage gap, not a
+		// failure — around one archived broadcast in six has none, so counting
+		// them as failures made this job permanently `partial` and the readiness
+		// badge permanently red.
+		assert.deepEqual(result.counts, { new: 1, updated: 0, duplicate: 1, failed: 0, processed: 2 });
 		assert.equal(result.counts.processed, result.counts.new + result.counts.duplicate + result.counts.failed);
 		assert.ok(events.some((event) => event.status === "running"), "normal candidate progress emits a heartbeat");
-		assert.equal(events.at(-1)?.status, "partial");
+		assert.equal(events.at(-1)?.status, "succeeded", "an unresolvable category alone must not degrade the run");
 	}
 
 	{
@@ -886,9 +902,18 @@ async function testRefreshRound1(): Promise<void> {
 
 async function testCronRoute(): Promise<void> {
 	assert.equal(refreshInsightsMaxDuration, 300);
-	assert.equal(isRefreshInsightsCronAuthorized(new Headers(), undefined), false, "missing CRON_SECRET fails closed");
-	assert.equal(isRefreshInsightsCronAuthorized(new Headers({ authorization: "Bearer wrong" }), "secret"), false);
-	assert.equal(isRefreshInsightsCronAuthorized(new Headers({ authorization: "Bearer secret" }), "secret"), true);
+
+	// The route no longer carries its own copy of the secret check; it goes
+	// through the shared hasInternalSecret, which is now timing-safe for every
+	// caller rather than just this one.
+	const originalSecret = process.env.CRON_SECRET;
+	delete process.env.CRON_SECRET;
+	assert.equal(isRefreshInsightsCronAuthorized(new Headers({ authorization: "Bearer anything" })), false, "missing CRON_SECRET fails closed");
+	process.env.CRON_SECRET = "secret";
+	assert.equal(isRefreshInsightsCronAuthorized(new Headers()), false);
+	assert.equal(isRefreshInsightsCronAuthorized(new Headers({ authorization: "Bearer wrong" })), false);
+	assert.equal(isRefreshInsightsCronAuthorized(new Headers({ authorization: "Bearer secretx" })), false, "a length mismatch is rejected without throwing");
+	assert.equal(isRefreshInsightsCronAuthorized(new Headers({ authorization: "Bearer secret" })), true);
 	let receivedLimit = 0;
 	let receivedCutoff = "";
 	const response = await runRefreshInsightsCron(
@@ -896,10 +921,10 @@ async function testCronRoute(): Promise<void> {
 			headers: { authorization: "Bearer secret" },
 		}),
 		{
-			secret: "secret",
 			now: () => new Date(CUTOFF),
 			getClient: () => ({} as never),
-			acquireRun: async () => ({ status: "acquired", invocationBucket: CUTOFF, run: pipelineHandle([]) }),
+			reapOrphans: async () => 0,
+			acquireRun: async () => ({ status: "acquired", run: pipelineHandle([]) }),
 			refresh: async (_sb, cutoff, limit) => {
 				receivedCutoff = cutoff;
 				receivedLimit = limit;
@@ -918,6 +943,7 @@ async function testCronRoute(): Promise<void> {
 					scannedEvidenceRows: 2,
 					scanWrapped: false,
 					scanTruncated: false,
+				deadlineExceeded: false,
 					scanState: INITIAL_INSIGHT_SCAN_STATE,
 					cursorPersisted: true,
 					telemetryFailures: [],
@@ -930,6 +956,7 @@ async function testCronRoute(): Promise<void> {
 	assert.equal(receivedCutoff, CUTOFF);
 	assert.deepEqual(await response.json(), {
 		ok: true,
+		orphansReaped: 0,
 		status: "succeeded",
 		cutoff: CUTOFF,
 		limit: 200,
@@ -944,6 +971,7 @@ async function testCronRoute(): Promise<void> {
 		scannedEvidenceRows: 2,
 		scanWrapped: false,
 		scanTruncated: false,
+		deadlineExceeded: false,
 		scanState: INITIAL_INSIGHT_SCAN_STATE,
 		cursorPersisted: true,
 		telemetryFailures: [],
@@ -951,7 +979,6 @@ async function testCronRoute(): Promise<void> {
 
 	let unauthorizedRefreshCalled = false;
 	const unauthorized = await runRefreshInsightsCron(new Request("https://example.test"), {
-		secret: "secret",
 		getClient: () => ({} as never),
 		refresh: async () => {
 			unauthorizedRefreshCalled = true;
@@ -961,16 +988,21 @@ async function testCronRoute(): Promise<void> {
 	assert.equal(unauthorized.status, 401);
 	assert.equal(unauthorizedRefreshCalled, false);
 
-	const firstBucket = refreshInsightsInvocationBucket(new Date("2026-08-29T00:14:59.999Z"));
-	assert.equal(firstBucket, "2026-08-29T00:00:00.000Z");
-	assert.equal(refreshInsightsInvocationBucket(new Date("2026-08-29T00:15:00.000Z")), "2026-08-29T00:15:00.000Z", "a later bounded window can retry instead of suppressing the whole day");
-
-	const reserved = new Set<string>();
+	// Mutual exclusion now belongs to the sliding-window trigger in
+	// 20260830110000. The fixed 15-minute bucket it replaces let a pair 30s
+	// apart straddle a boundary and both proceed, which is exactly the 26-82s
+	// duplicate this project actually receives.
 	let insertedRuns = 0;
+	let liveRun = false;
 	const lockRepository = {
-		async insert(input: { externalRunId: string }) {
-			if (reserved.has(input.externalRunId)) throw Object.assign(new Error("duplicate invocation"), { code: "23505" });
-			reserved.add(input.externalRunId);
+		async insert() {
+			if (liveRun) {
+				throw Object.assign(
+					new Error("duplicate pipeline invocation for evidence_items/insight_refresh: a run started at ... (status running, within 5 minutes)"),
+					{ code: "23505" },
+				);
+			}
+			liveRun = true;
 			insertedRuns++;
 			return { id: `lock-${insertedRuns}` };
 		},
@@ -979,9 +1011,9 @@ async function testCronRoute(): Promise<void> {
 	let concurrentRefreshCalls = 0;
 	let reusedRunIds: string[] = [];
 	const concurrentDependencies = {
-		secret: "secret",
 		now: () => new Date(CUTOFF),
 		getClient: () => ({} as never),
+		reapOrphans: async () => 0,
 		acquireRun: (_sb: unknown, cutoff: string, limit: number) => acquireRefreshInsightsInvocation(lockRepository, cutoff, limit),
 		refresh: async (_sb: unknown, cutoff: string, limit: number, dependencies: { startPipelineRun(): Promise<PipelineRunHandle | null> }) => {
 			concurrentRefreshCalls++;
@@ -1002,6 +1034,7 @@ async function testCronRoute(): Promise<void> {
 				scannedEvidenceRows: 0,
 				scanWrapped: false,
 				scanTruncated: false,
+				deadlineExceeded: false,
 				scanState: INITIAL_INSIGHT_SCAN_STATE,
 				cursorPersisted: true,
 				telemetryFailures: [],
@@ -1023,15 +1056,115 @@ async function testCronRoute(): Promise<void> {
 	const lockFailure = await runRefreshInsightsCron(
 		new Request("https://example.test/api/cron/refresh-intelligence-insights", { headers: { authorization: "Bearer secret" } }),
 		{
-			secret: "secret",
 			now: () => new Date(CUTOFF),
 			getClient: () => ({} as never),
+			reapOrphans: async () => 0,
 			acquireRun: async () => { throw Object.assign(new Error("lock database unavailable"), { code: "08006" }); },
 			refresh: async () => { refreshAfterLockFailure = true; throw new Error("must not refresh"); },
 		} as any,
 	);
 	assert.equal(lockFailure.status, 500);
 	assert.equal(refreshAfterLockFailure, false, "a non-duplicate acquisition failure fails closed before scanning or writing");
+
+	// A 23505 that is not the duplicate trigger is a real constraint violation.
+	// Reporting it as a successful skip is how a silently dropped write hid a
+	// 22-day outage in this project before.
+	let refreshAfterForeignConstraint = false;
+	const foreignConstraint = await runRefreshInsightsCron(
+		new Request("https://example.test/api/cron/refresh-intelligence-insights", { headers: { authorization: "Bearer secret" } }),
+		{
+			now: () => new Date(CUTOFF),
+			getClient: () => ({} as never),
+			reapOrphans: async () => 0,
+			acquireRun: (_sb: unknown, cutoff: string, limit: number) => acquireRefreshInsightsInvocation(
+				{
+					async insert() { throw Object.assign(new Error('duplicate key value violates unique constraint "some_other_unique"'), { code: "23505" }); },
+					async update() {},
+				},
+				cutoff,
+				limit,
+			),
+			refresh: async () => { refreshAfterForeignConstraint = true; throw new Error("must not refresh"); },
+		} satisfies RefreshInsightsCronDependencies,
+	);
+	assert.equal(foreignConstraint.status, 500, "an unrelated unique violation must not be reported as a duplicate skip");
+	assert.equal(refreshAfterForeignConstraint, false);
+
+	// The orphan sweep runs before the slot is taken, and its failure never
+	// stops the refresh.
+	let sweptBeforeAcquire = false;
+	let acquiredAfterSweep = false;
+	const sweepResponse = await runRefreshInsightsCron(
+		new Request("https://example.test/api/cron/refresh-intelligence-insights", { headers: { authorization: "Bearer secret" } }),
+		{
+			now: () => new Date(CUTOFF),
+			getClient: () => ({} as never),
+			reapOrphans: async () => { sweptBeforeAcquire = true; return 3; },
+			acquireRun: async () => { acquiredAfterSweep = sweptBeforeAcquire; return { status: "acquired", run: pipelineHandle([]) }; },
+			refresh: async (_sb: unknown, cutoff: string, limit: number) => ({
+				status: "succeeded" as const,
+				cutoff,
+				limit,
+				consideredSubjects: 0,
+				eligibleInsightSubjects: 0,
+				productSnapshots: 0,
+				categorySnapshots: 0,
+				skippedNoNewEvidence: 0,
+				unresolvedBroadcastIds: [],
+				errors: [],
+				counts: { new: 0, updated: 0, duplicate: 0, failed: 0, processed: 0 },
+				scannedEvidenceRows: 0,
+				scanWrapped: false,
+				scanTruncated: false,
+				deadlineExceeded: false,
+				scanState: INITIAL_INSIGHT_SCAN_STATE,
+				cursorPersisted: true,
+				telemetryFailures: [],
+			}),
+		} satisfies RefreshInsightsCronDependencies,
+	);
+	assert.equal(sweepResponse.status, 200);
+	assert.equal(acquiredAfterSweep, true, "orphans are settled before the duplicate-guard slot is contested");
+	assert.equal((await sweepResponse.json()).orphansReaped, 3);
+
+	let refreshDespiteSweepFailure = false;
+	const sweepFailure = await runRefreshInsightsCron(
+		new Request("https://example.test/api/cron/refresh-intelligence-insights", { headers: { authorization: "Bearer secret" } }),
+		{
+			now: () => new Date(CUTOFF),
+			getClient: () => ({} as never),
+			reapOrphans: async () => { throw new Error("sweep unavailable"); },
+			acquireRun: async () => ({ status: "acquired", run: pipelineHandle([]) }),
+			refresh: async (_sb: unknown, cutoff: string, limit: number) => {
+				refreshDespiteSweepFailure = true;
+				return {
+					status: "succeeded" as const,
+					cutoff,
+					limit,
+					consideredSubjects: 0,
+					eligibleInsightSubjects: 0,
+					productSnapshots: 0,
+					categorySnapshots: 0,
+					skippedNoNewEvidence: 0,
+					unresolvedBroadcastIds: [],
+					errors: [],
+					counts: { new: 0, updated: 0, duplicate: 0, failed: 0, processed: 0 },
+					scannedEvidenceRows: 0,
+					scanWrapped: false,
+					scanTruncated: false,
+					deadlineExceeded: false,
+					scanState: INITIAL_INSIGHT_SCAN_STATE,
+					cursorPersisted: true,
+					telemetryFailures: [],
+				};
+			},
+		} satisfies RefreshInsightsCronDependencies,
+	);
+	assert.equal(sweepFailure.status, 200);
+	assert.equal(refreshDespiteSweepFailure, true, "a telemetry sweep failure is never a reason to skip the refresh");
+
+	if (originalSecret === undefined) delete process.env.CRON_SECRET;
+	else process.env.CRON_SECRET = originalSecret;
 
 	const vercel = JSON.parse(readFileSync(new URL("../vercel.json", import.meta.url), "utf8")) as {
 		functions: Record<string, { maxDuration: number }>;

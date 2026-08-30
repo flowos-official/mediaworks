@@ -361,6 +361,8 @@
       "statusLabel": "状態",
       "status": {
         "healthy": "正常",
+        "degraded": "一部劣化",
+        "running": "実行中",
         "stale": "期限超過",
         "failed": "失敗",
         "missing": "未実行"
@@ -433,77 +435,142 @@
         "sourceProductOffer": {
           "title": "商品・価格・特典の元データ",
           "description": "チャネル別の商品ページから商品情報と観測時点の価格・セット特典を収集します。",
-          "fields": ["商品名・ブランド", "観測価格", "割引・セット特典"]
+          "fields": [
+            "商品名・ブランド",
+            "観測価格",
+            "割引・セット特典"
+          ]
         },
         "sourceBroadcastSchedule": {
           "title": "放送編成の元データ",
           "description": "放送日と時間、番組、編成商品をチャネル別に蓄積します。",
-          "fields": ["放送日", "放送時間", "番組・編成商品"]
+          "fields": [
+            "放送日",
+            "放送時間",
+            "番組・編成商品"
+          ]
         },
         "sourceMediaArchive": {
           "title": "映像・音声アーカイブ",
           "description": "分析前の放送映像と音声を、再利用できる根拠資料として保管します。",
-          "fields": ["元映像", "音声トラック", "放送タイムコード"]
+          "fields": [
+            "元映像",
+            "音声トラック",
+            "放送タイムコード"
+          ]
         },
         "sourceChannelCategory": {
           "title": "チャネル・カテゴリ情報",
           "description": "出典チャネル、元カテゴリ、URLを保持し、比較の基準を作ります。",
-          "fields": ["出典チャネル", "元カテゴリ", "元URL"]
+          "fields": [
+            "出典チャネル",
+            "元カテゴリ",
+            "元URL"
+          ]
         },
         "datasetProductMaster": {
           "title": "統合商品マスター",
           "description": "チャネルごとに異なる商品名と分類を、比較可能な一つの商品単位に正規化します。",
-          "fields": ["標準商品名", "ブランド", "統合カテゴリ", "出典根拠"]
+          "fields": [
+            "標準商品名",
+            "ブランド",
+            "統合カテゴリ",
+            "出典根拠"
+          ]
         },
         "datasetOfferHistory": {
           "title": "価格・特典履歴",
           "description": "時点ごとの価格、割引、セット特典の変化を商品単位で蓄積します。",
-          "fields": ["観測価格", "割引情報", "セット特典", "観測時点"]
+          "fields": [
+            "観測価格",
+            "割引情報",
+            "セット特典",
+            "観測時点"
+          ]
         },
         "datasetBroadcastSignals": {
           "title": "放送・カテゴリ露出シグナル",
           "description": "放送編成記録から、チャネル・時間帯別の商品とカテゴリの露出パターンを作ります。",
-          "fields": ["露出回数", "主要時間帯", "チャネル構成", "カテゴリ分布"]
+          "fields": [
+            "露出回数",
+            "主要時間帯",
+            "チャネル構成",
+            "カテゴリ分布"
+          ]
         },
         "datasetSceneIndex": {
           "title": "シーン・実演インデックス",
           "description": "将来、映像から説明、実演、比較、クローズアップの場面をタイムコード単位で抽出します。",
-          "fields": ["シーン種別", "実演場面", "商品クローズアップ", "タイムコード"]
+          "fields": [
+            "シーン種別",
+            "実演場面",
+            "商品クローズアップ",
+            "タイムコード"
+          ]
         },
         "datasetSellingLanguage": {
           "title": "販売ポイント・話法データセット",
           "description": "放送音声と字幕から販売ポイント、反論対応、根拠提示の方法を構造化します。",
-          "fields": ["主要販売ポイント", "反論対応", "司会者表現", "根拠提示シグナル"]
+          "fields": [
+            "主要販売ポイント",
+            "反論対応",
+            "司会者表現",
+            "根拠提示シグナル"
+          ]
         },
         "outcomeDiscovery": {
           "title": "有望商品の発掘",
           "description": "商品・価格・露出シグナルを合わせ、テレビ通販で検討価値の高い候補を優先提案します。",
-          "fields": ["候補優先順位", "トレンドシグナル", "TV適合根拠"]
+          "fields": [
+            "候補優先順位",
+            "トレンドシグナル",
+            "TV適合根拠"
+          ]
         },
         "outcomeSourcingPriority": {
           "title": "調達・MD優先順位",
           "description": "カテゴリ機会と競合露出の根拠をまとめ、MDが先に検討すべき対象を整理します。",
-          "fields": ["調達優先度", "カテゴリ機会", "検討理由"]
+          "fields": [
+            "調達優先度",
+            "カテゴリ機会",
+            "検討理由"
+          ]
         },
         "outcomeResearch": {
           "title": "商品リサーチ強化",
           "description": "商品比較と市場背景に、競合チャネルの価格・編成根拠を合わせて提供します。",
-          "fields": ["市場背景", "比較根拠", "価格・特典要約"]
+          "fields": [
+            "市場背景",
+            "比較根拠",
+            "価格・特典要約"
+          ]
         },
         "outcomeEvidenceScript": {
           "title": "商品根拠型の台本下書き",
           "description": "現在確保している商品情報と出典根拠を、台本セクション別の下書きにつなぎます。",
-          "fields": ["商品情報", "台本セクション", "主張の根拠"]
+          "fields": [
+            "商品情報",
+            "台本セクション",
+            "主張の根拠"
+          ]
         },
         "outcomeCompetitiveScript": {
           "title": "競合番組パターン反映型の台本",
           "description": "競合番組から抽出したシーン順序と販売話法パターンを参考に台本構成を拡張します。",
-          "fields": ["競合番組の構成パターン", "販売ポイントの順序", "話法パターン"]
+          "fields": [
+            "競合番組の構成パターン",
+            "販売ポイントの順序",
+            "話法パターン"
+          ]
         },
         "outcomeDemoPlan": {
           "title": "実演・演出設計",
           "description": "将来、映像シーンデータを基に実演順序とカメラ・司会者動作の下書きを作ります。",
-          "fields": ["実演順序", "カメラキュー", "司会者の動作"]
+          "fields": [
+            "実演順序",
+            "カメラキュー",
+            "司会者の動作"
+          ]
         }
       }
     }
@@ -1085,7 +1152,7 @@
       ]
     },
     "renderer": {
-		"finalScript": "台本本文",
+      "finalScript": "台本本文",
       "sceneChange": "場面転換"
     }
   },
@@ -1267,17 +1334,44 @@
       "activeNo": "無効",
       "edit": "編集",
       "empty": "該当する資料がありません。",
-      "laws": { "yakkiho": "薬機法", "keihyo": "景表法", "kenzo": "健康増進法", "other": "その他", "shokuhin": "食品表示法", "tokushoho": "特商法" },
-      "col": { "law": "法令", "category": "カテゴリ", "topic": "トピック・本文", "source": "出典", "active": "状態", "actions": "操作" },
-      "form": {
-        "createHeading": "資料追加", "editHeading": "資料編集", "law": "法令",
-        "category": "対象カテゴリ", "categoryPlaceholder": "化粧品, 健康食品",
-        "topic": "トピック", "body": "本文（根拠スニペット）",
-        "keywords": "検索キーワード", "keywordsPlaceholder": "No.1, 根拠, 出典",
-        "citation": "出典名", "sourceUrl": "出典URL", "active": "有効",
-        "submit": "保存", "saving": "保存中...", "cancel": "キャンセル"
+      "laws": {
+        "yakkiho": "薬機法",
+        "keihyo": "景表法",
+        "kenzo": "健康増進法",
+        "other": "その他",
+        "shokuhin": "食品表示法",
+        "tokushoho": "特商法"
       },
-      "err": { "required": "トピックと本文は必須です。", "duplicate": "同じ法令・トピックの資料が既に存在します。", "generic": "保存に失敗しました。" }
+      "col": {
+        "law": "法令",
+        "category": "カテゴリ",
+        "topic": "トピック・本文",
+        "source": "出典",
+        "active": "状態",
+        "actions": "操作"
+      },
+      "form": {
+        "createHeading": "資料追加",
+        "editHeading": "資料編集",
+        "law": "法令",
+        "category": "対象カテゴリ",
+        "categoryPlaceholder": "化粧品, 健康食品",
+        "topic": "トピック",
+        "body": "本文（根拠スニペット）",
+        "keywords": "検索キーワード",
+        "keywordsPlaceholder": "No.1, 根拠, 出典",
+        "citation": "出典名",
+        "sourceUrl": "出典URL",
+        "active": "有効",
+        "submit": "保存",
+        "saving": "保存中...",
+        "cancel": "キャンセル"
+      },
+      "err": {
+        "required": "トピックと本文は必須です。",
+        "duplicate": "同じ法令・トピックの資料が既に存在します。",
+        "generic": "保存に失敗しました。"
+      }
     },
     "registry": {
       "title": "スキルレジストリ",

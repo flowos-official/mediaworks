@@ -52,6 +52,18 @@ export function dailyBroadcastPipelineOutcome(input: {
 		snapshotErrors: input.snapshotErrors.length,
 		processed: input.processed,
 	});
+	// A run that observed no sources at all is a total scraper outage, not a
+	// clean night. Without this guard `successfulSources === totalSources === 0`
+	// satisfies the success test below and the outage records green, and the
+	// `successfulSources === 0` branch further down is never reached.
+	if (input.totalSources === 0) {
+		return {
+			status: "failed" as const,
+			counts,
+			errorCode: "no_sources_observed",
+			errorSummary: "Scrape returned no source results at all — no channel was even attempted",
+		};
+	}
 	if (counts.failed === 0 && input.successfulSources === input.totalSources) {
 		return { status: "succeeded" as const, counts };
 	}

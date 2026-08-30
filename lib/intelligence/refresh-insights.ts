@@ -26,6 +26,8 @@ export const MAX_INSIGHT_REFRESH_SUBJECTS = 200;
 export const MAX_INSIGHT_SCAN_ROWS = 10_000;
 
 const EVIDENCE_PAGE_SIZE = 500;
+/** Comfortably inside the staleness threshold readiness and the reaper use. */
+const HEARTBEAT_INTERVAL_MS = 15_000;
 const DATABASE_CHUNK_SIZE = 100;
 
 const EVIDENCE_COLUMNS = [
@@ -119,6 +121,7 @@ export interface RefreshIntelligenceInsightsResult {
 	scannedEvidenceRows: number;
 	scanWrapped: boolean;
 	scanTruncated: boolean;
+	deadlineExceeded: boolean;
 	scanState: EvidenceScanState;
 	cursorPersisted: boolean;
 	telemetryFailures: InsightTelemetryFailure[];
@@ -128,6 +131,15 @@ export interface RefreshInsightsDependencies {
 	repository?: InsightRefreshRepository;
 	startPipelineRun?: () => Promise<PipelineRunHandle | null>;
 	reportTelemetryFailure?: (phase: InsightTelemetryPhase, error: unknown) => void | Promise<void>;
+	/**
+	 * Absolute epoch-ms budget for productive work. Every other cron in this
+	 * repo carries one (`BUDGET_MS = 240_000`); this job shipped without any and
+	 * can issue on the order of a thousand round trips, so a slow database was
+	 * enough to run past `maxDuration` and leave the run orphaned in `running`.
+	 * Omit to run unbounded, which is what the smoke tests want.
+	 */
+	deadlineAtMs?: number;
+	now?: () => number;
 }
 
 interface RefreshCandidate {
@@ -416,6 +428,12 @@ export function createInsightRefreshRepository(sb: SupabaseClient): InsightRefre
 				.select("cursor_json")
 				.eq("source_type", "evidence_items")
 				.eq("job_type", "insight_refresh")
+				// Only a run that reached a terminal status is trusted. A run still
+				// marked `running` is either genuinely in flight or was killed at
+				// `maxDuration` with nothing to distinguish the two, and resuming
+				// from a dead run's cursor silently skipped every subject between
+				// where it stopped and where it had claimed to reach.
+				.in("status", ["succeeded", "partial"])
 				.not("cursor_json", "is", null);
 			if (currentRunId) query = query.neq("id", currentRunId);
 			const { data, error } = await query.order("started_at", { ascending: false }).limit(1).maybeSingle();
@@ -575,9 +593,22 @@ export async function refreshIntelligenceInsights(
 		await recordTelemetryFailure("start", error);
 	}
 
+	const now = dependencies.now ?? (() => Date.now());
+	const outOfBudget = (): boolean =>
+		dependencies.deadlineAtMs !== undefined && now() >= dependencies.deadlineAtMs;
+	let deadlineExceeded = false;
+
 	let counts = observedCounts({ created: 0, duplicate: 0, failed: 0 });
-	const heartbeat = async (): Promise<void> => {
+	// One UPDATE per candidate meant up to 200 extra writes per run, which is
+	// budget spent on saying we are alive rather than on being alive. The
+	// heartbeat only has to beat the staleness threshold that readiness and the
+	// reaper use.
+	let lastHeartbeatAtMs = 0;
+	const heartbeat = async (force = false): Promise<void> => {
 		if (!run) return;
+		const at = now();
+		if (!force && at - lastHeartbeatAtMs < HEARTBEAT_INTERVAL_MS) return;
+		lastHeartbeatAtMs = at;
 		try {
 			await run.heartbeat(counts);
 		} catch (error) {
@@ -607,6 +638,10 @@ export async function refreshIntelligenceInsights(
 		const unresolved = new Set<string>();
 
 		while (scannedEvidenceRows < MAX_INSIGHT_SCAN_ROWS && !stoppedAtLimit) {
+			if (outOfBudget()) {
+				deadlineExceeded = true;
+				break;
+			}
 			const pageSize = Math.min(EVIDENCE_PAGE_SIZE, MAX_INSIGHT_SCAN_ROWS - scannedEvidenceRows);
 			const page = await repository.scanActiveEvidencePage(normalizedCutoff, cursor, pageSize);
 			if (page.evidence.length === 0) {
@@ -726,17 +761,6 @@ export async function refreshIntelligenceInsights(
 
 		const scanTruncated = scannedEvidenceRows >= MAX_INSIGHT_SCAN_ROWS && !scanFinishedCycle && !stoppedAtLimit;
 		const scanState: EvidenceScanState = { v: 1, position: scanFinishedCycle ? originalResumeBoundary : cursor };
-		let cursorPersisted = false;
-		if (!run) {
-			await recordTelemetryFailure("cursor-save", new Error("pipeline run unavailable; insight scan cursor was not persisted"));
-		} else {
-			try {
-				await repository.saveScanState(run.id, scanState);
-				cursorPersisted = true;
-			} catch (error) {
-				await recordTelemetryFailure("cursor-save", error);
-			}
-		}
 
 		const orderedCandidates = [...candidates.values()].sort(compareCandidates);
 		const eligible = orderedCandidates.filter((candidate) => candidateIsEligible(candidate, latestCutoffs)).slice(0, boundedLimit);
@@ -745,10 +769,19 @@ export async function refreshIntelligenceInsights(
 		const errors: RefreshIntelligenceInsightsResult["errors"] = [];
 		let productSnapshots = 0;
 		let categorySnapshots = 0;
-		counts = observedCounts({ created: 0, duplicate: skippedNoNewEvidence, failed: unresolvedBroadcastIds.length });
-		await heartbeat();
+		// A broadcast whose category cannot be resolved is a coverage gap, not a
+		// failure: roughly one archived broadcast in six has no category at all,
+		// so counting them as failures made this job permanently `partial` and
+		// taught the operator to ignore the badge. `failed` is reserved for work
+		// that was attempted and did not succeed.
+		counts = observedCounts({ created: 0, duplicate: skippedNoNewEvidence + unresolvedBroadcastIds.length, failed: 0 });
+		await heartbeat(true);
 
 		for (const candidate of eligible) {
+			if (outOfBudget()) {
+				deadlineExceeded = true;
+				break;
+			}
 			try {
 				const draft = candidate.subjectType === "product"
 					? buildProductMarketInsight(await repository.loadProductEvidence(candidate.subjectId, normalizedCutoff), normalizedCutoff)
@@ -765,23 +798,52 @@ export async function refreshIntelligenceInsights(
 			}
 			counts = observedCounts({
 				created: productSnapshots + categorySnapshots,
-				duplicate: skippedNoNewEvidence,
-				failed: unresolvedBroadcastIds.length + errors.length,
+				duplicate: skippedNoNewEvidence + unresolvedBroadcastIds.length,
+				failed: errors.length,
 			});
 			await heartbeat();
+		}
+
+		// The cursor is saved only now, and only for a run that finished its
+		// candidates. Saving it before the snapshot loop advanced scan progress
+		// past subjects whose output was never written, so a mid-loop death
+		// silently skipped them until the scan wrapped all the way around.
+		// Re-doing the work instead is safe: `candidateIsEligible` skips a
+		// subject that already has a snapshot at this cutoff.
+		let cursorPersisted = false;
+		if (deadlineExceeded) {
+			// Leave the previous cursor authoritative — the next run repeats this
+			// window rather than stepping over the part it never reached.
+			await recordTelemetryFailure(
+				"cursor-save",
+				new Error("insight refresh stopped at its deadline; scan cursor intentionally left unchanged"),
+			);
+		} else if (!run) {
+			await recordTelemetryFailure("cursor-save", new Error("pipeline run unavailable; insight scan cursor was not persisted"));
+		} else {
+			try {
+				await repository.saveScanState(run.id, scanState);
+				cursorPersisted = true;
+			} catch (error) {
+				await recordTelemetryFailure("cursor-save", error);
+			}
 		}
 
 		const status = counts.failed > 0 || !cursorPersisted ? "partial" as const : "succeeded" as const;
 		if (run) {
 			try {
 				if (status === "partial") {
-					await run.partial(
-						counts,
-						cursorPersisted ? "insight_refresh_partial" : "insight_refresh_cursor_not_persisted",
-						cursorPersisted
-							? `${counts.failed} insight candidate(s) skipped or failed`
-							: "data refresh completed but the scan cursor was not persisted",
-					);
+					const errorCode = deadlineExceeded
+						? "deadline_exceeded"
+						: cursorPersisted
+							? "insight_refresh_partial"
+							: "insight_refresh_cursor_not_persisted";
+					const errorSummary = deadlineExceeded
+						? `stopped at the run deadline after ${counts.new} snapshot(s); scan cursor left unchanged for the next run`
+						: cursorPersisted
+							? `${counts.failed} insight candidate(s) failed`
+							: "data refresh completed but the scan cursor was not persisted";
+					await run.partial(counts, errorCode, errorSummary);
 				} else {
 					await run.succeed(counts);
 				}
@@ -805,6 +867,7 @@ export async function refreshIntelligenceInsights(
 			scannedEvidenceRows,
 			scanWrapped,
 			scanTruncated,
+			deadlineExceeded,
 			scanState,
 			cursorPersisted,
 			telemetryFailures,

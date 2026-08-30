@@ -48,15 +48,25 @@ async function main() {
 			"unclassified persisted rows omit unknown new/updated keys from normalized telemetry",
 		);
 		assert.deepEqual(
-			historicalBroadcastClassificationOutcome({ counts: unclassifiedCounts, unclassified: 2, classificationError: "classification unavailable" }),
+			historicalBroadcastClassificationOutcome({ counts: unclassifiedCounts, unclassified: 2, classificationError: "classification unavailable", domainStatus: "completed" }),
 			{
-				status: "failed",
+				status: "partial",
 				counts: { duplicate: 3, failed: 0, processed: 7 },
-				errorCode: "persist_classification_failed",
+				errorCode: "persist_classification_unavailable",
 				errorSummary: "2 persisted row(s) could not be classified as inserted or updated: classification unavailable",
 			},
-			"successfully persisted but unclassified rows fail normalized telemetry without changing legacy persistence",
+			"the rows were upserted; only the inserted-vs-updated split is unknown, so the run is degraded rather than failed",
 		);
+		// The pipeline row is a projection of the domain row and must never be
+		// worse than it. Reporting `failed` here made data_pipeline_runs and
+		// historical_crawl_runs contradict each other over the same execution.
+		for (const domainStatus of ["partial", "failed"] as const) {
+			assert.equal(
+				historicalBroadcastClassificationOutcome({ counts: unclassifiedCounts, unclassified: 2, domainStatus }),
+				null,
+				`a ${domainStatus} crawl keeps its own status and message`,
+			);
+		}
 		const snapshotFailure = dailyBroadcastPipelineOutcome({
 			inserted: 4,
 			updated: 1,
@@ -76,6 +86,23 @@ async function main() {
 		assert.equal(snapshotFailure.errorCode, "snapshot_enrichment_partial");
 		assert.match(snapshotFailure.errorSummary ?? "", /category_backfill.*category write unavailable/);
 		assert.match(snapshotFailure.errorSummary ?? "", /video_status_update.*video write unavailable/);
+		// With no source results at all, successfulSources === totalSources === 0
+		// satisfied the success test and a total scraper outage recorded green,
+		// while the `successfulSources === 0` branch was never reached.
+		const noSourcesObserved = dailyBroadcastPipelineOutcome({
+			inserted: 0,
+			updated: 0,
+			persistenceErrors: 0,
+			sourceFailures: [],
+			enrichmentErrors: 0,
+			processed: 0,
+			successfulSources: 0,
+			totalSources: 0,
+			snapshotErrors: [],
+		});
+		assert.equal(noSourcesObserved.status, "failed", "observing no sources at all is an outage, not a clean night");
+		assert.equal(noSourcesObserved.errorCode, "no_sources_observed");
+
 		const qvcParserError = `unexpected QVC schedule markup ${"x".repeat(200)} END_OF_UNBOUNDED_ERROR`;
 		const mixedSourceFailure = dailyBroadcastPipelineOutcome({
 			inserted: 3,
@@ -164,8 +191,17 @@ async function main() {
 			],
 			"source/parser failures are counted and bounded separately from persistence failures",
 		);
-		assert.equal(archiveVideosPipelineOutcome({ processed: 1, archived: 0, queued: 0, abandoned: 0, deferred: 1, failed_unsupported: 0, stale_requeued: 0, stale_abandoned: 0 }, 0).status, "partial");
-		assert.equal(broadcastAudioPipelineOutcome({ recovered: 0, seeded: 1, processed: 0, done: 0, queued: 0, failed: 0, skipped: 0 }, 0).counts.new, 1);
+		assert.equal(
+			archiveVideosPipelineOutcome({ processed: 1, archived: 0, queued: 0, abandoned: 0, deferred: 1, failed_unsupported: 0, stale_requeued: 0, stale_abandoned: 0 }, 0).status,
+			"succeeded",
+			"a slot with no video is deferred by design, which is a normal night rather than a degraded one",
+		);
+		assert.equal(
+			archiveVideosPipelineOutcome({ processed: 1, archived: 0, queued: 0, abandoned: 1, deferred: 0, failed_unsupported: 0, stale_requeued: 0, stale_abandoned: 0 }, 0).status,
+			"partial",
+			"an abandoned slot is a real failure and still degrades the run",
+		);
+		assert.equal(broadcastAudioPipelineOutcome({ recovered: 0, seeded: 1, processed: 0, done: 0, queued: 0, failed: 0, skipped: 0 }, 0).counts.updated, 1);
 		console.log("✓ all six production route-owned mapping functions execute representative outcomes");
 	}
 
