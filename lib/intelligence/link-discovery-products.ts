@@ -102,13 +102,50 @@ export interface LinkDiscoveryProductsResult {
 	skipped: number;
 	failed: number;
 	evidenceWritten: number;
+	/** Rows whose raw category is not in the normalization cache yet. */
+	categoryUnresolved: number;
 }
 
 export interface LinkDiscoveryProductsOptions {
 	/** Absolute epoch-ms budget. The cron owns the clock; this stops on it. */
 	deadlineAtMs?: number;
 	now?: () => number;
-	normalizeCategory?: (rawCategory: string) => Promise<string | null>;
+	/**
+	 * Resolve raw categories to whitelist categories. Defaults to a read of the
+	 * `discovered_category_normalization` cache.
+	 *
+	 * Deliberately not the Gemini-backed normalizer the CLI uses: this runs
+	 * inside the discovery cron's save budget, and a classifier call per session
+	 * is neither affordable there nor safe to fail on. An uncached category
+	 * therefore resolves to null, which is the truthful answer — and a later run
+	 * repairs it through `repairCanonicalCategory` once the cache warms.
+	 */
+	resolveNormalizedCategories?: (rawCategories: string[]) => Promise<Map<string, string | null>>;
+}
+
+/**
+ * Read-only category resolution. A column named `normalized_category` must
+ * never receive a raw value: 114 of the 135 canonical rows were normalized
+ * against the whitelist by the CLI, and mixing unnormalized values in would
+ * make the coverage metric read as satisfied while being wrong.
+ */
+export async function loadCachedNormalizedCategories(
+	sb: SupabaseClient,
+	rawCategories: string[],
+): Promise<Map<string, string | null>> {
+	const resolved = new Map<string, string | null>(rawCategories.map((category) => [category, null]));
+	if (rawCategories.length === 0) return resolved;
+	const { data, error } = await sb
+		.from("discovered_category_normalization")
+		.select("raw_category,whitelist_categories")
+		.in("raw_category", rawCategories);
+	if (error) throw new Error(`category cache query failed: ${error.message}`);
+	for (const item of data ?? []) {
+		const row = item as { raw_category: string; whitelist_categories: string[] | null };
+		const first = Array.isArray(row.whitelist_categories) ? row.whitelist_categories[0] : undefined;
+		resolved.set(row.raw_category, typeof first === "string" && first.trim() ? first.trim() : null);
+	}
+	return resolved;
 }
 
 interface SessionProductRow {
@@ -151,6 +188,7 @@ export async function linkDiscoverySessionProducts(
 		skipped: 0,
 		failed: 0,
 		evidenceWritten: 0,
+		categoryUnresolved: 0,
 	};
 
 	const { data, error } = await sb
@@ -160,8 +198,18 @@ export async function linkDiscoverySessionProducts(
 		.order("id", { ascending: true });
 	if (error) throw new Error(`discovery session products read failed: ${error.message}`);
 
+	const sessionRows = (data ?? []) as unknown as SessionProductRow[];
+	const rawCategories = [...new Set(
+		sessionRows
+			.map((row) => row.category?.trim())
+			.filter((category): category is string => Boolean(category)),
+	)];
+	const resolveCategories = options.resolveNormalizedCategories
+		?? ((categories: string[]) => loadCachedNormalizedCategories(sb, categories));
+	const normalizedByRaw = await resolveCategories(rawCategories);
+
 	const repository = createCanonicalProductRepository(sb);
-	for (const raw of (data ?? []) as unknown as SessionProductRow[]) {
+	for (const raw of sessionRows) {
 		if (outOfBudget()) break;
 		result.considered += 1;
 
@@ -175,9 +223,8 @@ export async function linkDiscoverySessionProducts(
 
 		try {
 			const rawCategory = raw.category?.trim() || null;
-			const normalizedCategory = rawCategory && options.normalizeCategory
-				? await options.normalizeCategory(rawCategory)
-				: rawCategory;
+			const normalizedCategory = rawCategory ? normalizedByRaw.get(rawCategory) ?? null : null;
+			if (rawCategory && !normalizedCategory) result.categoryUnresolved += 1;
 			const row: DiscoveredProductBackfillRow = {
 				id: raw.id,
 				name,

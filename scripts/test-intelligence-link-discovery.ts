@@ -21,14 +21,20 @@ interface Row {
 	category?: string | null;
 }
 
-function client(rows: Row[], overrides: { onLinkInsert?: () => void } = {}) {
+function client(
+	rows: Row[],
+	overrides: { onLinkInsert?: () => void; categoryCache?: Record<string, string> } = {},
+) {
+	const categoryCache = overrides.categoryCache ?? {};
 	const links = new Map<string, string>();
 	const canonicals: string[] = [];
+	const canonicalPayloads: Array<Record<string, unknown>> = [];
 	const evidence: Array<Record<string, unknown>> = [];
 
 	return {
 		links,
 		canonicals,
+		canonicalPayloads,
 		evidence,
 		from(table: string) {
 			const builder: Record<string, unknown> = {};
@@ -39,13 +45,24 @@ function client(rows: Row[], overrides: { onLinkInsert?: () => void } = {}) {
 				is: self,
 				// The evidence upsert resolves every draft's id with a follow-up
 				// `.in("dedupe_key", ...)`, including the ones it treated as
-				// duplicates.
-				in: (_column: string, keys: string[]) => (table === "evidence_items"
-					? Promise.resolve({
-						data: keys.map((key, index) => ({ id: `evidence-${index + 1}`, dedupe_key: key })),
-						error: null,
-					})
-					: builder),
+				// duplicates. The category cache is read the same way.
+				in: (_column: string, keys: string[]) => {
+					if (table === "evidence_items") {
+						return Promise.resolve({
+							data: keys.map((key, index) => ({ id: `evidence-${index + 1}`, dedupe_key: key })),
+							error: null,
+						});
+					}
+					if (table === "discovered_category_normalization") {
+						return Promise.resolve({
+							data: keys
+								.filter((key) => key in categoryCache)
+								.map((key) => ({ raw_category: key, whitelist_categories: [categoryCache[key]] })),
+							error: null,
+						});
+					}
+					return builder;
+				},
 				order: () => (table === "discovered_products"
 					? Promise.resolve({
 						data: rows.map((row) => ({
@@ -69,6 +86,7 @@ function client(rows: Row[], overrides: { onLinkInsert?: () => void } = {}) {
 					if (table === "canonical_products") {
 						const id = `canonical-${canonicals.length + 1}`;
 						canonicals.push(id);
+						canonicalPayloads.push(payload);
 						return { select: () => ({ single: async () => ({ data: { id }, error: null }) }) };
 					}
 					if (table === "product_source_links") {
@@ -110,6 +128,37 @@ async function main(): Promise<void> {
 		assert.equal(result.failed, 0);
 		assert.deepEqual([...sb.links.keys()], ["p-1"]);
 		assert.ok(sb.evidence.length > 0, "linking also captures the row's evidence");
+	}
+
+	{
+		// `normalized_category` must never receive a raw value. 114 of the 135
+		// canonical rows were normalized against the whitelist by the CLI; mixing
+		// unnormalized values in would make coverage read as satisfied while the
+		// stored values are wrong.
+		const cached = client(
+			[{ id: "p-1", name: "A", source: "tv_channel", tv_channel_source: "qvc", category: "生活家電" }],
+			{ categoryCache: { "生活家電": "家電" } },
+		);
+		const cachedResult = await linkDiscoverySessionProducts(cached as never, "session-cat-1");
+		assert.equal(cachedResult.linked, 1);
+		assert.equal(cachedResult.categoryUnresolved, 0);
+		assert.equal(
+			cached.canonicalPayloads[0]?.normalized_category,
+			"家電",
+			"a cached raw category is stored as its whitelist category",
+		);
+
+		const uncached = client([
+			{ id: "p-1", name: "A", source: "tv_channel", tv_channel_source: "qvc", category: "謎ジャンル" },
+		]);
+		const uncachedResult = await linkDiscoverySessionProducts(uncached as never, "session-cat-2");
+		assert.equal(uncachedResult.linked, 1, "an unknown category never blocks identity resolution");
+		assert.equal(uncachedResult.categoryUnresolved, 1);
+		assert.equal(
+			uncached.canonicalPayloads[0]?.normalized_category,
+			null,
+			"an uncached category stores null, not the raw value — repairCanonicalCategory fills it in later",
+		);
 	}
 
 	{
