@@ -1,13 +1,10 @@
 import assert from "node:assert/strict";
-import { NextResponse } from "next/server";
 
 import {
 	classifyReadiness,
 	loadIntelligenceReadiness,
 	percent,
-	type IntelligenceReadiness,
 } from "../lib/intelligence/readiness";
-import { intelligenceStatusGet } from "../app/api/intelligence/status/route";
 
 const NOW = new Date("2026-08-29T12:00:00.000Z");
 const HOUR = 3_600_000;
@@ -24,7 +21,6 @@ function pipelineRun(input: {
 	hoursAgo: number;
 	externalRunId?: string | null;
 	errorCode?: string | null;
-	errorSummary?: string | null;
 }) {
 	return {
 		id: input.id,
@@ -35,7 +31,6 @@ function pipelineRun(input: {
 		started_at: iso(input.hoursAgo),
 		finished_at: input.status === "running" ? null : iso(Math.max(0, input.hoursAgo - 0.01)),
 		error_code: input.errorCode ?? null,
-		error_summary: input.errorSummary ?? null,
 	};
 }
 
@@ -147,14 +142,14 @@ class FakeQuery implements PromiseLike<{ data: Row[] | null; error: { message: s
 const normalRows: Record<string, Row[]> = {
 	data_pipeline_runs: [
 		pipelineRun({ id: "home-success", externalRunId: "discovery-session-home", sourceType: "discovery", jobType: "home_shopping", status: "succeeded", hoursAgo: 1 }),
-		pipelineRun({ id: "home-old-failure", sourceType: "discovery", jobType: "home_shopping", status: "failed", hoursAgo: 30, errorCode: "home_old", errorSummary: "old home failure" }),
-		pipelineRun({ id: "live-failure", sourceType: "discovery", jobType: "live_commerce", status: "failed", hoursAgo: 1, errorCode: "live_failed", errorSummary: "latest live failed" }),
+		pipelineRun({ id: "home-old-failure", sourceType: "discovery", jobType: "home_shopping", status: "failed", hoursAgo: 30, errorCode: "home_old" }),
+		pipelineRun({ id: "live-failure", sourceType: "discovery", jobType: "live_commerce", status: "failed", hoursAgo: 1, errorCode: "live_failed" }),
 		pipelineRun({ id: "live-success", externalRunId: "discovery-session-live", sourceType: "discovery", jobType: "live_commerce", status: "succeeded", hoursAgo: 5 }),
 		pipelineRun({ id: "other-discovery", sourceType: "discovery", jobType: "other", status: "succeeded", hoursAgo: 0.1 }),
 		pipelineRun({ id: "schedule-success", sourceType: "qvc_shopch", jobType: "broadcast_schedule", status: "succeeded", hoursAgo: 2 }),
 		pipelineRun({ id: "crawl-success", sourceType: "oa_channels", jobType: "historical_broadcast_crawl", status: "succeeded", hoursAgo: 2 }),
 		pipelineRun({ id: "archive-success", sourceType: "qvc_shopch", jobType: "video_archive", status: "succeeded", hoursAgo: 1 }),
-		pipelineRun({ id: "audio-partial", sourceType: "broadcast_archive", jobType: "audio_analysis", status: "partial", hoursAgo: 1, errorCode: "partial", errorSummary: "queue retained" }),
+		pipelineRun({ id: "audio-partial", sourceType: "broadcast_archive", jobType: "audio_analysis", status: "partial", hoursAgo: 1, errorCode: "partial" }),
 		pipelineRun({ id: "refresh-success", sourceType: "evidence_items", jobType: "insight_refresh", status: "succeeded", hoursAgo: 2 }),
 		pipelineRun({ id: "backfill-success", sourceType: "intelligence_foundation", jobType: "intelligence_foundation_backfill", status: "succeeded", hoursAgo: 100 }),
 		...Array.from({ length: 11 }, (_, index) => pipelineRun({
@@ -164,7 +159,6 @@ const normalRows: Record<string, Row[]> = {
 			status: "failed",
 			hoursAgo: 10 + index,
 			errorCode: `failure_${index}`,
-			errorSummary: `failure ${index}`,
 		})),
 	],
 	discovered_products: [
@@ -362,48 +356,7 @@ async function run(): Promise<void> {
 	assert.equal(emptyCoverage.coverage.categoryPct, null, "zero active products never manufactures category failure");
 	assert.equal(emptyCoverage.coverage.analysisPct, null, "zero archived broadcasts is unknown analysis coverage, not 0%");
 
-	const status: IntelligenceReadiness = readiness;
-	const routeCalls: string[] = [];
-	const success = await intelligenceStatusGet({
-		requireUser: async (roles) => {
-			routeCalls.push(`auth:${roles.join(",")}`);
-			return { user: {} as never, role: "viewer", sb: {} as never };
-		},
-		getServiceClient: () => {
-			routeCalls.push("service");
-			return client as never;
-		},
-		loadIntelligenceReadiness: async (sb, now) => {
-			assert.ok(now instanceof Date, "the route supplies a concrete clock to the loader");
-			routeCalls.push(`load:${sb === (client as never)}:${now.toISOString()}`);
-			return status;
-		},
-		now: () => NOW,
-	});
-	assert.equal(success.status, 200);
-	assert.equal(success.headers.get("Cache-Control"), "private, no-store");
-	assert.deepEqual(await success.json(), status);
-	assert.deepEqual(routeCalls, ["auth:viewer,member,admin", "service", `load:true:${NOW.toISOString()}`]);
-
-	const denied = await intelligenceStatusGet({
-		requireUser: async () => ({ error: NextResponse.json({ error: "forbidden" }, { status: 403 }) }),
-		getServiceClient: () => { throw new Error("service client must not be constructed after denied auth"); },
-		loadIntelligenceReadiness: async () => { throw new Error("loader must not be called after denied auth"); },
-	});
-	assert.equal(denied.status, 403);
-	assert.equal(denied.headers.get("Cache-Control"), "private, no-store");
-
-	const failed = await intelligenceStatusGet({
-		requireUser: async () => ({ user: {} as never, role: "admin", sb: {} as never }),
-		getServiceClient: () => client as never,
-		loadIntelligenceReadiness: async () => { throw new Error("new relation is unapplied"); },
-		now: () => NOW,
-	});
-	assert.equal(failed.status, 500);
-	assert.equal(failed.headers.get("Cache-Control"), "private, no-store");
-	assert.deepEqual(await failed.json(), { error: "intelligence_status_failed" });
-
-	console.log("PASS: intelligence readiness model and API boundary");
+	console.log("PASS: intelligence readiness model");
 }
 
 void run();

@@ -23,6 +23,19 @@ const REQUIRED_TABLES = [
 	"screenplays",
 	"screenplay_versions",
 	"broadcasts",
+	// Intelligence foundation (20260829130000, 20260829131000). The pipeline
+	// page loads readiness out of data_pipeline_runs on every render, so an
+	// unapplied migration here is a user-visible failure, not a dormant one.
+	"canonical_products",
+	"product_source_links",
+	"evidence_items",
+	"insight_snapshots",
+	"insight_snapshot_evidence",
+	"knowledge_snapshots",
+	"knowledge_snapshot_items",
+	"data_pipeline_runs",
+	"import_batches",
+	"import_rows",
 ];
 
 const REQUIRED_COLUMNS: Record<string, string[]> = {

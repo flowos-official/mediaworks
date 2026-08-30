@@ -28,11 +28,16 @@ export interface IntelligenceReadiness {
 		sourceType: string;
 		jobType: string;
 		errorCode: string | null;
-		errorSummary: string | null;
 		startedAt: string;
 	}>;
 }
 
+/**
+ * `error_summary` is deliberately absent. It carries unvetted third-party error
+ * text and 20260830100000_intelligence_access_grades.sql revokes the column from
+ * `authenticated`, so selecting it here would fail for every non-service caller.
+ * `error_code` is ours and is what the dashboard shows.
+ */
 interface PipelineRunRow {
 	id: string;
 	source_type: string;
@@ -42,8 +47,9 @@ interface PipelineRunRow {
 	started_at: string;
 	finished_at: string | null;
 	error_code: string | null;
-	error_summary: string | null;
 }
+
+const PIPELINE_RUN_COLUMNS = "id,source_type,job_type,external_run_id,status,started_at,finished_at,error_code";
 
 interface SourceLinkRow {
 	id: string;
@@ -217,7 +223,7 @@ export function createIntelligenceReadinessRepository(sb: SupabaseClient): Intel
 			const [attemptResult, successResult] = await Promise.all([
 				sb
 					.from("data_pipeline_runs")
-					.select("id,source_type,job_type,external_run_id,status,started_at,finished_at,error_code,error_summary")
+					.select(PIPELINE_RUN_COLUMNS)
 					.eq("source_type", sourceType)
 					.eq("job_type", jobType)
 					.order("started_at", { ascending: false })
@@ -225,7 +231,7 @@ export function createIntelligenceReadinessRepository(sb: SupabaseClient): Intel
 					.maybeSingle(),
 				sb
 					.from("data_pipeline_runs")
-					.select("id,source_type,job_type,external_run_id,status,started_at,finished_at,error_code,error_summary")
+					.select(PIPELINE_RUN_COLUMNS)
 					.eq("source_type", sourceType)
 					.eq("job_type", jobType)
 					.eq("status", "succeeded")
@@ -244,7 +250,7 @@ export function createIntelligenceReadinessRepository(sb: SupabaseClient): Intel
 		async loadRecentFailures(limit) {
 			const { data, error } = await sb
 				.from("data_pipeline_runs")
-				.select("source_type,job_type,error_code,error_summary,started_at")
+				.select("source_type,job_type,error_code,started_at")
 				.eq("status", "failed")
 				.order("started_at", { ascending: false })
 				.limit(limit);
@@ -434,7 +440,6 @@ export async function loadIntelligenceReadiness(
 			sourceType: run.source_type,
 			jobType: run.job_type,
 			errorCode: run.error_code,
-			errorSummary: run.error_summary,
 			startedAt: run.started_at,
 		})),
 	};

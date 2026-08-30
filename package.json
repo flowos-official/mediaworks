@@ -30,6 +30,7 @@
     "test:intelligence-identity-schema": "tsx scripts/test-intelligence-identity-schema.ts",
     "test:intelligence-snapshot-schema": "tsx scripts/test-intelligence-snapshot-schema.ts",
     "test:intelligence-evidence": "tsx scripts/test-intelligence-evidence.ts",
+    "test:intelligence-evidence-predicates": "tsx scripts/test-intelligence-evidence-predicates.ts",
     "test:intelligence-backfill": "tsx scripts/test-intelligence-backfill.ts",
     "test:intelligence-insights": "tsx scripts/test-intelligence-insights.ts",
     "test:intelligence-readiness": "tsx scripts/test-intelligence-readiness.ts",

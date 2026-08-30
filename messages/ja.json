@@ -382,8 +382,7 @@
       "failureColumns": {
         "source": "ソース",
         "startedAt": "発生時刻",
-        "errorCode": "エラーコード",
-        "errorSummary": "概要"
+        "errorCode": "エラーコード"
       },
       "noData": "—",
       "sourcesByKey": {

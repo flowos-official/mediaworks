@@ -33,7 +33,6 @@ export interface ReadinessDashboardCopy {
 		source: string;
 		startedAt: string;
 		errorCode: string;
-		errorSummary: string;
 	};
 	noData: string;
 	sourcesByKey: Record<string, string>;
@@ -266,7 +265,6 @@ export function DataReadinessDashboard({ readiness, copy, locale }: DataReadines
 									<th scope="col" className="px-3 py-2 text-left font-medium">{copy.failureColumns.source}</th>
 									<th scope="col" className="px-3 py-2 text-left font-medium">{copy.failureColumns.startedAt}</th>
 									<th scope="col" className="px-3 py-2 text-left font-medium">{copy.failureColumns.errorCode}</th>
-									<th scope="col" className="px-3 py-2 text-left font-medium">{copy.failureColumns.errorSummary}</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -278,9 +276,6 @@ export function DataReadinessDashboard({ readiness, copy, locale }: DataReadines
 										</td>
 										<td data-readiness-failure-code className="px-3 py-2 font-mono text-xs text-foreground">
 											{textOrNoData(failure.errorCode, copy.noData)}
-										</td>
-										<td data-readiness-failure-summary className="px-3 py-2 text-xs text-foreground">
-											{textOrNoData(failure.errorSummary, copy.noData)}
 										</td>
 									</tr>
 								))}

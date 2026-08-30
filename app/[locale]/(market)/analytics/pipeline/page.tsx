@@ -4,7 +4,7 @@ import { getTranslations, getLocale } from "next-intl/server";
 import { requireUser } from "@/lib/auth/require-user";
 import { loadIntelligenceReadiness } from "@/lib/intelligence/readiness";
 import type { BoardData, BoardCard } from "@/lib/selections/types";
-import { getServiceClient } from "@/lib/supabase";
+import type { IntelligenceReadiness } from "@/lib/intelligence/readiness";
 import { DataReadinessDashboard, type ReadinessDashboardCopy } from "@/components/pipeline/DataReadinessDashboard";
 import { KanbanBoard } from "@/components/pipeline/KanbanBoard";
 
@@ -41,6 +41,17 @@ async function loadBoard(
   return board;
 }
 
+async function loadReadiness(
+  sb: Extract<Awaited<ReturnType<typeof requireUser>>, { sb: unknown }>["sb"],
+): Promise<IntelligenceReadiness | null> {
+  try {
+    return await loadIntelligenceReadiness(sb, new Date());
+  } catch (err) {
+    console.warn("[pipeline/loadReadiness] readiness unavailable:", err instanceof Error ? err.message : err);
+    return null;
+  }
+}
+
 export default async function PipelinePage() {
   const [t, locale, auth] = await Promise.all([
     getTranslations("pipeline"),
@@ -49,10 +60,19 @@ export default async function PipelinePage() {
   ]);
   if ("error" in auth) redirect(`/${locale}/login`);
 
-  const boardPromise = loadBoard(auth.sb);
-  const readinessPromise = loadIntelligenceReadiness(getServiceClient(), new Date());
-  const [board, readiness] = await Promise.all([boardPromise, readinessPromise]);
   const canWrite = auth.role !== "viewer";
+
+  // Read as the signed-in user so RLS decides what they see. The readiness
+  // sources are Group B, so a viewer would only get errors out of the loader —
+  // skip the call for them rather than branching inside the component.
+  //
+  // Readiness is also strictly secondary to the board: an operator opens this
+  // page to work the kanban. A failing telemetry query must degrade the panel,
+  // never take the board down with it.
+  const [board, readiness] = await Promise.all([
+    loadBoard(auth.sb),
+    canWrite ? loadReadiness(auth.sb) : Promise.resolve(null),
+  ]);
 
   return (
     <section className="space-y-5 lg:space-y-6">
@@ -62,11 +82,13 @@ export default async function PipelinePage() {
         <p className="mt-1 text-xs text-muted-foreground sm:text-sm">{t("pageSubtitle")}</p>
       </header>
 
-      <DataReadinessDashboard
-        readiness={readiness}
-        copy={t.raw("readiness") as ReadinessDashboardCopy}
-        locale={locale}
-      />
+      {readiness ? (
+        <DataReadinessDashboard
+          readiness={readiness}
+          copy={t.raw("readiness") as ReadinessDashboardCopy}
+          locale={locale}
+        />
+      ) : null}
 
       <section aria-labelledby="selection-operations-title" className="space-y-3">
         <header className="flex flex-col gap-1 px-0.5 sm:flex-row sm:items-end sm:justify-between sm:gap-4">

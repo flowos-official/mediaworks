@@ -382,8 +382,7 @@
       "failureColumns": {
         "source": "소스",
         "startedAt": "발생 시각",
-        "errorCode": "오류 코드",
-        "errorSummary": "요약"
+        "errorCode": "오류 코드"
       },
       "noData": "—",
       "sourcesByKey": {

@@ -4,59 +4,41 @@ import path from "node:path";
 import { load } from "cheerio";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { IntelligenceReadiness } from "../lib/intelligence/readiness";
+import type { ReadinessDashboardCopy } from "../components/pipeline/DataReadinessDashboard";
 
-const copy = {
-	title: "データ準備状況",
-	description: "収集・正規化・根拠・洞察の現在の準備状況です。",
-	sources: "データソース",
-	coverage: "カバレッジ",
-	categories: "カテゴリ別の放送分析",
-	failures: "最近の失敗",
-	noFailures: "最近の失敗はありません。",
-	notRequestedIsNormal: "推薦、Research、台本の実行が0件でも、データパイプラインの失敗ではありません。必要になった時点で実行します。",
-	generatedAt: "集計時刻",
-	latestAttempt: "最新試行",
-	latestSuccess: "最新成功",
-	sourceDetail: "詳細",
-	statusLabel: "状態",
-	status: {
-		healthy: "正常",
-		stale: "期限超過",
-		failed: "失敗",
-		missing: "未実行",
-	},
-	metric: {
-		canonicalLink: "統合商品リンク",
-		category: "カテゴリ正規化",
-		broadcastAnalysis: "放送分析",
-		evidence: "根拠アイテム",
-		insights: "洞察スナップショット",
-	},
-	categoryColumns: {
-		category: "カテゴリ",
-		analyzed: "分析済み",
-		total: "アーカイブ",
-		coverage: "分析率",
-	},
-	noCategories: "分析対象のアーカイブ放送はまだありません。",
-	failureColumns: {
-		source: "ソース",
-		startedAt: "発生時刻",
-		errorCode: "エラーコード",
-		errorSummary: "概要",
-	},
-	noData: "—",
-	sourcesByKey: {
-		discovery_home_shopping: "ホームショッピング発掘",
-		discovery_live_commerce: "ライブコマース発掘",
-		broadcast_schedule: "放送編成収集",
-		historical_broadcast_crawl: "過去放送収集",
-		broadcast_video_archive: "放送映像アーカイブ",
-		broadcast_audio_analysis: "放送音声分析",
-		intelligence_foundation_backfill: "インテリジェンス基盤バックフィル",
-		intelligence_insight_refresh: "インサイト更新",
-	},
-};
+/**
+ * The copy is read from the shipped message files rather than restated here.
+ * A literal would keep passing after a key was renamed or dropped, and
+ * `t.raw("readiness")` in the page is an assertion, so this is the only place
+ * the component's key usage is checked against what the app actually ships.
+ */
+async function loadCopy(locale: "ja" | "ko"): Promise<ReadinessDashboardCopy> {
+	const file = path.join(process.cwd(), "messages", `${locale}.json`);
+	const messages = JSON.parse(await readFile(file, "utf8")) as {
+		pipeline?: { readiness?: unknown };
+	};
+	const readinessCopy = messages.pipeline?.readiness;
+	assert.ok(readinessCopy, `messages/${locale}.json must define pipeline.readiness`);
+	return readinessCopy as ReadinessDashboardCopy;
+}
+
+/** Every leaf the component reads must exist in both locales, not just the default. */
+function assertSameShape(left: unknown, right: unknown, trail: string): void {
+	if (typeof left !== "object" || left === null || typeof right !== "object" || right === null) {
+		assert.equal(typeof left, typeof right, `${trail} must have the same type in both locales`);
+		return;
+	}
+	const leftKeys = Object.keys(left as Record<string, unknown>).sort();
+	const rightKeys = Object.keys(right as Record<string, unknown>).sort();
+	assert.deepEqual(leftKeys, rightKeys, `${trail} must define the same keys in ja and ko`);
+	for (const key of leftKeys) {
+		assertSameShape(
+			(left as Record<string, unknown>)[key],
+			(right as Record<string, unknown>)[key],
+			`${trail}.${key}`,
+		);
+	}
+}
 
 const readiness: IntelligenceReadiness = {
 	generatedAt: "2026-08-29T12:00:00.000Z",
@@ -101,7 +83,6 @@ const readiness: IntelligenceReadiness = {
 			sourceType: "broadcast_archive",
 			jobType: "audio_analysis",
 			errorCode: "timeout",
-			errorSummary: "audio worker timed out",
 			startedAt: "2026-08-29T10:00:00.000Z",
 		},
 	],
@@ -126,15 +107,30 @@ async function main() {
 		/<KanbanBoard\b/,
 		"Pipeline page must retain the product selection Kanban board.",
 	);
-	assert.match(
+	assert.doesNotMatch(
 		pageSource,
-		/loadIntelligenceReadiness\(getServiceClient\(\), new Date\(\)\)/,
-		"Pipeline page must load readiness directly with the service client.",
+		/getServiceClient/,
+		"Pipeline page is user-reachable, so readiness must not bypass RLS with the service client.",
 	);
 	assert.match(
 		pageSource,
-		/Promise\.all\(\[boardPromise, readinessPromise\]\)/,
+		/loadIntelligenceReadiness\(sb, new Date\(\)\)/,
+		"Pipeline page must load readiness as the signed-in user so RLS applies.",
+	);
+	assert.match(
+		pageSource,
+		/canWrite \? loadReadiness\(auth\.sb\) : Promise\.resolve\(null\)/,
+		"A viewer cannot read the Group B readiness sources, so the loader must be skipped for them.",
+	);
+	assert.match(
+		pageSource,
+		/Promise\.all\(\[\s*loadBoard\(auth\.sb\),/,
 		"Pipeline board and readiness loads must start in parallel.",
+	);
+	assert.match(
+		pageSource,
+		/catch \(err\) \{[\s\S]*?return null;/,
+		"Readiness is secondary to the board: its failure must degrade the panel, not the page.",
 	);
 	assert.doesNotMatch(
 		pageSource,
@@ -178,6 +174,8 @@ async function main() {
 		sortProbeInputOrder,
 		"Category sorting must not mutate readiness props.",
 	);
+	const copy = await loadCopy("ja");
+	assertSameShape(copy, await loadCopy("ko"), "pipeline.readiness");
 	const props = { readiness, copy, locale: "ja" } as Parameters<typeof DataReadinessDashboard>[0];
 	const markup = renderToStaticMarkup(DataReadinessDashboard(props));
 	const $ = load(markup);
@@ -196,7 +194,11 @@ async function main() {
 	assert.match(markup, /aria-label="状態: 失敗"/, "Failed source status must have an accessible text label.");
 	assert.match(markup, /discovery\/home_shopping: daily \(26h tolerance\)\./, "Source cards must render readiness detail.");
 	assert.match(markup, /timeout/, "Failure rows must render a non-null error code.");
-	assert.match(markup, /audio worker timed out/, "Failure rows must render a non-null error summary.");
+	assert.equal(
+		$("[data-readiness-failure-summary]").length,
+		0,
+		"error_summary is unvetted third-party text and is revoked from `authenticated`; only our own error_code is shown.",
+	);
 	assert.ok(
 		markup.indexOf("A: no denominator") < markup.indexOf("C: lowest measured")
 			&& markup.indexOf("C: lowest measured") < markup.indexOf("B: measured"),
@@ -209,13 +211,13 @@ async function main() {
 		readiness: {
 			...readiness,
 			sources: [{ ...readiness.sources[0], detail: "" }],
-			failures: [{ ...readiness.failures[0], errorCode: null, errorSummary: null }],
+			failures: [{ ...readiness.failures[0], errorCode: null }],
 		},
 	}));
 	const emptyFieldMarkupDocument = load(emptyFieldMarkup);
 	assert.equal(emptyFieldMarkupDocument("[data-readiness-source-detail]").text(), "—", "An empty source detail must use the safe empty fallback.");
 	assert.equal(emptyFieldMarkupDocument("[data-readiness-failure-code]").text(), "—", "A missing failure error code must use the safe empty fallback.");
-	assert.equal(emptyFieldMarkupDocument("[data-readiness-failure-summary]").text(), "—", "A missing failure error summary must use the safe empty fallback.");
+	assert.equal(emptyFieldMarkupDocument("[data-readiness-failure-summary]").length, 0, "Raw third-party error text is revoked at the database and must not be rendered.");
 
 	const noFailuresMarkup = renderToStaticMarkup(DataReadinessDashboard({ ...props, readiness: { ...readiness, failures: [] } }));
 	assert.match(noFailuresMarkup, /最近の失敗はありません。/, "An empty failure list must render its truthful normal state.");

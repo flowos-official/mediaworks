@@ -759,6 +759,8 @@ Query `data_pipeline_runs` for attempts/failures, current domain tables for cove
 
 `GET /api/intelligence/status` calls `requireUser(["viewer","member","admin"])`, then `loadIntelligenceReadiness(getServiceClient(), new Date())`, returns `Cache-Control: private, no-store`, and maps loader failures to `{ error: "intelligence_status_failed" }` with HTTP 500.
 
+> **Correction (2026-08-30) — this step was wrong and has been reverted in code.** `getServiceClient()` bypasses RLS, and `/analytics/pipeline` is on the viewer allowlist, so following this step rendered member-only `broadcasts` / `discovered_products` / `broadcast_speech_analyses` aggregates to viewers. CLAUDE.md's rule — service-role is for cron and workflow steps only — stands; this plan is what gives way. Readiness now loads with `auth.sb`, and is skipped entirely for viewers because its sources are Group B. The route itself was deleted: it had no production consumer, and a second copy of the auth decision only drifts. The three remaining 2026-08-29 plans repeat this pattern; do not copy it.
+
 - [ ] **Step 5: Run tests and an authenticated local API check**
 
 Add `"test:intelligence-readiness": "tsx scripts/test-intelligence-readiness.ts"`.
