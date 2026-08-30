@@ -1,24 +1,37 @@
 import type { PipelineRunCounts } from "./pipeline-run";
 
+export interface DiscoverySaveBreakdown {
+	attempted: number;
+	excluded: number;
+	saved: number;
+	duplicate: number;
+}
+
 /**
- * `saveDiscoveredProducts` returns a single count, so a row rejected by the
- * recent-duplicate trigger and a row lost to a database error are
- * indistinguishable here and both land in `duplicate`. `failed` is 0 because
- * this mapping genuinely cannot observe a failure, not because none happened —
- * telling the two apart needs the save path to report them separately.
+ * `failed` stays 0 on purpose, and it is now honest rather than merely
+ * convenient: `saveDiscoveredProducts` throws on a database error, so a failure
+ * cannot reach this mapping at all — the cron records the run as failed
+ * instead. What this used to get wrong was the other side, reporting
+ * `attempted - saved` wholesale as `duplicate` and thereby merging a candidate
+ * we refused on channel policy with a URL the database already had.
+ *
+ * A policy exclusion is a decision, not a collision, so it is counted as
+ * `updated` — work observed and deliberately not written — and only rows the
+ * database actually skipped count as `duplicate`.
  */
 export function discoveryPipelineCounts(
-	attempted: number,
-	saved: number,
+	breakdown: DiscoverySaveBreakdown,
 ): PipelineRunCounts {
-	const safeAttempted = Math.max(0, attempted);
-	const safeSaved = Math.min(safeAttempted, Math.max(0, saved));
+	const attempted = Math.max(0, breakdown.attempted);
+	const saved = Math.min(attempted, Math.max(0, breakdown.saved));
+	const excluded = Math.min(attempted - saved, Math.max(0, breakdown.excluded));
+	const duplicate = Math.max(0, attempted - saved - excluded);
 	return {
-		new: safeSaved,
-		updated: 0,
-		duplicate: safeAttempted - safeSaved,
+		new: saved,
+		updated: excluded,
+		duplicate,
 		failed: 0,
-		processed: safeAttempted,
+		processed: attempted,
 	};
 }
 

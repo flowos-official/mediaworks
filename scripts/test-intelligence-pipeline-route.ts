@@ -37,8 +37,10 @@ const input = {
 
 async function main() {
 	{
-		assert.deepEqual(discoveryHomePipelineCounts(4, 1), { new: 1, updated: 0, duplicate: 3, failed: 0, processed: 4 });
-		assert.deepEqual(discoveryLivePipelineCounts(0, 0), { new: 0, updated: 0, duplicate: 0, failed: 0, processed: 0 });
+		assert.deepEqual(discoveryHomePipelineCounts({ attempted: 4, excluded: 0, saved: 1, duplicate: 3 }), { new: 1, updated: 0, duplicate: 3, failed: 0, processed: 4 });
+		assert.deepEqual(discoveryLivePipelineCounts({ attempted: 0, excluded: 0, saved: 0, duplicate: 0 }), { new: 0, updated: 0, duplicate: 0, failed: 0, processed: 0 });
+		// A policy exclusion must not be reported as the database having seen it.
+		assert.deepEqual(discoveryLivePipelineCounts({ attempted: 6, excluded: 2, saved: 3, duplicate: 1 }), { new: 3, updated: 2, duplicate: 1, failed: 0, processed: 6 });
 		assert.deepEqual(dailyBroadcastPipelineCounts({ inserted: 1, updated: 2, sourceErrors: 1, persistenceErrors: 0, enrichmentErrors: 1, snapshotErrors: 3, processed: 5 }), { new: 1, updated: 2, duplicate: 0, failed: 5, processed: 5 });
 		assert.deepEqual(historicalBroadcastPipelineCounts({ inserted: 1, updated: 2, skippedDuplicate: 3, persistErrors: 1, failedChannels: 1, processed: 7 }), { new: 1, updated: 2, duplicate: 3, failed: 2, processed: 7 });
 		const unclassifiedCounts = historicalBroadcastPipelineCounts({ inserted: undefined, updated: undefined, skippedDuplicate: 3, persistErrors: 0, failedChannels: 0, processed: 7 });

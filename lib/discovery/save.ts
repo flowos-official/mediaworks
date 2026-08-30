@@ -341,12 +341,35 @@ async function enrichMissingCategories(
  * Bulk insert discovered_products for a session.
  * Skips rows that violate unique (session_id, product_url) — idempotent on retry.
  */
+/**
+ * Why this is a breakdown and not a count.
+ *
+ * `attempted - saved` used to be reported wholesale as "duplicate", which
+ * merged three unrelated outcomes: a candidate we deliberately refused on
+ * channel policy, a URL the cross-session dedup trigger skipped because another
+ * recent session already has it, and a URL repeated inside this batch. Only the
+ * last two are duplicates. A real database error throws rather than shrinking
+ * the count, so a failure never hides in here — but "we chose not to save this"
+ * and "the database already had it" are different facts and telemetry should
+ * not have to guess which one it is looking at.
+ */
+export interface SaveDiscoveredProductsResult {
+	/** Candidates handed to this function. */
+	attempted: number;
+	/** Refused by channel policy before any write was attempted. */
+	excluded: number;
+	/** Rows the database actually inserted. */
+	saved: number;
+	/** Sent to the database and skipped as already present. */
+	duplicate: number;
+}
+
 export async function saveDiscoveredProducts(
 	sessionId: string,
 	batch: SaveBatch[],
 	options: SaveDiscoveredProductsOptions = {},
-): Promise<number> {
-	if (batch.length === 0) return 0;
+): Promise<SaveDiscoveredProductsResult> {
+	if (batch.length === 0) return { attempted: 0, excluded: 0, saved: 0, duplicate: 0 };
 	const sb = getServiceClient();
 	const enrichedBatch = await enrichMissingCategories(batch, options);
 	const rows = buildDiscoveredProductRows(sessionId, enrichedBatch);
@@ -361,7 +384,13 @@ export async function saveDiscoveredProducts(
 			`[save] saveDiscoveredProducts failed: ${error.message}`,
 		);
 	}
-	return data?.length ?? 0;
+	const saved = data?.length ?? 0;
+	return {
+		attempted: batch.length,
+		excluded: batch.length - rows.length,
+		saved,
+		duplicate: rows.length - saved,
+	};
 }
 
 export const __test = {

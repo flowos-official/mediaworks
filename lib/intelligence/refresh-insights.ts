@@ -84,11 +84,13 @@ export interface InsightRefreshRepository {
 	loadLatestInsightCutoffs(subjects: LatestInsightSubject[]): Promise<Map<string, string>>;
 	loadProductEvidence(productId: string, cutoff: string): Promise<EvidenceItem[]>;
 	loadBroadcastEvidence(broadcastIds: string[], cutoff: string): Promise<EvidenceItem[]>;
-	writeSnapshot(draft: InsightDraft): Promise<string>;
+	/** `null` when an equivalent snapshot already exists for this window. */
+	writeSnapshot(draft: InsightDraft): Promise<string | null>;
 }
 
 export interface SnapshotPersistence {
-	insertParent(draft: InsightDraft): Promise<string>;
+	/** `null` when the identity constraint already holds a row for this window. */
+	insertParent(draft: InsightDraft): Promise<string | null>;
 	insertEvidenceLinks(snapshotId: string, evidenceIds: string[]): Promise<number>;
 	deleteParent(snapshotId: string): Promise<void>;
 }
@@ -115,6 +117,8 @@ export interface RefreshIntelligenceInsightsResult {
 	productSnapshots: number;
 	categorySnapshots: number;
 	skippedNoNewEvidence: number;
+	/** Windows another writer had already persisted when this run reached them. */
+	alreadyCurrent: number;
 	unresolvedBroadcastIds: string[];
 	errors: Array<{ subjectType: "product" | "category"; subjectId: string; error: string }>;
 	counts: PipelineRunCounts;
@@ -343,9 +347,12 @@ export function resolveStoredBroadcastCategories(
 export async function persistInsightSnapshot(
 	persistence: SnapshotPersistence,
 	draft: InsightDraft,
-): Promise<string> {
+): Promise<string | null> {
 	if (new Set(draft.evidenceIds).size !== draft.evidenceIds.length) throw new Error("insight evidence IDs must be unique");
 	const snapshotId = await persistence.insertParent(draft);
+	// The identity constraint already holds this window. Recomputing it is a
+	// no-op, not a failure — that is what makes a retry or a manual re-run safe.
+	if (snapshotId === null) return null;
 	let primaryError: unknown;
 	try {
 		const linked = await persistence.insertEvidenceLinks(snapshotId, draft.evidenceIds);
@@ -369,7 +376,7 @@ export function createSnapshotPersistence(sb: SupabaseClient): SnapshotPersisten
 		async insertParent(draft) {
 			const { data, error } = await (sb as any)
 				.from("insight_snapshots")
-				.insert({
+				.upsert({
 					insight_type: draft.insightType,
 					subject_type: draft.subjectType,
 					subject_id: draft.subjectId,
@@ -382,12 +389,19 @@ export function createSnapshotPersistence(sb: SupabaseClient): SnapshotPersisten
 					model_version: draft.modelVersion ?? null,
 					confidence: draft.confidence,
 					valid_until: draft.validUntil ?? null,
+				}, {
+					onConflict: "insight_type,subject_type,subject_id,formula_version,input_until",
+					ignoreDuplicates: true,
 				})
-				.select("id")
-				.single();
+				.select("id");
 			if (error) throw new Error(`insight snapshot parent insert failed: ${error.message}`);
-			if (!data?.id) throw new Error("insight snapshot parent insert returned no id");
-			return String(data.id);
+			const rows = (data ?? []) as Array<{ id?: unknown }>;
+			// An ignored conflict returns no rows: another run already wrote this
+			// exact window, so there is nothing to link and nothing to clean up.
+			if (rows.length === 0) return null;
+			const id = rows[0]?.id;
+			if (!id) throw new Error("insight snapshot parent insert returned no id");
+			return String(id);
 		},
 		async insertEvidenceLinks(snapshotId, evidenceIds) {
 			if (evidenceIds.length === 0) return 0;
@@ -769,6 +783,7 @@ export async function refreshIntelligenceInsights(
 		const errors: RefreshIntelligenceInsightsResult["errors"] = [];
 		let productSnapshots = 0;
 		let categorySnapshots = 0;
+		let alreadyCurrent = 0;
 		// A broadcast whose category cannot be resolved is a coverage gap, not a
 		// failure: roughly one archived broadcast in six has no category at all,
 		// so counting them as failures made this job permanently `partial` and
@@ -790,15 +805,19 @@ export async function refreshIntelligenceInsights(
 						candidate.subjectId,
 						normalizedCutoff,
 					);
-				await repository.writeSnapshot(draft);
-				if (candidate.subjectType === "product") productSnapshots += 1;
+				const snapshotId = await repository.writeSnapshot(draft);
+				// A null id means the identity constraint already held this window —
+				// a concurrent run, a retry or a manual re-run got there first. It is
+				// a skip, not new output, and not a failure.
+				if (snapshotId === null) alreadyCurrent += 1;
+				else if (candidate.subjectType === "product") productSnapshots += 1;
 				else categorySnapshots += 1;
 			} catch (error) {
 				errors.push({ subjectType: candidate.subjectType, subjectId: candidate.subjectId, error: errorMessage(error) });
 			}
 			counts = observedCounts({
 				created: productSnapshots + categorySnapshots,
-				duplicate: skippedNoNewEvidence + unresolvedBroadcastIds.length,
+				duplicate: skippedNoNewEvidence + unresolvedBroadcastIds.length + alreadyCurrent,
 				failed: errors.length,
 			});
 			await heartbeat();
@@ -861,6 +880,7 @@ export async function refreshIntelligenceInsights(
 			productSnapshots,
 			categorySnapshots,
 			skippedNoNewEvidence,
+			alreadyCurrent,
 			unresolvedBroadcastIds,
 			errors,
 			counts,

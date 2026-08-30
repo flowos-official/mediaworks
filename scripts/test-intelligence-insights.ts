@@ -22,6 +22,7 @@ import {
 	acquireRefreshInsightsInvocation,
 	isRefreshInsightsCronAuthorized,
 	maxDuration as refreshInsightsMaxDuration,
+	refreshInsightsCutoff,
 	runRefreshInsightsCron,
 	type RefreshInsightsCronDependencies,
 } from "../app/api/cron/refresh-intelligence-insights/route";
@@ -514,18 +515,20 @@ async function testRefreshRound1(): Promise<void> {
 		const client = {
 			from(table: string) {
 				const builder: any = {
+					upsert(payload: Record<string, unknown>) {
+						parentPayload = payload;
+						return builder;
+					},
 					insert(payload: Record<string, unknown> | Array<Record<string, unknown>>) {
-						if (table === "insight_snapshots") parentPayload = payload as Record<string, unknown>;
-						else linkedRows = payload as Array<Record<string, unknown>>;
+						linkedRows = payload as Array<Record<string, unknown>>;
 						return builder;
 					},
 					select() {
 						if (table === "insight_snapshot_evidence") {
 							return Promise.resolve({ data: linkedRows.map((row) => ({ evidence_item_id: row.evidence_item_id })), error: null });
 						}
-						return builder;
+						return Promise.resolve({ data: [{ id: "production-parent" }], error: null });
 					},
-					single: async () => ({ data: { id: "production-parent" }, error: null }),
 					delete() { deletedParent = true; return builder; },
 					eq: async () => ({ error: null }),
 				};
@@ -544,18 +547,51 @@ async function testRefreshRound1(): Promise<void> {
 	}
 
 	{
+		// The identity constraint already holds this window: another run, a retry
+		// or a manual drain got there first. Recomputing must be a no-op, and
+		// there is nothing to link or clean up.
+		const draft = buildProductMarketInsight(productEvidence, CUTOFF);
+		let linkAttempted = false;
+		let deletedParent = false;
+		interface ConflictBuilder {
+			upsert(): ConflictBuilder;
+			insert(): ConflictBuilder;
+			select(): Promise<{ data: Array<{ id: string }>; error: null }>;
+			delete(): ConflictBuilder;
+			eq(): Promise<{ error: null }>;
+		}
+		const client = {
+			from() {
+				const builder: ConflictBuilder = {
+					upsert: () => builder,
+					insert() { linkAttempted = true; return builder; },
+					// An ignored conflict returns zero rows.
+					select: () => Promise.resolve({ data: [], error: null }),
+					delete() { deletedParent = true; return builder; },
+					eq: async () => ({ error: null }),
+				};
+				return builder;
+			},
+		};
+		const snapshotId = await createInsightRefreshRepository(client as never).writeSnapshot(draft);
+		assert.equal(snapshotId, null, "an existing window resolves to null rather than a fabricated id");
+		assert.equal(linkAttempted, false, "no evidence links are written for a snapshot that was not inserted");
+		assert.equal(deletedParent, false, "there is nothing to roll back");
+	}
+
+	{
 		const draft = buildProductMarketInsight(productEvidence, CUTOFF);
 		let deletedParent = false;
 		const client = {
 			from(table: string) {
 				const builder: any = {
+					upsert: () => builder,
 					insert: () => builder,
 					select() {
 						return table === "insight_snapshot_evidence"
 							? Promise.resolve({ data: [], error: null })
-							: builder;
+							: Promise.resolve({ data: [{ id: "mismatch-parent" }], error: null });
 					},
-					single: async () => ({ data: { id: "mismatch-parent" }, error: null }),
 					delete() { deletedParent = true; return builder; },
 					eq: async () => ({ error: null }),
 				};
@@ -937,6 +973,7 @@ async function testCronRoute(): Promise<void> {
 					productSnapshots: 1,
 					categorySnapshots: 1,
 					skippedNoNewEvidence: 0,
+					alreadyCurrent: 0,
 					unresolvedBroadcastIds: [],
 					errors: [],
 					counts: { new: 2, updated: 0, duplicate: 0, failed: 0, processed: 2 },
@@ -965,6 +1002,7 @@ async function testCronRoute(): Promise<void> {
 		productSnapshots: 1,
 		categorySnapshots: 1,
 		skippedNoNewEvidence: 0,
+		alreadyCurrent: 0,
 		unresolvedBroadcastIds: [],
 		errors: [],
 		counts: { new: 2, updated: 0, duplicate: 0, failed: 0, processed: 2 },
@@ -976,6 +1014,22 @@ async function testCronRoute(): Promise<void> {
 		cursorPersisted: true,
 		telemetryFailures: [],
 	});
+
+	// Two invocations of the same trigger arrive 26-82s apart. Quantizing the
+	// window is what makes them compute the same `input_until`, so the identity
+	// constraint can reject the second write instead of silently doubling it.
+	assert.equal(
+		refreshInsightsCutoff(new Date("2026-08-29T20:00:10.000Z")),
+		refreshInsightsCutoff(new Date("2026-08-29T20:01:32.000Z")),
+		"a duplicate pair inside the window shares one evidence cutoff",
+	);
+	assert.equal(refreshInsightsCutoff(new Date("2026-08-29T20:04:59.999Z")), "2026-08-29T20:00:00.000Z");
+	assert.equal(
+		refreshInsightsCutoff(new Date("2026-08-29T20:05:00.000Z")),
+		"2026-08-29T20:05:00.000Z",
+		"the next scheduled run gets its own window rather than being suppressed",
+	);
+	assert.throws(() => refreshInsightsCutoff(new Date(Number.NaN)), /refresh cutoff clock is invalid/);
 
 	let unauthorizedRefreshCalled = false;
 	const unauthorized = await runRefreshInsightsCron(new Request("https://example.test"), {
@@ -1028,6 +1082,7 @@ async function testCronRoute(): Promise<void> {
 				productSnapshots: 0,
 				categorySnapshots: 0,
 				skippedNoNewEvidence: 0,
+				alreadyCurrent: 0,
 				unresolvedBroadcastIds: [],
 				errors: [],
 				counts: { new: 0, updated: 0, duplicate: 0, failed: 0, processed: 0 },
@@ -1110,6 +1165,7 @@ async function testCronRoute(): Promise<void> {
 				productSnapshots: 0,
 				categorySnapshots: 0,
 				skippedNoNewEvidence: 0,
+				alreadyCurrent: 0,
 				unresolvedBroadcastIds: [],
 				errors: [],
 				counts: { new: 0, updated: 0, duplicate: 0, failed: 0, processed: 0 },
@@ -1146,6 +1202,7 @@ async function testCronRoute(): Promise<void> {
 					productSnapshots: 0,
 					categorySnapshots: 0,
 					skippedNoNewEvidence: 0,
+					alreadyCurrent: 0,
 					unresolvedBroadcastIds: [],
 					errors: [],
 					counts: { new: 0, updated: 0, duplicate: 0, failed: 0, processed: 0 },

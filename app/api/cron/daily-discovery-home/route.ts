@@ -18,7 +18,7 @@ import {
 import { getServiceClient } from "@/lib/supabase";
 import { DEFAULT_LEARNING_STATE, type LearningState } from "@/lib/discovery/types";
 import { createPipelineRunRepository } from "@/lib/intelligence/pipeline-run";
-import { discoveryPipelineCounts } from "@/lib/intelligence/pipeline-run-mapping";
+import { discoveryPipelineCounts, type DiscoverySaveBreakdown } from "@/lib/intelligence/pipeline-run-mapping";
 import { settlePipelineRunBestEffort, startPipelineRunBestEffort } from "@/lib/intelligence/pipeline-run-route";
 
 
@@ -40,8 +40,8 @@ const OPTIONAL_STAGE_MIN_SAVE_BUDGET_MS = Number(
 	process.env.DISCOVERY_OPTIONAL_STAGE_MIN_SAVE_BUDGET_MS ?? 20_000,
 );
 
-export function discoveryHomePipelineCounts(attempted: number, saved: number) {
-	return discoveryPipelineCounts(attempted, saved);
+export function discoveryHomePipelineCounts(breakdown: DiscoverySaveBreakdown) {
+	return discoveryPipelineCounts(breakdown);
 }
 
 async function loadLearningState(): Promise<LearningState> {
@@ -270,7 +270,7 @@ export async function GET(req: NextRequest) {
 				tvEvidence: evidenceMap.get(c.productUrl) ?? null,
 			};
 		});
-		const savedCount = await saveDiscoveredProducts(sessionId, batch, {
+		const saveResult = await saveDiscoveredProducts(sessionId, batch, {
 			categoryEnrichmentDeadlineMs:
 				startedAt + SAVE_FINALIZE_DEADLINE_MS,
 			minCategoryEnrichmentBudgetMs: CATEGORY_ENRICH_MIN_BUDGET_MS,
@@ -299,6 +299,7 @@ export async function GET(req: NextRequest) {
 			onOutcome: stages.record,
 		});
 
+		const savedCount = saveResult.saved;
 		const partial = savedCount < TARGET_COUNT;
 		const pipelinePartial = partial || stages.skipped().length > 0;
 		await finalizeSession({
@@ -307,7 +308,7 @@ export async function GET(req: NextRequest) {
 			producedCount: savedCount,
 			iterations: orchestrated.iterations,
 		});
-		const pipelineCounts = discoveryHomePipelineCounts(batch.length, savedCount);
+		const pipelineCounts = discoveryHomePipelineCounts(saveResult);
 		await settlePipelineRunBestEffort(
 			pipelineRun,
 			(run) => pipelinePartial

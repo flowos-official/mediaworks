@@ -62,21 +62,31 @@ async function expectRejects(fn: () => Promise<unknown>, message: string) {
 
 async function main() {
 	{
-		assert.deepEqual(discoveryPipelineCounts(5, 2), {
+		assert.deepEqual(discoveryPipelineCounts({ attempted: 5, excluded: 0, saved: 2, duplicate: 3 }), {
 			new: 2,
 			updated: 0,
 			duplicate: 3,
 			failed: 0,
 			processed: 5,
 		});
-		assert.deepEqual(discoveryPipelineCounts(2, 5), {
+		assert.deepEqual(discoveryPipelineCounts({ attempted: 2, excluded: 0, saved: 5, duplicate: 0 }), {
 			new: 2,
 			updated: 0,
 			duplicate: 0,
 			failed: 0,
 			processed: 2,
+		}, "a saved count above attempted is clamped rather than trusted");
+		// A candidate refused on channel policy is a decision, not a collision.
+		// Reporting both as `duplicate` made a deliberate exclusion read as the
+		// database having seen the URL before.
+		assert.deepEqual(discoveryPipelineCounts({ attempted: 10, excluded: 3, saved: 5, duplicate: 2 }), {
+			new: 5,
+			updated: 3,
+			duplicate: 2,
+			failed: 0,
+			processed: 10,
 		});
-		console.log("✓ discovery mapping records attempted rows and only safe duplicate counts");
+		console.log("✓ discovery mapping separates policy exclusions from database duplicates");
 	}
 
 	{

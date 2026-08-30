@@ -30,6 +30,25 @@ const REFRESH_LIMIT = 200;
  */
 const BUDGET_MS = 240_000;
 
+/**
+ * `input_until` is floored to this quantum so two invocations of the same
+ * trigger compute the same evidence window, which is what lets the identity
+ * constraint on `insight_snapshots` (20260830120000) actually catch them.
+ *
+ * This is not the lock — 20260830110000's sliding-window trigger is, and this
+ * quantum has a boundary a pair can straddle just as the old invocation bucket
+ * did. The difference is what a straddle now costs: one redundant snapshot,
+ * not a corrupted scan cursor. Matches DUPLICATE_WINDOW_MS so the two agree on
+ * what "the same trigger" means.
+ */
+const CUTOFF_QUANTUM_MS = 5 * 60_000;
+
+export function refreshInsightsCutoff(now: Date): string {
+	const nowMs = now.getTime();
+	if (!Number.isFinite(nowMs)) throw new Error("refresh cutoff clock is invalid");
+	return new Date(Math.floor(nowMs / CUTOFF_QUANTUM_MS) * CUTOFF_QUANTUM_MS).toISOString();
+}
+
 export type RefreshInsightsInvocationAcquisition =
 	| { status: "acquired"; run: PipelineRunHandle }
 	| { status: "duplicate"; reason: string };
@@ -105,7 +124,7 @@ export async function runRefreshInsightsCron(
 	const startedAtMs = Date.now();
 	try {
 		const startedAt = (dependencies.now ?? (() => new Date()))();
-		const cutoff = startedAt.toISOString();
+		const cutoff = refreshInsightsCutoff(startedAt);
 		const sb = (dependencies.getClient ?? getServiceClient)();
 
 		// Preflight sweep, the same shape as archive-videos calling
