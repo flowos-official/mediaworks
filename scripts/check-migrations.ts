@@ -199,13 +199,20 @@ async function main() {
 		// Use the limit(1) response's types or nulls as hint. Simpler approach:
 		// Just check row exists in pg_attribute via a custom RPC if available. Otherwise best-effort:
 		// Select only the required columns (zero rows) — if any is missing, error.
-		const cols = REQUIRED_COLUMNS[table].join(", ");
-		const colProbe = await sb.from(table).select(cols).limit(0);
-		if (colProbe.error) {
-			problems.push(`[MISSING COL] ${table}: ${colProbe.error.message}`);
-			console.log(`⚠️  ${table} column check: ${colProbe.error.message}`);
+		// Not every required table declares a column contract — existence alone is
+		// what matters for the intelligence tables, whose shape is pinned by their
+		// own schema tests.
+		const required = REQUIRED_COLUMNS[table];
+		if (!required || required.length === 0) {
+			console.log(`✅ ${table}: present (no column contract declared)`);
 		} else {
-			console.log(`✅ ${table}: all ${REQUIRED_COLUMNS[table].length} columns present`);
+			const colProbe = await sb.from(table).select(required.join(", ")).limit(0);
+			if (colProbe.error) {
+				problems.push(`[MISSING COL] ${table}: ${colProbe.error.message}`);
+				console.log(`⚠️  ${table} column check: ${colProbe.error.message}`);
+			} else {
+				console.log(`✅ ${table}: all ${required.length} columns present`);
+			}
 		}
 
 		// Sanity: count rows
