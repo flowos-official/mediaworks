@@ -13,8 +13,8 @@ import { CATEGORIES_BY_CHANNEL } from "@/lib/broadcasts/whitelist-gate";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AnalysisErrorCode } from "./error-codes";
 import {
+	analysisBalanceKey,
 	chooseBalancedAnalysisSlots,
-	normalizeAnalysisCategory,
 	type AnalysisCandidate,
 } from "./priority";
 
@@ -22,6 +22,30 @@ import {
 export const BALANCED_ANALYSIS_CANDIDATE_POOL_LIMIT = 200;
 export const ANALYZED_CATEGORY_PAGE_SIZE = 1_000;
 export const CURRENT_CATEGORY_ID_CHUNK_SIZE = 200;
+
+/**
+ * How far back analysed slots count towards balancing.
+ *
+ * Lifetime counts made the signal permanent: a category worked through months
+ * ago stayed at the back of the queue forever, and the scan grew without bound
+ * — every run paged the whole of `broadcast_speech_analyses` and then chunked
+ * every id back to `broadcasts` before any real work began, inside a 240s
+ * budget. A window makes the cost constant and lets a category become due
+ * again. Matches HISTORICAL_LOOKBACK_DAYS elsewhere in the project.
+ */
+export const ANALYZED_CATEGORY_LOOKBACK_DAYS =
+	Number(process.env.BROADCAST_INTEL_ANALYZED_LOOKBACK_DAYS) || 30;
+
+/**
+ * Share of the candidate pool reserved for the oldest pending slots.
+ *
+ * The pool is ordered `air_date DESC`, so with more slots arriving each day
+ * than a run can promote, the window stayed pinned to the last few days and
+ * anything older was unreachable by the cron — balanced within the window,
+ * starved outside it. Reserving part of the pool for the oldest rows keeps the
+ * backlog in contention without giving up on recent slots.
+ */
+export const OLDEST_CANDIDATE_POOL_SHARE = 0.5;
 
 export interface EligibleAnalysisScope {
 	channel: "qvc" | "shopch";
@@ -82,12 +106,17 @@ export interface PendingAnalysisCandidate {
 
 export interface CurrentBroadcastCategoryRow {
 	id: string;
+	channel: "qvc" | "shopch";
 	category: string | null;
 }
 
 export interface AnalysisQueueRepository {
-	findPendingCandidates(input: { limit: number; scopes: readonly EligibleAnalysisScope[] }): Promise<PendingAnalysisCandidate[]>;
-	findCompletedAnalysisIds(input: { offset: number; limit: number }): Promise<string[]>;
+	findPendingCandidates(input: {
+		limit: number;
+		scopes: readonly EligibleAnalysisScope[];
+		oldestFirst?: boolean;
+	}): Promise<PendingAnalysisCandidate[]>;
+	findCompletedAnalysisIds(input: { offset: number; limit: number; since: string }): Promise<string[]>;
 	findCurrentBroadcastCategories(input: { ids: string[] }): Promise<CurrentBroadcastCategoryRow[]>;
 	promotePending(ids: string[]): Promise<string[]>;
 }
@@ -126,7 +155,7 @@ export function createAnalysisQueueRepository(supabase: SupabaseClient): Analysi
 			}
 
 			const { data, error } = await query
-				.order("air_date", { ascending: false })
+				.order("air_date", { ascending: input.oldestFirst === true })
 				.order("id", { ascending: true })
 				.limit(input.limit);
 			if (error) throw new Error(`seed select failed: ${error.message}`);
@@ -143,6 +172,7 @@ export function createAnalysisQueueRepository(supabase: SupabaseClient): Analysi
 			const { data, error } = await supabase
 				.from("broadcast_speech_analyses")
 				.select("broadcast_id")
+				.gte("analyzed_at", input.since)
 				.order("broadcast_id", { ascending: true })
 				.range(input.offset, input.offset + input.limit - 1);
 			if (error) throw new Error(`completed analysis select failed: ${error.message}`);
@@ -152,7 +182,7 @@ export function createAnalysisQueueRepository(supabase: SupabaseClient): Analysi
 			if (input.ids.length === 0) return [];
 			const { data, error } = await supabase
 				.from("broadcasts")
-				.select("id,category")
+				.select("id,channel,category")
 				.in("id", input.ids);
 			if (error) throw new Error(`current broadcast category select failed: ${error.message}`);
 			return (data ?? []) as CurrentBroadcastCategoryRow[];
@@ -178,12 +208,15 @@ export function createAnalysisQueueRepository(supabase: SupabaseClient): Analysi
  */
 export async function countDistinctAnalyzedCategories(
 	repository: AnalysisQueueRepository,
+	now: Date = new Date(),
+	lookbackDays: number = ANALYZED_CATEGORY_LOOKBACK_DAYS,
 ): Promise<Map<string, number>> {
+	const since = new Date(now.getTime() - Math.max(1, lookbackDays) * 24 * 3_600_000).toISOString();
 	const seen = new Set<string>();
 	const completedIds: string[] = [];
 	let offset = 0;
 	while (true) {
-		const page = await repository.findCompletedAnalysisIds({ offset, limit: ANALYZED_CATEGORY_PAGE_SIZE });
+		const page = await repository.findCompletedAnalysisIds({ offset, limit: ANALYZED_CATEGORY_PAGE_SIZE, since });
 		for (const broadcastId of page) {
 			if (seen.has(broadcastId)) continue;
 			seen.add(broadcastId);
@@ -196,12 +229,14 @@ export async function countDistinctAnalyzedCategories(
 	const counts = new Map<string, number>();
 	for (let offset = 0; offset < completedIds.length; offset += CURRENT_CATEGORY_ID_CHUNK_SIZE) {
 		const ids = completedIds.slice(offset, offset + CURRENT_CATEGORY_ID_CHUNK_SIZE);
-		const categories = new Map(
-			(await repository.findCurrentBroadcastCategories({ ids })).map((row) => [row.id, row.category]),
+		const rows = new Map(
+			(await repository.findCurrentBroadcastCategories({ ids })).map((row) => [row.id, row]),
 		);
 		for (const id of ids) {
-			const category = normalizeAnalysisCategory(categories.get(id));
-			counts.set(category, (counts.get(category) ?? 0) + 1);
+			const row = rows.get(id);
+			if (!row) continue;
+			const key = analysisBalanceKey(row.channel, row.category);
+			counts.set(key, (counts.get(key) ?? 0) + 1);
 		}
 	}
 	return counts;
@@ -232,10 +267,32 @@ function candidatesWithRepeatCounts(rows: readonly PendingAnalysisCandidate[]): 
 	}
 	return rows.map((row) => ({
 		id: row.id,
+		channel: row.channel,
 		category: row.category,
 		airDate: row.airDate,
 		repeatCount: frequencies.get(repeatIdentity(row)) ?? 1,
 	}));
+}
+
+/**
+ * Newest-first alone left the oldest backlog permanently out of reach, so half
+ * the pool is drawn from the oldest pending slots. Both halves are deduplicated
+ * by id, which is also what makes the two queries safe to overlap when fewer
+ * rows exist than the pool wants.
+ */
+export async function loadAgeFairCandidatePool(
+	repository: AnalysisQueueRepository,
+	scopes: readonly EligibleAnalysisScope[],
+	poolLimit: number,
+): Promise<PendingAnalysisCandidate[]> {
+	const oldestShare = Math.max(1, Math.floor(poolLimit * OLDEST_CANDIDATE_POOL_SHARE));
+	const [newest, oldest] = await Promise.all([
+		repository.findPendingCandidates({ limit: poolLimit - oldestShare, scopes }),
+		repository.findPendingCandidates({ limit: oldestShare, scopes, oldestFirst: true }),
+	]);
+	const byId = new Map<string, PendingAnalysisCandidate>();
+	for (const row of [...newest, ...oldest]) byId.set(row.id, row);
+	return [...byId.values()];
 }
 
 export async function seedAnalysisQueue(
@@ -249,10 +306,9 @@ export async function seedAnalysisQueue(
 		: requested;
 	const scopes = buildEligibleAnalysisScopes(category, channel);
 	if (scopes.length === 0) return 0;
-	const candidates = await repository.findPendingCandidates({
-		limit: candidateLimit,
-		scopes,
-	});
+	const candidates = category === undefined
+		? await loadAgeFairCandidatePool(repository, scopes, candidateLimit)
+		: await repository.findPendingCandidates({ limit: candidateLimit, scopes });
 	if (candidates.length === 0) return 0;
 
 	const selected = category === undefined

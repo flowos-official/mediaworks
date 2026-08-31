@@ -7,9 +7,26 @@ export const UNCLASSIFIED_ANALYSIS_CATEGORY = "\u0000broadcast-analysis-unclassi
 
 export interface AnalysisCandidate {
 	id: string;
+	channel: "qvc" | "shopch";
 	category: string | null | undefined;
 	airDate: string;
 	repeatCount: number;
+}
+
+/**
+ * Balancing is per channel AND category, not category alone.
+ *
+ * The two channels are different media, not different lengths of the same one:
+ * QVC archives ~2-minute digest clips, Shop Channel archives ~1-hour
+ * programmes. Keying on category alone let QVC's higher slot count take every
+ * round in a category both channels share, so Shop Channel's rows in that
+ * category were never analysed no matter how low their count.
+ */
+export function analysisBalanceKey(
+	channel: "qvc" | "shopch",
+	category: string | null | undefined,
+): string {
+	return `${channel}\u0000${normalizeAnalysisCategory(category)}`;
 }
 
 export function normalizeAnalysisCategory(category: string | null | undefined): string {
@@ -21,10 +38,10 @@ function normalizedCount(value: number | undefined): number {
 	return Number.isFinite(value) && value! >= 0 ? value! : 0;
 }
 
+/** Counts arrive already keyed by `analysisBalanceKey`; this only sanitizes them. */
 function normalizeCategoryCounts(categoryCounts: ReadonlyMap<string, number>): Map<string, number> {
 	const normalized = new Map<string, number>();
-	for (const [category, count] of categoryCounts) {
-		const key = normalizeAnalysisCategory(category);
+	for (const [key, count] of categoryCounts) {
 		normalized.set(key, (normalized.get(key) ?? 0) + normalizedCount(count));
 	}
 	return normalized;
@@ -39,8 +56,8 @@ function compareCandidates(
 	right: AnalysisCandidate,
 	categoryCounts: ReadonlyMap<string, number>,
 ): number {
-	const leftCount = categoryCounts.get(normalizeAnalysisCategory(left.category)) ?? 0;
-	const rightCount = categoryCounts.get(normalizeAnalysisCategory(right.category)) ?? 0;
+	const leftCount = categoryCounts.get(analysisBalanceKey(left.channel, left.category)) ?? 0;
+	const rightCount = categoryCounts.get(analysisBalanceKey(right.channel, right.category)) ?? 0;
 	if (leftCount !== rightCount) return leftCount - rightCount;
 
 	const leftRepeat = normalizedCount(left.repeatCount);
@@ -70,10 +87,10 @@ export function chooseBalancedAnalysisSlots(
 	const byCategory = new Map<string, AnalysisCandidate[]>();
 
 	for (const row of rows) {
-		const category = normalizeAnalysisCategory(row.category);
-		const group = byCategory.get(category);
+		const key = analysisBalanceKey(row.channel, row.category);
+		const group = byCategory.get(key);
 		if (group) group.push(row);
-		else byCategory.set(category, [row]);
+		else byCategory.set(key, [row]);
 	}
 
 	const groups = [...byCategory.entries()].map(([category, group]) => ({

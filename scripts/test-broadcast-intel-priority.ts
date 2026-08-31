@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {
+	analysisBalanceKey,
 	chooseBalancedAnalysisSlots,
-	UNCLASSIFIED_ANALYSIS_CATEGORY,
 	type AnalysisCandidate,
 } from "../lib/broadcast-intel/priority";
 import {
@@ -23,20 +23,44 @@ function ids(rows: readonly AnalysisCandidate[]): string[] {
 }
 
 const sampleRows: AnalysisCandidate[] = [
-	{ id: "home-new", category: "家電", airDate: "2026-08-29", repeatCount: 4 },
-	{ id: "fashion-new", category: "ファッション", airDate: "2026-08-28", repeatCount: 1 },
-	{ id: "home-old", category: "家電", airDate: "2026-08-27", repeatCount: 2 },
+	{ id: "home-new", channel: "qvc", category: "家電", airDate: "2026-08-29", repeatCount: 4 },
+	{ id: "fashion-new", channel: "qvc", category: "ファッション", airDate: "2026-08-28", repeatCount: 1 },
+	{ id: "home-old", channel: "qvc", category: "家電", airDate: "2026-08-27", repeatCount: 2 },
 ];
 
 {
 	const picked = chooseBalancedAnalysisSlots(
 		sampleRows,
-		new Map([["家電", 45], ["ファッション", 5]]),
+		new Map([[analysisBalanceKey("qvc", "家電"), 45], [analysisBalanceKey("qvc", "ファッション"), 5]]),
 		2,
 	);
 	assert.deepEqual(ids(picked), ["fashion-new", "home-new"]);
 	assert.equal(new Set(picked.map((row) => row.category)).size, 2);
 	console.log("✓ under-sampled categories lead and round-robin before a second slot");
+}
+
+{
+	// The two channels are different media, not different lengths of one: QVC
+	// archives ~2-minute digest clips, Shop Channel ~1-hour programmes. Keyed on
+	// category alone, QVC's higher slot count took every round in a shared
+	// category and Shop Channel's rows there were never analysed.
+	const shared: AnalysisCandidate[] = [
+		{ id: "qvc-1", channel: "qvc", category: "家電", airDate: "2026-08-29", repeatCount: 1 },
+		{ id: "qvc-2", channel: "qvc", category: "家電", airDate: "2026-08-28", repeatCount: 1 },
+		{ id: "shopch-1", channel: "shopch", category: "家電", airDate: "2026-08-27", repeatCount: 1 },
+	];
+	const picked = chooseBalancedAnalysisSlots(
+		shared,
+		new Map([[analysisBalanceKey("qvc", "家電"), 40], [analysisBalanceKey("shopch", "家電"), 0]]),
+		2,
+	);
+	assert.deepEqual(ids(picked), ["shopch-1", "qvc-1"]);
+	assert.equal(
+		new Set(picked.map((row) => row.channel)).size,
+		2,
+		"a shared category must not let one channel take the whole batch",
+	);
+	console.log("✓ balancing is per channel and category, so neither channel starves the other");
 }
 
 {
@@ -47,9 +71,9 @@ const sampleRows: AnalysisCandidate[] = [
 
 {
 	const rows: AnalysisCandidate[] = [
-		{ id: "b", category: "same", airDate: "2026-08-29", repeatCount: 2 },
-		{ id: "a", category: "same", airDate: "2026-08-29", repeatCount: 2 },
-		{ id: "c", category: "same", airDate: "2026-08-28", repeatCount: 9 },
+		{ id: "b", channel: "qvc", category: "same", airDate: "2026-08-29", repeatCount: 2 },
+		{ id: "a", channel: "qvc", category: "same", airDate: "2026-08-29", repeatCount: 2 },
+		{ id: "c", channel: "qvc", category: "same", airDate: "2026-08-28", repeatCount: 9 },
 	];
 	const counts = new Map([["same", 3]]);
 	const expected = ["c", "a", "b"];
@@ -60,12 +84,12 @@ const sampleRows: AnalysisCandidate[] = [
 
 {
 	const rows: AnalysisCandidate[] = [
-		{ id: "missing", category: "  ", airDate: "2026-08-29", repeatCount: 5 },
-		{ id: "known", category: "known", airDate: "2026-08-28", repeatCount: 1 },
+		{ id: "missing", channel: "qvc", category: "  ", airDate: "2026-08-29", repeatCount: 5 },
+		{ id: "known", channel: "qvc", category: "known", airDate: "2026-08-28", repeatCount: 1 },
 	];
 	const picked = chooseBalancedAnalysisSlots(
 		rows,
-		new Map([[UNCLASSIFIED_ANALYSIS_CATEGORY, 20], ["known", 1]]),
+		new Map([[analysisBalanceKey("qvc", null), 20], [analysisBalanceKey("qvc", "known"), 1]]),
 		1,
 	);
 	assert.deepEqual(ids(picked), ["known"]);
@@ -75,42 +99,48 @@ const sampleRows: AnalysisCandidate[] = [
 
 {
 	const rows: AnalysisCandidate[] = [
-		{ id: "only-2", category: "only", airDate: "2026-08-28", repeatCount: 1 },
-		{ id: "only-1", category: "only", airDate: "2026-08-29", repeatCount: 1 },
+		{ id: "only-2", channel: "qvc", category: "only", airDate: "2026-08-28", repeatCount: 1 },
+		{ id: "only-1", channel: "qvc", category: "only", airDate: "2026-08-29", repeatCount: 1 },
 	];
-	assert.deepEqual(ids(chooseBalancedAnalysisSlots(rows, new Map([["only", 0]]), 9)), ["only-1", "only-2"]);
+	assert.deepEqual(ids(chooseBalancedAnalysisSlots(rows, new Map([[analysisBalanceKey("qvc", "only"), 0]]), 9)), ["only-1", "only-2"]);
 	console.log("✓ one-category pools fall back to their deterministic in-category priority");
 }
 
 function memoryRepository(
 	candidates: PendingAnalysisCandidate[],
-	analyzed: Array<{ broadcastId: string; category: string | null }>,
-): AnalysisQueueRepository & { candidateCalls: Array<Record<string, unknown>>; promotionCalls: string[][]; countCalls: Array<Record<string, number>> } {
+	analyzed: Array<{ broadcastId: string; category: string | null; channel?: "qvc" | "shopch"; analyzedAt?: string }>,
+): AnalysisQueueRepository & { candidateCalls: Array<Record<string, unknown>>; promotionCalls: string[][]; countCalls: Array<Record<string, unknown>> } {
 	const pending = new Map(candidates.map((row) => [row.id, row]));
 	const candidateCalls: Array<Record<string, unknown>> = [];
 	const promotionCalls: string[][] = [];
-	const countCalls: Array<Record<string, number>> = [];
+	const countCalls: Array<Record<string, unknown>> = [];
 	return {
 		candidateCalls,
 		promotionCalls,
 		countCalls,
 		async findPendingCandidates(input) {
 			candidateCalls.push(input);
-			return [...pending.values()]
-				.filter((row) => input.scopes.some((scope) =>
-					scope.channel === row.channel && scope.categories.includes(row.category ?? ""),
-				))
-				.slice(0, input.limit);
+			const eligible = [...pending.values()].filter((row) => input.scopes.some((scope) =>
+				scope.channel === row.channel && scope.categories.includes(row.category ?? ""),
+			));
+			eligible.sort((left, right) => (input.oldestFirst === true
+				? left.airDate.localeCompare(right.airDate)
+				: right.airDate.localeCompare(left.airDate)) || left.id.localeCompare(right.id));
+			return eligible.slice(0, input.limit);
 		},
 		async findCompletedAnalysisIds(input) {
 			countCalls.push(input);
-			return analyzed.slice(input.offset, input.offset + input.limit).map((row) => row.broadcastId);
+			// The window is the production filter, so the fake honours it too.
+			const inWindow = analyzed.filter((row) => (row.analyzedAt ?? "9999-12-31") >= input.since);
+			return inWindow.slice(input.offset, input.offset + input.limit).map((row) => row.broadcastId);
 		},
 		async findCurrentBroadcastCategories(input) {
-			const categories = new Map(analyzed.map((row) => [row.broadcastId, row.category]));
+			const rows = new Map(analyzed.map((row) => [row.broadcastId, row]));
 			return input.ids.flatMap((id) => {
-				const category = categories.get(id);
-				return category === undefined ? [] : [{ id, category }];
+				const row = rows.get(id);
+				return row === undefined
+					? []
+					: [{ id, channel: row.channel ?? ("qvc" as const), category: row.category }];
 			});
 		},
 		async promotePending(idsToPromote) {
@@ -140,7 +170,15 @@ function memoryRepository(
 	);
 	assert.equal(await seedAnalysisQueue({ limit: 4 }, repository), 3);
 	assert.deepEqual(repository.promotionCalls[0], ["fashion", "home-a", "home-b"]);
-	assert.equal(repository.candidateCalls[0]?.limit, 200);
+	// The pool is drawn from both ends of the backlog. Newest-first alone kept the
+	// window pinned to the last few days once daily arrivals outpaced the promote
+	// rate, so anything older was unreachable by the cron no matter how low its
+	// analysed count.
+	assert.equal(repository.candidateCalls.length, 2, "the balanced pool is drawn from both ends of the queue");
+	assert.equal(repository.candidateCalls[0]?.limit, 100);
+	assert.equal(repository.candidateCalls[0]?.oldestFirst, undefined);
+	assert.equal(repository.candidateCalls[1]?.limit, 100);
+	assert.equal(repository.candidateCalls[1]?.oldestFirst, true);
 	assert.equal(await seedAnalysisQueue({ limit: 4 }, repository), 0, "a second seed must not promote an already queued row");
 	assert.deepEqual(repository.promotionCalls, [["fashion", "home-a", "home-b"]]);
 	console.log("✓ balanced seeding is bounded and idempotently promotes only pending rows");
@@ -163,7 +201,8 @@ function memoryRepository(
 {
 	const repository = memoryRepository([], []);
 	assert.equal(await seedAnalysisQueue({ limit: 500 }, repository), 0);
-	assert.equal(repository.candidateCalls[0]?.limit, 200);
+	const pooled = repository.candidateCalls.reduce((total, call) => total + Number(call.limit), 0);
+	assert.equal(pooled, 200, "the two halves together still respect the pool bound");
 	console.log("✓ a large balanced request still bounds its database candidate pool");
 }
 
@@ -186,7 +225,10 @@ function memoryRepository(
 	);
 	await seedAnalysisQueue({ limit: 10 }, repository);
 	assert.ok(repository.promotionCalls[0]?.includes("fashion-11"), "an alternative just beyond the requested output size must enter the balanced batch");
-	assert.equal(repository.candidateCalls[0]?.limit, 200);
+	assert.equal(
+		repository.candidateCalls.reduce((total, call) => total + Number(call.limit), 0),
+		200,
+	);
 	console.log("✓ balanced selection sees its full bounded pool before taking the requested output size");
 }
 
@@ -241,13 +283,14 @@ function memoryRepository(
 		[],
 	);
 	await seedAnalysisQueue({ limit: 2 }, repository);
-	assert.deepEqual(repository.candidateCalls, [{
-		limit: 200,
-		scopes: [
-			{ channel: "qvc", categories: [...CATEGORIES_BY_CHANNEL.qvc] },
-			{ channel: "shopch", categories: [...CATEGORIES_BY_CHANNEL.shopch] },
-		],
-	}]);
+	const expectedScopes = [
+		{ channel: "qvc", categories: [...CATEGORIES_BY_CHANNEL.qvc] },
+		{ channel: "shopch", categories: [...CATEGORIES_BY_CHANNEL.shopch] },
+	];
+	assert.deepEqual(repository.candidateCalls, [
+		{ limit: 100, scopes: expectedScopes },
+		{ limit: 100, scopes: expectedScopes, oldestFirst: true },
+	], "both halves of the pool carry the same whitelist scopes");
 	assert.deepEqual(repository.promotionCalls, [["valid-qvc", "valid-shopch"]]);
 	console.log("✓ whitelist eligibility is applied before the bounded balanced candidate pool");
 }
@@ -277,9 +320,20 @@ function memoryRepository(
 	];
 	const repository = memoryRepository([], analyzed);
 	const counts = await countDistinctAnalyzedCategories(repository);
-	assert.deepEqual([...counts.entries()].sort(), [["ファッション", 1], ["家電", 999]].sort());
-	assert.deepEqual(repository.countCalls, [{ offset: 0, limit: 1000 }, { offset: 1000, limit: 1000 }]);
-	console.log("✓ completed analysis counts paginate past 1,000 rows and suppress duplicate broadcasts");
+	assert.deepEqual(
+		[...counts.entries()].sort(),
+		[[analysisBalanceKey("qvc", "ファッション"), 1], [analysisBalanceKey("qvc", "家電"), 999]].sort(),
+	);
+	assert.deepEqual(
+		repository.countCalls.map((call) => ({ offset: call.offset, limit: call.limit })),
+		[{ offset: 0, limit: 1000 }, { offset: 1000, limit: 1000 }],
+	);
+	// A lifetime scan grew without bound and made a category's backlog permanent;
+	// the window makes the preamble cost constant and lets a category come due again.
+	const since = String(repository.countCalls[0]?.since);
+	assert.ok(Number.isFinite(Date.parse(since)), "the completed-analysis scan is bounded by a lookback window");
+	assert.ok(Date.parse(since) < Date.now(), "the window looks backwards");
+	console.log("✓ completed analysis counts paginate, deduplicate, and stay inside a lookback window");
 }
 
 {
@@ -303,18 +357,21 @@ function memoryRepository(
 		async findCurrentBroadcastCategories(input: { ids: string[] }) {
 			categoryCalls.push(input.ids);
 			return input.ids.flatMap((id) => {
-				if (id === "duplicate") return [{ id, category: "corrected" }];
-				if (id.startsWith("current-")) return [{ id, category: "current" }];
-				if (id === "blank-current") return [{ id, category: " " }];
+				if (id === "duplicate") return [{ id, channel: "qvc", category: "corrected" }];
+				if (id.startsWith("current-")) return [{ id, channel: "qvc", category: "current" }];
+				if (id === "blank-current") return [{ id, channel: "shopch", category: " " }];
 				return [];
 			});
 		},
 	} as unknown as AnalysisQueueRepository;
 	const counts = await countDistinctAnalyzedCategories(repository);
+	// `missing-current` has an analysis but no broadcast row, so its channel is
+	// unknowable and it contributes to nothing. Attributing it to a bucket would
+	// weight some channel's balance with a row nobody can act on.
 	assert.deepEqual([...counts.entries()].sort(), [
-		["corrected", 1],
-		["current", 998],
-		[UNCLASSIFIED_ANALYSIS_CATEGORY, 2],
+		[analysisBalanceKey("qvc", "corrected"), 1],
+		[analysisBalanceKey("qvc", "current"), 998],
+		[analysisBalanceKey("shopch", " "), 1],
 	].sort());
 	assert.equal(categoryCalls.flat().length, 1001, "each completed broadcast ID is resolved once after deduplication");
 	assert.ok(categoryCalls.every((ids) => ids.length <= 200), "current-category resolution stays in bounded ID chunks");
