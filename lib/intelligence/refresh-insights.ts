@@ -26,6 +26,21 @@ export const MAX_INSIGHT_REFRESH_SUBJECTS = 200;
 export const MAX_INSIGHT_SCAN_ROWS = 10_000;
 
 const EVIDENCE_PAGE_SIZE = 500;
+
+/**
+ * How far back a category insight aggregates, by air date.
+ *
+ * A category insight has to be computed over the category, not over whichever
+ * of its broadcasts happened to fall in this run's scan page. Without a stated
+ * window `sampleSize` and `dominantShare` described an arbitrary slice while
+ * being labelled as the category's, and two snapshots were not comparable
+ * because their populations differed for no recorded reason.
+ */
+export const CATEGORY_INSIGHT_WINDOW_DAYS =
+	Number(process.env.INTELLIGENCE_CATEGORY_WINDOW_DAYS) || 30;
+
+/** A category's population is bounded so one busy category cannot own a run. */
+export const CATEGORY_INSIGHT_MAX_BROADCASTS = 500;
 /** Comfortably inside the staleness threshold readiness and the reaper use. */
 const HEARTBEAT_INTERVAL_MS = 15_000;
 const DATABASE_CHUNK_SIZE = 100;
@@ -82,6 +97,11 @@ export interface InsightRefreshRepository {
 	saveScanState(runId: string, state: EvidenceScanState): Promise<void>;
 	resolveBroadcastCategories(broadcastIds: string[], cutoff: string): Promise<Map<string, string | null>>;
 	loadLatestInsightCutoffs(subjects: LatestInsightSubject[]): Promise<Map<string, string>>;
+	/**
+	 * Every analysed broadcast in this category within the window — not just the
+	 * ones this scan happened to see.
+	 */
+	findCategoryBroadcastIds(category: string, sinceAirDate: string, limit: number): Promise<string[]>;
 	loadProductEvidence(productId: string, cutoff: string): Promise<EvidenceItem[]>;
 	loadBroadcastEvidence(broadcastIds: string[], cutoff: string): Promise<EvidenceItem[]>;
 	/** `null` when an equivalent snapshot already exists for this window. */
@@ -503,6 +523,22 @@ export function createInsightRefreshRepository(sb: SupabaseClient): InsightRefre
 			);
 		},
 
+		async findCategoryBroadcastIds(category, sinceAirDate, limit) {
+			const ids = new Set<string>();
+			for (const source of ["broadcasts", "historical_broadcasts"] as const) {
+				const { data, error } = await sb
+					.from(source)
+					.select("id")
+					.eq("category", category)
+					.gte("air_date", sinceAirDate)
+					.order("air_date", { ascending: false })
+					.limit(limit);
+				if (error) throw new Error(`${source} category population query failed: ${error.message}`);
+				for (const row of (data ?? []) as Array<{ id: unknown }>) ids.add(String(row.id));
+			}
+			return [...ids].sort().slice(0, limit);
+		},
+
 		async loadLatestInsightCutoffs(subjects) {
 			const result = new Map<string, string>();
 			for (const subjectType of ["product", "category"] as const) {
@@ -784,6 +820,9 @@ export async function refreshIntelligenceInsights(
 		let productSnapshots = 0;
 		let categorySnapshots = 0;
 		let alreadyCurrent = 0;
+		const categoryWindowStart = new Date(
+			Date.parse(normalizedCutoff) - CATEGORY_INSIGHT_WINDOW_DAYS * 24 * 3_600_000,
+		).toISOString().slice(0, 10);
 		// A broadcast whose category cannot be resolved is a coverage gap, not a
 		// failure: roughly one archived broadcast in six has no category at all,
 		// so counting them as failures made this job permanently `partial` and
@@ -798,13 +837,33 @@ export async function refreshIntelligenceInsights(
 				break;
 			}
 			try {
-				const draft = candidate.subjectType === "product"
-					? buildProductMarketInsight(await repository.loadProductEvidence(candidate.subjectId, normalizedCutoff), normalizedCutoff)
-					: buildBroadcastCategoryInsight(
-						await repository.loadBroadcastEvidence([...candidate.broadcastIds].sort(), normalizedCutoff),
+				let draft;
+				if (candidate.subjectType === "product") {
+					draft = buildProductMarketInsight(
+						await repository.loadProductEvidence(candidate.subjectId, normalizedCutoff),
+						normalizedCutoff,
+					);
+				} else {
+					// The scan tells us this category is due; it does not define the
+					// category. Aggregating over `candidate.broadcastIds` alone made
+					// `sampleSize` and `dominantShare` describe whichever broadcasts
+					// this page happened to contain while labelling them the
+					// category's, and left two snapshots incomparable. The population
+					// is the category's own window, re-read here.
+					const population = await repository.findCategoryBroadcastIds(
+						candidate.subjectId,
+						categoryWindowStart,
+						CATEGORY_INSIGHT_MAX_BROADCASTS,
+					);
+					const broadcastIds = population.length > 0
+						? population
+						: [...candidate.broadcastIds].sort();
+					draft = buildBroadcastCategoryInsight(
+						await repository.loadBroadcastEvidence(broadcastIds, normalizedCutoff),
 						candidate.subjectId,
 						normalizedCutoff,
 					);
+				}
 				const snapshotId = await repository.writeSnapshot(draft);
 				// A null id means the identity constraint already held this window —
 				// a concurrent run, a retry or a manual re-run got there first. It is

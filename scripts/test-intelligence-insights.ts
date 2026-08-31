@@ -230,6 +230,7 @@ function repository(overrides: Record<string, unknown> = {}): InsightRefreshRepo
 		async scanActiveEvidencePage() { return { evidence: [], reachedEnd: true }; },
 		async saveScanState() {},
 		async resolveBroadcastCategories() { return new Map(); },
+		async findCategoryBroadcastIds() { return []; },
 		async loadLatestInsightCutoffs() { return new Map(); },
 		async loadProductEvidence() { throw new Error("unexpected product evidence load"); },
 		async loadBroadcastEvidence() { throw new Error("unexpected broadcast evidence load"); },
@@ -267,6 +268,8 @@ function memoryRefreshRepository(input: {
 	latest?: Map<string, string>;
 	categories?: Map<string, string | null>;
 	state?: EvidenceScanState;
+	/** Cap what the scan can reach, to model a category only partly in view. */
+	scanLimit?: number;
 }) {
 	let state: EvidenceScanState = input.state ?? INITIAL_INSIGHT_SCAN_STATE;
 	const writes: Array<{ subjectType: string; subjectId: string; evidenceIds: string[] }> = [];
@@ -277,9 +280,12 @@ function memoryRefreshRepository(input: {
 	const repo = repository({
 		async loadScanState() { return state; },
 		async scanActiveEvidencePage(_cutoff: string, cursor: EvidenceScanCursor | null, pageSize: number) {
-			const start = cursor ? input.evidence.findIndex((item) => item.id === cursor.evidenceId) + 1 : 0;
-			const evidencePage = input.evidence.slice(start, start + pageSize);
-			return { evidence: evidencePage, reachedEnd: start + evidencePage.length >= input.evidence.length };
+			const scannable = input.scanLimit === undefined
+				? input.evidence
+				: input.evidence.slice(0, input.scanLimit);
+			const start = cursor ? scannable.findIndex((item) => item.id === cursor.evidenceId) + 1 : 0;
+			const evidencePage = scannable.slice(start, start + pageSize);
+			return { evidence: evidencePage, reachedEnd: start + evidencePage.length >= scannable.length };
 		},
 		async saveScanState(_runId: string, next: EvidenceScanState) { state = next; },
 		async resolveBroadcastCategories(ids: string[]) {
@@ -291,6 +297,15 @@ function memoryRefreshRepository(input: {
 				const value = latest.get(`${subject.subjectType}\u0000${subject.subjectId}`);
 				return value ? [[`${subject.subjectType}\u0000${subject.subjectId}`, value] as const] : [];
 			}));
+		},
+		async findCategoryBroadcastIds(category: string) {
+			// The production population comes from the broadcasts tables; in memory
+			// it is every broadcast whose resolved category matches.
+			return [...new Set(
+				[...(input.categories ?? new Map()).entries()]
+					.filter(([, value]) => value === category)
+					.map(([broadcastId]) => broadcastId),
+			)].sort();
 		},
 		async loadProductEvidence(productId: string) {
 			return [evidence({ id: `snapshot-${productId}`, subjectId: productId, predicate: "price_jpy", value: 1_000 })];
@@ -801,6 +816,9 @@ async function testRefreshRound1(): Promise<void> {
 		const events: Array<{ status: string; counts?: Partial<PipelineRunCounts> }> = [];
 		const result = await refreshIntelligenceInsights({} as never, CUTOFF, 200, { repository: memory.repository, startPipelineRun: async () => pipelineHandle(events) });
 		assert.deepEqual(memory.loadedBroadcastGroups, [["broadcast-1", "broadcast-2"]]);
+		// Both category members are loaded even though only one of them needed to
+		// appear in the scan for the category to become due — the aggregate is the
+		// category's, not the scan slice's.
 		assert.equal(memory.writes.length, 1);
 		assert.equal(memory.writes[0].subjectId, "家電");
 		assert.deepEqual(result.unresolvedBroadcastIds, ["missing"]);
@@ -812,6 +830,34 @@ async function testRefreshRound1(): Promise<void> {
 		assert.equal(result.counts.processed, result.counts.new + result.counts.duplicate + result.counts.failed);
 		assert.ok(events.some((event) => event.status === "running"), "normal candidate progress emits a heartbeat");
 		assert.equal(events.at(-1)?.status, "succeeded", "an unresolvable category alone must not degrade the run");
+	}
+
+	{
+		// The scan page contains one broadcast of a category that has three. The
+		// aggregate must cover all three: reporting sampleSize 1 while calling the
+		// row a category insight is what made two snapshots incomparable.
+		const partialScan = [
+			evidence({ id: "seen-only", subjectType: "broadcast", subjectId: "cat-1", predicate: "segment_pattern", value: [{ label: "open" }], sourceType: "qvc", sourceTable: "broadcast_speech_analyses", sourceRecordId: "cat-1", observedAt: "2026-08-28T03:00:00.000Z" }),
+		];
+		const memory = memoryRefreshRepository({
+			evidence: [
+				...partialScan,
+				evidence({ id: "unseen-2", subjectType: "broadcast", subjectId: "cat-2", predicate: "segment_pattern", value: [{ label: "open" }], sourceType: "shopch", sourceTable: "broadcast_speech_analyses", sourceRecordId: "cat-2", observedAt: "2026-08-20T03:00:00.000Z" }),
+				evidence({ id: "unseen-3", subjectType: "broadcast", subjectId: "cat-3", predicate: "segment_pattern", value: [{ label: "open" }], sourceType: "qvc", sourceTable: "broadcast_speech_analyses", sourceRecordId: "cat-3", observedAt: "2026-08-19T03:00:00.000Z" }),
+			],
+			categories: new Map([["cat-1", "家電"], ["cat-2", "家電"], ["cat-3", "家電"]]),
+			// Only the first row is reachable by the scan.
+			scanLimit: 1,
+		});
+		await refreshIntelligenceInsights({} as never, CUTOFF, 200, {
+			repository: memory.repository,
+			startPipelineRun: async () => pipelineHandle([]),
+		});
+		assert.deepEqual(
+			memory.loadedBroadcastGroups.at(-1),
+			["cat-1", "cat-2", "cat-3"],
+			"a category insight aggregates its whole population, not the scan slice that made it due",
+		);
 	}
 
 	{
