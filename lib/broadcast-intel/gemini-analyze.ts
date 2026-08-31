@@ -145,6 +145,38 @@ async function withDeadline<T>(
 	}
 }
 
+/**
+ * What one analysis actually consumed.
+ *
+ * The response carried this all along and it was being discarded, so the only
+ * way to price a bulk drain was to model it — audio seconds times an assumed
+ * tokens-per-second, output characters times an assumed tokens-per-character.
+ * Both assumptions are plausible and neither was ever checked against a bill.
+ * Logging the real numbers turns a 2,445-slot run into its own measurement.
+ */
+export interface AnalysisUsage {
+	model: string;
+	inputTokens: number;
+	outputTokens: number;
+	totalTokens: number;
+}
+
+export function usageFromResponse(
+	model: string,
+	usage: { promptTokenCount?: number; candidatesTokenCount?: number; totalTokenCount?: number } | undefined,
+): AnalysisUsage | null {
+	if (!usage) return null;
+	const inputTokens = Number(usage.promptTokenCount ?? 0);
+	const outputTokens = Number(usage.candidatesTokenCount ?? 0);
+	if (!Number.isFinite(inputTokens) || !Number.isFinite(outputTokens)) return null;
+	return {
+		model,
+		inputTokens,
+		outputTokens,
+		totalTokens: Number(usage.totalTokenCount ?? inputTokens + outputTokens),
+	};
+}
+
 async function callModel(
 	model: string,
 	fileUri: string,
@@ -172,6 +204,13 @@ async function callModel(
 			`analysis exceeded ${MAX_OUTPUT_TOKENS} output tokens; the transcript is too long for one call`,
 		);
 	}
+	const usage = usageFromResponse(model, response.usageMetadata);
+	if (usage) {
+		// One line per call, greppable, so a drain can be priced from its own log
+		// rather than from a model of it.
+		console.log(`[broadcast-intel] usage ${JSON.stringify({ ...usage, durationSec })}`);
+	}
+
 	const text = response.text;
 	if (!text) throw new Error("Gemini returned an empty analysis");
 	return parseAnalysisResponse(JSON.parse(text), durationSec);
