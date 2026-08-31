@@ -71,7 +71,14 @@ interface ArchivedBroadcastRow {
 }
 
 const HOUR = 3_600_000;
-const PAGE_SIZE = 500;
+/**
+ * PostgREST caps a response at the project's `db-max-rows`; 1,000 is the
+ * default and the loop terminates correctly at any cap because it advances by
+ * the rows actually returned. Halving the page count halves the serial round
+ * trips on the archive scan, which is the dominant cost of this loader.
+ */
+export const READINESS_PAGE_SIZE = 1_000;
+const PAGE_SIZE = READINESS_PAGE_SIZE;
 const ID_CHUNK_SIZE = 200;
 const RECENT_FAILURE_LIMIT = 10;
 
@@ -192,7 +199,8 @@ export interface IntelligenceReadinessRepository {
 	loadInternalSourceLinks(): Promise<SourceLinkRow[]>;
 	loadActiveCanonicalProducts(canonicalIds: string[]): Promise<CanonicalProductRow[]>;
 	loadArchivedBroadcasts(): Promise<ArchivedBroadcastRow[]>;
-	loadAnalyzedBroadcastIds(broadcastIds: string[]): Promise<string[]>;
+	/** Every analysed broadcast, intersected in memory by the caller. */
+	loadAnalyzedBroadcastIds(): Promise<string[]>;
 	countEvidenceItems(): Promise<number>;
 	countInsightSnapshots(): Promise<number>;
 }
@@ -334,15 +342,22 @@ export function createIntelligenceReadinessRepository(sb: SupabaseClient): Intel
 				.order("id", { ascending: true }));
 		},
 
-		loadAnalyzedBroadcastIds(broadcastIds) {
-			if (broadcastIds.length === 0) return Promise.resolve([]);
-			return readRowsForIds<{ broadcast_id: string }>(
-				"analyzed broadcast IDs",
-				"broadcast_speech_analyses",
-				"broadcast_id",
-				"broadcast_id",
-				broadcastIds,
-			).then((rows) => rows.map((row) => row.broadcast_id));
+		/**
+		 * Read the analysed side and intersect in memory, rather than asking
+		 * whether each archived broadcast has an analysis.
+		 *
+		 * The old shape sent all 5,200-odd archived ids back in 200-id chunks —
+		 * 27 serial round trips, each ~7.6KB of query string, to discover a table
+		 * holding 54 rows, on every render of a `force-dynamic` page. Analyses are
+		 * by far the smaller side and always will be: the archive is the
+		 * denominator of this very metric.
+		 */
+		loadAnalyzedBroadcastIds() {
+			return readPagedRows<{ broadcast_id: string }>("analyzed broadcast IDs", () => sb
+				.from("broadcast_speech_analyses")
+				.select("broadcast_id")
+				.order("broadcast_id", { ascending: true }))
+				.then((rows) => rows.map((row) => row.broadcast_id));
 		},
 
 		countEvidenceItems: () => countRequiredTable("evidence_items", "evidence item count"),
@@ -445,7 +460,7 @@ export async function loadIntelligenceReadiness(
 
 	const archivedBroadcastById = new Map(archivedBroadcasts.map((broadcast) => [broadcast.id, broadcast]));
 	const analyzedIds = new Set(
-		(await repository.loadAnalyzedBroadcastIds([...archivedBroadcastById.keys()]))
+		(await repository.loadAnalyzedBroadcastIds())
 			.filter((broadcastId) => archivedBroadcastById.has(broadcastId)),
 	);
 	const categoryCounts = new Map<string, { total: number; analyzed: number }>();

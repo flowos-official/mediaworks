@@ -4,6 +4,7 @@ import {
 	classifyReadiness,
 	loadIntelligenceReadiness,
 	percent,
+	READINESS_PAGE_SIZE,
 } from "../lib/intelligence/readiness";
 
 const NOW = new Date("2026-08-29T12:00:00.000Z");
@@ -279,7 +280,22 @@ async function run(): Promise<void> {
 	assert.equal(client.calls.some((call) => call === "discovered_products:in:session_id:home-success,live-success"), false, "telemetry UUIDs never leak into Discovery session membership queries");
 	assert.equal(client.calls.some((call) => call.includes("d-historical")), false, "historical Discovery products never enter the active denominator");
 	assert.ok(client.calls.includes("product_source_links:eq:source_type:internal_excel"), "internal coverage is sourced from active internal source links");
-	assert.ok(client.calls.includes("broadcasts:range:0:499"), "broadcast identity sets use pagination rather than PostgREST's default row cap");
+	assert.ok(
+		client.calls.includes(`broadcasts:range:0:${READINESS_PAGE_SIZE - 1}`),
+		"broadcast identity sets use pagination rather than PostgREST's default row cap",
+	);
+	// The analysed side is read whole and intersected in memory. Asking whether
+	// each of ~5,200 archived broadcasts has an analysis cost 27 serial chunked
+	// queries per render to discover a table holding 54 rows.
+	assert.ok(
+		client.calls.some((call) => call.startsWith("broadcast_speech_analyses:range:")),
+		"analysed broadcasts are paged directly",
+	);
+	assert.equal(
+		client.calls.some((call) => call.startsWith("broadcast_speech_analyses:in:broadcast_id:")),
+		false,
+		"the archive is never chunked back at the analyses table",
+	);
 	assert.ok(client.calls.includes("evidence_items:select:count:body") && client.calls.includes("insight_snapshots:select:count:body"), "required-table counts use exact counts without a HEAD response that can mask relation failures");
 	assert.ok(client.calls.includes("evidence_items:limit:1") && client.calls.includes("insight_snapshots:limit:1"), "required-table probes read at most one row while obtaining the exact count");
 
