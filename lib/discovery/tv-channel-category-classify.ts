@@ -16,7 +16,7 @@
  * Fail-open: any error → all null (row keeps NULL category, no worse than today).
  */
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { GEMINI_FLASH } from "@/lib/gemini-models";
+import { modelForStage } from "@/lib/gemini-models";
 import { CATEGORY_MAPPING } from "@/lib/strategy/category-mapping";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? "");
@@ -66,7 +66,7 @@ ${block}
 }`;
 
 	try {
-		const model = genAI.getGenerativeModel({ model: GEMINI_FLASH });
+		const model = genAI.getGenerativeModel({ model: modelForStage("discovery_classification") });
 		const res = await model.generateContent(prompt);
 		const text = res.response.text();
 		const match = text.match(/\{[\s\S]+\}/);

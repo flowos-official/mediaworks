@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { runProductResearch } from "@/lib/brave";
-import { GEMINI_FLASH } from "@/lib/gemini-models";
+import { modelForStage } from "@/lib/gemini-models";
 import { synthesizeResearch } from "@/lib/gemini";
 import type { ProductInfo, ResearchOutput } from "@/lib/gemini";
 import { GeminiCallError } from "@/lib/gemini/errors";
@@ -185,7 +185,7 @@ export async function runProductSynthesis(
 	}
 	const broadcastContextPrompt = formatBroadcastContextPrompt(broadcastContext);
 
-	console.log(`[${logLabel}] Synthesizing research with ${GEMINI_FLASH}...`);
+	console.log(`[${logLabel}] Synthesizing research with ${modelForStage("research_synthesis")}...`);
 	const research = await synthesizeResearch(productInfo, searchResults, broadcastContextPrompt);
 	return { searchResults, research, broadcastContextError };
 }

@@ -6,7 +6,7 @@
  */
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { GEMINI_FLASH } from "@/lib/gemini-models";
+import { modelForStage } from "@/lib/gemini-models";
 import { rakutenRankingSearch } from "@/lib/rakuten";
 import { curatePool } from "./curate";
 import { applyExclusions, loadExclusionContext } from "./exclusion";
@@ -21,7 +21,7 @@ import type {
 } from "./types";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const MODEL_ID = GEMINI_FLASH;
+const MODEL_ID = modelForStage("discovery_curation");
 const MAX_ITERATIONS = Number(process.env.DISCOVERY_MAX_ITERATIONS ?? 3);
 const MIN_QUALITY_COUNT = 20; // threshold: need 20+ score>=60 to skip iteration
 const QUALITY_SCORE_THRESHOLD = 60;

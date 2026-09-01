@@ -157,6 +157,8 @@ Background accumulation only. The system continuously collects, normalizes and s
 
 ## Key Conventions
 
+- **Gemini model selection is per stage** (`lib/gemini-models.ts`): `modelForStage("<stage>")`, never a bare `GEMINI_FLASH` at a call site. One shared constant across ~47 sites meant every stage carried the same price and capability, so transcription could only get cheaper by making screenplay generation worse at the same time. `GEMINI_MODEL_<STAGE>` overrides one stage without a deploy. **Move a stage off its default only on measured output** — `broadcast_analysis` runs on `gemini-3.5-flash-lite` because a three-slot A/B showed it matching Flash on act coverage (100/100/100%) at 60% less; `gemini-2.5-flash-lite` is 89% cheaper and was rejected because its acts stop a fraction into the programme, so `MIN_ACT_COVERAGE` rejects them and the slot retries after its CloudFront egress is already spent.
+
 - **i18n**: All UI text via next-intl. Translation files in `messages/ja.json` and `messages/ko.json` (default locale: ja). Research output is in Japanese.
 - **UI**: shadcn/ui (base-nova style) + Tailwind CSS 4 + Lucide icons. Components in `components/ui/`.
 - **Path alias**: `@/*` maps to project root.

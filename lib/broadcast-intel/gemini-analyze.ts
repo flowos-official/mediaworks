@@ -42,7 +42,16 @@
  * NO `import "server-only"` — imported by tsx smoke scripts.
  */
 import { GoogleGenAI, createPartFromUri, createUserContent, ApiError } from "@google/genai";
-import { GEMINI_FLASH, GEMINI_PRO_FALLBACK } from "@/lib/gemini-models";
+import { GEMINI_PRO_FALLBACK, modelForStage } from "@/lib/gemini-models";
+
+/**
+ * Resolved per call rather than at module load so a `GEMINI_MODEL_*` override
+ * takes effect without a restart, and so a smoke script can set one.
+ * `GEMINI_PRO_FALLBACK` stays the 5xx escape hatch for every stage.
+ */
+function analysisModel(): string {
+	return modelForStage("broadcast_analysis");
+}
 import { AUDIO_MIME, NonRetryableAudioError, SLOT_TIMEOUT_MS } from "./audio-extract";
 import { ANALYSIS_RESPONSE_SCHEMA, parseAnalysisResponse, type BroadcastAnalysis } from "./schema";
 import type { AnalysisErrorCode } from "./error-codes";
@@ -263,6 +272,7 @@ export async function analyzeAudio(
 	audio: Buffer,
 	durationSec: number,
 	deadline: number = Date.now() + SLOT_TIMEOUT_MS,
+	primaryModel: string = analysisModel(),
 ): Promise<{ analysis: BroadcastAnalysis; model: string }> {
 	const ai = getGenAI();
 	let fileName: string | null = null;
@@ -295,10 +305,10 @@ export async function analyzeAudio(
 				analysis: await withDeadline(
 					deadline,
 					"analysis (flash)",
-					() => callModel(GEMINI_FLASH, file.uri!, file.mimeType!, durationSec, flashController.signal),
+					() => callModel(primaryModel, file.uri!, file.mimeType!, durationSec, flashController.signal),
 					() => flashController.abort(),
 				),
-				model: GEMINI_FLASH,
+				model: primaryModel,
 			};
 		} catch (err) {
 			if (!isRetryable(err)) throw err;

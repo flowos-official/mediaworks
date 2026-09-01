@@ -4,7 +4,7 @@
  */
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { GEMINI_FLASH } from "@/lib/gemini-models";
+import { modelForStage } from "@/lib/gemini-models";
 import type {
 	Candidate,
 	Context,
@@ -15,7 +15,7 @@ import type {
 import { deriveTvChannelSource } from "./tv-channels";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const MODEL_ID = GEMINI_FLASH;
+const MODEL_ID = modelForStage("discovery_curation");
 const POOL_SAMPLE_LIMIT = 150;
 // Max candidates kept per seed keyword — prevents a single hot seed from
 // monopolizing the final list while still allowing overflow backfill when

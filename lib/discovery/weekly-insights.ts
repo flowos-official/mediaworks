@@ -4,12 +4,12 @@
  */
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { GEMINI_FLASH } from "@/lib/gemini-models";
+import { modelForStage } from "@/lib/gemini-models";
 import { getServiceClient } from "@/lib/supabase";
 import type { Context } from "./types";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const MODEL_ID = GEMINI_FLASH;
+const MODEL_ID = modelForStage("discovery_curation");
 
 export interface WeeklyInsightInput {
 	weekStart: string;
