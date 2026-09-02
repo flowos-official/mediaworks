@@ -94,24 +94,33 @@ export function parseOutputDurationFromStderr(stderr: string): number | null {
  * Defaults to a fresh SLOT_TIMEOUT_MS-out deadline so this stays callable
  * standalone (tests, the live smoke script).
  */
-export async function extractAudio(
-	s3Key: string,
-	deadline: number = Date.now() + SLOT_TIMEOUT_MS,
-): Promise<{ audio: Buffer; durationSec: number }> {
-	const base =
-		process.env.VIDEO_ARCHIVE_BASE_URL ?? process.env.NEXT_PUBLIC_VIDEO_ARCHIVE_BASE_URL;
-	if (!base) throw new Error("Missing required env var: VIDEO_ARCHIVE_BASE_URL");
-	const remaining = deadline - Date.now();
-	if (remaining <= 0) {
-		throw new Error(`audio extraction deadline already elapsed before extraction started for ${s3Key}`);
-	}
+/**
+ * Which path reads the archived MP4.
+ *
+ * `cdn` (default) fetches the public CloudFront URL — the same path playback
+ * uses. `s3` reads the bucket directly with GetObject.
+ *
+ * The default is deliberately NOT `s3`, because the cheaper path depends
+ * entirely on where this runs. The bucket is in ap-northeast-2:
+ *
+ *   in-region (an EC2 box in ap-northeast-2)  S3 GetObject   $0/GB
+ *   anywhere else (Vercel, a laptop)          S3 GetObject   ~$0.126/GB
+ *                                             CloudFront     ~$0.114/GB
+ *
+ * So the cron, which runs on Vercel, must keep using the CDN — switching it to
+ * S3 would make every run more expensive, not less. Set
+ * `BROADCAST_INTEL_READ_VIA=s3` only where the reader shares the bucket's
+ * region, which is the whole point: a 3 TB ShopCh drain costs ~$345 of egress
+ * from a laptop and nothing at all from a Seoul instance.
+ *
+ * (The older comment here said the archiver identity had PutObject but no
+ * GetObject. That is no longer true — the grant exists, verified 2026-09-02 by
+ * a ranged GetObject — so the CDN is now a cost choice rather than a
+ * permissions workaround.)
+ */
+const READ_VIA = (process.env.BROADCAST_INTEL_READ_VIA ?? "cdn").trim().toLowerCase();
 
-	// Read through the public CloudFront distribution rather than S3 GetObject.
-	// The archiver IAM user has PutObject but no GetObject — nothing had ever
-	// needed to read these back, because playback already goes through the CDN
-	// (BroadcastVideoModal builds the same URL). Using the CDN keeps this
-	// pipeline on the same read path as the rest of the app, avoids widening
-	// that IAM policy, and serves from an edge cache instead of the bucket.
+async function readViaCdn(base: string, s3Key: string, remaining: number): Promise<Readable> {
 	const url = `${base.replace(/\/+$/, "")}/${s3Key}`;
 	const res = await fetch(url, { signal: AbortSignal.timeout(remaining) });
 	if (res.status === 404) {
@@ -126,7 +135,50 @@ export async function extractAudio(
 	// healthy slot to `failed` after one attempt.
 	if (!res.ok) throw new Error(`archive fetch failed with HTTP ${res.status} for ${s3Key}`);
 	if (!res.body) throw new NonRetryableAudioError(`archive response has no body: ${s3Key}`);
-	const source = Readable.fromWeb(res.body as WebReadableStream<Uint8Array>);
+	return Readable.fromWeb(res.body as WebReadableStream<Uint8Array>);
+}
+
+async function readViaS3(s3Key: string, remaining: number): Promise<Readable> {
+	const { GetObjectCommand } = await import("@aws-sdk/client-s3");
+	const { getVideoStorageClient } = await import("@/lib/broadcasts/video-storage");
+	const bucket = process.env.VIDEO_ARCHIVE_AWS_BUCKET;
+	if (!bucket) throw new Error("Missing required env var: VIDEO_ARCHIVE_AWS_BUCKET");
+
+	let res;
+	try {
+		res = await getVideoStorageClient().send(
+			new GetObjectCommand({ Bucket: bucket, Key: s3Key }),
+			{ abortSignal: AbortSignal.timeout(remaining) },
+		);
+	} catch (err) {
+		const name = err instanceof Error ? err.name : "";
+		// Same split as the CDN path: absent is permanent, denied is not — a cold
+		// object that has not finished restoring answers InvalidObjectState, and
+		// that clears on its own.
+		if (name === "NoSuchKey" || name === "NotFound") {
+			throw new NonRetryableAudioError(`archive object not readable (${name}) for ${s3Key}`);
+		}
+		throw err;
+	}
+	if (!res.Body) throw new NonRetryableAudioError(`archive response has no body: ${s3Key}`);
+	return res.Body as Readable;
+}
+
+export async function extractAudio(
+	s3Key: string,
+	deadline: number = Date.now() + SLOT_TIMEOUT_MS,
+): Promise<{ audio: Buffer; durationSec: number }> {
+	const base =
+		process.env.VIDEO_ARCHIVE_BASE_URL ?? process.env.NEXT_PUBLIC_VIDEO_ARCHIVE_BASE_URL;
+	if (!base) throw new Error("Missing required env var: VIDEO_ARCHIVE_BASE_URL");
+	const remaining = deadline - Date.now();
+	if (remaining <= 0) {
+		throw new Error(`audio extraction deadline already elapsed before extraction started for ${s3Key}`);
+	}
+
+	const source = READ_VIA === "s3"
+		? await readViaS3(s3Key, remaining)
+		: await readViaCdn(base, s3Key, remaining);
 
 	const proc = spawn(ffmpegInstaller.path, buildAudioFfmpegArgs(), {
 		stdio: ["pipe", "pipe", "pipe"],
