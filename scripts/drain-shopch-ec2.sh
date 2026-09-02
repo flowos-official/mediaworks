@@ -107,8 +107,24 @@ for category in "${CATEGORIES[@]}"; do
   log "########## $category ##########"
   for i in $(seq 1 40); do
     log "----- batch $i -----"
+
+    # First batch of a category also revives what the nightly cron abandoned
+    # while these objects were still frozen. The cron keeps picking ShopCh slots
+    # it cannot read, marking them `cold_storage` and spending an attempt; at
+    # MAX_ATTEMPTS the slot is out of the queue for good, so without this the
+    # restore would land and those slots would still never be analysed.
+    #
+    # `--reset` requires an explicit scope by design, and gets one here: both
+    # --channel and --category are set, so this can only touch the category
+    # being drained. Only cold_storage is reset — the other resettable codes
+    # (gemini_error, s3_fetch_failed, empty_object) describe different problems
+    # that a restore does not fix, and sweeping them in would re-spend transfer
+    # on slots that will fail the same way.
+    reset_flag=""
+    if [[ $i -eq 1 ]]; then reset_flag="--reset=cold_storage"; fi
+
     out="$(npm run --silent drain:broadcast-analysis -- \
-      --channel=shopch --category="$category" --limit=100 2>&1 || true)"
+      --channel=shopch --category="$category" --limit=100 $reset_flag 2>&1 || true)"
     echo "$out" | grep -E '^\[drain\]|"model"|"usage"' | tee -a "$LOG" || true
     if grep -q "processed=0" <<<"$out"; then log "$category exhausted"; break; fi
     if grep -q "seeded 0 slot" <<<"$out"; then log "$category nothing left to seed"; break; fi
