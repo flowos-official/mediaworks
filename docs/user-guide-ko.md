@@ -397,3 +397,24 @@ npm run rekey:intelligence-evidence -- --apply
 인사이트 갱신은 JST 05:00 크론으로 자동 실행된다. 위 백필은 과거 데이터를 채우거나 장애에서 복구할 때 쓰는 수동 작업이다.
 
 분모가 없는 비율은 `0%`가 아니라 `—`로 표시한다. 추천, Research, 취급 상품 선택, 대본이 0건이어도 아직 요청하지 않은 상태라면 파이프라인 실패가 아니다.
+
+### ShopCh 방송 분석 대량 처리 (서울 EC2)
+
+ShopCh는 한 편이 약 1.16GB(57분)라 3.1TB 전체를 로컬로 내려받으면 전송비만 약 $345 든다. 버킷이 `ap-northeast-2`에 있으므로 같은 리전 EC2에서 돌리면 전송비가 0이 된다.
+
+```bash
+# 1) 복원 (Bulk, 48시간, 약 $26)
+npm run restore:archives -- --channel=shopch --category=コスメ --tier=Bulk --days=7 --apply
+
+# 2) 완료 확인
+npm run restore:archives -- --channel=shopch --category=コスメ --status
+
+# 3) 서울 EC2에서 드레인
+bash scripts/drain-shopch-ec2.sh
+```
+
+3번 스크립트는 리전을 확인하고 `ap-northeast-2`가 아니면 실행을 거부한다. 실수로 로컬에서 돌려 $345를 쓰는 것을 막기 위한 장치다. 필요한 것은 인스턴스 역할의 `s3:GetObject` 권한과 레포 루트의 `.env.local`이다.
+
+**복원이 끝나기 전에 드레인을 시작하지 말 것.** 아직 해동되지 않은 슬롯은 `cold_storage`로 스킵 처리되고 그 기록이 남아, 분석 없이 백로그만 소진된다.
+
+작업이 끝나면 **인스턴스를 반드시 정지 또는 종료**한다. 유휴 상태에서도 초 단위로 과금된다.
