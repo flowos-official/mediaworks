@@ -5,6 +5,7 @@
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { modelForStage } from "@/lib/gemini-models";
+import { recordGeminiUsage, toUsageRecord } from "@/lib/gemini-usage";
 import type {
 	Candidate,
 	Context,
@@ -240,6 +241,11 @@ ${poolList}
 
 	const model = genAI.getGenerativeModel({ model: MODEL_ID });
 	const res = await model.generateContent(prompt);
+	void recordGeminiUsage(toUsageRecord({
+		stage: "discovery_curation",
+		model: MODEL_ID,
+		usage: res.response?.usageMetadata,
+	}));
 	const text = res.response.text();
 	const match = text.match(/\{[\s\S]+\}/);
 	if (!match) throw new Error("curate: no JSON in response");

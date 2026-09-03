@@ -1,6 +1,7 @@
 // lib/screenplay/generator.ts
 import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { GEMINI_PRO_FALLBACK } from "@/lib/gemini-models";
+import { recordGeminiUsage, toUsageRecord, type GeminiUsageMetadata } from "@/lib/gemini-usage";
 import { buildUserPrompt, buildSystemInstruction } from "./prompt";
 import type { GenerateInput, GenerationResult } from "./types";
 
@@ -61,6 +62,13 @@ async function callOnce(
       },
     });
     let text = "";
+    // The streaming API carries usageMetadata on the trailing chunks; keep the
+    // last one seen. This is the most expensive call in the project — Pro with
+    // HIGH thinking, retried up to three times — and it was reporting nothing,
+    // so its share of the bill could only ever be guessed at. Thinking tokens
+    // bill at the output rate and never appear in `text`, which is why counting
+    // the generated characters cannot stand in for this.
+    let usage: GeminiUsageMetadata | undefined;
     for await (const chunk of stream) {
       if (firstChunkTimer) {
         clearTimeout(firstChunkTimer);
@@ -68,8 +76,10 @@ async function callOnce(
       }
       const t = chunk.text ?? "";
       text += t;
+      if (chunk.usageMetadata) usage = chunk.usageMetadata;
       onChunk?.(text.length);
     }
+    void recordGeminiUsage(toUsageRecord({ stage: "screenplay_generation", model: MODEL, usage }));
     return text;
   } finally {
     clearTimeout(hardTimer);

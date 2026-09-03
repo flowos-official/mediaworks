@@ -38,6 +38,7 @@
     "backfill:intelligence": "tsx --env-file=.env.local scripts/backfill-intelligence-foundation.ts",
     "rekey:intelligence-evidence": "tsx --env-file=.env.local scripts/rekey-intelligence-evidence.ts",
     "verify:intelligence-foundation": "tsx --env-file=.env.local scripts/verify-intelligence-foundation.ts",
+    "report:gemini-cost": "tsx --env-file=.env.local scripts/report-gemini-cost.ts",
     "test:intelligence-foundation-verifier": "tsx scripts/test-intelligence-foundation-verifier.ts",
     "test:broadcasts-shopch": "tsx --env-file=.env.local scripts/test-broadcasts-shopch-parser.ts",
     "test:broadcasts-qvc": "tsx --env-file=.env.local scripts/test-broadcasts-qvc-parser.ts",

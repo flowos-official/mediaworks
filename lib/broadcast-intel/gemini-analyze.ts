@@ -43,6 +43,7 @@
  */
 import { GoogleGenAI, createPartFromUri, createUserContent, ApiError } from "@google/genai";
 import { GEMINI_PRO_FALLBACK, modelForStage } from "@/lib/gemini-models";
+import { recordGeminiUsage, toUsageRecord } from "@/lib/gemini-usage";
 
 /**
  * Resolved per call rather than at module load so a `GEMINI_MODEL_*` override
@@ -154,38 +155,6 @@ async function withDeadline<T>(
 	}
 }
 
-/**
- * What one analysis actually consumed.
- *
- * The response carried this all along and it was being discarded, so the only
- * way to price a bulk drain was to model it — audio seconds times an assumed
- * tokens-per-second, output characters times an assumed tokens-per-character.
- * Both assumptions are plausible and neither was ever checked against a bill.
- * Logging the real numbers turns a 2,445-slot run into its own measurement.
- */
-export interface AnalysisUsage {
-	model: string;
-	inputTokens: number;
-	outputTokens: number;
-	totalTokens: number;
-}
-
-export function usageFromResponse(
-	model: string,
-	usage: { promptTokenCount?: number; candidatesTokenCount?: number; totalTokenCount?: number } | undefined,
-): AnalysisUsage | null {
-	if (!usage) return null;
-	const inputTokens = Number(usage.promptTokenCount ?? 0);
-	const outputTokens = Number(usage.candidatesTokenCount ?? 0);
-	if (!Number.isFinite(inputTokens) || !Number.isFinite(outputTokens)) return null;
-	return {
-		model,
-		inputTokens,
-		outputTokens,
-		totalTokens: Number(usage.totalTokenCount ?? inputTokens + outputTokens),
-	};
-}
-
 async function callModel(
 	model: string,
 	fileUri: string,
@@ -208,16 +177,22 @@ async function callModel(
 	});
 
 	const finish = response.candidates?.[0]?.finishReason;
+
+	// Recorded BEFORE the MAX_TOKENS check, not after. A truncated response bills
+	// for the whole output allowance and returns nothing usable, so throwing
+	// first hid the single most expensive kind of call from its own accounting.
+	void recordGeminiUsage(toUsageRecord({
+		stage: "broadcast_analysis",
+		model,
+		usage: response.usageMetadata,
+		succeeded: finish !== "MAX_TOKENS",
+		...(finish === "MAX_TOKENS" ? { errorCode: "max_tokens" } : {}),
+	}));
+
 	if (finish === "MAX_TOKENS") {
 		throw new NonRetryableAudioError(
 			`analysis exceeded ${MAX_OUTPUT_TOKENS} output tokens; the transcript is too long for one call`,
 		);
-	}
-	const usage = usageFromResponse(model, response.usageMetadata);
-	if (usage) {
-		// One line per call, greppable, so a drain can be priced from its own log
-		// rather than from a model of it.
-		console.log(`[broadcast-intel] usage ${JSON.stringify({ ...usage, durationSec })}`);
 	}
 
 	const text = response.text;

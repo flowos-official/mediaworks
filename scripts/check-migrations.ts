@@ -36,6 +36,7 @@ const REQUIRED_TABLES = [
 	"data_pipeline_runs",
 	"import_batches",
 	"import_rows",
+	"gemini_usage",
 ];
 
 const REQUIRED_COLUMNS: Record<string, string[]> = {
