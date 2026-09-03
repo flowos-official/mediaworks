@@ -6,7 +6,7 @@
     "app/api/analyze/route.ts": {
       "maxDuration": 120
     },
-    "app/api/cron/daily-refresh/route.ts": {
+    "app/api/cron/weekly-research-refresh/route.ts": {
       "maxDuration": 300
     },
     "app/api/cron/daily-discovery-home/route.ts": {
@@ -84,8 +84,8 @@
   },
   "crons": [
     {
-      "path": "/api/cron/daily-refresh",
-      "schedule": "0 9 * * *"
+      "path": "/api/cron/weekly-research-refresh",
+      "schedule": "0 9 * * 0"
     },
     {
       "path": "/api/cron/daily-discovery-home",

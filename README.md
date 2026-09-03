@@ -202,7 +202,7 @@ JST/KST (UTC+9).
 
 | UTC | JST/KST | Path | Purpose |
 | --- | --- | --- | --- |
-| 09:00 daily | 18:00 daily | `/api/cron/daily-refresh` | Refresh uploaded Research products |
+| 09:00 Sun | 18:00 Sun | `/api/cron/weekly-research-refresh` | Re-synthesise research for uploaded products |
 | 23:00 daily | 08:00 next day | `/api/cron/daily-discovery-home` | Home-shopping discovery |
 | 23:30 daily | 08:30 next day | `/api/cron/daily-discovery-live` | Live-commerce discovery |
 | 16:00 daily | 01:00 next day | `/api/cron/daily-broadcasts` | QVC/Shop Channel schedule and snapshots |

@@ -172,7 +172,7 @@ curl -X POST https://<vercel-url>/api/discovery/manual-trigger \
 | 22:45 | 07:45 (다음 날) | daily-learning | 피드백 집계, 가중치/거절 시드 업데이트 |
 | 월 01:00 | 월 10:00 | weekly-insights | Gemini 주간 자연어 요약 |
 | 일 17:30 | 월 02:30 | refresh-tv-evidence | TV evidence 재계산 |
-| 09:00 | 18:00 | daily-refresh | 기존 업로드 제품 재분석 |
+| 09:00 (일) | 18:00 (일) | weekly-research-refresh | 기존 업로드 제품 재분석 (주 1회) |
 
 ---
 

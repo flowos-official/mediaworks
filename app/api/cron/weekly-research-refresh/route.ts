@@ -8,6 +8,19 @@ import {
 
 export const maxDuration = 300;
 
+/**
+ * Weekly, not daily. This re-runs full research synthesis for up to 20 already
+ * completed products, and `synthesizeResearch` is the heaviest prompt in the
+ * project — a thirteen-section report with a 32K output ceiling. Because it
+ * upserts on product_id, a day's work leaves no new rows: research_results
+ * stayed at twelve while every run paid for twelve regenerations, so the spend
+ * was invisible to any row-count check. It also re-runs the same products every
+ * time, ordered by created_at desc.
+ *
+ * Market research does not move enough in a day to justify that. Renamed with
+ * the cadence so the name cannot drift from the schedule again.
+ */
+
 export async function GET(request: NextRequest) {
 	// Verify cron secret
 	const authHeader = request.headers.get("authorization");
@@ -35,7 +48,7 @@ export async function GET(request: NextRequest) {
 			return NextResponse.json({ message: "No completed products to refresh", refreshed: 0 });
 		}
 
-		console.log(`[daily-refresh] Processing ${products.length} products...`);
+		console.log(`[weekly-research-refresh] Processing ${products.length} products...`);
 
 		for (const product of products) {
 			try {
@@ -60,11 +73,11 @@ export async function GET(request: NextRequest) {
 				if (upsertError) throw upsertError;
 
 				results.push({ productId: product.id, name: product.name, status: "refreshed" });
-				console.log(`[daily-refresh] ✓ ${product.name}`);
+				console.log(`[weekly-research-refresh] ✓ ${product.name}`);
 			} catch (err: unknown) {
 				const msg = err instanceof Error ? err.message : String(err);
 				results.push({ productId: product.id, name: product.name, status: "failed", error: msg });
-				console.error(`[daily-refresh] ✗ ${product.name}:`, msg);
+				console.error(`[weekly-research-refresh] ✗ ${product.name}:`, msg);
 			}
 		}
 
@@ -81,7 +94,7 @@ export async function GET(request: NextRequest) {
 		});
 	} catch (err: unknown) {
 		const msg = err instanceof Error ? err.message : String(err);
-		console.error("[daily-refresh] Fatal error:", msg);
+		console.error("[weekly-research-refresh] Fatal error:", msg);
 		return NextResponse.json({ error: msg }, { status: 500 });
 	}
 }
