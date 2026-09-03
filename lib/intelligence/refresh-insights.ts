@@ -26,6 +26,12 @@ export const MAX_INSIGHT_REFRESH_SUBJECTS = 200;
 export const MAX_INSIGHT_SCAN_ROWS = 10_000;
 
 const EVIDENCE_PAGE_SIZE = 500;
+/**
+ * Ceiling on one subject-chunk's active evidence. A chunk is at most
+ * DATABASE_CHUNK_SIZE subjects, so this is generous for real data and only
+ * trips on a runaway.
+ */
+const MAX_EVIDENCE_ROWS_PER_SUBJECT_CHUNK = 50_000;
 
 /**
  * How far back a category insight aggregates, by air date.
@@ -307,7 +313,13 @@ async function loadEvidenceRows(
 	if (input.subjectIds.length === 0) return [];
 	const rows: EvidenceItem[] = [];
 	for (const subjectIds of chunks([...new Set(input.subjectIds)].sort(), DATABASE_CHUNK_SIZE)) {
-		for (let from = 0; ; from += EVIDENCE_PAGE_SIZE) {
+		// The exit is "a short page", which assumes PostgREST can return
+		// EVIDENCE_PAGE_SIZE rows. Set the project's `db-max-rows` at or below
+		// that and every page comes back exactly full: the loop never ends and
+		// `rows` grows until the process dies. The scan loop that calls this is
+		// already bounded by MAX_INSIGHT_SCAN_ROWS; this one was not, and the
+		// asymmetry is the bug rather than the page size.
+		for (let from = 0; from < MAX_EVIDENCE_ROWS_PER_SUBJECT_CHUNK; from += EVIDENCE_PAGE_SIZE) {
 			let query: any = (sb as any)
 				.from("evidence_items")
 				.select(EVIDENCE_COLUMNS)
@@ -323,6 +335,16 @@ async function loadEvidenceRows(
 			const page = (data ?? []) as Array<Record<string, unknown>>;
 			rows.push(...page.map(mapEvidenceRow));
 			if (page.length < EVIDENCE_PAGE_SIZE) break;
+			if (from + EVIDENCE_PAGE_SIZE >= MAX_EVIDENCE_ROWS_PER_SUBJECT_CHUNK) {
+				// Loud rather than silently truncated: a chunk of at most 100
+				// subjects holding this much active evidence means either a
+				// misconfigured row cap or a data problem, and quietly returning a
+				// partial set would feed a wrong insight instead of an error.
+				throw new Error(
+					`active evidence query exceeded ${MAX_EVIDENCE_ROWS_PER_SUBJECT_CHUNK} rows for one subject chunk; ` +
+					"check the project's db-max-rows setting",
+				);
+			}
 		}
 	}
 	return rows;

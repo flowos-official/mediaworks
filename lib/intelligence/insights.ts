@@ -1,3 +1,4 @@
+import { TV_CHANNELS } from "@/lib/discovery/tv-channels";
 import type { EvidenceItem, EvidenceValueState } from "./types";
 
 export interface InsightDraft {
@@ -79,18 +80,23 @@ const INTERNAL_PROFIT_PREDICATES = new Set([
 	"gross_margin_pct",
 ]);
 
-const CHANNELS = new Set([
-	"qvc",
-	"shopch",
-	"japanet",
-	"junsanpo",
-	"ntv",
-	"tbs",
-	"dinos",
-	"senobura",
-	"kantv",
-	"rakurakum",
-	"ichiban",
+/**
+ * Which `sourceType` values count as a broadcast channel.
+ *
+ * Derived from the discovery registry rather than restated — the literal this
+ * replaces had fallen four channels behind (ropping, kachimo, kaidoki,
+ * uranoura), so their evidence was skipped here and simply did not appear in
+ * `categoryImbalance`.
+ *
+ * `"oa"` is included because `mapBroadcastAnalysisEvidence` falls back to it
+ * when a broadcast row has no channel. Without it that evidence fell through
+ * this filter and the insight reported `channels: []` with no dominant channel
+ * — an empty answer that reads like "no channels aired this" rather than
+ * "the channel was not recorded".
+ */
+const CHANNELS = new Set<string>([
+	...TV_CHANNELS.map((channel) => channel.slug),
+	"oa",
 ]);
 
 function timestamp(value: string, label: string): number {

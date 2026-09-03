@@ -212,6 +212,26 @@ const broadcastEvidence: EvidenceItem[] = [
 	assert.equal(result.structurePatternAvailability, undefined, "conflicting structures remain coverage-only, never numeric zero");
 }
 
+{
+	// mapBroadcastAnalysisEvidence falls back to "oa" when a broadcast row has no
+	// channel. That value was missing from the channel filter, so the evidence
+	// fell through and the insight reported no channels at all — an empty answer
+	// that reads like "nobody aired this" rather than "the channel is unrecorded".
+	const oaInsight = buildBroadcastCategoryInsight([
+		evidence({ id: "oa-1", subjectType: "broadcast", subjectId: "oa-broadcast", predicate: "segment_pattern", value: [{ label: "open" }], sourceType: "oa", sourceTable: "broadcast_speech_analyses", sourceRecordId: "oa-broadcast" }),
+		evidence({ id: "oa-2", subjectType: "broadcast", subjectId: "oa-broadcast", predicate: "air_date", value: "2026-08-28", sourceType: "oa", sourceTable: "broadcast_speech_analyses", sourceRecordId: "oa-broadcast" }),
+	], "家電", CUTOFF);
+	const oaResult = oaInsight.result as {
+		categoryImbalance?: { byChannel?: Record<string, number>; dominantChannel?: string };
+	};
+	assert.deepEqual(
+		oaResult.categoryImbalance?.byChannel,
+		{ oa: 1 },
+		"an unrecorded channel is reported as `oa`, not dropped",
+	);
+	assert.equal(oaResult.categoryImbalance?.dominantChannel, "oa");
+}
+
 console.log("PASS: deterministic stored-evidence insight builders");
 
 function pipelineHandle(events: Array<{ status: string; counts?: Partial<PipelineRunCounts> }>): PipelineRunHandle {

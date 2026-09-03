@@ -239,6 +239,12 @@ function printSummary(args: BackfillArgs, result: FoundationBackfillResult): voi
 		reviewNeeded: result.summary.reviewNeeded,
 		reviewNeededCategories: result.summary.reviewNeededCategories,
 		nextCursor: nextCursorText(result),
+		// A source that failed to load contributed nothing and kept its cursor, so
+		// re-running retries only it. Surfaced here because the summary is where
+		// the operator reads `nextCursor`, and a silent partial read would look
+		// like that source simply having no rows left.
+		...(result.failedSources?.length ? { failedSources: result.failedSources } : {}),
+		...(result.sourceFailureSummary ? { sourceFailure: result.sourceFailureSummary } : {}),
 	}, null, 2));
 }
 
@@ -294,6 +300,13 @@ async function main(): Promise<void> {
 if (require.main === module) {
 	main().catch((error) => {
 		console.error(`FATAL: ${errorText(error)}`);
+		// The resume point, on the failure path too. Nothing advanced, so the
+		// cursor to retry with is the one this run was given — without printing it
+		// the operator had to dig it out of a previous run's output.
+		const cursorArg = process.argv.slice(2).find((a) => a.startsWith("--cursor="));
+		console.error(cursorArg
+			? `RESUME: re-run with the same ${cursorArg}`
+			: "RESUME: re-run with the same --since/--limit; no cursor had been supplied");
 		process.exitCode = 1;
 	});
 }

@@ -1,3 +1,4 @@
+import { EXCLUDED_DISCOVERY_SLUGS, TV_CHANNELS } from "@/lib/discovery/tv-channels";
 import { buildEvidenceDraft } from "./evidence";
 import type { PipelineRunCounts, PipelineRunHandle } from "./pipeline-run";
 import type { EvidenceClass, EvidenceDraft, EvidenceValueState } from "./types";
@@ -362,19 +363,23 @@ export function buildBackfillCursor(cursor: BackfillCursor): string {
 	return Buffer.from(JSON.stringify(payload)).toString("base64url");
 }
 
-export const CONNECTED_PRODUCT_SOURCE_CHANNELS: ReadonlySet<string> = new Set([
-	"qvc",
-	"shopch",
-	"japanet",
-	"junsanpo",
-	"ntv",
-	"tbs",
-	"dinos",
-	"senobura",
-	"kantv",
-	"rakurakum",
-	"ichiban",
-]);
+/**
+ * Derived from the discovery registry, not restated.
+ *
+ * This was a hand-kept copy of eleven slugs and had fallen four behind:
+ * ropping, kachimo, kaidoki and uranoura are all real discovery sources whose
+ * products `isConnectedProductSource` was silently rejecting, so they never
+ * received a canonical identity or a row of evidence — and nothing logged the
+ * rejection, so the loss looked like those channels simply producing nothing.
+ *
+ * `txd` stays out because `EXCLUDED_DISCOVERY_SLUGS` excludes it by operator
+ * policy (2026-06-02) and its rows were purged; taking the exclusion from that
+ * set rather than from a second literal means the next policy change reaches
+ * here on its own.
+ */
+export const CONNECTED_PRODUCT_SOURCE_CHANNELS: ReadonlySet<string> = new Set(
+	TV_CHANNELS.map((channel) => channel.slug).filter((slug) => !EXCLUDED_DISCOVERY_SLUGS.has(slug)),
+);
 
 export function isConnectedProductSource(value: string | null | undefined): boolean {
 	return (value ?? "")
@@ -535,6 +540,9 @@ export interface FoundationBackfillDependencies {
 }
 
 export interface FoundationBackfillResult {
+	/** Sources whose page could not be read; their cursors are unchanged. */
+	failedSources?: BackfillSource[];
+	sourceFailureSummary?: string;
 	summary: BackfillPageSummary;
 	productPage: FoundationSourcePage<DiscoveredProductBackfillRow>;
 	broadcastPage: FoundationSourcePage<BroadcastAnalysisBackfillRow>;
@@ -592,17 +600,60 @@ interface LoadedPages {
 	errors: Array<{ source: BackfillSource; error: unknown }>;
 }
 
-function requireSuccessfulPages(loaded: LoadedPages): {
+/**
+ * Let one source fail without discarding the other's page.
+ *
+ * The cursor has always been per-source, but failure handling was not: a single
+ * timeout on `broadcast_speech_analyses` threw away a healthy 200-row product
+ * page that had already been read, and — because the throw skipped the summary
+ * — took the operator's `nextCursor` with it, leaving them to recover the
+ * resume point by hand from a previous run's output.
+ *
+ * A failed source now contributes nothing and keeps its own cursor exactly
+ * where it was, so re-running retries only that source. Both failing is still
+ * a hard error: there is no work to do and no progress to record.
+ */
+function resolveLoadedPages(loaded: LoadedPages): {
 	productPage: FoundationSourcePage<DiscoveredProductBackfillRow>;
 	broadcastPage: FoundationSourcePage<BroadcastAnalysisBackfillRow>;
+	failedSources: BackfillSource[];
+	failureSummary?: string;
 } {
-	if (loaded.errors.length > 0) {
+	if (loaded.errors.length >= 2) {
 		throw new Error(loaded.errors.map(({ source, error }) => `${source}: ${errorText(error)}`).join("; "));
 	}
-	if (!loaded.productPage || !loaded.broadcastPage) {
+	if (loaded.errors.length === 0 && (!loaded.productPage || !loaded.broadcastPage)) {
 		throw new Error("source page query completed without both source results");
 	}
-	return { productPage: loaded.productPage, broadcastPage: loaded.broadcastPage };
+	const failedSources = loaded.errors.map(({ source }) => source);
+	return {
+		// `unqueriedPage()` reports `exhausted: true`, which would mark the source
+		// done. `nextSourceCursor` is given the untouched previous cursor for a
+		// failed source instead, so this page only supplies "no rows".
+		productPage: loaded.productPage ?? unqueriedPage<DiscoveredProductBackfillRow>(),
+		broadcastPage: loaded.broadcastPage ?? unqueriedPage<BroadcastAnalysisBackfillRow>(),
+		failedSources,
+		...(loaded.errors.length > 0
+			? { failureSummary: loaded.errors.map(({ source, error }) => `${source}: ${errorText(error)}`).join("; ") }
+			: {}),
+	};
+}
+
+/** A source that failed to load keeps its cursor; only a read can advance it. */
+function nextCursorForSources(
+	previous: BackfillCursor,
+	productPage: FoundationSourcePage<unknown>,
+	broadcastPage: FoundationSourcePage<unknown>,
+	failedSources: readonly BackfillSource[],
+): BackfillCursor {
+	return {
+		products: failedSources.includes("products")
+			? previous.products
+			: nextSourceCursor(previous.products, productPage, "products"),
+		broadcasts: failedSources.includes("broadcasts")
+			? previous.broadcasts
+			: nextSourceCursor(previous.broadcasts, broadcastPage, "broadcasts"),
+	};
 }
 
 async function heartbeatBestEffort(
@@ -645,11 +696,8 @@ export async function runFoundationBackfill(
 	};
 
 	if (!input.args.apply) {
-		const { productPage, broadcastPage } = requireSuccessfulPages(await loadPages());
-		const nextCursor = {
-			products: nextSourceCursor(input.cursor.products, productPage, "products"),
-			broadcasts: nextSourceCursor(input.cursor.broadcasts, broadcastPage, "broadcasts"),
-		};
+		const { productPage, broadcastPage, failedSources } = resolveLoadedPages(await loadPages());
+		const nextCursor = nextCursorForSources(input.cursor, productPage, broadcastPage, failedSources);
 		const summary = await executeBackfillPage({
 			products: productPage.rows,
 			broadcasts: broadcastPage.rows,
@@ -673,6 +721,8 @@ export async function runFoundationBackfill(
 
 	let counts = emptyCounts();
 	let writeAttempted = false;
+	let failedSources: BackfillSource[] = [];
+	let sourceFailureSummary: string | undefined;
 	let pages: { productPage: FoundationSourcePage<DiscoveredProductBackfillRow>; broadcastPage: FoundationSourcePage<BroadcastAnalysisBackfillRow> } | undefined;
 	let summary: BackfillPageSummary | undefined;
 	let nextCursor: BackfillCursor | undefined;
@@ -680,11 +730,11 @@ export async function runFoundationBackfill(
 		const loaded = await loadPages();
 		counts = emptyCounts((loaded.productPage?.readCount ?? 0) + (loaded.broadcastPage?.readCount ?? 0));
 		await heartbeatBestEffort(run, counts, input.reportTelemetryFailure);
-		pages = requireSuccessfulPages(loaded);
-		nextCursor = {
-			products: nextSourceCursor(input.cursor.products, pages.productPage, "products"),
-			broadcasts: nextSourceCursor(input.cursor.broadcasts, pages.broadcastPage, "broadcasts"),
-		};
+		const resolved = resolveLoadedPages(loaded);
+		pages = { productPage: resolved.productPage, broadcastPage: resolved.broadcastPage };
+		failedSources = resolved.failedSources;
+		sourceFailureSummary = resolved.failureSummary;
+		nextCursor = nextCursorForSources(input.cursor, pages.productPage, pages.broadcastPage, failedSources);
 		summary = await executeBackfillPage({
 			products: pages.productPage.rows,
 			broadcasts: pages.broadcastPage.rows,
@@ -725,7 +775,11 @@ export async function runFoundationBackfill(
 	}
 
 	try {
-		await retryTerminalSettlement(() => run.succeed(counts));
+		// One source failing is degraded, not clean: its rows were never read and
+		// its cursor has not moved, so the run has more to do than it looks.
+		await retryTerminalSettlement(() => (sourceFailureSummary
+			? run.partial(counts, "intelligence_foundation_backfill_source_failed", sourceFailureSummary)
+			: run.succeed(counts)));
 	} catch (telemetryError) {
 		throw new Error(`data writes succeeded, but success telemetry settlement failed: ${errorText(telemetryError)}`);
 	}
@@ -736,6 +790,8 @@ export async function runFoundationBackfill(
 		broadcastPage: pages!.broadcastPage,
 		nextCursor: nextCursor!,
 		counts,
+		failedSources,
+		...(sourceFailureSummary ? { sourceFailureSummary } : {}),
 	};
 }
 

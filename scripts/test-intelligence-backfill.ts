@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 
+import { EXCLUDED_DISCOVERY_SLUGS, TV_CHANNELS } from "../lib/discovery/tv-channels";
 import {
 	buildBackfillCursor,
 	buildSourcePageQuery,
@@ -213,11 +214,21 @@ async function verifyDryRun(): Promise<void> {
 	assert.equal(equalTimestampQuery.limit, 2, "the product source query is bounded by the requested limit");
 	assert.equal(buildSourcePageQuery("broadcasts", { since: "2026-08-01T00:00:00.000Z", limit: 2 }, { done: false }).limit, 2);
 
+	// Derived from the discovery registry rather than restated, because the copy
+	// this replaces had fallen four channels behind — ropping, kachimo, kaidoki
+	// and uranoura were all discovery sources whose products were silently
+	// rejected, receiving neither a canonical identity nor evidence.
 	assert.deepEqual(
 		[...CONNECTED_PRODUCT_SOURCE_CHANNELS].sort(),
-		["dinos", "ichiban", "japanet", "junsanpo", "kantv", "ntv", "qvc", "rakurakum", "senobura", "shopch", "tbs"],
-		"only connected QVC, Shop Channel, and OA source slugs are in scope",
+		TV_CHANNELS.map((channel) => channel.slug)
+			.filter((slug) => !EXCLUDED_DISCOVERY_SLUGS.has(slug))
+			.sort(),
+		"the connected set is the discovery registry minus the operator exclusions",
 	);
+	assert.equal(CONNECTED_PRODUCT_SOURCE_CHANNELS.has("txd"), false, "an excluded channel stays out");
+	for (const slug of ["ropping", "kachimo", "kaidoki", "uranoura"]) {
+		assert.ok(CONNECTED_PRODUCT_SOURCE_CHANNELS.has(slug), `${slug} is a discovery source and must be in scope`);
+	}
 	for (const slug of CONNECTED_PRODUCT_SOURCE_CHANNELS) {
 		assert.equal(isConnectedProductSource(slug), true, `${slug} is accepted by the actual source-scope guard`);
 	}
@@ -419,11 +430,15 @@ async function verifyDryRun(): Promise<void> {
 	const failedPeer = makeCliApplySupabase({ broadcastQueryFails: true });
 	const failedPeerHeartbeats: Array<{ processed?: number }> = [];
 	const failedPeerEvents: string[] = [];
-	await assert.rejects(() => runCliBackfill(
+	// One source failing no longer discards the other. The cursor has always been
+	// per-source; failure handling was not, so a single broadcast-query timeout
+	// threw away a healthy product page that had already been read and took the
+	// operator's nextCursor with it.
+	const failedPeerResult = await runCliBackfill(
 		{ since: "2026-08-01T00:00:00.000Z", limit: 1, apply: true },
 		failedPeer.client,
 		{
-			normalizeCategories: async () => new Map(),
+			normalizeCategories: async () => new Map([["家電", ["家電"]]]),
 			startPipelineRun: async () => ({
 				id: "cli-failed-peer",
 				heartbeat: async (counts) => { failedPeerHeartbeats.push(counts ?? {}); },
@@ -432,10 +447,20 @@ async function verifyDryRun(): Promise<void> {
 				fail: async () => { failedPeerEvents.push("fail"); },
 			}),
 		},
-	), /recorded as failed/);
-	assert.ok(failedPeerHeartbeats.some((counts) => counts.processed === 1), "actual CLI retains the successful peer source read count after a query error");
-	assert.deepEqual(failedPeerEvents, ["fail"], "actual CLI applies a failed terminal state after a pre-write query error");
-	assert.equal(failedPeer.calls.includes("canonical_products:insert"), false, "a failed source query reaches no data writer");
+	);
+	assert.deepEqual(failedPeerResult.failedSources, ["broadcasts"], "the failing source is named in the result");
+	assert.match(failedPeerResult.sourceFailureSummary ?? "", /broadcasts/);
+	assert.deepEqual(
+		failedPeerEvents,
+		["partial"],
+		"a half-read run is degraded, not failed: the product page was written and the broadcast cursor did not move",
+	);
+	assert.deepEqual(
+		failedPeerResult.nextCursor.broadcasts,
+		{ done: false },
+		"a source that could not be read keeps its cursor, so re-running retries only it",
+	);
+	assert.ok(failedPeer.calls.includes("canonical_products:insert"), "the surviving source still reaches the data writer");
 
 	const appliedCli = makeCliApplySupabase();
 	const appliedCliEvents: string[] = [];
@@ -620,7 +645,7 @@ async function verifyDryRun(): Promise<void> {
 		partial: async () => { failureEvents.push("partial"); },
 		fail: async () => { failureEvents.push("fail"); },
 	};
-	await assert.rejects(() => runFoundationBackfill({
+	const oneSourceResult = await runFoundationBackfill({
 		args: { since: "2026-08-01T00:00:00.000Z", limit: 1, apply: true },
 		cursor: initialBackfillCursor(),
 		startPipelineRun: async () => { failureEvents.push("start"); return failureRun; },
@@ -630,13 +655,42 @@ async function verifyDryRun(): Promise<void> {
 		normalizeCategories: async () => new Map(),
 		writeProduct: async () => ({ new: 0, duplicate: 0 }),
 		writeBroadcast: async () => ({ new: 0, duplicate: 0 }),
-	}), /recorded as failed/);
+	});
 	assert.ok(failureEvents.indexOf("start") < failureEvents.indexOf("products"), "query failures have an already-created run to settle");
-	assert.equal(failureEvents.includes("fail"), true, "a pre-write query failure settles as failed");
+	assert.deepEqual(oneSourceResult.failedSources, ["products"]);
+	assert.equal(failureEvents.includes("partial"), true, "one source failing is degraded, not a failed run");
+	assert.equal(failureEvents.includes("fail"), false, "the surviving source's work is not thrown away");
+	assert.deepEqual(
+		oneSourceResult.nextCursor.products,
+		{ done: false },
+		"the unread source keeps its cursor so a re-run retries only it",
+	);
 	assert.ok(
 		failureHeartbeats.some((counts) => counts.processed === 7),
 		"a failed peer query retains the successful bounded peer read count for audit telemetry",
 	);
+
+	// Both sources failing is still hard: there is no work to do and no progress
+	// worth recording.
+	const bothFailedEvents: string[] = [];
+	await assert.rejects(() => runFoundationBackfill({
+		args: { since: "2026-08-01T00:00:00.000Z", limit: 1, apply: true },
+		cursor: initialBackfillCursor(),
+		startPipelineRun: async () => ({
+			id: "run-both-failed",
+			heartbeat: async () => {},
+			succeed: async () => { bothFailedEvents.push("succeed"); },
+			partial: async () => { bothFailedEvents.push("partial"); },
+			fail: async () => { bothFailedEvents.push("fail"); },
+		}),
+		fetchProducts: async () => { throw new Error("products unavailable"); },
+		fetchBroadcasts: async () => { throw new Error("broadcasts unavailable"); },
+		loadCachedCategories: async () => new Map(),
+		normalizeCategories: async () => new Map(),
+		writeProduct: async () => ({ new: 0, duplicate: 0 }),
+		writeBroadcast: async () => ({ new: 0, duplicate: 0 }),
+	}), /recorded as failed/);
+	assert.deepEqual(bothFailedEvents, ["fail"]);
 
 	const rejectedHeartbeatEvents: string[] = [];
 	let rejectedHeartbeatCalls = 0;

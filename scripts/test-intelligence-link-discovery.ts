@@ -119,12 +119,16 @@ async function main(): Promise<void> {
 			{ id: "p-1", name: "テスト商品", source: "tv_channel", tv_channel_source: "qvc", category: "家電" },
 			{ id: "p-2", name: "対象外", source: "rakuten", tv_channel_source: null },
 			{ id: "p-3", name: null, source: "tv_channel", tv_channel_source: "qvc" },
-			{ id: "p-4", name: "未接続チャネル", source: "tv_channel", tv_channel_source: "kachimo" },
+			// txd is excluded by operator policy (EXCLUDED_DISCOVERY_SLUGS) and its rows
+			// were purged. kachimo used to stand here and no longer works as a
+			// negative case: it is a real discovery source that the connected set was
+			// wrongly dropping, which is what this change fixed.
+			{ id: "p-4", name: "除外チャネル", source: "tv_channel", tv_channel_source: "txd" },
 		]);
 		const result = await linkDiscoverySessionProducts(sb as never, "session-1");
 		assert.equal(result.considered, 4);
 		assert.equal(result.linked, 1, "only an eligible, named, connected-source row is linked");
-		assert.equal(result.skipped, 3, "a non-TV source, a nameless row and an unconnected channel are skipped, not failed");
+		assert.equal(result.skipped, 3, "a non-TV source, a nameless row and an excluded channel are skipped, not failed");
 		assert.equal(result.failed, 0);
 		assert.deepEqual([...sb.links.keys()], ["p-1"]);
 		assert.ok(sb.evidence.length > 0, "linking also captures the row's evidence");
