@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { selectAllPages } from "@/lib/supabase/paginate";
+
 export type ReadinessStatus = "healthy" | "degraded" | "running" | "stale" | "failed" | "missing";
 
 export interface IntelligenceReadiness {
@@ -72,12 +74,20 @@ interface ArchivedBroadcastRow {
 
 const HOUR = 3_600_000;
 /**
- * PostgREST caps a response at the project's `db-max-rows`; 1,000 is the
- * default and the loop terminates correctly at any cap because it advances by
- * the rows actually returned. Halving the page count halves the serial round
- * trips on the archive scan, which is the dominant cost of this loader.
+ * Stay strictly below the project's `db-max-rows`, measured at 1,000 on
+ * 2026-09-03.
+ *
+ * The paging loop exits on a short page, so a page size at or above the cap is
+ * a silent-truncation bug waiting for someone to lower the cap: ask for 1,000
+ * against a cap of 500 and the first page comes back short, the loop stops, and
+ * the archive count is wrong with no error anywhere. 500 was the original value
+ * for this reason; raising it to 1,000 to halve the round trips put it exactly
+ * on the cap, which happened to work only because the row count is not a
+ * multiple of it.
+ *
+ * 800 keeps most of the round-trip saving and leaves headroom.
  */
-export const READINESS_PAGE_SIZE = 1_000;
+export const READINESS_PAGE_SIZE = 800;
 const PAGE_SIZE = READINESS_PAGE_SIZE;
 const ID_CHUNK_SIZE = 200;
 const RECENT_FAILURE_LIMIT = 10;
@@ -210,18 +220,18 @@ export interface IntelligenceReadinessRepository {
  * paged; count-only metrics use one-row PostgREST exact-count body probes.
  */
 export function createIntelligenceReadinessRepository(sb: SupabaseClient): IntelligenceReadinessRepository {
-	async function readPagedRows<T>(
-		label: string,
-		createQuery: () => any,
-	): Promise<T[]> {
-		const rows: T[] = [];
-		for (let offset = 0; ; offset += PAGE_SIZE) {
-			const { data, error } = await createQuery().range(offset, offset + PAGE_SIZE - 1);
-			if (error) asError(label, error);
-			const page = (data ?? []) as T[];
-			rows.push(...page);
-			if (page.length < PAGE_SIZE) return rows;
-		}
+	/**
+	 * Paging goes through the shared helper rather than a local loop. It is where
+	 * this project put what it learned from being silently truncated repeatedly
+	 * — exclusion lists missing two thirds of their codes, a dashboard totalling
+	 * 1,000 of 6,000 rows — and it carries a maxRows ceiling that throws instead
+	 * of returning a short answer.
+	 */
+	function readPagedRows<T>(label: string, createQuery: () => any): Promise<T[]> {
+		return selectAllPages<T>(
+			({ from, to }) => createQuery().range(from, to),
+			{ pageSize: PAGE_SIZE, label },
+		);
 	}
 
 	async function readRowsForIds<T>(
