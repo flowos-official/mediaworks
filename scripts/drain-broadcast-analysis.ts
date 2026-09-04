@@ -54,7 +54,19 @@ async function main(): Promise<void> {
 	// Only codes a later operator action can actually invalidate. `--reset` is
 	// not a general "try everything again": no_archived_video and no_category
 	// are properties of the row, and resetting them just re-skips every run.
-	const RESETTABLE = ["cold_storage", "empty_object", "gemini_error", "gemini_timeout", "s3_fetch_failed"] as const;
+	//
+	// parse_failed and low_coverage joined the list when chunking landed. Both
+	// were recorded overwhelmingly by long ShopCh programmes that a single call
+	// could not carry — parse_failed for a MAX_TOKENS truncation, low_coverage
+	// for acts that stopped a fifth of the way in — and analysing them in
+	// chunks is exactly the operator action that invalidates the verdict. They
+	// are not free to reset: a genuine JSON fault will simply fail the same way
+	// and re-spend its attempt, which is why they stay opt-in rather than being
+	// swept in by any other reset.
+	const RESETTABLE = [
+		"cold_storage", "empty_object", "gemini_error", "gemini_timeout", "s3_fetch_failed",
+		"parse_failed", "low_coverage",
+	] as const;
 	const resetArg = flag("reset");
 	if (resetArg) {
 		if (!(RESETTABLE as readonly string[]).includes(resetArg)) {
