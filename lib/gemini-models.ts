@@ -34,8 +34,9 @@ export const GEMINI_FLASH = "gemini-3.7-flash" as const;
  *   - `gemini-2.5-flash-lite` — $0.10/1M in, $0.40/1M out. A generation older.
  *
  * Against 3.7-flash's $0.75/$3.75 that is a 40% and an 89% saving. Both accept
- * audio and both allow more output tokens than MAX_OUTPUT_TOKENS asks for, so
- * the only open question for a given job is output quality — measure it before
+ * audio, and both cap output at 65,536 tokens — which MAX_OUTPUT_TOKENS now
+ * takes in full, so there is no headroom left above it on any of these models.
+ * The only open question for a given job is output quality — measure it before
  * switching. There is no 3.7-flash-lite.
  */
 export const GEMINI_FLASH_LITE = "gemini-3.5-flash-lite" as const;

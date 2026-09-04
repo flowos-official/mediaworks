@@ -57,7 +57,22 @@ import { AUDIO_MIME, NonRetryableAudioError, SLOT_TIMEOUT_MS } from "./audio-ext
 import { ANALYSIS_RESPONSE_SCHEMA, parseAnalysisResponse, type BroadcastAnalysis } from "./schema";
 import type { AnalysisErrorCode } from "./error-codes";
 
-export const MAX_OUTPUT_TOKENS = 32768;
+/**
+ * Sized for the longest programme in the archive, not the shortest.
+ *
+ * 32,768 was set against QVC's ~2-minute clips and the "25 minutes is 15k-30k
+ * output tokens" figure above. ShopCh archives ~57-minute programmes, roughly
+ * double that, and a measured 6-slot batch truncated 5 of them — each billing
+ * the full output allowance and returning nothing, which is the most expensive
+ * way for this call to fail. The model's own metadata reports an output limit
+ * of 65,536 (queried, not assumed), so this takes all of it.
+ *
+ * Raising the cap raises the worst case too: a truncation now wastes twice as
+ * much. That is the right trade only because it converts most of these slots
+ * from certain failure into success — if truncations persist at this cap, the
+ * answer is to split the audio, not to raise it again.
+ */
+export const MAX_OUTPUT_TOKENS = 65536;
 
 let _genAI: GoogleGenAI | null = null;
 function getGenAI(): GoogleGenAI {
