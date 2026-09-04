@@ -24,6 +24,7 @@ import {
 } from "@aws-sdk/client-s3";
 import { getVideoStorageClient } from "@/lib/broadcasts/video-storage";
 import { getServiceClient } from "@/lib/supabase";
+import { selectAllPages } from "@/lib/supabase/paginate";
 
 const COLD = new Set(["GLACIER", "DEEP_ARCHIVE"]);
 const CONCURRENCY = 8;
@@ -41,18 +42,26 @@ interface Slot {
   video_size_bytes: number | null;
 }
 
-async function targets(category: string, channel?: string): Promise<Slot[]> {
+async function targets(category?: string, channel?: string): Promise<Slot[]> {
   const sb = getServiceClient();
-  let q = sb
-    .from("broadcasts")
-    .select("id, channel, air_date, archived_video_s3, video_size_bytes")
-    .eq("category", category)
-    .not("archived_video_s3", "is", null)
-    .order("air_date", { ascending: false });
-  if (channel) q = q.eq("channel", channel);
-  const { data, error } = await q;
-  if (error) throw new Error(error.message);
-  return (data ?? []) as Slot[];
+  // Paged: ShopCh alone has ~2,800 archived slots, so an unbounded select
+  // returned exactly 1000 and reported no error — the restore then covered a
+  // third of the channel while claiming to be complete.
+  return selectAllPages<Slot>(
+    ({ from, to }) => {
+      let q = sb
+        .from("broadcasts")
+        .select("id, channel, air_date, archived_video_s3, video_size_bytes")
+        .not("archived_video_s3", "is", null)
+        .order("air_date", { ascending: false })
+        .order("id", { ascending: true })
+        .range(from, to);
+      if (category) q = q.eq("category", category);
+      if (channel) q = q.eq("channel", channel);
+      return q;
+    },
+    { pageSize: 800, label: "restore:targets" },
+  );
 }
 
 /** Storage class per key, read with ListObjectsV2 (works even without
@@ -87,8 +96,13 @@ async function main(): Promise<void> {
   const Bucket = process.env.VIDEO_ARCHIVE_AWS_BUCKET;
   if (!Bucket) throw new Error("Missing required env var: VIDEO_ARCHIVE_AWS_BUCKET");
   const category = flag("category");
-  if (!category) throw new Error("--category is required (e.g. --category=家電)");
   const channel = flag("channel");
+  // A channel-wide restore is a legitimate scope — ShopCh's archive spans every
+  // category — but an unscoped --apply would reach the whole bucket, so it needs
+  // at least one of the two. --status is read-only and may be unscoped.
+  if (!category && !channel && !has("status")) {
+    throw new Error("--category or --channel is required (e.g. --category=家電)");
+  }
   const tier = (flag("tier") ?? "Standard") as "Standard" | "Bulk" | "Expedited";
   if (!["Standard", "Bulk", "Expedited"].includes(tier)) throw new Error(`invalid --tier=${tier}`);
   const days = Number(flag("days") ?? 14);
@@ -97,7 +111,8 @@ async function main(): Promise<void> {
   const s3 = getVideoStorageClient();
 
   const slots = await targets(category, channel);
-  console.log(`${category}${channel ? ` / ${channel}` : ""}: 아카이브 ${slots.length}편`);
+  const scope = [category, channel].filter(Boolean).join(" / ") || "전체";
+  console.log(`${scope}: 아카이브 ${slots.length}편`);
   if (slots.length === 0) return;
 
   const classes = await storageClasses(slots.map((s) => s.archived_video_s3));
@@ -151,7 +166,8 @@ async function main(): Promise<void> {
   });
 
   console.log(`\n요청됨 ${ok} / 이미 진행중 ${already} / 실패 ${failed}`);
-  console.log(`복원은 비동기입니다. 진행 상황: npm run restore:archives -- --category=${category}${channel ? ` --channel=${channel}` : ""} --status`);
+  const scopeArgs = [category && `--category=${category}`, channel && `--channel=${channel}`].filter(Boolean).join(" ");
+  console.log(`복원은 비동기입니다. 진행 상황: npm run restore:archives -- ${scopeArgs} --status`);
 }
 
 main();
