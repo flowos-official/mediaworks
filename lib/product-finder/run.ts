@@ -20,6 +20,7 @@
  * NO `import "server-only"` — imported by tsx unit tests.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { getServiceClient } from "@/lib/supabase";
 import { createKnowledgeSnapshot } from "@/lib/intelligence/repository";
 import type { KnowledgeSnapshotDraft } from "@/lib/intelligence/types";
 import { loadStoredCandidates, type StoredCandidate } from "./candidates";
@@ -99,7 +100,21 @@ export function createProductFinderRepository(sb: SupabaseClient): ProductFinder
 			if (error) console.error(`[product-finder] could not mark run ${runId} failed:`, error.message);
 		},
 		loadCandidates: (query, dataCutoff) => loadStoredCandidates(sb, query, dataCutoff),
-		createSnapshot: (draft) => createKnowledgeSnapshot(sb, draft),
+		// The ONE write that does not go through the user's client.
+		//
+		// knowledge_snapshots is an intelligence-foundation table and its write
+		// side is service-role by design — 20260830100000 states it outright,
+		// and createKnowledgeSnapshot's own failure path DELETEs the parent it
+		// just wrote, so making a user client work here would mean granting
+		// INSERT and DELETE on two foundation tables. That is the tail wagging
+		// the dog: a snapshot is a derived audit record the system writes as a
+		// consequence of the run, not content the user authored.
+		//
+		// Authorisation has already happened twice by this point — requireUser
+		// gated the route, and the run row was inserted under the user's own
+		// RLS — and createdBy is taken from the authenticated id, never from the
+		// request. There is no user-controlled path to an arbitrary snapshot.
+		createSnapshot: (draft) => createKnowledgeSnapshot(getServiceClient(), draft),
 	};
 }
 

@@ -1,5 +1,9 @@
 /**
- * GET /api/product-finder/runs/:id — read one completed run.
+ * GET /api/product-finder/runs/:runId — read one completed run.
+ *
+ * The slug is `runId`, not `id`: the decision route below this path already
+ * uses `[runId]`, and Next.js refuses two different slug names at the same
+ * position. The plan specified both spellings and the app would not boot.
  *
  * Scoped by both run id and created_by. RLS already restricts this to the
  * owner; the explicit filter is the second lock, and it also makes a run
@@ -43,15 +47,15 @@ function num(value: number | string | null): number | null {
 	return Number.isFinite(parsed) ? parsed : null;
 }
 
-export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+export async function GET(req: NextRequest, ctx: { params: Promise<{ runId: string }> }) {
 	const auth = await requireUser(["member", "admin"]);
 	if ("error" in auth) return auth.error;
-	const { id } = await ctx.params;
+	const { runId } = await ctx.params;
 
 	const { data: run, error: runError } = await auth.sb
 		.from("product_recommendation_runs")
 		.select("id, mode, query_json, status, candidate_count, created_at, completed_at")
-		.eq("id", id)
+		.eq("id", runId)
 		.eq("created_by", auth.user.id)
 		.maybeSingle();
 	if (runError) {
@@ -67,7 +71,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
 		.select(
 			"id, canonical_product_id, rank, opportunity_index, expected_contribution_profit_jpy, axes, confidence, reasons, risks, missing_data, canonical_product:canonical_products(display_name, normalized_category)",
 		)
-		.eq("run_id", id)
+		.eq("run_id", runId)
 		.order("rank", { ascending: true });
 	if (itemsError) {
 		console.error("[product-finder] item read failed:", itemsError);

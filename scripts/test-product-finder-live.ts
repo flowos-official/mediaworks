@@ -1,10 +1,16 @@
 /**
  * End-to-end against the live database, with the service client.
  *
- * The static tests cannot see a missing RLS policy, a column that does not
- * exist, or a CHECK that rejects the write order — all three of which this
- * feature has already hit once. This runs a real recommendation over the real
+ * The static tests cannot see a column that does not exist or a CHECK that
+ * rejects the write order. This runs a real recommendation over the real
  * evidence ledger and then removes what it wrote.
+ *
+ * IT DOES NOT PROVE ANYTHING ABOUT RLS. Everything here runs through the
+ * SERVICE client, which bypasses row-level security entirely — this file was
+ * green while every real request returned 500, because the run service was
+ * writing knowledge_snapshots through the USER's client and being refused.
+ * `npm run test:product-finder-rls` is the check that asks the database as a
+ * real user; keep both.
  */
 import assert from "node:assert/strict";
 import { getServiceClient } from "@/lib/supabase";

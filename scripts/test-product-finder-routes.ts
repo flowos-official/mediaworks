@@ -12,7 +12,7 @@ import { readFileSync } from "node:fs";
 
 const ROUTES = [
 	"app/api/product-finder/route.ts",
-	"app/api/product-finder/runs/[id]/route.ts",
+	"app/api/product-finder/runs/[runId]/route.ts",
 	"app/api/product-finder/runs/[runId]/items/[itemId]/decision/route.ts",
 ];
 
@@ -64,7 +64,7 @@ console.log("✓ POST parses strictly, refuses supplement, and returns stable co
 
 // --- GET is owner-scoped ----------------------------------------------------
 {
-	const get = sources.get("app/api/product-finder/runs/[id]/route.ts")!;
+	const get = sources.get("app/api/product-finder/runs/[runId]/route.ts")!;
 	assert.ok(get.includes('.eq("created_by", auth.user.id)'), "GET must scope by owner as well as id");
 	assert.ok(get.includes('{ status: 404 }'), "another user's run is a 404, not an empty 200");
 }
@@ -115,5 +115,41 @@ console.log("✓ a decision records interest only and triggers nothing downstrea
 	);
 }
 console.log("✓ owner-scoped write policies exist and cannot reassign a run");
+
+// --- dynamic segments must not collide -------------------------------------
+// Next.js refuses two different slug names at the same path position, and it
+// refuses at BOOT — the whole app fails to start, not just this route. The
+// plan specified `runs/[id]` and `runs/[runId]/items/...` side by side and the
+// dev server would not come up. Reading file contents cannot see this; only
+// the shape of the tree can.
+{
+	const { readdirSync, statSync } = require("node:fs") as typeof import("node:fs");
+	const { join } = require("node:path") as typeof import("node:path");
+
+	const slugsByParent = new Map<string, Set<string>>();
+	const walk = (dir: string): void => {
+		for (const entry of readdirSync(dir)) {
+			const full = join(dir, entry);
+			if (!statSync(full).isDirectory()) continue;
+			const slug = /^\[(?!\.{3})([^\]]+)\]$/.exec(entry)?.[1];
+			if (slug) {
+				const held = slugsByParent.get(dir);
+				if (held) held.add(slug);
+				else slugsByParent.set(dir, new Set([slug]));
+			}
+			walk(full);
+		}
+	};
+	walk("app/api/product-finder");
+
+	for (const [parent, slugs] of slugsByParent) {
+		assert.equal(
+			slugs.size,
+			1,
+			`${parent} has conflicting dynamic segments [${[...slugs].join(", ")}] — Next.js will not boot`,
+		);
+	}
+}
+console.log("✓ no two dynamic segments collide at the same path position");
 
 console.log("PASS: product finder routes");

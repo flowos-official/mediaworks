@@ -38,6 +38,28 @@ function accessToken(): string {
 	}
 }
 
+/** Run SQL against the linked project and return the result rows.
+ *
+ * Exported so a test can use it: some properties — an RLS policy above all —
+ * can only be checked by asking the database as a specific role, and
+ * supabase-js has no way to send raw SQL. */
+export async function runManagementSql(query: string): Promise<unknown[]> {
+	const res = await fetch(
+		`https://api.supabase.com/v1/projects/${PROJECT_REF}/database/query`,
+		{
+			method: "POST",
+			headers: {
+				Authorization: `Bearer ${accessToken()}`,
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify({ query }),
+		},
+	);
+	const text = await res.text();
+	if (!res.ok) throw new Error(`management sql failed (${res.status}): ${text.slice(0, 600)}`);
+	return JSON.parse(text) as unknown[];
+}
+
 async function main(): Promise<void> {
 	const file = process.argv[2];
 	if (!file) {
@@ -70,7 +92,10 @@ async function main(): Promise<void> {
 	console.log(`[apply-api] ✓ ${res.status} ${text.slice(0, 4000)}`);
 }
 
-main().catch((e) => {
-	console.error("[apply-api] FATAL:", e instanceof Error ? e.message : e);
-	process.exit(1);
-});
+// Only when invoked as a CLI, so importing runManagementSql does not run a file.
+if (require.main === module) {
+	main().catch((e) => {
+		console.error("[apply-api] FATAL:", e instanceof Error ? e.message : e);
+		process.exit(1);
+	});
+}
