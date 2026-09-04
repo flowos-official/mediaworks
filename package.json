@@ -33,6 +33,7 @@
     "test:product-finder-ranking": "tsx scripts/test-product-finder-ranking.ts",
     "test:product-finder-run": "tsx scripts/test-product-finder-run.ts",
     "test:product-finder-routes": "tsx scripts/test-product-finder-routes.ts",
+    "test:product-finder-live": "tsx --env-file=.env.local scripts/test-product-finder-live.ts",
     "db:apply-api": "tsx scripts/apply-sql-via-management-api.ts",
     "test:intelligence-identity-schema": "tsx scripts/test-intelligence-identity-schema.ts",
     "test:intelligence-snapshot-schema": "tsx scripts/test-intelligence-snapshot-schema.ts",
