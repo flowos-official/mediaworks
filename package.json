@@ -35,6 +35,8 @@
     "test:product-finder-routes": "tsx scripts/test-product-finder-routes.ts",
     "test:product-finder-live": "tsx --env-file=.env.local scripts/test-product-finder-live.ts",
     "test:product-finder-view": "tsx scripts/test-product-finder-view.ts",
+    "e2e:product-finder-stored-only": "tsx --env-file=.env.local scripts/e2e-product-finder-stored-only.ts",
+    "test:product-finder": "npm run test:product-finder-schema && npm run test:product-finder-request && npm run test:product-finder-candidates && npm run test:product-finder-ranking && npm run test:product-finder-run && npm run test:product-finder-routes && npm run test:product-finder-view",
     "db:apply-api": "tsx scripts/apply-sql-via-management-api.ts",
     "test:intelligence-identity-schema": "tsx scripts/test-intelligence-identity-schema.ts",
     "test:intelligence-snapshot-schema": "tsx scripts/test-intelligence-snapshot-schema.ts",
