@@ -9,6 +9,7 @@
  * NO `import "server-only"` — imported by the drain script under tsx.
  */
 import { getServiceClient } from "@/lib/supabase";
+import { selectAllPages } from "@/lib/supabase/paginate";
 import { CATEGORIES_BY_CHANNEL } from "@/lib/broadcasts/whitelist-gate";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AnalysisErrorCode } from "./error-codes";
@@ -339,32 +340,50 @@ export async function seedAnalysisQueue(
  * were spent on a precondition that no longer holds, and leaving them at the
  * cap would make the reset a no-op.
  */
+/** Ids per UPDATE: they ride in the query string, so this bounds URL length. */
+const RESET_UPDATE_CHUNK = 200;
+
 export async function resetAnalysisError(
 	code: AnalysisErrorCode,
 	scope: { category?: string; channel?: "qvc" | "shopch" } = {},
 ): Promise<number> {
 	const sb = getServiceClient();
-	let q = sb
-		.from("broadcasts")
-		.select("id")
-		.eq("analysis_error", code)
-		.in("analysis_status", ["skipped", "failed"]);
-	if (scope.category) q = q.eq("category", scope.category);
-	if (scope.channel) q = q.eq("channel", scope.channel);
-	const { data: ids, error: selErr } = await q;
-	if (selErr) throw new Error(`reset select failed: ${selErr.message}`);
-	if (!ids || ids.length === 0) return 0;
+	// Paged: an unbounded select stops at PostgREST's 1000-row cap without an
+	// error, so a reset over a larger backlog would revive the first 1000 and
+	// report that count as the whole job.
+	const ids = await selectAllPages<{ id: string }>(
+		({ from, to }) => {
+			let q = sb
+				.from("broadcasts")
+				.select("id")
+				.eq("analysis_error", code)
+				.in("analysis_status", ["skipped", "failed"])
+				.order("id", { ascending: true })
+				.range(from, to);
+			if (scope.category) q = q.eq("category", scope.category);
+			if (scope.channel) q = q.eq("channel", scope.channel);
+			return q;
+		},
+		{ pageSize: 800, label: "resetAnalysisError" },
+	);
+	if (ids.length === 0) return 0;
 
 	// Two-step for the same reason seeding is: PostgREST ignores .limit() on
-	// UPDATE, so the filter set must be pinned to explicit ids.
-	const { data, error: updErr } = await sb
-		.from("broadcasts")
-		.update({ analysis_status: "pending", analysis_error: null, analysis_attempts: 0 })
-		.in("id", ids.map((r) => r.id))
-		.in("analysis_status", ["skipped", "failed"])
-		.select("id");
-	if (updErr) throw new Error(`reset update failed: ${updErr.message}`);
-	return data?.length ?? 0;
+	// UPDATE, so the filter set must be pinned to explicit ids. Chunked because
+	// every id travels in the query string — a few thousand of them exceed the
+	// URL limit and the request fails outright.
+	let updated = 0;
+	for (let i = 0; i < ids.length; i += RESET_UPDATE_CHUNK) {
+		const { data, error: updErr } = await sb
+			.from("broadcasts")
+			.update({ analysis_status: "pending", analysis_error: null, analysis_attempts: 0 })
+			.in("id", ids.slice(i, i + RESET_UPDATE_CHUNK).map((r) => r.id))
+			.in("analysis_status", ["skipped", "failed"])
+			.select("id");
+		if (updErr) throw new Error(`reset update failed: ${updErr.message}`);
+		updated += data?.length ?? 0;
+	}
+	return updated;
 }
 
 /** Requeue slots orphaned in 'running' by a function timeout, deploy or Ctrl-C.

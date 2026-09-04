@@ -67,7 +67,7 @@ async function main(): Promise<void> {
 		console.error(`[apply-api] ✗ ${res.status}: ${text.slice(0, 600)}`);
 		process.exit(1);
 	}
-	console.log(`[apply-api] ✓ ${res.status} ${text.slice(0, 300)}`);
+	console.log(`[apply-api] ✓ ${res.status} ${text.slice(0, 4000)}`);
 }
 
 main().catch((e) => {
