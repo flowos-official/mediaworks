@@ -27,6 +27,7 @@
     "test:intelligence-pipeline-run": "tsx scripts/test-intelligence-pipeline-run.ts",
     "test:intelligence-pipeline-route": "tsx scripts/test-intelligence-pipeline-route.ts",
     "test:migrations": "tsx --env-file=.env.local scripts/check-migrations.ts",
+    "test:product-finder-schema": "tsx scripts/test-product-finder-schema.ts",
     "db:apply-api": "tsx scripts/apply-sql-via-management-api.ts",
     "test:intelligence-identity-schema": "tsx scripts/test-intelligence-identity-schema.ts",
     "test:intelligence-snapshot-schema": "tsx scripts/test-intelligence-snapshot-schema.ts",
