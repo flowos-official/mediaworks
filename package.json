@@ -31,6 +31,7 @@
     "test:product-finder-request": "tsx scripts/test-product-finder-request.ts",
     "test:product-finder-candidates": "tsx scripts/test-product-finder-candidates.ts",
     "test:product-finder-ranking": "tsx scripts/test-product-finder-ranking.ts",
+    "test:product-finder-run": "tsx scripts/test-product-finder-run.ts",
     "db:apply-api": "tsx scripts/apply-sql-via-management-api.ts",
     "test:intelligence-identity-schema": "tsx scripts/test-intelligence-identity-schema.ts",
     "test:intelligence-snapshot-schema": "tsx scripts/test-intelligence-snapshot-schema.ts",
