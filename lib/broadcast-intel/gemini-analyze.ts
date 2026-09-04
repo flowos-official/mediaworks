@@ -53,7 +53,8 @@ import { recordGeminiUsage, toUsageRecord } from "@/lib/gemini-usage";
 function analysisModel(): string {
 	return modelForStage("broadcast_analysis");
 }
-import { AUDIO_MIME, NonRetryableAudioError, SLOT_TIMEOUT_MS } from "./audio-extract";
+import { AUDIO_MIME, NonRetryableAudioError, SLOT_TIMEOUT_MS, splitAudio } from "./audio-extract";
+import { mergeChunkAnalyses } from "./merge-chunks";
 import { ANALYSIS_RESPONSE_SCHEMA, parseAnalysisResponse, type BroadcastAnalysis } from "./schema";
 import type { AnalysisErrorCode } from "./error-codes";
 
@@ -86,16 +87,33 @@ function getGenAI(): GoogleGenAI {
  *  ShopCh programme that meant losing the closing CTA, the single most useful
  *  timing a script writer wants). Stating the exact length and demanding the
  *  last act reach it gives the model something to check itself against. */
-export function buildAnalysisPrompt(durationSec: number): string {
+export function buildAnalysisPrompt(
+	durationSec: number,
+	chunk?: { index: number; total: number },
+): string {
 	const mm = Math.floor(durationSec / 60);
 	const ss = String(Math.round(durationSec % 60)).padStart(2, "0");
-	return [
-		`この音声の長さは正確に ${durationSec} 秒（${mm}分${ss}秒）です。`,
-		`最後の act は ${durationSec} 秒で終わらなければならない。`,
-		`途中で終了と判断しないこと。${durationSec} 秒の直前まで発話が続いている。`,
-		"",
-		ANALYSIS_PROMPT,
-	].join("\n");
+	// An excerpt must be told it is one. Otherwise the model reads the end of
+	// its own audio as the end of the programme and labels it `closing`, which
+	// would put a closing act at every seam — and the merged result would claim
+	// the programme ended four times.
+	const framing = chunk
+		? [
+				`これは長時間番組を分割した音声の第 ${chunk.index} 部（全 ${chunk.total} 部）です。`,
+				`この抜粋の長さは正確に ${durationSec} 秒（${mm}分${ss}秒）です。`,
+				`秒数はこの抜粋の先頭を 0 とする。番組全体の経過秒に直さないこと。`,
+				chunk.index < chunk.total
+					? "この抜粋の末尾は番組の終わりではない。closing と判断しないこと。"
+					: "この抜粋の末尾が番組の終わりである。",
+				chunk.index > 1 ? "この抜粋の冒頭は番組の始まりではない。opening と判断しないこと。" : "",
+				`最後の act は ${durationSec} 秒で終わらなければならない。`,
+			].filter(Boolean)
+		: [
+				`この音声の長さは正確に ${durationSec} 秒（${mm}分${ss}秒）です。`,
+				`最後の act は ${durationSec} 秒で終わらなければならない。`,
+				`途中で終了と判断しないこと。${durationSec} 秒の直前まで発話が続いている。`,
+			];
+	return [...framing, "", ANALYSIS_PROMPT].join("\n");
 }
 
 export const ANALYSIS_PROMPT = [
@@ -176,12 +194,13 @@ async function callModel(
 	fileMime: string,
 	durationSec: number,
 	abortSignal: AbortSignal,
+	chunk?: { index: number; total: number },
 ): Promise<BroadcastAnalysis> {
 	const response = await getGenAI().models.generateContent({
 		model,
 		contents: createUserContent([
 			createPartFromUri(fileUri, fileMime),
-			buildAnalysisPrompt(durationSec),
+			buildAnalysisPrompt(durationSec, chunk),
 		]),
 		config: {
 			responseMimeType: "application/json",
@@ -258,11 +277,76 @@ export function classifyGeminiError(e: unknown): AnalysisErrorCode | null {
  * instead of each getting their own. Defaults to a fresh SLOT_TIMEOUT_MS-out
  * deadline so this stays callable standalone (tests, the live smoke script).
  */
+/**
+ * Longest audio sent to the model in one call.
+ *
+ * This file's own note records 25 minutes of timecoded Japanese as 15k-30k
+ * output tokens, and the measured rate across 61 successful calls agrees
+ * (~400 output tokens per minute). At 1500s a chunk lands mid-range, well under
+ * the 65,536 ceiling with room for a talkative programme.
+ */
+export const ANALYSIS_CHUNK_SEC = Number(process.env.BROADCAST_INTEL_CHUNK_SEC) || 1500;
+
+/**
+ * Chunks of one slot analysed at once.
+ *
+ * Sequential chunks would put a two-hour programme permanently out of the
+ * cron's reach: it admits a slot only if a whole one fits in SLOT_BUDGET_MS
+ * (200s), and five chunks end to end cannot. The chunks are independent — their
+ * own upload, call and timecode space — so running them together costs a
+ * two-hour programme about what a 25-minute one costs in wall time, and the
+ * shared slot deadline stays exactly where it was.
+ *
+ * Bounded rather than unbounded because a drain runs several slots at once too;
+ * the product of the two is what reaches the API.
+ */
+const CHUNK_FANOUT = Number(process.env.BROADCAST_INTEL_CHUNK_FANOUT) || 4;
+
+async function mapBounded<T, R>(items: readonly T[], limit: number, work: (item: T) => Promise<R>): Promise<R[]> {
+	const out = new Array<R>(items.length);
+	let next = 0;
+	await Promise.all(
+		Array.from({ length: Math.min(limit, items.length) }, async () => {
+			while (next < items.length) {
+				const i = next++;
+				out[i] = await work(items[i]!);
+			}
+		}),
+	);
+	return out;
+}
+
 export async function analyzeAudio(
 	audio: Buffer,
 	durationSec: number,
 	deadline: number = Date.now() + SLOT_TIMEOUT_MS,
 	primaryModel: string = analysisModel(),
+): Promise<{ analysis: BroadcastAnalysis; model: string }> {
+	if (durationSec <= ANALYSIS_CHUNK_SEC) {
+		return analyzeWholeAudio(audio, durationSec, deadline, primaryModel);
+	}
+
+	const parts = await splitAudio(audio, durationSec, ANALYSIS_CHUNK_SEC);
+	const numbered = parts.map((part, i) => ({ part, index: i + 1, total: parts.length }));
+	const results = await mapBounded(numbered, CHUNK_FANOUT, async ({ part, index, total }) => {
+		const r = await analyzeWholeAudio(part.audio, part.durationSec, deadline, primaryModel, { index, total });
+		return { ...r, offsetSec: part.offsetSec, durationSec: part.durationSec };
+	});
+
+	return {
+		analysis: mergeChunkAnalyses(results, durationSec),
+		// A slot whose chunks did not all use the same model is a mixed reading,
+		// and the corpus should say so rather than name one of them.
+		model: [...new Set(results.map((r) => r.model))].sort().join("+"),
+	};
+}
+
+async function analyzeWholeAudio(
+	audio: Buffer,
+	durationSec: number,
+	deadline: number = Date.now() + SLOT_TIMEOUT_MS,
+	primaryModel: string = analysisModel(),
+	chunk?: { index: number; total: number },
 ): Promise<{ analysis: BroadcastAnalysis; model: string }> {
 	const ai = getGenAI();
 	let fileName: string | null = null;
@@ -295,7 +379,7 @@ export async function analyzeAudio(
 				analysis: await withDeadline(
 					deadline,
 					"analysis (flash)",
-					() => callModel(primaryModel, file.uri!, file.mimeType!, durationSec, flashController.signal),
+					() => callModel(primaryModel, file.uri!, file.mimeType!, durationSec, flashController.signal, chunk),
 					() => flashController.abort(),
 				),
 				model: primaryModel,
@@ -307,7 +391,7 @@ export async function analyzeAudio(
 				analysis: await withDeadline(
 					deadline,
 					"analysis (pro fallback)",
-					() => callModel(GEMINI_PRO_FALLBACK, file.uri!, file.mimeType!, durationSec, proController.signal),
+					() => callModel(GEMINI_PRO_FALLBACK, file.uri!, file.mimeType!, durationSec, proController.signal, chunk),
 					() => proController.abort(),
 				),
 				model: GEMINI_PRO_FALLBACK,

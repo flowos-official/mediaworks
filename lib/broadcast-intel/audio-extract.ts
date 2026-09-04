@@ -164,6 +164,70 @@ async function readViaS3(s3Key: string, remaining: number): Promise<Readable> {
 	return res.Body as Readable;
 }
 
+/**
+ * Cut already-extracted audio into `chunkSec` pieces.
+ *
+ * Operates on the extracted AAC, not the source MP4: the expensive part is
+ * pulling the ~1.2 GB archive object, and that has already happened by the time
+ * this runs. Re-reading the source once per chunk would multiply the only leg
+ * of this pipeline that costs real money.
+ *
+ * `-c copy` keeps it to a demux/remux of a ~30 MB buffer with no re-encode, so
+ * the whole split is a fraction of a second. ADTS carries no container index,
+ * which is why the pieces come back through a temp directory rather than a
+ * pipe: the segment muxer needs a seekable output per piece.
+ */
+export async function splitAudio(
+	audio: Buffer,
+	durationSec: number,
+	chunkSec: number,
+): Promise<Array<{ audio: Buffer; offsetSec: number; durationSec: number }>> {
+	if (chunkSec <= 0) throw new Error(`splitAudio: chunkSec must be positive, got ${chunkSec}`);
+	if (durationSec <= chunkSec) {
+		return [{ audio, offsetSec: 0, durationSec }];
+	}
+
+	const { mkdtemp, writeFile, readFile, readdir, rm } = await import("node:fs/promises");
+	const { tmpdir } = await import("node:os");
+	const { join } = await import("node:path");
+
+	const dir = await mkdtemp(join(tmpdir(), "bi-chunk-"));
+	try {
+		const input = join(dir, "in.aac");
+		await writeFile(input, audio);
+
+		await new Promise<void>((resolve, reject) => {
+			const proc = spawn(ffmpegInstaller.path, [
+				"-hide_banner", "-loglevel", "error",
+				"-i", input,
+				"-f", "segment",
+				"-segment_time", String(chunkSec),
+				"-c", "copy",
+				join(dir, "part%04d.aac"),
+			]);
+			let err = "";
+			proc.stderr.on("data", (c: Buffer) => { err = (err + c.toString("utf-8")).slice(-4096); });
+			proc.on("error", (e) => reject(new Error(`ffmpeg failed to start: ${e.message}`)));
+			proc.on("close", (code) =>
+				code === 0 ? resolve() : reject(new Error(`ffmpeg exited with code ${code}: ${err.slice(-500)}`)),
+			);
+		});
+
+		const names = (await readdir(dir)).filter((n) => n.startsWith("part")).sort();
+		if (names.length === 0) throw new Error("splitAudio produced no chunks");
+
+		const parts = await Promise.all(names.map((n) => readFile(join(dir, n))));
+		return parts.map((buf, i) => {
+			const offsetSec = i * chunkSec;
+			// The last piece runs to the real end, which is shorter than chunkSec.
+			// Its length is what the model is told, and what bounds its timecodes.
+			return { audio: buf, offsetSec, durationSec: Math.min(chunkSec, durationSec - offsetSec) };
+		});
+	} finally {
+		await rm(dir, { recursive: true, force: true });
+	}
+}
+
 export async function extractAudio(
 	s3Key: string,
 	deadline: number = Date.now() + SLOT_TIMEOUT_MS,
