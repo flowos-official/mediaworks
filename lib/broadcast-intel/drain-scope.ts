@@ -15,11 +15,28 @@ export function parseDrainCategory(raw: string | undefined): string | undefined 
 export function buildDrainAnalysisScope(
 	category: string | undefined,
 	channel: "qvc" | "shopch" | undefined,
-): Pick<SeedOptions, "category" | "channel"> {
+	since?: string,
+): Pick<SeedOptions, "category" | "channel" | "since"> {
 	return {
 		...(category !== undefined ? { category } : {}),
 		...(channel ? { channel } : {}),
+		...(since !== undefined ? { since } : {}),
 	};
+}
+
+/** `--since=YYYY-MM-DD`. Rejected rather than coerced: a malformed date that
+ *  PostgREST silently ignores would drain the whole archive at per-slot cost,
+ *  which is the opposite of what asking for a window means. */
+export function parseDrainSince(raw: string | undefined): string | undefined {
+	if (raw === undefined) return undefined;
+	const since = raw.trim();
+	if (!/^\d{4}-\d{2}-\d{2}$/.test(since)) {
+		throw new Error(`--since must be YYYY-MM-DD; got "${raw}"`);
+	}
+	if (Number.isNaN(Date.parse(`${since}T00:00:00Z`))) {
+		throw new Error(`--since is not a real date: "${raw}"`);
+	}
+	return since;
 }
 
 /**

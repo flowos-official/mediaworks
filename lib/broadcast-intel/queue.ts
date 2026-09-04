@@ -94,6 +94,15 @@ export interface SeedOptions {
 	 *  them together would average a highlight reel against a sales programme,
 	 *  so a corpus should be built one channel at a time. */
 	channel?: "qvc" | "shopch";
+	/**
+	 * Earliest air_date to consider, `YYYY-MM-DD`.
+	 *
+	 * A backfill is priced per slot, so "analyse the recent weeks and let the
+	 * cron keep up from here" is a much cheaper position than draining five
+	 * months of archive — and for a corpus whose consumers ask what competitors
+	 * are doing NOW, it is usually the more useful one too.
+	 */
+	since?: string;
 }
 
 export interface PendingAnalysisCandidate {
@@ -116,6 +125,7 @@ export interface AnalysisQueueRepository {
 		limit: number;
 		scopes: readonly EligibleAnalysisScope[];
 		oldestFirst?: boolean;
+		since?: string;
 	}): Promise<PendingAnalysisCandidate[]>;
 	findCompletedAnalysisIds(input: { offset: number; limit: number; since: string }): Promise<string[]>;
 	findCurrentBroadcastCategories(input: { ids: string[] }): Promise<CurrentBroadcastCategoryRow[]>;
@@ -285,11 +295,15 @@ export async function loadAgeFairCandidatePool(
 	repository: AnalysisQueueRepository,
 	scopes: readonly EligibleAnalysisScope[],
 	poolLimit: number,
+	since?: string,
 ): Promise<PendingAnalysisCandidate[]> {
 	const oldestShare = Math.max(1, Math.floor(poolLimit * OLDEST_CANDIDATE_POOL_SHARE));
+	// Spread rather than always setting the key: callers assert on this exact
+	// input object, and `since: undefined` is not the same shape as no `since`.
+	const window = since !== undefined ? { since } : {};
 	const [newest, oldest] = await Promise.all([
-		repository.findPendingCandidates({ limit: poolLimit - oldestShare, scopes }),
-		repository.findPendingCandidates({ limit: oldestShare, scopes, oldestFirst: true }),
+		repository.findPendingCandidates({ limit: poolLimit - oldestShare, scopes, ...window }),
+		repository.findPendingCandidates({ limit: oldestShare, scopes, oldestFirst: true, ...window }),
 	]);
 	const byId = new Map<string, PendingAnalysisCandidate>();
 	for (const row of [...newest, ...oldest]) byId.set(row.id, row);
@@ -297,7 +311,7 @@ export async function loadAgeFairCandidatePool(
 }
 
 export async function seedAnalysisQueue(
-	{ limit, category, channel }: SeedOptions,
+	{ limit, category, channel, since }: SeedOptions,
 	repository: AnalysisQueueRepository = createAnalysisQueueRepository(getServiceClient()),
 ): Promise<number> {
 	if (!Number.isFinite(limit) || limit <= 0) return 0;
@@ -308,8 +322,12 @@ export async function seedAnalysisQueue(
 	const scopes = buildEligibleAnalysisScopes(category, channel);
 	if (scopes.length === 0) return 0;
 	const candidates = category === undefined
-		? await loadAgeFairCandidatePool(repository, scopes, candidateLimit)
-		: await repository.findPendingCandidates({ limit: candidateLimit, scopes });
+		? await loadAgeFairCandidatePool(repository, scopes, candidateLimit, since)
+		: await repository.findPendingCandidates({
+			limit: candidateLimit,
+			scopes,
+			...(since !== undefined ? { since } : {}),
+		});
 	if (candidates.length === 0) return 0;
 
 	const selected = category === undefined
@@ -345,7 +363,7 @@ const RESET_UPDATE_CHUNK = 200;
 
 export async function resetAnalysisError(
 	code: AnalysisErrorCode,
-	scope: { category?: string; channel?: "qvc" | "shopch" } = {},
+	scope: { category?: string; channel?: "qvc" | "shopch"; since?: string } = {},
 ): Promise<number> {
 	const sb = getServiceClient();
 	// Paged: an unbounded select stops at PostgREST's 1000-row cap without an
@@ -362,6 +380,9 @@ export async function resetAnalysisError(
 				.range(from, to);
 			if (scope.category) q = q.eq("category", scope.category);
 			if (scope.channel) q = q.eq("channel", scope.channel);
+			// Without this a `--since` window would bound the seeding and not the
+			// reset, so a reset meant for two weeks would revive five months.
+			if (scope.since) q = q.gte("air_date", scope.since);
 			return q;
 		},
 		{ pageSize: 800, label: "resetAnalysisError" },

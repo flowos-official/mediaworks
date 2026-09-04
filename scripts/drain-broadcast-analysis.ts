@@ -2,6 +2,7 @@
  * Local drain — the actual backfill path.
  * Usage: npm run drain:broadcast-analysis -- --limit=40 [--category=家電] [--channel=shopch]
  *        …--reset=cold_storage   requeue slots abandoned for that reason first
+ *        …--since=2026-08-21     only slots aired on or after this date
  *                                (requires --category or --channel)
  *
  * The cron cannot do this: at 100-200s per slot inside a 300s function it
@@ -10,7 +11,7 @@
 import { getServiceClient } from "@/lib/supabase";
 import { analyzeOne, MAX_ATTEMPTS, type QueuedAnalysisSlot } from "@/lib/broadcast-intel/analyze-one";
 import { recoverStaleAnalysis, resetAnalysisError, seedAnalysisQueue } from "@/lib/broadcast-intel/queue";
-import { assertResettableScope, buildDrainAnalysisScope, parseDrainCategory } from "@/lib/broadcast-intel/drain-scope";
+import { assertResettableScope, buildDrainAnalysisScope, parseDrainCategory, parseDrainSince } from "@/lib/broadcast-intel/drain-scope";
 import type { AnalysisErrorCode } from "@/lib/broadcast-intel/error-codes";
 
 /** Consecutive failed/requeued slots before the drain aborts. A dead Gemini
@@ -47,7 +48,8 @@ async function main(): Promise<void> {
 		throw new Error(`--channel must be qvc or shopch, got "${channelArg}"`);
 	}
 	const channel = channelArg as "qvc" | "shopch" | undefined;
-	const scope = buildDrainAnalysisScope(category, channel);
+	const since = parseDrainSince(flag("since"));
+	const scope = buildDrainAnalysisScope(category, channel, since);
 	const concurrency = Number(process.env.BROADCAST_INTEL_BATCH_CONCURRENCY) || 2;
 	const sb = getServiceClient();
 
@@ -94,6 +96,11 @@ async function main(): Promise<void> {
 			.eq("analysis_status", "queued");
 		if (scope.category !== undefined) q = q.eq("category", scope.category);
 		if (channel) q = q.eq("channel", channel);
+		// Seeding respects --since, but slots left `queued` by an earlier,
+		// wider run do not — and this loop drains whatever is queued. Without
+		// the same filter here, asking for two weeks quietly spends its budget
+		// on a backlog from months ago.
+		if (since) q = q.gte("air_date", since);
 		const { data, error } = await q
 			.lt("analysis_attempts", MAX_ATTEMPTS)
 			.order("air_date", { ascending: false })
