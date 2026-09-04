@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getTranslations, getLocale } from "next-intl/server";
 import { requireUser } from "@/lib/auth/require-user";
+import { localePath } from "@/lib/i18n/locale-path";
 import { loadIntelligenceReadiness } from "@/lib/intelligence/readiness";
 import type { BoardData, BoardCard } from "@/lib/selections/types";
 import type { IntelligenceReadiness } from "@/lib/intelligence/readiness";
@@ -53,8 +54,9 @@ async function loadReadiness(
 }
 
 export default async function PipelinePage() {
-  const [t, locale, auth] = await Promise.all([
+  const [t, finderCopy, locale, auth] = await Promise.all([
     getTranslations("pipeline"),
+    getTranslations("productFinder"),
     getLocale(),
     requireUser(["viewer", "member", "admin"]),
   ]);
@@ -87,6 +89,10 @@ export default async function PipelinePage() {
           readiness={readiness}
           copy={t.raw("readiness") as ReadinessDashboardCopy}
           locale={locale}
+          productFinder={{
+            href: localePath(locale, "/analytics/product-finder"),
+            label: finderCopy("cta.fromReadiness"),
+          }}
         />
       ) : null}
 

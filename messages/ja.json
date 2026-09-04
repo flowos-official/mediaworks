@@ -52,7 +52,8 @@
       "broadcasts": "番組カレンダー",
       "discovery": "新規発掘",
       "strategy": "MD戦略",
-      "pipeline": "パイプライン"
+      "pipeline": "パイプライン",
+      "productFinder": "商品ファインダー"
     },
     "strategyTabs": {
       "expansion": "拡大戦略",
@@ -1525,6 +1526,78 @@
       "analyzing": "分析中",
       "completed": "完了",
       "failed": "失敗"
+    }
+  },
+  "productFinder": {
+    "title": "商品ファインダー",
+    "subtitle": "蓄積済みデータのみで評価します。外部検索は行いません。",
+    "storedOnlyNotice": "この画面は社内に蓄積された証拠のみを読み取ります。新たな外部検索は実行しないため、追加費用は発生しません。",
+    "form": {
+      "category": "カテゴリ",
+      "categoryPlaceholder": "例: 家電",
+      "targetCustomer": "想定顧客",
+      "targetCustomerPlaceholder": "例: 50代女性",
+      "priceMin": "価格下限（円）",
+      "priceMax": "価格上限（円）",
+      "targetMargin": "目標粗利率（%）",
+      "desiredFeatures": "重視する特徴",
+      "desiredFeaturesPlaceholder": "カンマ区切りで入力",
+      "excludedTerms": "除外キーワード",
+      "excludedTermsPlaceholder": "カンマ区切りで入力",
+      "limit": "表示件数",
+      "submit": "蓄積データで探す",
+      "submitting": "評価中…"
+    },
+    "result": {
+      "heading": "評価結果",
+      "candidates": "評価対象 {count} 件",
+      "empty": "条件に一致する蓄積データがありません。条件を広げるか、データの蓄積をお待ちください。",
+      "rank": "第 {rank} 位",
+      "opportunity": "総合指標",
+      "profit": "想定貢献利益",
+      "profitUnknown": "判断資料不足",
+      "confidence": "確度",
+      "coverage": "証拠カバー率 {percent}%",
+      "reasons": "評価理由",
+      "risks": "留意点",
+      "missing": "不足しているデータ",
+      "evidence": "根拠"
+    },
+    "axis": {
+      "market_demand": "市場需要",
+      "company_fit": "自社適合",
+      "profitability": "収益性",
+      "competition_headroom": "競合余地",
+      "broadcast_fit": "放送適合",
+      "unknown": "データなし"
+    },
+    "class": {
+      "verified": "確認済み",
+      "source_claim": "外部主張",
+      "proxy": "代理指標",
+      "inferred": "推論",
+      "internal_input": "社内入力"
+    },
+    "confidenceLevel": {
+      "high": "高",
+      "medium": "中",
+      "low": "低"
+    },
+    "actions": {
+      "interested": "関心あり",
+      "excluded": "除外",
+      "excludeReason": "除外の理由を入力してください",
+      "screenplay": "台本を作成",
+      "screenplayDisabled": "台本生成との接続は次フェーズで提供されます",
+      "saved": "保存しました",
+      "failed": "保存できませんでした"
+    },
+    "errors": {
+      "failed": "評価に失敗しました。時間をおいて再度お試しください。",
+      "supplementRequired": "外部調査は別の操作として明示的に実行する必要があります。"
+    },
+    "cta": {
+      "fromReadiness": "蓄積データから商品を探す"
     }
   }
 }

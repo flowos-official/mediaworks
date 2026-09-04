@@ -52,7 +52,8 @@
       "broadcasts": "방송 캘린더",
       "discovery": "신규 상품 발굴",
       "strategy": "신규 상품 추천",
-      "pipeline": "파이프라인"
+      "pipeline": "파이프라인",
+      "productFinder": "상품 파인더"
     },
     "strategyTabs": {
       "expansion": "확장 전략",
@@ -1525,6 +1526,78 @@
       "analyzing": "분석 중",
       "completed": "완료",
       "failed": "실패"
+    }
+  },
+  "productFinder": {
+    "title": "상품 파인더",
+    "subtitle": "축적된 데이터만으로 평가합니다. 외부 검색은 하지 않습니다.",
+    "storedOnlyNotice": "이 화면은 사내에 축적된 증거만 읽습니다. 새로운 외부 검색을 실행하지 않으므로 추가 비용이 발생하지 않습니다.",
+    "form": {
+      "category": "카테고리",
+      "categoryPlaceholder": "예: 가전",
+      "targetCustomer": "타깃 고객",
+      "targetCustomerPlaceholder": "예: 50대 여성",
+      "priceMin": "가격 하한 (엔)",
+      "priceMax": "가격 상한 (엔)",
+      "targetMargin": "목표 마진율 (%)",
+      "desiredFeatures": "중시하는 특징",
+      "desiredFeaturesPlaceholder": "쉼표로 구분",
+      "excludedTerms": "제외 키워드",
+      "excludedTermsPlaceholder": "쉼표로 구분",
+      "limit": "표시 건수",
+      "submit": "축적 데이터로 찾기",
+      "submitting": "평가 중…"
+    },
+    "result": {
+      "heading": "평가 결과",
+      "candidates": "평가 대상 {count}건",
+      "empty": "조건에 맞는 축적 데이터가 없습니다. 조건을 넓히거나 데이터가 쌓이기를 기다려 주세요.",
+      "rank": "{rank}위",
+      "opportunity": "종합 지표",
+      "profit": "예상 공헌이익",
+      "profitUnknown": "판단 자료 부족",
+      "confidence": "확도",
+      "coverage": "증거 커버리지 {percent}%",
+      "reasons": "평가 이유",
+      "risks": "유의점",
+      "missing": "부족한 데이터",
+      "evidence": "근거"
+    },
+    "axis": {
+      "market_demand": "시장 수요",
+      "company_fit": "자사 적합",
+      "profitability": "수익성",
+      "competition_headroom": "경쟁 여지",
+      "broadcast_fit": "방송 적합",
+      "unknown": "데이터 없음"
+    },
+    "class": {
+      "verified": "확인됨",
+      "source_claim": "외부 주장",
+      "proxy": "대리 지표",
+      "inferred": "추론",
+      "internal_input": "사내 입력"
+    },
+    "confidenceLevel": {
+      "high": "높음",
+      "medium": "보통",
+      "low": "낮음"
+    },
+    "actions": {
+      "interested": "관심 있음",
+      "excluded": "제외",
+      "excludeReason": "제외 사유를 입력해 주세요",
+      "screenplay": "대본 생성",
+      "screenplayDisabled": "대본 생성 연결은 다음 단계에서 제공됩니다",
+      "saved": "저장했습니다",
+      "failed": "저장하지 못했습니다"
+    },
+    "errors": {
+      "failed": "평가에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+      "supplementRequired": "외부 조사는 별도의 명시적 조작으로 실행해야 합니다."
+    },
+    "cta": {
+      "fromReadiness": "축적 데이터로 상품 찾기"
     }
   }
 }

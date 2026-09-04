@@ -42,6 +42,11 @@ interface DataReadinessDashboardProps {
 	readiness: IntelligenceReadiness;
 	copy: ReadinessDashboardCopy;
 	locale: string;
+	/** Optional entry point into the product finder. Optional so this panel's
+	 *  existing callers are unaffected, and rendered as a plain link so the
+	 *  readiness figures above it stay exactly what they were — the CTA reads
+	 *  the dashboard, it does not participate in it. */
+	productFinder?: { href: string; label: string };
 }
 
 type CategorySample = IntelligenceReadiness["categorySamples"][number];
@@ -106,7 +111,7 @@ function MetricCard({
 	);
 }
 
-export function DataReadinessDashboard({ readiness, copy, locale }: DataReadinessDashboardProps) {
+export function DataReadinessDashboard({ readiness, copy, locale, productFinder }: DataReadinessDashboardProps) {
 	const intlLocale = locale === "ko" ? "ko-KR" : "ja-JP";
 	const dateFormatter = new Intl.DateTimeFormat(intlLocale, {
 		timeZone: "Asia/Tokyo",
@@ -160,6 +165,14 @@ export function DataReadinessDashboard({ readiness, copy, locale }: DataReadines
 				<p className="mt-2 text-xs tabular-nums text-muted-foreground">
 					{copy.generatedAt}: {formatDate(readiness.generatedAt, dateFormatter, copy.noData)}
 				</p>
+				{productFinder ? (
+					<a
+						href={productFinder.href}
+						className="mt-3 inline-block rounded border px-2.5 py-1 text-sm hover:bg-muted"
+					>
+						{productFinder.label}
+					</a>
+				) : null}
 			</header>
 
 			<section aria-labelledby="data-readiness-sources-title">
