@@ -21,6 +21,10 @@ const ALLOWED = [
 	// a prompt, an API response or the UI — what is reported is the offending
 	// passage OF OUR SCRIPT, which the operator is already looking at.
 	"lib/screenplay/grounding/copy-guard.ts",
+	// Documentation, like the two spec/plan entries below: names the table to
+	// state the rule about it. The design docs were already allowlisted for the
+	// same reason.
+	"CLAUDE.md",
 	"docs/superpowers/specs/2026-08-24-broadcast-selling-language-design.md",
 	"docs/superpowers/plans/2026-08-24-broadcast-selling-language.md",
 ];
