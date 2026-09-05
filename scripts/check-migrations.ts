@@ -37,6 +37,11 @@ const REQUIRED_TABLES = [
 	"import_batches",
 	"import_rows",
 	"gemini_usage",
+	// Grounded screenplay generation (20260829150000). A version whose context
+	// table is missing generates fine and records nothing, so the failure is
+	// invisible without this line.
+	"screenplay_generation_contexts",
+	"screenplay_claim_links",
 ];
 
 const REQUIRED_COLUMNS: Record<string, string[]> = {
@@ -172,7 +177,7 @@ const REQUIRED_COLUMNS: Record<string, string[]> = {
 		"domestic_market_fit",
 	],
 	screenplays: ["last_error"],
-	screenplay_versions: ["pattern_snapshot"],
+	screenplay_versions: ["pattern_snapshot", "generation_context_id"],
 	broadcasts: ["analysis_status", "analysis_attempts", "analysis_error", "analyzed_at"],
 };
 
