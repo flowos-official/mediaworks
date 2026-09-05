@@ -979,6 +979,52 @@
     "renderer": {
       "finalScript": "台本本文",
       "sceneChange": "場面転換"
+    },
+    "claimsNeedingReview": "要確認の主張 {count}件",
+    "patternStatus": {
+      "disabled": "競合放送データ機能は無効",
+      "no_category": "カテゴリ未設定のため競合構成なし",
+      "off_whitelist": "対象外カテゴリのため競合構成なし",
+      "under_sampled": "分析済み放送が不足し競合構成なし",
+      "timed_out": "競合構成の取得がタイムアウト",
+      "failed": "競合構成の取得に失敗",
+      "applied": "競合放送の構成を反映"
+    },
+    "context": {
+      "unavailable": "この稿には生成コンテキストがありません（機能追加前の稿、または取り込み稿）。",
+      "missing": "不足しているデータ",
+      "noReferences": "参照した競合放送はありません。",
+      "noDemos": "実演計画はありません。",
+      "matchedOn": "一致した観点",
+      "runtime": "放送尺 {minutes}分",
+      "patternSample": "分析済み放送 {count}件（{channels}）",
+      "usage": {
+        "direct": "断定可",
+        "attributed_only": "出典明示",
+        "planning_only": "構成のみ"
+      },
+      "basis": {
+        "competitor_pattern": "競合放送の集計に基づく構成",
+        "generic": "一般構成（競合データなし）"
+      },
+      "match": {
+        "category": "カテゴリ",
+        "price_band": "価格帯",
+        "selling_points": "訴求点",
+        "demo_objection": "実演・疑問",
+        "none": "なし"
+      }
+    },
+    "claims": {
+      "title": "事実主張の根拠",
+      "none": "検出された事実主張はありません。",
+      "unavailable": "この稿には根拠リンクがありません（機能追加前の稿、または取り込み稿）。",
+      "needsReviewCount": "要確認 {count}",
+      "status": {
+        "supported": "根拠あり",
+        "source_claim": "出典明示",
+        "needs_review": "要確認"
+      }
     }
   },
   "auth": {
@@ -1590,7 +1636,9 @@
       "screenplay": "台本を作成",
       "screenplayDisabled": "台本生成との接続は次フェーズで提供されます",
       "saved": "保存しました",
-      "failed": "保存できませんでした"
+      "failed": "保存できませんでした",
+      "screenplayPending": "作成中…",
+      "screenplayFailed": "台本を作成できませんでした"
     },
     "errors": {
       "failed": "評価に失敗しました。時間をおいて再度お試しください。",

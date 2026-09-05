@@ -7,13 +7,15 @@
  * as ¥0 or a blank. A blank invites the reader to supply their own guess; a
  * zero states a measurement nobody made.
  *
- * The screenplay affordance is present but disabled, with copy saying why. The
- * plan is explicit that it must not fake the connection — an operator who
- * clicks a working-looking button and gets nothing learns to distrust the whole
- * surface.
+ * The screenplay affordance posts the canonical product id and the stored
+ * brief to /api/screenplays and navigates to the new screenplay. It is a
+ * deliberate click, never automatic: a recommendation being produced is not a
+ * decision to build a broadcast around it, and generating one per ranked item
+ * would spend a model call on every row nobody looked at.
  */
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import type { ProductFinderItem } from "@/lib/product-finder/types";
 import { EvidenceList } from "./EvidenceList";
 
@@ -29,9 +31,39 @@ export function ProductFinderResultCard({
 	onDecision?: (itemId: string, decision: DecisionValue) => void;
 }) {
 	const t = useTranslations("productFinder");
+	const router = useRouter();
+	const locale = useLocale();
 	const [decision, setDecision] = useState<DecisionValue | null>(null);
 	const [pending, setPending] = useState(false);
+	const [creating, setCreating] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+
+	async function createScreenplay() {
+		setCreating(true);
+		setError(null);
+		try {
+			const res = await fetch("/api/screenplays", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					canonicalProductId: item.canonicalProductId,
+					productBrief: {
+						name: item.name,
+						description: item.name,
+						...(item.category ? { category: item.category } : {}),
+					},
+				}),
+			});
+			const payload = (await res.json()) as { id?: string; error?: string };
+			if (!res.ok || !payload.id) throw new Error(payload.error ?? String(res.status));
+			// Locale-prefixed: proxy.ts rewrites an unprefixed path, and landing on
+			// the default locale would silently switch the operator's language.
+			router.push(`/${locale}/screenplays/${payload.id}`);
+		} catch {
+			setError(t("actions.screenplayFailed"));
+			setCreating(false);
+		}
+	}
 
 	async function record(value: DecisionValue) {
 		let reason: string | undefined;
@@ -157,11 +189,11 @@ export function ProductFinderResultCard({
 				</button>
 				<button
 					type="button"
-					disabled
-					title={t("actions.screenplayDisabled")}
-					className="rounded border px-2.5 py-1 text-sm opacity-50"
+					disabled={creating}
+					onClick={() => void createScreenplay()}
+					className="rounded border px-2.5 py-1 text-sm disabled:opacity-50"
 				>
-					{t("actions.screenplay")}
+					{creating ? t("actions.screenplayPending") : t("actions.screenplay")}
 				</button>
 				{error ? <span className="text-xs text-red-600">{error}</span> : null}
 			</footer>

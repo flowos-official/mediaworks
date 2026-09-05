@@ -83,6 +83,23 @@ export interface ScreenplayVersionRow {
   /** Type-only import: importing the value would drag getServiceClient into
    *  every "use client" component that imports this module. */
   pattern_snapshot?: import("@/lib/broadcast-intel/category-pattern").CategoryPattern | null;
+  /** Null for every version generated before 20260829150000, and for imports,
+   *  which generate no prose. The UI must say "unavailable" for those rather
+   *  than render an empty applied state. */
+  generation_context_id?: string | null;
+  generation_context?: import("@/lib/screenplay/context/build").ScreenplayGenerationContext | null;
+  claim_links?: ScreenplayClaimLinkRow[];
+}
+
+export interface ScreenplayClaimLinkRow {
+  id: string;
+  version_id: string;
+  line_start: number;
+  line_end: number;
+  claim_text: string;
+  status: "supported" | "source_claim" | "needs_review";
+  evidence_item_id: string | null;
+  reason: string;
 }
 
 // ── Version diff (変更点レビュー) ───────────────────────────────────────────

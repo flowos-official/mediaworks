@@ -360,7 +360,15 @@ export function ScreenplayWorkspace({
 					nextLabel={next ? `v${pad(next.version_number, 2)}` : undefined}
 					readiness={readiness}
 					model={selected.model}
-					patternSampleSize={selected.pattern_snapshot?.sampleSize ?? null}
+					patternSampleSize={
+						selected.generation_context?.patternResult.pattern?.sampleSize ??
+						selected.pattern_snapshot?.sampleSize ??
+						null
+					}
+					patternStatus={selected.generation_context?.patternResult.status ?? null}
+					claimsNeedingReview={
+						(selected.claim_links ?? []).filter((c) => c.status === "needs_review").length
+					}
 					onEdit={() => (editing ? setEditing(false) : startEditing())}
 					editing={editing}
 					focusMode={focusMode}
@@ -382,6 +390,8 @@ export function ScreenplayWorkspace({
 							versions={versions}
 							selectedId={selectedId}
 							check={activeCheck}
+							generationContext={selected.generation_context ?? null}
+							claimLinks={selected.claim_links ?? []}
 							onSelectVersion={selectVersion}
 							onJumpToLine={jumpToLine}
 							onProductLinked={handleProductLinked}
