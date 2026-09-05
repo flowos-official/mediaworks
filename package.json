@@ -215,7 +215,8 @@
     "test:supplemental-provider-contract": "tsx scripts/test-supplemental-provider-contract.ts",
     "test:supplemental-research-run": "tsx scripts/test-supplemental-research-run.ts",
     "test:supplemental-research-view": "tsx scripts/test-supplemental-research-view.ts",
-    "test:intelligence-import-storage": "tsx scripts/test-intelligence-import-storage.ts"
+    "test:intelligence-import-storage": "tsx scripts/test-intelligence-import-storage.ts",
+    "test:intelligence-workbook": "tsx scripts/test-intelligence-workbook.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1016.0",
