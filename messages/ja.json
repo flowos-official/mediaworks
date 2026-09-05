@@ -1634,7 +1634,6 @@
       "excluded": "除外",
       "excludeReason": "除外の理由を入力してください",
       "screenplay": "台本を作成",
-      "screenplayDisabled": "台本生成との接続は次フェーズで提供されます",
       "saved": "保存しました",
       "failed": "保存できませんでした",
       "screenplayPending": "作成中…",

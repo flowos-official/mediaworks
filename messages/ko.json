@@ -1634,7 +1634,6 @@
       "excluded": "제외",
       "excludeReason": "제외 사유를 입력해 주세요",
       "screenplay": "대본 생성",
-      "screenplayDisabled": "대본 생성 연결은 다음 단계에서 제공됩니다",
       "saved": "저장했습니다",
       "failed": "저장하지 못했습니다",
       "screenplayPending": "생성 중…",

@@ -90,13 +90,27 @@ assert.ok(card.includes("confidence.coverage"), "coverage is shown beside the co
 assert.ok(evidence.includes('"—"') || evidence.includes("—"), "an unmeasured axis shows a dash");
 console.log("✓ unknown profit, missing data and coverage are all shown explicitly");
 
-// --- the screenplay affordance is honestly disabled ------------------------
-assert.ok(card.includes("disabled"), "the screenplay button is disabled");
+// --- the screenplay affordance is real, and deliberate ---------------------
+// It was inert until the grounded-screenplay workflow existed to receive it.
+// Now it posts the canonical product id, so the script it produces is built
+// from the same evidence the recommendation was.
+assert.ok(card.includes('fetch("/api/screenplays"'), "the screenplay button posts a real request");
 assert.ok(
-	card.includes("actions.screenplayDisabled"),
-	"and says why, rather than failing silently when clicked",
+	card.includes("canonicalProductId: item.canonicalProductId"),
+	"and sends the canonical product, which is what the fact pack is read against",
 );
-console.log("✓ the screenplay action is disabled with an explanation, not faked");
+assert.equal(
+	card.includes("actions.screenplayDisabled"),
+	false,
+	"the disabled explanation is gone now that the action works",
+);
+// A recommendation being produced is not a decision to build a broadcast.
+assert.equal(
+	/useEffect\([^)]*createScreenplay/.test(card),
+	false,
+	"creating a screenplay must stay a click, never automatic",
+);
+console.log("✓ the screenplay action posts the canonical product on a click");
 
 // --- navigation --------------------------------------------------------------
 {

@@ -351,21 +351,21 @@ export async function buildUserPrompt(input: GenerateInput): Promise<string> {
 			productBlock,
 			"",
 			"## 根拠の優先順位",
-			"1. 確認済み商品情報・価格・特典・保証",
-			"2. ユーザー指定の作家指示",
-			...(input.structurePlanBlock?.trim()
-				? ["3. 確定済み放送構成（区分・順序・尺配分は変更しない）"]
-				: []),
-			...(input.patternBlock?.trim()
-				? [
-					"4. 競合放送の構成パターン（構成の骨格のみ。商品事実として使用しない）",
-					"5. 企画参考情報（構成だけに使用し、事実として断定しない）",
-					"6. 放送文体リファレンス（リズムだけに使用し、内容を転用しない）",
-				]
-				: [
-					"4. 企画参考情報（構成だけに使用し、事実として断定しない）",
-					"5. 放送文体リファレンス（リズムだけに使用し、内容を転用しない）",
-				]),
+			// Numbered from the entries that are actually present. Hand-written
+			// alternatives drifted into a list that skipped 3 when the structure
+			// plan was absent, which reads to a model as a missing instruction.
+			...[
+				"確認済み商品情報・価格・特典・保証",
+				"ユーザー指定の作家指示",
+				...(input.structurePlanBlock?.trim()
+					? ["確定済み放送構成（区分・順序・尺配分は変更しない）"]
+					: []),
+				...(input.patternBlock?.trim()
+					? ["競合放送の構成パターン（構成の骨格のみ。商品事実として使用しない）"]
+					: []),
+				"企画参考情報（構成だけに使用し、事実として断定しない）",
+				"放送文体リファレンス（リズムだけに使用し、内容を転用しない）",
+			].map((entry, index) => `${index + 1}. ${entry}`),
 			"根拠が足りない要素は創作せず、省略または一般的な使用シーンに置き換える。",
 		];
 		if (customBlock) parts.push("", "---", "", customBlock);
