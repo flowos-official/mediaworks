@@ -275,7 +275,8 @@ export async function loadCanonicalProductBriefForScreenplay(
 		.eq("subject_type", "product")
 		.eq("subject_id", id)
 		.in("predicate", ["price_jpy", "review_count", "tv_airing_count", "recent_airing_count"])
-		.eq("value_state", "known");
+		.eq("value_state", "known")
+		.is("revoked_at", null);
 	if (evidenceError) {
 		console.warn("[screenplays] canonical evidence lookup failed:", evidenceError.message);
 	}

@@ -326,6 +326,8 @@ async function loadStoredFactRows(
 				.eq("subject_id", canonicalProductId)
 				.in("predicate", STORED_FACT_PREDICATES)
 				.lte("observed_at", observedAt)
+				// A script must never speak from evidence somebody rolled back.
+				.is("revoked_at", null)
 				.order("id", { ascending: true })
 				.range(from, to),
 		{ pageSize: 800, label: "screenplay:product-facts" },

@@ -1,3 +1,9 @@
+/** Widened from a literal to the ledger's own union when supplemental research
+ *  landed (20260829160000). The POST parser stays pinned to "stored_only":
+ *  reaching a provider is a separate, explicitly requested act, never something
+ *  a query parameter can turn on. */
+import type { KnowledgeMode } from "@/lib/intelligence/types";
+
 /**
  * Contracts for the stored-only product finder.
  *
@@ -41,7 +47,7 @@ export interface ProductFinderQuery {
 	desiredFeatures: string[];
 	excludedTerms: string[];
 	limit: number;
-	mode: "stored_only";
+	mode: KnowledgeMode;
 }
 
 export interface ProductFinderItem {
@@ -62,7 +68,7 @@ export interface ProductFinderItem {
 
 export interface ProductFinderResult {
 	runId: string;
-	mode: "stored_only";
+	mode: KnowledgeMode;
 	generatedAt: string;
 	query: ProductFinderQuery;
 	candidateCount: number;

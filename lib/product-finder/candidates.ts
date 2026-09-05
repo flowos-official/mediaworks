@@ -235,11 +235,16 @@ export async function loadStoredCandidates(
 		({ from, to }) =>
 			sb
 				.from("evidence_items")
-				.select("id, subject_id, predicate, value_json, value_state, evidence_class, confidence, observed_at")
+				.select("id, subject_id, predicate, value_json, value_state, evidence_class, confidence, observed_at, revoked_at")
 				.eq("subject_type", "product")
 				.in("subject_id", ids)
 				.in("predicate", CANDIDATE_PREDICATES)
 				.lte("observed_at", dataCutoff)
+				// Rolled-back evidence is revoked, not deleted, so a past snapshot
+				// still resolves. It must not reach a NEW ranking, and the filter
+				// belongs in the query rather than in isCurrent alone: without it
+				// every revoked row is fetched, paged and paid for.
+				.is("revoked_at", null)
 				.order("id", { ascending: true })
 				.range(from, to),
 		{ pageSize: EVIDENCE_PAGE_SIZE, label: "product-finder:evidence" },

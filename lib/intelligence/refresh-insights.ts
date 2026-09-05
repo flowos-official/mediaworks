@@ -281,6 +281,10 @@ function mapEvidenceRow(row: Record<string, unknown>): EvidenceItem {
 function applyActiveFilters(query: any, cutoff: string): any {
 	return query
 		.lte("observed_at", cutoff)
+		// Revoked evidence is rolled-back input. An insight computed from it
+		// would keep asserting a number the operator withdrew, and this is the
+		// single chokepoint both insight readers pass through.
+		.is("revoked_at", null)
 		.neq("value_state", "stale")
 		.or(`valid_from.is.null,valid_from.lte.${cutoff}`)
 		.or(`valid_until.is.null,valid_until.gte.${cutoff}`);

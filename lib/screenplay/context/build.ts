@@ -119,6 +119,7 @@ export function createScreenplayContextRepository(sb: SupabaseClient): Screenpla
 						.select("id, subject_id")
 						.eq("subject_type", "broadcast")
 						.in("subject_id", broadcastIds)
+						.is("revoked_at", null)
 						.order("id", { ascending: true })
 						.range(from, to),
 				{ pageSize: 800, label: "screenplay:reference-evidence" },

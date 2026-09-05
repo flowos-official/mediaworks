@@ -22,7 +22,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getServiceClient } from "@/lib/supabase";
 import { createKnowledgeSnapshot } from "@/lib/intelligence/repository";
-import type { KnowledgeSnapshotDraft } from "@/lib/intelligence/types";
+import type { KnowledgeMode, KnowledgeSnapshotDraft } from "@/lib/intelligence/types";
 import { loadStoredCandidates, type StoredCandidate } from "./candidates";
 import { ALGORITHM_VERSION, rankStoredCandidates, type RankedCandidate } from "./ranking";
 import type { ProductFinderItem, ProductFinderQuery, ProductFinderResult, ScoreAxis } from "./types";
@@ -181,18 +181,27 @@ export async function runProductFinderFromStoredEvidence(
 	repo: ProductFinderRepository,
 	userId: string,
 	query: ProductFinderQuery,
-	options: { mode: "stored_only" },
+	// The mode is the caller's declaration of what it did BEFORE calling: this
+	// function performs no network access in either case. A `supplemented` run
+	// is one whose evidence a separate, explicitly requested research job had
+	// already written to the ledger — the ranking still only reads the database.
+	options: { mode: KnowledgeMode },
 ): Promise<ProductFinderResult> {
 	// One cutoff for the whole run. Taken before any read so the candidate set,
 	// the ranking and the snapshot all describe the same instant — a cutoff
 	// recomputed per query would let evidence arrive mid-run and make the
 	// snapshot a description of something that never existed as a whole.
 	const dataCutoff = new Date().toISOString();
-	const runId = await repo.createRun(userId, query, ALGORITHM_VERSION);
+	// One source of truth for the mode. The query arrives from the strict POST
+	// parser, which can only produce "stored_only"; the caller's option is what
+	// says whether supplemental evidence was gathered first, so it wins on the
+	// row and in the snapshot rather than the two disagreeing.
+	const effectiveQuery: ProductFinderQuery = { ...query, mode: options.mode };
+	const runId = await repo.createRun(userId, effectiveQuery, ALGORITHM_VERSION);
 
 	try {
-		const candidates = await repo.loadCandidates(query, dataCutoff);
-		const ranked = rankStoredCandidates(candidates, query).slice(0, query.limit);
+		const candidates = await repo.loadCandidates(effectiveQuery, dataCutoff);
+		const ranked = rankStoredCandidates(candidates, effectiveQuery).slice(0, effectiveQuery.limit);
 
 		const inserts: ProductFinderItemInsert[] = ranked.map((item) => {
 			const prose = describe(item);
@@ -243,7 +252,7 @@ export async function runProductFinderFromStoredEvidence(
 			runId,
 			mode: options.mode,
 			generatedAt: dataCutoff,
-			query,
+			query: effectiveQuery,
 			candidateCount: candidates.length,
 			items: ranked.map((item, i) => ({
 				id: itemIds[i] ?? `rank:${item.rank}`,
