@@ -185,8 +185,13 @@ export const ALL_WHITELIST_CATEGORIES = new Set<string>([
 	...CATEGORIES_BY_CHANNEL.shopch,
 ]);
 
-/** Returns null when the category is unknown, off-whitelist, or under-sampled —
- *  the caller then injects nothing. */
+/** Returns null when the category is unknown, off-whitelist, or under-sampled.
+ *
+ *  Kept as the raw loader and the compatibility surface for existing callers.
+ *  New code should prefer lib/screenplay/context/pattern-result.ts::
+ *  loadPatternResult, which returns the same pattern PLUS the reason there
+ *  isn't one — that null has five distinct meanings and this signature cannot
+ *  express any of them. */
 export async function loadCategoryPattern(category: string | null): Promise<CategoryPattern | null> {
 	if (!category || !ALL_WHITELIST_CATEGORIES.has(category)) return null;
 

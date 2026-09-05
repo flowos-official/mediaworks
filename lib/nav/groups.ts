@@ -48,12 +48,18 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     key: 'market',
     labelKey: 'nav.groups.market',
     landing: '/broadcasts',
-    pathPrefixes: ['/broadcasts', '/analytics/discovery', '/analytics/strategy', '/analytics/pipeline'],
+    pathPrefixes: ['/broadcasts', '/analytics/discovery', '/analytics/strategy', '/analytics/pipeline', '/analytics/product-finder'],
     members: [
       { labelKey: 'nav.market.broadcasts', href: '/broadcasts', roles: ['admin', 'member'], feature: 'broadcastCalendar' },
       { labelKey: 'nav.market.discovery', href: '/analytics/discovery', roles: ['admin', 'member'], feature: 'productDiscovery' },
       { labelKey: 'nav.market.strategy', href: '/analytics/strategy', roles: ['admin', 'member'], feature: 'strategy' },
       { labelKey: 'nav.market.pipeline', href: '/analytics/pipeline', roles: ['admin', 'member', 'viewer'], feature: 'selectionPipeline' },
+      // Member|admin only: the finder reads evidence derived from member-only
+      // sources, so a viewer would reach an empty page at best.
+      { labelKey: 'nav.market.productFinder', href: '/analytics/product-finder', roles: ['admin', 'member'], feature: 'productFinder' },
+      // Member|admin only, and for a stronger reason than the finder: these
+      // pages show file names and the contents of an operator's own cost book.
+      { labelKey: 'nav.market.dataManagement', href: '/analytics/data-management', roles: ['admin', 'member'], feature: 'dataManagement' },
     ],
     visibility: { admin: 'full', member: 'full', viewer: 'full' },
   },

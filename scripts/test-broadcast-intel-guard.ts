@@ -16,6 +16,15 @@ const ALLOWED = [
 	// pins the evidence predicate whitelist so the verbatim half stays here.
 	"scripts/test-intelligence-evidence-predicates.ts",
 	"scripts/check-migrations.ts",
+	// Reads the verbatim table to ask ONE local question: does our own output
+	// contain a 30+ character run of a competitor's? Nothing read here reaches
+	// a prompt, an API response or the UI — what is reported is the offending
+	// passage OF OUR SCRIPT, which the operator is already looking at.
+	"lib/screenplay/grounding/copy-guard.ts",
+	// Documentation, like the two spec/plan entries below: names the table to
+	// state the rule about it. The design docs were already allowlisted for the
+	// same reason.
+	"CLAUDE.md",
 	"docs/superpowers/specs/2026-08-24-broadcast-selling-language-design.md",
 	"docs/superpowers/plans/2026-08-24-broadcast-selling-language.md",
 ];

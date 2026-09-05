@@ -10,17 +10,35 @@ import {
 	FileClock,
 	Link2,
 	Loader2,
+	Quote,
 	RadioTower,
 	ShieldCheck,
+	Tv,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { parseMarkdown } from "@/lib/screenplay/parse-markdown";
 import type { ScriptCheckResult } from "@/lib/screenplay/compliance/types";
-import type { ProductBrief, ScreenplayVersionRow } from "@/lib/screenplay/types";
+import type {
+	ProductBrief,
+	ScreenplayClaimLinkRow,
+	ScreenplayVersionRow,
+} from "@/lib/screenplay/types";
+import type { ScreenplayGenerationContext } from "@/lib/screenplay/context/build";
 import type { ExistingProductOption } from "./ScreenplayProductPicker";
 import { VersionTimeline } from "./VersionTimeline";
+import { GenerationContextPanel } from "./GenerationContextPanel";
+import { ClaimEvidencePanel } from "./ClaimEvidencePanel";
 
-type NavigatorTab = "rundown" | "sources" | "history";
+/** facts / references / outline / demo / claims are the provenance tabs the
+ *  grounded workflow made answerable. `rundown` and `history` predate it. */
+type NavigatorTab =
+	| "rundown"
+	| "outline"
+	| "demo"
+	| "facts"
+	| "references"
+	| "claims"
+	| "history";
 
 interface Props {
 	screenplayId: string;
@@ -31,14 +49,22 @@ interface Props {
 	versions: ScreenplayVersionRow[];
 	selectedId: string | null;
 	check: ScriptCheckResult | null;
+	/** Null for a legacy version or an import: the panels say "unavailable"
+	 *  rather than rendering an empty, satisfied-looking state. */
+	generationContext: ScreenplayGenerationContext | null;
+	claimLinks: ScreenplayClaimLinkRow[];
 	onSelectVersion: (id: string) => void;
 	onJumpToLine: (line: number) => void;
 	onProductLinked: (productId: string, brief: ProductBrief) => void;
 }
 
 const TABS: { id: NavigatorTab; label: string; icon: typeof RadioTower }[] = [
-	{ id: "rundown", label: "構成", icon: RadioTower },
-	{ id: "sources", label: "根拠", icon: Database },
+	{ id: "rundown", label: "台本", icon: RadioTower },
+	{ id: "outline", label: "構成", icon: BookOpenCheck },
+	{ id: "demo", label: "実演", icon: Tv },
+	{ id: "facts", label: "事実", icon: Database },
+	{ id: "references", label: "参照", icon: ShieldCheck },
+	{ id: "claims", label: "主張", icon: Quote },
 	{ id: "history", label: "履歴", icon: FileClock },
 ];
 
@@ -65,6 +91,8 @@ export function ScreenplayNavigator({
 	versions,
 	selectedId,
 	check,
+	generationContext,
+	claimLinks,
 	onSelectVersion,
 	onJumpToLine,
 	onProductLinked,
@@ -126,7 +154,7 @@ export function ScreenplayNavigator({
 
 	return (
 		<Card className="overflow-hidden border-border bg-card/95">
-			<div className="grid grid-cols-3 border-b border-border bg-muted/40 p-1">
+			<div className="grid grid-cols-4 border-b border-border bg-muted/40 p-1">
 				{TABS.map((item) => {
 					const Icon = item.icon;
 					const active = item.id === tab;
@@ -175,7 +203,19 @@ export function ScreenplayNavigator({
 					</div>
 				)}
 
-				{tab === "sources" && (
+				{(tab === "outline" || tab === "demo" || tab === "references") && (
+					<GenerationContextPanel context={generationContext} tab={tab} />
+				)}
+
+				{tab === "claims" && (
+					<ClaimEvidencePanel
+						claimLinks={claimLinks}
+						hasContext={generationContext !== null}
+						onJumpToLine={onJumpToLine}
+					/>
+				)}
+
+				{tab === "facts" && (
 					<div className="space-y-3">
 						<div className="rounded-xl border border-border bg-background p-3">
 							<div className="flex items-start gap-2.5">
@@ -244,15 +284,15 @@ export function ScreenplayNavigator({
 						</div>
 
 						<div className="space-y-1.5 text-[11px]">
-							<div className="flex items-start gap-2 rounded-lg bg-emerald-600/[0.07] px-2.5 py-2 text-foreground">
-								<ShieldCheck size={12} className="mt-0.5 shrink-0 text-emerald-600" />
-								<span>商品名・カテゴリ・価格・特典を改稿時も参照</span>
-							</div>
 							<div className="flex items-start gap-2 rounded-lg bg-blue-600/[0.07] px-2.5 py-2 text-foreground">
 								<BookOpenCheck size={12} className="mt-0.5 shrink-0 text-blue-600" />
 								<span>{check?.grounding?.factSearch ? "公開情報のファクト検索済み" : "公開情報のファクト検索は未実行"}</span>
 							</div>
 						</div>
+
+						{/* What this version was actually allowed to say, with the
+						    class and source of each fact — and what was missing. */}
+						<GenerationContextPanel context={generationContext} tab="facts" />
 					</div>
 				)}
 

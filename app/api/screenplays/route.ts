@@ -1,10 +1,15 @@
 import { NextRequest } from "next/server";
-import { start } from "workflow/api";
 import { requireUser } from "@/lib/auth/require-user";
 import { getServiceClient } from "@/lib/supabase";
-import { screenplayWorkflow } from "@/lib/workflows/screenplay.workflow";
+import {
+	startScreenplayGeneration,
+	startScreenplayImport,
+} from "@/lib/screenplay/start-generation";
 import type { ProductBrief } from "@/lib/screenplay/types";
-import { loadProductBriefForScreenplay } from "@/lib/screenplay/product-brief";
+import {
+	loadCanonicalProductBriefForScreenplay,
+	loadProductBriefForScreenplay,
+} from "@/lib/screenplay/product-brief";
 import { validateImportedMarkdown } from "@/lib/screenplay/import/validate";
 import {
 	sanitizeScreenplayCustomization,
@@ -28,6 +33,8 @@ export async function GET() {
 
 interface ValidationFailure { ok: false; status: number; error: string }
 interface ValidationSuccess { ok: true; brief: ProductBrief; productId: string | null }
+/** The three entry paths all reduce to this before the workflow starts. */
+type BriefResolution = ValidationFailure | ValidationSuccess;
 
 function resolveBrief(body: unknown): ValidationFailure | ValidationSuccess {
 	if (!body || typeof body !== "object") {
@@ -80,18 +87,38 @@ export async function POST(request: NextRequest) {
 	if ("error" in auth) return auth.error;
 	const body = await request.json().catch(() => null);
 	const supabase = getServiceClient();
-	const productId =
-		body && typeof body === "object" && typeof (body as Record<string, unknown>).productId === "string"
-			? ((body as Record<string, unknown>).productId as string).trim()
-			: "";
-	const v = productId
-		? await loadProductBriefForScreenplay(supabase, productId)
-		: resolveBrief(body);
+	const bodyRecord = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
+	const productId = typeof bodyRecord.productId === "string" ? bodyRecord.productId.trim() : "";
+	const canonicalProductId =
+		typeof bodyRecord.canonicalProductId === "string" ? bodyRecord.canonicalProductId.trim() : "";
+
+	// Three ways in, one workflow out.
+	//
+	//   productId          an existing Research product
+	//   canonicalProductId a product-finder recommendation — strict: the id must
+	//                      resolve, because it is what the fact pack is read
+	//                      against, and a bad one would produce a script grounded
+	//                      in nothing while looking grounded
+	//   neither            an uploaded or manually entered brief
+	let v: BriefResolution;
+	let linkedCanonicalId: string | null = null;
+	if (productId) {
+		v = await loadProductBriefForScreenplay(supabase, productId);
+	} else if (canonicalProductId) {
+		const canonical = await loadCanonicalProductBriefForScreenplay(supabase, canonicalProductId);
+		if (!canonical.ok) return Response.json({ error: canonical.error }, { status: canonical.status });
+		linkedCanonicalId = canonical.canonicalProductId;
+		// The operator's edited brief wins when they sent one; the derived brief
+		// is the starting point, not the contract.
+		const supplied = resolveBrief(body);
+		v = supplied.ok ? supplied : { ok: true, productId: null, brief: canonical.brief };
+	} else {
+		v = resolveBrief(body);
+	}
 	if (!v.ok) return Response.json({ error: v.error }, { status: v.status });
 
 	const productBrief: ProductBrief = { ...v.brief };
-	if (productId && body && typeof body === "object") {
-		const bodyRecord = body as Record<string, unknown>;
+	if (productId) {
 		const customization = sanitizeScreenplayCustomization(bodyRecord.customization);
 		if (customization) productBrief.customization = customization;
 		Object.assign(productBrief, sanitizeScreenplayOffer(bodyRecord.offer));
@@ -99,14 +126,13 @@ export async function POST(request: NextRequest) {
 
 	// Import path: an operator-reviewed, pre-normalized draft seeds v1 directly.
 	let importedMarkdown: string | undefined;
-	if (body && typeof body === "object" && "importedMarkdown" in (body as Record<string, unknown>)) {
-		const val = validateImportedMarkdown((body as Record<string, unknown>).importedMarkdown);
+	if ("importedMarkdown" in bodyRecord) {
+		const val = validateImportedMarkdown(bodyRecord.importedMarkdown);
 		if (!val.ok) return Response.json({ error: val.error }, { status: 400 });
 		importedMarkdown = val.markdown;
 	}
 
-	const rawSourceKind =
-		body && typeof body === "object" ? (body as Record<string, unknown>).sourceKind : undefined;
+	const rawSourceKind = bodyRecord.sourceKind;
 	const clientSourceKind =
 		rawSourceKind === "upload" || rawSourceKind === "url" ? rawSourceKind : null;
 	const sourceKind: "upload" | "url" | "import" | "product" | null = importedMarkdown
@@ -134,11 +160,14 @@ export async function POST(request: NextRequest) {
 	const screenplayId = inserted.id as string;
 
 	try {
-		const run = await start(screenplayWorkflow, [
-			importedMarkdown
-				? { screenplayId, mode: "import" as const, productBrief, importedMarkdown }
-				: { screenplayId, mode: "initial" as const, productBrief },
-		]);
+		const run = importedMarkdown
+			? await startScreenplayImport({ screenplayId, productBrief, importedMarkdown })
+			: await startScreenplayGeneration({
+					screenplayId,
+					mode: "initial",
+					productBrief,
+					canonicalProductId: linkedCanonicalId,
+				});
 		await supabase
 			.from("screenplays")
 			.update({ last_run_id: run.runId })

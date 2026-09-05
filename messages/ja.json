@@ -52,7 +52,9 @@
       "broadcasts": "番組カレンダー",
       "discovery": "新規発掘",
       "strategy": "MD戦略",
-      "pipeline": "パイプライン"
+      "pipeline": "パイプライン",
+      "productFinder": "商品ファインダー",
+      "dataManagement": "データ管理"
     },
     "strategyTabs": {
       "expansion": "拡大戦略",
@@ -978,6 +980,52 @@
     "renderer": {
       "finalScript": "台本本文",
       "sceneChange": "場面転換"
+    },
+    "claimsNeedingReview": "要確認の主張 {count}件",
+    "patternStatus": {
+      "disabled": "競合放送データ機能は無効",
+      "no_category": "カテゴリ未設定のため競合構成なし",
+      "off_whitelist": "対象外カテゴリのため競合構成なし",
+      "under_sampled": "分析済み放送が不足し競合構成なし",
+      "timed_out": "競合構成の取得がタイムアウト",
+      "failed": "競合構成の取得に失敗",
+      "applied": "競合放送の構成を反映"
+    },
+    "context": {
+      "unavailable": "この稿には生成コンテキストがありません（機能追加前の稿、または取り込み稿）。",
+      "missing": "不足しているデータ",
+      "noReferences": "参照した競合放送はありません。",
+      "noDemos": "実演計画はありません。",
+      "matchedOn": "一致した観点",
+      "runtime": "放送尺 {minutes}分",
+      "patternSample": "分析済み放送 {count}件（{channels}）",
+      "usage": {
+        "direct": "断定可",
+        "attributed_only": "出典明示",
+        "planning_only": "構成のみ"
+      },
+      "basis": {
+        "competitor_pattern": "競合放送の集計に基づく構成",
+        "generic": "一般構成（競合データなし）"
+      },
+      "match": {
+        "category": "カテゴリ",
+        "price_band": "価格帯",
+        "selling_points": "訴求点",
+        "demo_objection": "実演・疑問",
+        "none": "なし"
+      }
+    },
+    "claims": {
+      "title": "事実主張の根拠",
+      "none": "検出された事実主張はありません。",
+      "unavailable": "この稿には根拠リンクがありません（機能追加前の稿、または取り込み稿）。",
+      "needsReviewCount": "要確認 {count}",
+      "status": {
+        "supported": "根拠あり",
+        "source_claim": "出典明示",
+        "needs_review": "要確認"
+      }
     }
   },
   "auth": {
@@ -1525,6 +1573,198 @@
       "analyzing": "分析中",
       "completed": "完了",
       "failed": "失敗"
+    }
+  },
+  "productFinder": {
+    "title": "商品ファインダー",
+    "subtitle": "蓄積済みデータのみで評価します。外部検索は行いません。",
+    "storedOnlyNotice": "この画面は社内に蓄積された証拠のみを読み取ります。新たな外部検索は実行しないため、追加費用は発生しません。",
+    "form": {
+      "category": "カテゴリ",
+      "categoryPlaceholder": "例: 家電",
+      "targetCustomer": "想定顧客",
+      "targetCustomerPlaceholder": "例: 50代女性",
+      "priceMin": "価格下限（円）",
+      "priceMax": "価格上限（円）",
+      "targetMargin": "目標粗利率（%）",
+      "desiredFeatures": "重視する特徴",
+      "desiredFeaturesPlaceholder": "カンマ区切りで入力",
+      "excludedTerms": "除外キーワード",
+      "excludedTermsPlaceholder": "カンマ区切りで入力",
+      "limit": "表示件数",
+      "submit": "蓄積データで探す",
+      "submitting": "評価中…"
+    },
+    "result": {
+      "heading": "評価結果",
+      "candidates": "評価対象 {count} 件",
+      "empty": "条件に一致する蓄積データがありません。条件を広げるか、データの蓄積をお待ちください。",
+      "rank": "第 {rank} 位",
+      "opportunity": "総合指標",
+      "profit": "想定貢献利益",
+      "profitUnknown": "判断資料不足",
+      "confidence": "確度",
+      "coverage": "証拠カバー率 {percent}%",
+      "reasons": "評価理由",
+      "risks": "留意点",
+      "missing": "不足しているデータ",
+      "evidence": "根拠"
+    },
+    "axis": {
+      "market_demand": "市場需要",
+      "company_fit": "自社適合",
+      "profitability": "収益性",
+      "competition_headroom": "競合余地",
+      "broadcast_fit": "放送適合",
+      "unknown": "データなし"
+    },
+    "class": {
+      "verified": "確認済み",
+      "source_claim": "外部主張",
+      "proxy": "代理指標",
+      "inferred": "推論",
+      "internal_input": "社内入力"
+    },
+    "confidenceLevel": {
+      "high": "高",
+      "medium": "中",
+      "low": "低"
+    },
+    "actions": {
+      "interested": "関心あり",
+      "excluded": "除外",
+      "excludeReason": "除外の理由を入力してください",
+      "screenplay": "台本を作成",
+      "saved": "保存しました",
+      "failed": "保存できませんでした",
+      "screenplayPending": "作成中…",
+      "screenplayFailed": "台本を作成できませんでした"
+    },
+    "errors": {
+      "failed": "評価に失敗しました。時間をおいて再度お試しください。",
+      "supplementRequired": "外部調査は別の操作として明示的に実行する必要があります。"
+    },
+    "cta": {
+      "fromReadiness": "蓄積データから商品を探す"
+    },
+    "supplement": {
+      "open": "追加調査",
+      "title": "外部調査を実行する",
+      "subject": "対象: {name}",
+      "missingHeading": "現在不足しているデータ",
+      "gapsHeading": "調査する項目（選択したものだけ実行します）",
+      "classRules": "調査結果は根拠の種類ごとに保存します。公式ページから読み取った内容のみ「確認済み」、メーカーの販売実績主張は公式ページ上でも「メーカー主張」、レビュー件数・順位は「代理指標」です。競合の実売上は取得しません。",
+      "confirmSentence": "{count}項目について外部検索（Brave / 楽天）を実行します。実行後、蓄積データを再読み込みして再ランキングします。",
+      "review": "内容を確認",
+      "confirmRun": "外部調査を実行",
+      "running": "調査中…",
+      "cancel": "閉じる",
+      "failed": "追加調査に失敗しました。元の結果はそのまま利用できます。",
+      "applied": "追加調査の結果 {count}件を反映しました（{status}）",
+      "backToOriginal": "元の結果に戻る",
+      "status": {
+        "completed": "完了",
+        "partial": "一部の項目は取得できませんでした"
+      },
+      "gap": {
+        "official_product_facts": "公式の商品情報・仕様",
+        "current_price": "現在の販売価格",
+        "seller_sales_claim": "メーカーの販売実績主張",
+        "review_signal": "レビュー件数",
+        "ranking_signal": "ランキング順位"
+      },
+      "gapClass": {
+        "official_product_facts": "公式ページを取得できた場合のみ「確認済み」",
+        "current_price": "モール掲載価格として「確認済み」",
+        "seller_sales_claim": "常に「メーカー主張」として保存",
+        "review_signal": "需要の「代理指標」",
+        "ranking_signal": "需要の「代理指標」"
+      }
+    }
+  },
+  "imports": {
+    "title": "データ管理（Excel取り込み）",
+    "subtitle": "自社の商品・実績データを取り込み、根拠として蓄積します。取り込んだ内容はいつでも取り消せます。",
+    "applied": "{rows}行を適用しました（失敗 {failed}行 / 根拠 {evidence}件）",
+    "cta": {
+      "fromReadiness": "自社データを取り込む"
+    },
+    "upload": {
+      "title": "1. ファイルをアップロード",
+      "description": "Excel (.xls / .xlsx) を1ファイル選択してください。15MBまで。",
+      "optionalColumns": "商品情報だけでも取り込めます。数量・売上・原価などの実績列は任意です。",
+      "uploading": "アップロード中…",
+      "failed": "アップロードに失敗しました"
+    },
+    "mapping": {
+      "title": "2. 列の対応を確認",
+      "sheet": "シート「{sheet}」 / {rows}行",
+      "duplicateWarning": "同じ内容のファイルが過去に{count}件取り込まれています。修正版の取り込みであれば問題ありません。",
+      "targetField": "取り込み項目",
+      "sourceHeader": "ファイルの列",
+      "unmapped": "（対応なし）",
+      "optional": "任意",
+      "confirm": "この対応で検証する",
+      "validating": "検証中…",
+      "productNameRequired": "商品名の列は必須です",
+      "failed": "検証に失敗しました",
+      "field": {
+        "product_code": "商品コード",
+        "product_name": "商品名",
+        "brand": "ブランド",
+        "model_name": "型番",
+        "category": "カテゴリ",
+        "description": "説明",
+        "list_price_jpy": "定価",
+        "sale_price_jpy": "販売価格",
+        "quantity": "数量",
+        "revenue_jpy": "売上",
+        "cost_jpy": "原価",
+        "fees_jpy": "手数料",
+        "shipping_jpy": "送料",
+        "gross_profit_jpy": "粗利",
+        "period_start": "期間開始",
+        "period_end": "期間終了"
+      }
+    },
+    "validation": {
+      "title": "3. 検証結果を確認",
+      "valid": "取り込み可能 {count}行",
+      "invalid": "エラー {count}行",
+      "total": "全 {count}行",
+      "rowNumber": "行",
+      "productName": "商品名",
+      "errors": "エラー内容",
+      "apply": "4. 適用する",
+      "confirmSentence": "{count}行を根拠データとして登録します。登録後も取り消しできます。",
+      "confirmApply": "登録を実行",
+      "applying": "適用中…",
+      "cancel": "やめる",
+      "nothingToApply": "取り込み可能な行がありません。エラーを修正して再アップロードしてください。",
+      "failed": "適用に失敗しました"
+    },
+    "history": {
+      "title": "取り込み履歴",
+      "empty": "取り込み履歴はまだありません。",
+      "file": "ファイル",
+      "status": {
+        "uploaded": "アップロード済み",
+        "mapped": "マッピング済み",
+        "validated": "検証済み",
+        "applied": "適用済み",
+        "partial": "一部適用",
+        "rolled_back": "取り消し済み",
+        "failed": "失敗"
+      },
+      "rows": "行数",
+      "hash": "ハッシュ",
+      "updated": "更新日",
+      "rollback": "取り消す",
+      "confirmRollback": "取り消しを実行",
+      "cancel": "やめる",
+      "reasonPlaceholder": "取り消し理由（3文字以上）",
+      "rollbackNote": "取り消しても履歴と過去の判断根拠は残ります。以後の推薦・台本では使用されなくなります。",
+      "failed": "取り消しに失敗しました"
     }
   }
 }

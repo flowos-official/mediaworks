@@ -37,6 +37,8 @@ interface Props {
 	onToggleFocus?: () => void;
 	model?: string | null;
 	patternSampleSize?: number | null;
+	patternStatus?: import("@/lib/screenplay/context/pattern-result").PatternLoadStatus | null;
+	claimsNeedingReview?: number | null;
 }
 
 function renderedTextLength(md: string): number {
@@ -88,6 +90,8 @@ export function ScreenplayHeaderBar({
 	onToggleFocus,
 	model = null,
 	patternSampleSize = null,
+	patternStatus = null,
+	claimsNeedingReview = null,
 }: Props) {
 	const t = useTranslations("screenplay.workspace");
 	const [copied, setCopied] = useState(false);
@@ -157,7 +161,12 @@ export function ScreenplayHeaderBar({
 						<span>{t("chars", { n: chars.toLocaleString() })}</span>
 						{readiness.total > 0 && <span>{readiness.high} blockers · {readiness.total} findings</span>}
 					</div>
-					<VersionProvenance model={model} patternSampleSize={patternSampleSize} />
+					<VersionProvenance
+						model={model}
+						patternSampleSize={patternSampleSize}
+						patternStatus={patternStatus}
+						claimsNeedingReview={claimsNeedingReview}
+					/>
 				</div>
 
 				<div className="grid w-full grid-cols-3 gap-1 sm:flex sm:w-auto sm:items-center">

@@ -35,6 +35,12 @@ export interface ScriptCheckResult {
 	quality: Finding[];
 	grounding?: GroundingMeta;
 	remediation?: RemediationMeta; // present on auto-checks that ran the loop (B)
+	/** Runs of 30+ characters our script shares with a reference broadcast.
+	 *  Present only on checks that ran with reference broadcasts; an empty array
+	 *  means the guard ran and found nothing, absent means it did not run. The
+	 *  stored phrase is OUR text, which the operator is already reading — the
+	 *  competitor's transcript stays in the admin-only table it came from. */
+	competitorCopy?: import("@/lib/screenplay/grounding/copy-guard").CopyOverlap[];
 }
 
 export type ReferenceLaw = ComplianceLaw | "other";

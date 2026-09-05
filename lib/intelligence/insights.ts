@@ -74,7 +74,15 @@ const SELLER_CLAIM_PREDICATES = new Set([
 	"selling_points",
 ]);
 
-const INTERNAL_PROFIT_PREDICATES = new Set([
+/**
+ * Predicates that carry OUR OWN margin, not a competitor's claim about theirs.
+ *
+ * Exported so a consumer derives the set rather than restating it. This project
+ * has been bitten by hand-written copies drifting from their source (see the
+ * tv-channels note in CLAUDE.md); here the cost of drift is a profitability
+ * axis that silently stops seeing internal data and reports "unknown" forever.
+ */
+export const INTERNAL_PROFIT_PREDICATES = new Set([
 	"gross_profit_jpy",
 	"profit_per_unit_jpy",
 	"gross_margin_pct",

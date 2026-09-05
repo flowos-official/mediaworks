@@ -2,7 +2,8 @@ import { NextRequest } from "next/server";
 import { requireUser } from "@/lib/auth/require-user";
 import { getServiceClient } from "@/lib/supabase";
 import { loadProductBriefForScreenplay } from "@/lib/screenplay/product-brief";
-import type { ProductBrief } from "@/lib/screenplay/types";
+import { rowToContext } from "@/lib/screenplay/context/build";
+import type { ProductBrief, ScreenplayClaimLinkRow } from "@/lib/screenplay/types";
 
 export const maxDuration = 30;
 
@@ -32,7 +33,7 @@ export async function GET(
 	const { data: versions, error: vErr } = await supabase
 		.from("screenplay_versions")
 		.select(
-			"id, version_number, markdown, feedback, base_version_id, model, thinking_level, created_at",
+			"id, version_number, markdown, feedback, base_version_id, model, thinking_level, created_at, pattern_snapshot, generation_context_id",
 		)
 		.eq("screenplay_id", id)
 		.order("version_number", { ascending: true });
@@ -41,7 +42,49 @@ export async function GET(
 		return Response.json({ error: "failed to fetch versions" }, { status: 500 });
 	}
 
-	return Response.json({ screenplay, versions: versions ?? [] });
+	const versionRows = versions ?? [];
+	const versionIds = versionRows.map((v) => String(v.id));
+
+	// Contexts are scoped by screenplay_id and claim links by version_id, not
+	// by the ids the caller happens to hold: a version's provenance must be
+	// unreachable from another screenplay's request even if an id leaks.
+	const [contexts, claimLinks] = await Promise.all([
+		supabase.from("screenplay_generation_contexts").select("*").eq("screenplay_id", id),
+		versionIds.length > 0
+			? supabase
+					.from("screenplay_claim_links")
+					.select("id, version_id, line_start, line_end, claim_text, status, evidence_item_id, reason")
+					.in("version_id", versionIds)
+					.order("line_start", { ascending: true })
+			: Promise.resolve({ data: [], error: null }),
+	]);
+	// Provenance is supplementary: a version still renders without it, and a
+	// failure here must not take the script down with it.
+	if (contexts.error) console.warn("[screenplays] context fetch failed:", contexts.error.message);
+	if (claimLinks.error) console.warn("[screenplays] claim link fetch failed:", claimLinks.error.message);
+
+	const contextById = new Map(
+		(contexts.data ?? []).map((row) => [String(row.id), rowToContext(row as Record<string, unknown>)]),
+	);
+	const linksByVersion = new Map<string, ScreenplayClaimLinkRow[]>();
+	for (const row of (claimLinks.data ?? []) as ScreenplayClaimLinkRow[]) {
+		const held = linksByVersion.get(row.version_id);
+		if (held) held.push(row);
+		else linksByVersion.set(row.version_id, [row]);
+	}
+
+	return Response.json({
+		screenplay,
+		versions: versionRows.map((version) => ({
+			...version,
+			// Null, not an empty object: a legacy version genuinely has no
+			// context, and the UI has to be able to say so.
+			generation_context: version.generation_context_id
+				? contextById.get(String(version.generation_context_id)) ?? null
+				: null,
+			claim_links: linksByVersion.get(String(version.id)) ?? [],
+		})),
+	});
 }
 
 export async function DELETE(

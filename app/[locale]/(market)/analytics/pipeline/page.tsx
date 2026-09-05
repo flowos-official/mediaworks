@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getTranslations, getLocale } from "next-intl/server";
 import { requireUser } from "@/lib/auth/require-user";
+import { localePath } from "@/lib/i18n/locale-path";
 import { loadIntelligenceReadiness } from "@/lib/intelligence/readiness";
 import type { BoardData, BoardCard } from "@/lib/selections/types";
 import type { IntelligenceReadiness } from "@/lib/intelligence/readiness";
@@ -53,8 +54,10 @@ async function loadReadiness(
 }
 
 export default async function PipelinePage() {
-  const [t, locale, auth] = await Promise.all([
+  const [t, finderCopy, importsCopy, locale, auth] = await Promise.all([
     getTranslations("pipeline"),
+    getTranslations("productFinder"),
+    getTranslations("imports"),
     getLocale(),
     requireUser(["viewer", "member", "admin"]),
   ]);
@@ -87,6 +90,21 @@ export default async function PipelinePage() {
           readiness={readiness}
           copy={t.raw("readiness") as ReadinessDashboardCopy}
           locale={locale}
+          productFinder={{
+            href: localePath(locale, "/analytics/product-finder"),
+            label: finderCopy("cta.fromReadiness"),
+          }}
+          // canWrite gates the LINK, not the coverage numbers above it: a
+          // viewer may see how much internal data exists, but the page behind
+          // this shows file names and the contents of a cost book.
+          dataManagement={
+            canWrite
+              ? {
+                  href: localePath(locale, "/analytics/data-management"),
+                  label: importsCopy("cta.fromReadiness"),
+                }
+              : undefined
+          }
         />
       ) : null}
 
