@@ -45,3 +45,43 @@ export interface ProductFactPack {
 	forbiddenClaims: string[];
 	builtAt: string;
 }
+
+// ── Rundown and demo plan (Task 4) ─────────────────────────────────────────
+// The running order is decided BEFORE prose and persisted, so the version can
+// be read back as "this is the broadcast that was planned" rather than
+// reverse-engineered from the script's headings.
+
+export interface ScreenplayOutlineSection {
+	id: string;
+	title: string;
+	purpose: string;
+	/** Share of the runtime. Normalised to sum to exactly 1. */
+	runtimeShare: number;
+	keyMessages: string[];
+	/** Fact-pack keys this section may make factual statements from. Anything
+	 *  outside this list is, by construction, not grounded. */
+	factKeys: string[];
+	/** Which aggregate competitor observations shaped it — empty when the plan
+	 *  is generic. */
+	patternBasis: string[];
+}
+
+export interface DemoPlanItem {
+	id: string;
+	sectionId: string;
+	title: string;
+	hostAction: string;
+	cameraCue: string;
+	requiredFactKeys: string[];
+	safetyNote: string | null;
+}
+
+export interface ScreenplayStructurePlan {
+	/** Whether competitor structure informed the plan. Derived from the pattern
+	 *  status, never from the model — a model asked to self-report its basis
+	 *  will say whatever the prompt implied. */
+	basis: "competitor_pattern" | "generic";
+	runtimeMinutes: number;
+	sections: ScreenplayOutlineSection[];
+	demos: DemoPlanItem[];
+}

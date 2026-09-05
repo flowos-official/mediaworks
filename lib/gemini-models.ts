@@ -91,6 +91,7 @@ export type GeminiStage =
 	| "discovery_classification"
 	| "research_synthesis"
 	| "screenplay_generation"
+	| "screenplay_structure"
 	| "screenplay_extraction"
 	| "strategy"
 	| "competitor_fit"
@@ -102,6 +103,7 @@ const STAGE_MODELS: Record<GeminiStage, GeminiModelId> = {
 	discovery_classification: GEMINI_FLASH,
 	research_synthesis: GEMINI_FLASH,
 	screenplay_generation: GEMINI_FLASH,
+	screenplay_structure: GEMINI_FLASH,
 	screenplay_extraction: GEMINI_FLASH,
 	strategy: GEMINI_FLASH,
 	competitor_fit: GEMINI_FLASH,

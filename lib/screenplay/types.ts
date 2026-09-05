@@ -39,6 +39,12 @@ export interface GenerateInput {
    *  competitor product facts. Empty/undefined → not injected. Built by
    *  lib/broadcast-intel/format-prompt.ts. */
   patternBlock?: string;
+  /** The confirmed running order and demo plan, decided before prose and
+   *  persisted with the run. Built by
+   *  lib/screenplay/context/structure-plan.ts::formatStructurePlanBlock.
+   *  Empty/undefined → not injected, and the writer decides structure as
+   *  before. */
+  structurePlanBlock?: string;
 }
 
 export interface GenerationResult {

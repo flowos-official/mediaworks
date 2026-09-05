@@ -204,7 +204,8 @@
     "verify:pipeline": "tsx --env-file=.env.local scripts/verify-pipeline.ts",
     "test:screenplay-context-schema": "tsx scripts/test-screenplay-context-schema.ts",
     "test:screenplay-fact-pack": "tsx scripts/test-screenplay-fact-pack.ts",
-    "test:screenplay-reference-broadcasts": "tsx scripts/test-screenplay-reference-broadcasts.ts"
+    "test:screenplay-reference-broadcasts": "tsx scripts/test-screenplay-reference-broadcasts.ts",
+    "test:screenplay-structure-plan": "tsx scripts/test-screenplay-structure-plan.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1016.0",
