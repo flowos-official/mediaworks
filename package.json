@@ -203,7 +203,8 @@
     "restore:archives": "tsx --env-file=.env.local scripts/restore-cold-archives.ts",
     "verify:pipeline": "tsx --env-file=.env.local scripts/verify-pipeline.ts",
     "test:screenplay-context-schema": "tsx scripts/test-screenplay-context-schema.ts",
-    "test:screenplay-fact-pack": "tsx scripts/test-screenplay-fact-pack.ts"
+    "test:screenplay-fact-pack": "tsx scripts/test-screenplay-fact-pack.ts",
+    "test:screenplay-reference-broadcasts": "tsx scripts/test-screenplay-reference-broadcasts.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1016.0",
