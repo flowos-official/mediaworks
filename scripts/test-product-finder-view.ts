@@ -41,14 +41,31 @@ assert.ok(
 );
 console.log("✓ the page is role-gated and redirects rather than returning a response");
 
-// --- the client posts to exactly one endpoint ------------------------------
+// --- the client only ever talks to this surface's own endpoints ------------
+// It used to call exactly one. Reading a supplemented run back added a second,
+// which is a stored-only GET of our own row — so the rule is the shape of the
+// path, not the count. What it still forbids is the thing that mattered: a
+// fetch added for convenience that makes this screen cost money per render.
 {
-	const endpoints = [...client.matchAll(/fetch\(\s*["'`]([^"'`]+)/g)].map((m) => m[1]);
-	assert.deepEqual(endpoints, ["/api/product-finder"], "the client calls one endpoint only");
+	const endpoints = [...client.matchAll(/fetch\(\s*[`"']([^`"'$]+)/g)].map((m) => m[1]);
+	assert.ok(endpoints.length > 0, "the client makes at least one request");
+	for (const endpoint of endpoints) {
+		assert.ok(
+			endpoint.startsWith("/api/product-finder"),
+			`the client must only call its own surface, got ${endpoint}`,
+		);
+	}
+	// The one endpoint that reaches a provider is triggered from the dialog,
+	// behind a second confirmation — never from the client's own render path.
+	assert.equal(
+		endpoints.some((e) => e.includes("supplement")),
+		false,
+		"external research must not be reachable from the result list itself",
+	);
 	assert.ok(client.includes("errors.supplementRequired"), "a 409 gets its own message");
 	assert.ok(client.includes("res.status === 409"), "a refusal is distinguished from a failure");
 }
-console.log("✓ the client posts only to /api/product-finder and surfaces a 409 distinctly");
+console.log("✓ the client only calls its own endpoints and never triggers research itself");
 
 // --- the form declares stored_only -----------------------------------------
 assert.ok(form.includes('mode: "stored_only"'), "the form sends the stored-only mode explicitly");

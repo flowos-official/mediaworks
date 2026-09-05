@@ -213,7 +213,8 @@
     "e2e:grounded-screenplay": "tsx --env-file=.env.local scripts/e2e-grounded-screenplay.ts",
     "test:controlled-input-schema": "tsx scripts/test-controlled-input-schema.ts",
     "test:supplemental-provider-contract": "tsx scripts/test-supplemental-provider-contract.ts",
-    "test:supplemental-research-run": "tsx scripts/test-supplemental-research-run.ts"
+    "test:supplemental-research-run": "tsx scripts/test-supplemental-research-run.ts",
+    "test:supplemental-research-view": "tsx scripts/test-supplemental-research-view.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1016.0",

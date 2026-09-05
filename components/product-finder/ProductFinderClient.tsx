@@ -12,16 +12,24 @@ import { useTranslations } from "next-intl";
 import type { ProductFinderResult } from "@/lib/product-finder/types";
 import { ProductFinderForm, type ProductFinderFormValues } from "./ProductFinderForm";
 import { ProductFinderResultCard } from "./ProductFinderResultCard";
+import type { SupplementSuccess } from "./SupplementResearchDialog";
 
 export function ProductFinderClient() {
 	const t = useTranslations("productFinder");
 	const [pending, setPending] = useState(false);
 	const [result, setResult] = useState<ProductFinderResult | null>(null);
+	// The run the supplemented one replaced, kept so the operator can go back
+	// and see what the research actually changed. Overwriting the original in
+	// place would leave nothing to compare against.
+	const [priorResult, setPriorResult] = useState<ProductFinderResult | null>(null);
+	const [supplementNote, setSupplementNote] = useState<SupplementSuccess | null>(null);
 	const [error, setError] = useState<string | null>(null);
 
 	async function run(values: ProductFinderFormValues) {
 		setPending(true);
 		setError(null);
+		setPriorResult(null);
+		setSupplementNote(null);
 		try {
 			const res = await fetch("/api/product-finder", {
 				method: "POST",
@@ -42,6 +50,29 @@ export function ProductFinderClient() {
 		} finally {
 			setPending(false);
 		}
+	}
+
+	async function showSupplemented(supplement: SupplementSuccess) {
+		setError(null);
+		try {
+			const res = await fetch(`/api/product-finder/runs/${supplement.recommendationRunId}`);
+			if (!res.ok) {
+				setError(t("errors.failed"));
+				return;
+			}
+			setPriorResult(result);
+			setResult((await res.json()) as ProductFinderResult);
+			setSupplementNote(supplement);
+		} catch {
+			setError(t("errors.failed"));
+		}
+	}
+
+	function backToOriginal() {
+		if (!priorResult) return;
+		setResult(priorResult);
+		setPriorResult(null);
+		setSupplementNote(null);
 	}
 
 	return (
@@ -66,6 +97,22 @@ export function ProductFinderClient() {
 							{t("result.candidates", { count: result.candidateCount })}
 						</p>
 					</header>
+					{supplementNote ? (
+						<div className="flex flex-wrap items-center gap-2 rounded border border-amber-500/50 bg-amber-50/50 p-2 text-xs dark:bg-amber-950/20">
+							<span>
+								{t("supplement.applied", {
+									count: supplementNote.evidenceCount,
+									status: t(`supplement.status.${supplementNote.status}`),
+								})}
+							</span>
+							{priorResult ? (
+								<button type="button" onClick={backToOriginal} className="rounded border px-2 py-0.5">
+									{t("supplement.backToOriginal")}
+								</button>
+							) : null}
+						</div>
+					) : null}
+
 					{result.items.length === 0 ? (
 						<p className="rounded border border-dashed p-4 text-sm text-muted-foreground">
 							{t("result.empty")}
@@ -73,7 +120,12 @@ export function ProductFinderClient() {
 					) : (
 						<div className="space-y-3">
 							{result.items.map((item) => (
-								<ProductFinderResultCard key={item.id} item={item} runId={result.runId} />
+								<ProductFinderResultCard
+									key={item.id}
+									item={item}
+									runId={result.runId}
+									onSupplemented={(supplement) => void showSupplemented(supplement)}
+								/>
 							))}
 						</div>
 					)}

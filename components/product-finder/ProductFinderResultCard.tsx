@@ -18,6 +18,7 @@ import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import type { ProductFinderItem } from "@/lib/product-finder/types";
 import { EvidenceList } from "./EvidenceList";
+import { SupplementResearchDialog, type SupplementSuccess } from "./SupplementResearchDialog";
 
 export type DecisionValue = "interested" | "excluded";
 
@@ -25,10 +26,15 @@ export function ProductFinderResultCard({
 	item,
 	runId,
 	onDecision,
+	onSupplemented,
 }: {
 	item: ProductFinderItem;
 	runId: string;
 	onDecision?: (itemId: string, decision: DecisionValue) => void;
+	/** The card stays; the CLIENT decides what to do with the new run. Replacing
+	 *  this card in place would destroy the result the operator was comparing
+	 *  against, which is the only way to see what the research changed. */
+	onSupplemented?: (result: SupplementSuccess) => void;
 }) {
 	const t = useTranslations("productFinder");
 	const router = useRouter();
@@ -36,6 +42,7 @@ export function ProductFinderResultCard({
 	const [decision, setDecision] = useState<DecisionValue | null>(null);
 	const [pending, setPending] = useState(false);
 	const [creating, setCreating] = useState(false);
+	const [supplementOpen, setSupplementOpen] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
 	async function createScreenplay() {
@@ -195,8 +202,31 @@ export function ProductFinderResultCard({
 				>
 					{creating ? t("actions.screenplayPending") : t("actions.screenplay")}
 				</button>
+				{/* Opening the dialog makes no request. It describes what would
+				    happen; a second confirmation inside it is what runs it. */}
+				<button
+					type="button"
+					onClick={() => setSupplementOpen((open) => !open)}
+					className="rounded border border-amber-500/60 px-2.5 py-1 text-sm"
+				>
+					{t("supplement.open")}
+				</button>
 				{error ? <span className="text-xs text-red-600">{error}</span> : null}
 			</footer>
+
+			{supplementOpen ? (
+				<SupplementResearchDialog
+					runId={runId}
+					canonicalProductId={item.canonicalProductId}
+					productName={item.name}
+					missingData={item.missingData}
+					onClose={() => setSupplementOpen(false)}
+					onSuccess={(result) => {
+						setSupplementOpen(false);
+						onSupplemented?.(result);
+					}}
+				/>
+			) : null}
 		</article>
 	);
 }

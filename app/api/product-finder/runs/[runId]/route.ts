@@ -17,7 +17,7 @@ export const maxDuration = 15;
 
 interface RunRow {
 	id: string;
-	mode: "stored_only";
+	mode: ProductFinderResult["mode"];
 	query_json: ProductFinderResult["query"];
 	status: string;
 	candidate_count: number;

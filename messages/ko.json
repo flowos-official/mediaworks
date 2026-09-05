@@ -1645,6 +1645,40 @@
     },
     "cta": {
       "fromReadiness": "축적 데이터로 상품 찾기"
+    },
+    "supplement": {
+      "open": "추가 조사",
+      "title": "외부 조사 실행",
+      "subject": "대상: {name}",
+      "missingHeading": "현재 부족한 데이터",
+      "gapsHeading": "조사할 항목(선택한 것만 실행됩니다)",
+      "classRules": "조사 결과는 근거 종류별로 저장됩니다. 공식 페이지에서 직접 읽은 내용만 '확인됨', 제조사의 판매 실적 주장은 공식 페이지에 있어도 '제조사 주장', 리뷰 수와 순위는 '대리 지표'입니다. 경쟁사 실매출은 수집하지 않습니다.",
+      "confirmSentence": "{count}개 항목에 대해 외부 검색(Brave / 라쿠텐)을 실행합니다. 실행 후 축적 데이터를 다시 읽어 재랭킹합니다.",
+      "review": "내용 확인",
+      "confirmRun": "외부 조사 실행",
+      "running": "조사 중…",
+      "cancel": "닫기",
+      "failed": "추가 조사에 실패했습니다. 기존 결과는 그대로 사용할 수 있습니다.",
+      "applied": "추가 조사 결과 {count}건을 반영했습니다({status})",
+      "backToOriginal": "원래 결과로 돌아가기",
+      "status": {
+        "completed": "완료",
+        "partial": "일부 항목은 가져오지 못했습니다"
+      },
+      "gap": {
+        "official_product_facts": "공식 상품 정보·사양",
+        "current_price": "현재 판매 가격",
+        "seller_sales_claim": "제조사의 판매 실적 주장",
+        "review_signal": "리뷰 수",
+        "ranking_signal": "랭킹 순위"
+      },
+      "gapClass": {
+        "official_product_facts": "공식 페이지를 가져온 경우에만 '확인됨'",
+        "current_price": "몰 게재 가격으로 '확인됨'",
+        "seller_sales_claim": "항상 '제조사 주장'으로 저장",
+        "review_signal": "수요의 '대리 지표'",
+        "ranking_signal": "수요의 '대리 지표'"
+      }
     }
   }
 }

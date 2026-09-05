@@ -1645,6 +1645,40 @@
     },
     "cta": {
       "fromReadiness": "蓄積データから商品を探す"
+    },
+    "supplement": {
+      "open": "追加調査",
+      "title": "外部調査を実行する",
+      "subject": "対象: {name}",
+      "missingHeading": "現在不足しているデータ",
+      "gapsHeading": "調査する項目（選択したものだけ実行します）",
+      "classRules": "調査結果は根拠の種類ごとに保存します。公式ページから読み取った内容のみ「確認済み」、メーカーの販売実績主張は公式ページ上でも「メーカー主張」、レビュー件数・順位は「代理指標」です。競合の実売上は取得しません。",
+      "confirmSentence": "{count}項目について外部検索（Brave / 楽天）を実行します。実行後、蓄積データを再読み込みして再ランキングします。",
+      "review": "内容を確認",
+      "confirmRun": "外部調査を実行",
+      "running": "調査中…",
+      "cancel": "閉じる",
+      "failed": "追加調査に失敗しました。元の結果はそのまま利用できます。",
+      "applied": "追加調査の結果 {count}件を反映しました（{status}）",
+      "backToOriginal": "元の結果に戻る",
+      "status": {
+        "completed": "完了",
+        "partial": "一部の項目は取得できませんでした"
+      },
+      "gap": {
+        "official_product_facts": "公式の商品情報・仕様",
+        "current_price": "現在の販売価格",
+        "seller_sales_claim": "メーカーの販売実績主張",
+        "review_signal": "レビュー件数",
+        "ranking_signal": "ランキング順位"
+      },
+      "gapClass": {
+        "official_product_facts": "公式ページを取得できた場合のみ「確認済み」",
+        "current_price": "モール掲載価格として「確認済み」",
+        "seller_sales_claim": "常に「メーカー主張」として保存",
+        "review_signal": "需要の「代理指標」",
+        "ranking_signal": "需要の「代理指標」"
+      }
     }
   }
 }
