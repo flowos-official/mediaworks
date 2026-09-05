@@ -243,17 +243,26 @@ export async function buildScreenplayGenerationContext(
 			? await repo.loadBaseContext(input.baseVersionId)
 			: null;
 
+	// A refine adopts the canonical product its base recorded. The screenplay
+	// row does not carry that link — the context does — and the refine caller
+	// has no way to know it, so demanding it from the caller would make every
+	// refine of a product-finder screenplay look like a product change.
+	const canonicalProductId =
+		base && input.canonicalProductId === null
+			? base.productFactPack.canonicalProductId
+			: input.canonicalProductId;
+
 	// A refine inherits its base's evidence, but only while it is still about
 	// the same product. Swap the linked product or edit the brief and the
 	// inherited snapshot would describe something else.
 	const inherits =
 		base !== null &&
-		base.productFactPack.canonicalProductId === input.canonicalProductId &&
+		base.productFactPack.canonicalProductId === canonicalProductId &&
 		briefMatchesPack(input.brief, base.productFactPack);
 
 	const factPack = inherits ? base.productFactPack : await repo.loadFactPack({
 		screenplayId: input.screenplayId,
-		canonicalProductId: input.canonicalProductId,
+		canonicalProductId,
 		brief: input.brief,
 		observedAt,
 	});
@@ -290,7 +299,7 @@ export async function buildScreenplayGenerationContext(
 				mode: "stored_only",
 				query: {
 					screenplayId: input.screenplayId,
-					canonicalProductId: input.canonicalProductId,
+					canonicalProductId,
 					category: input.brief.category ?? null,
 					mode: input.mode,
 				},

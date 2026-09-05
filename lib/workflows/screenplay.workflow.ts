@@ -24,69 +24,52 @@ import type {
   RemediationStep,
 } from "@/lib/screenplay/compliance/types";
 import { geminiUserFacingMessage } from "@/lib/gemini/errors";
-import {
-  loadCategoryPattern,
-  ALL_WHITELIST_CATEGORIES,
-  MIN_SAMPLES,
-  type CategoryPattern,
-} from "@/lib/broadcast-intel/category-pattern";
+import type { CategoryPattern } from "@/lib/broadcast-intel/category-pattern";
 import { formatCategoryPatternBlock } from "@/lib/broadcast-intel/format-prompt";
+import {
+  buildScreenplayContext,
+  type ScreenplayGenerationContext,
+} from "@/lib/screenplay/context/build";
+import { formatStructurePlanBlock } from "@/lib/screenplay/context/structure-plan";
 
-const PATTERN_TIMEOUT_MS = 5_000;
-
-/** Aggregate same-category competitor structure. Non-fatal AND time-boxed: a
- *  screenplay must still generate when the corpus is thin, disabled, slow or
- *  unreachable. */
-async function loadPatternStep(
-  category: string | null,
-): Promise<{ pattern: CategoryPattern | null; block: string }> {
+/**
+ * Everything the draft will rest on, assembled and persisted BEFORE a word is
+ * written: the fact pack, the reference broadcasts, the pattern state with its
+ * reason, the running order, and the knowledge snapshot naming every piece of
+ * evidence behind them.
+ *
+ * This replaces loadPatternStep, which time-boxed the pattern lookup and then
+ * threw away everything except the pattern itself — including which of five
+ * different reasons explained an absent one. The time-boxing and the
+ * never-fail behaviour now live in loadPatternResult, so they still hold, and
+ * the reason survives into the row.
+ */
+async function buildContextStep(
+  input: ScreenplayWorkflowInput,
+  runId: string,
+): Promise<ScreenplayGenerationContext> {
   "use step";
-  const empty = { pattern: null, block: "" };
-  if (process.env.BROADCAST_INTEL_ENABLED !== "true") return empty;
+  await writeProgressInline({ type: "step", name: "context", status: "started" });
   try {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    let timedOut = false;
-    let pattern: CategoryPattern | null;
-    try {
-      pattern = await Promise.race([
-        loadCategoryPattern(category),
-        new Promise<null>((resolve) => {
-          timer = setTimeout(() => {
-            timedOut = true;
-            resolve(null);
-          }, PATTERN_TIMEOUT_MS);
-        }),
-      ]);
-    } finally {
-      if (timer) clearTimeout(timer);
-    }
-    if (pattern) return { pattern, block: formatCategoryPatternBlock(pattern) };
-
-    // loadCategoryPattern collapses "off-whitelist", "under-sampled" and
-    // "no category" to the same null — without a log line here, an operator
-    // who enables the feature and enters a free-text category (e.g. the
-    // Gemini-extracted "美容家電") observes nothing happening and has no way
-    // to find out why. Each case gets its own line so it's diagnosable.
-    if (category && !ALL_WHITELIST_CATEGORIES.has(category)) {
-      console.info(
-        `[screenplay] competitor pattern: category "${category}" is not on the broadcast whitelist — no pattern injected`,
-      );
-    } else if (category && timedOut) {
-      console.info(
-        `[screenplay] competitor pattern: lookup for category "${category}" exceeded ${PATTERN_TIMEOUT_MS}ms — no pattern injected`,
-      );
-    } else if (category) {
-      console.info(
-        `[screenplay] competitor pattern: category "${category}" has fewer than ${MIN_SAMPLES} analyzed broadcasts in the lookback window — no pattern injected`,
-      );
-    }
-    return empty;
+    const context = await buildScreenplayContext(getServiceClient(), {
+      screenplayId: input.screenplayId,
+      runId,
+      canonicalProductId: input.canonicalProductId ?? null,
+      brief: input.productBrief,
+      mode: input.mode === "refine" ? "refine" : "initial",
+      ...(input.baseVersionId ? { baseVersionId: input.baseVersionId } : {}),
+    });
+    await writeProgressInline({
+      type: "step",
+      name: "context",
+      status: "completed",
+      detail: `pattern:${context.patternResult.status} refs:${context.referenceBroadcasts.length}`,
+    });
+    return context;
   } catch (err) {
-    console.warn(
-      "[screenplay] competitor pattern lookup failed:",
-      err instanceof Error ? err.message : String(err),
-    );
-    return empty;
+    const msg = err instanceof Error ? err.message : String(err);
+    await writeProgressInline({ type: "step", name: "context", status: "failed", detail: msg });
+    throw err;
   }
 }
 
@@ -94,10 +77,20 @@ export interface ScreenplayWorkflowInput {
   screenplayId: string;
   mode: GenerationMode;
   productBrief: ProductBrief;
+  /** The canonical product the brief describes, when it came from the product
+   *  finder. Null for uploaded or manually entered products. */
+  canonicalProductId?: string | null;
   feedback?: string;
   baseVersionId?: string;
   /** Present only in mode "import": operator-reviewed, pre-normalized v1 markdown. */
   importedMarkdown?: string;
+  /** Identifies this generation for the knowledge snapshot and the generation
+   *  context, both of which are unique on it. Required, and minted by
+   *  startScreenplayGeneration: a workflow body is replayed, so it cannot mint
+   *  one itself without breaking determinism, and a value derived from the
+   *  screenplay would collide on the second refine. Distinct from the DevKit's
+   *  own run id, which is what the client streams from. */
+  runId: string;
 }
 
 const AUTO_REMEDIATE = process.env.SCREENPLAY_AUTO_REMEDIATE !== "false";
@@ -141,6 +134,7 @@ async function generateStep(
   previousMarkdown: string | undefined,
   complianceBlock: string,
   patternBlock: string,
+  structurePlanBlock: string,
 ): Promise<{ markdown: string; model: string; thinkingLevel: string }> {
   "use step";
   await writeProgressInline({ type: "step", name: "generate", status: "started" });
@@ -153,6 +147,7 @@ async function generateStep(
         previousMarkdown,
         complianceBlock,
         patternBlock,
+        structurePlanBlock,
       },
       (chars) => { void writeProgressInline({ type: "chunk", chars }); },
     );
@@ -173,6 +168,7 @@ async function persistStep(
   model: string,
   thinkingLevel: string,
   patternSnapshot: CategoryPattern | null,
+  generationContextId: string | null,
 ): Promise<{ versionId: string; versionNumber: number }> {
   "use step";
   const supabase = getServiceClient();
@@ -202,6 +198,7 @@ async function persistStep(
         model,
         thinking_level: thinkingLevel,
         ...(patternSnapshot ? { pattern_snapshot: patternSnapshot } : {}),
+        generation_context_id: generationContextId,
       })
       .select("id, version_number")
       .single();
@@ -364,6 +361,9 @@ export async function screenplayWorkflow(input: ScreenplayWorkflowInput) {
       // Faithful import: corpus-only check, NO auto-remediate (the draft is the contract).
       const check = await checkOnlyStep(markdown, input.productBrief, rules, references);
 
+      // Null generation context, honestly: an import generates no prose, so
+      // there is nothing it was written FROM. A row that claimed one would be
+      // asserting grounding the operator's own draft never had.
       const persisted = await persistStep(
         input.screenplayId,
         markdown,
@@ -371,6 +371,7 @@ export async function screenplayWorkflow(input: ScreenplayWorkflowInput) {
         undefined,
         "imported",
         "none",
+        null,
         null,
       );
       await persistCheckStep(persisted.versionId, check, [], rules.length, references.length, false);
@@ -397,11 +398,21 @@ export async function screenplayWorkflow(input: ScreenplayWorkflowInput) {
       references,
     );
 
-    const { pattern, block: patternBlock } = await loadPatternStep(
-      input.mode === "initial" ? (input.productBrief.category ?? null) : null,
-    );
+    // Built and persisted before the draft, so a generation that dies at the
+    // model still leaves a readable account of what it was about to write from.
+    const context = await buildContextStep(input, input.runId);
+    const patternBlock = context.patternResult.pattern
+      ? formatCategoryPatternBlock(context.patternResult.pattern)
+      : "";
+    const structurePlanBlock = formatStructurePlanBlock(context.structurePlan);
 
-    const gen = await generateStep(input, previousMarkdown, complianceBlock, patternBlock);
+    const gen = await generateStep(
+      input,
+      previousMarkdown,
+      complianceBlock,
+      patternBlock,
+      structurePlanBlock,
+    );
 
     const { markdown, check, trail } = await remediateLoopStep(
       gen.markdown,
@@ -418,7 +429,10 @@ export async function screenplayWorkflow(input: ScreenplayWorkflowInput) {
       input.baseVersionId,
       gen.model,
       gen.thinkingLevel,
-      input.mode === "initial" ? pattern : null,
+      // Copied from the context so the legacy column and the new table can
+      // never disagree about which aggregate shaped this version.
+      context.patternResult.pattern,
+      context.id,
     );
 
     await persistCheckStep(persisted.versionId, check, trail, rules.length, references.length, AUTO_REMEDIATE);

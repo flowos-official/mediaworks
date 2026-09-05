@@ -229,3 +229,88 @@ export async function loadProductBriefForScreenplay(
 		}),
 	};
 }
+
+// ── Canonical products (product finder → screenplay) ────────────────────────
+
+export type CanonicalBriefLoadResult =
+	| { ok: true; canonicalProductId: string; brief: ProductBrief }
+	| { ok: false; status: 400 | 404 | 500; error: string };
+
+/**
+ * Build a brief from a canonical product and its stored evidence. Reads the
+ * database and nothing else — this is reached from the product finder, whose
+ * whole claim is that it costs nothing per request.
+ *
+ * Price is deliberately NOT copied into the brief. The ledger's `price_jpy` is
+ * an observed listing price, and a brief price reads as our offer; the writer
+ * would state it. It still reaches the fact pack through canonicalProductId,
+ * where it arrives labelled with its class and its source, which is the honest
+ * way for a price we did not set to reach a script.
+ *
+ * Proxy signals go into `notes`, which the fact pack pins to planning_only.
+ */
+export async function loadCanonicalProductBriefForScreenplay(
+	sb: SupabaseClient,
+	canonicalProductId: string,
+): Promise<CanonicalBriefLoadResult> {
+	const id = canonicalProductId.trim();
+	if (!isUuid(id)) {
+		return { ok: false, status: 400, error: "canonicalProductId の形式が正しくありません" };
+	}
+
+	const { data: product, error } = await sb
+		.from("canonical_products")
+		.select("id, display_name, normalized_category")
+		.eq("id", id)
+		.maybeSingle();
+	if (error) {
+		console.error("[screenplays] canonical product lookup failed:", error);
+		return { ok: false, status: 500, error: "商品情報の取得に失敗しました" };
+	}
+	if (!product) return { ok: false, status: 404, error: "商品が見つかりません" };
+
+	const { data: evidence, error: evidenceError } = await sb
+		.from("evidence_items")
+		.select("predicate, value_json, value_state, evidence_class, observed_at")
+		.eq("subject_type", "product")
+		.eq("subject_id", id)
+		.in("predicate", ["price_jpy", "review_count", "tv_airing_count", "recent_airing_count"])
+		.eq("value_state", "known");
+	if (evidenceError) {
+		console.warn("[screenplays] canonical evidence lookup failed:", evidenceError.message);
+	}
+
+	const labels: Record<string, string> = {
+		price_jpy: "観測価格",
+		review_count: "レビュー件数",
+		tv_airing_count: "他局放送回数",
+		recent_airing_count: "直近放送回数",
+	};
+	const observed = (evidence ?? [])
+		.map((row) => {
+			const label = labels[String(row.predicate)];
+			const value = row.value_json;
+			if (!label || value === null || value === undefined) return "";
+			return `${label}: ${typeof value === "object" ? JSON.stringify(value) : String(value)}`;
+		})
+		.filter(Boolean);
+
+	const name = text(product.display_name) || "Untitled product";
+	const category = text(product.normalized_category);
+
+	const notes = compactLines([
+		observed.length > 0 && `蓄積データ（構成の参考。放送で断定しない）:\n- ${observed.join("\n- ")}`,
+		"この商品ブリーフは蓄積データから自動生成されたもの。放送で述べる商品事実は担当者が確認・追記すること。",
+	]);
+
+	return {
+		ok: true,
+		canonicalProductId: id,
+		brief: {
+			name: name.slice(0, 200),
+			...(category ? { category: category.slice(0, 200) } : {}),
+			description: name.slice(0, 16_000),
+			notes: notes.slice(0, 4000),
+		},
+	};
+}

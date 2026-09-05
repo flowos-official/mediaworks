@@ -1,8 +1,7 @@
 import { NextRequest } from "next/server";
-import { start } from "workflow/api";
 import { requireUser } from "@/lib/auth/require-user";
 import { getServiceClient } from "@/lib/supabase";
-import { screenplayWorkflow } from "@/lib/workflows/screenplay.workflow";
+import { startScreenplayGeneration } from "@/lib/screenplay/start-generation";
 import type { ProductBrief } from "@/lib/screenplay/types";
 
 export const maxDuration = 60;
@@ -101,15 +100,18 @@ export async function POST(
 	}
 
 	try {
-		const run = await start(screenplayWorkflow, [
-			{
-				screenplayId: id,
-				mode: "refine",
-				productBrief: sp.product_info_snapshot as ProductBrief,
-				feedback,
-				baseVersionId: base,
-			},
-		]);
+		const run = await startScreenplayGeneration({
+			screenplayId: id,
+			mode: "refine",
+			productBrief: sp.product_info_snapshot as ProductBrief,
+			// Null here on purpose: a refine adopts the canonical product its base
+			// context recorded. The screenplay row does not carry the link, and
+			// re-deriving it from the brief would be a guess — the context already
+			// knows, and it is the thing being inherited from.
+			canonicalProductId: null,
+			feedback,
+			baseVersionId: base,
+		});
 		await supabase
 			.from("screenplays")
 			.update({ last_run_id: run.runId })

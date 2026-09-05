@@ -8,7 +8,10 @@ import {
 	parseOperatorFlowArgs,
 	type OperatorFlowState,
 } from "../lib/recommendation/operator-flow";
-import { generateScreenplay } from "../lib/screenplay/generator";
+import {
+	ScreenplayStartError,
+	startScreenplayGeneration,
+} from "../lib/screenplay/start-generation";
 import { synthesizeProductResearch } from "../lib/research/synthesize-product";
 import { loadProductBriefForScreenplay } from "../lib/screenplay/product-brief";
 import type { ProductBrief } from "../lib/screenplay/types";
@@ -28,6 +31,8 @@ function printUsage() {
 			"Default mode is dry-run. Mutating stages require --apply.",
 			"--run-synthesis runs the same research synthesis service directly from the CLI.",
 			"--create-screenplay starts the screenplay workflow only after research_results exists.",
+			"  Note: starting the workflow requires the Next.js runtime — from a bare CLI it will",
+			"  create the screenplay row and tell you to start generation from the app.",
 		].join("\n"),
 	);
 }
@@ -149,54 +154,45 @@ async function createScreenplayFromProduct(
 		screenplayId = inserted.id as string;
 	}
 
+	// The workflow, not generateScreenplay.
+	//
+	// This used to call the generator directly and insert the version itself.
+	// The row it produced sat in screenplay_versions next to workflow-generated
+	// ones and was not the same thing: no compliance check, no remediation,
+	// and — since the grounded workflow landed — no generation context, no
+	// knowledge snapshot and no claim links. Nothing on the row said so, which
+	// is the part that made it dangerous rather than merely limited.
 	try {
-		const generated = await generateScreenplay({
+		const { runId } = await startScreenplayGeneration({
+			screenplayId,
 			mode: "initial",
 			productBrief,
+			canonicalProductId: null,
 		});
-		const { data: existingVersions, error: versionLookupError } = await sb
-			.from("screenplay_versions")
-			.select("version_number")
-			.eq("screenplay_id", screenplayId)
-			.order("version_number", { ascending: false })
-			.limit(1);
-		if (versionLookupError) throw versionLookupError;
-		const nextVersion = ((existingVersions?.[0]?.version_number as number | undefined) ?? 0) + 1;
-
-		const { data: version, error: versionError } = await sb
-			.from("screenplay_versions")
-			.insert({
-				screenplay_id: screenplayId,
-				version_number: nextVersion,
-				markdown: generated.markdown,
-				feedback: null,
-				base_version_id: null,
-				model: generated.model,
-				thinking_level: generated.thinkingLevel,
-			})
-			.select("id")
-			.single();
-		if (versionError || !version) {
-			throw new Error(`screenplay version insert failed: ${versionError?.message ?? "no row"}`);
-		}
-
-		const runId = `cli-sync:${version.id}`;
-		const { error: readyError } = await sb
+		const { error: runIdError } = await sb
 			.from("screenplays")
-			.update({
-				current_version_id: version.id,
-				status: "ready",
-				last_run_id: runId,
-				updated_at: new Date().toISOString(),
-			})
+			.update({ last_run_id: runId, updated_at: new Date().toISOString() })
 			.eq("id", screenplayId);
-		if (readyError) throw new Error(`screenplay ready update failed: ${readyError.message}`);
+		if (runIdError) throw new Error(`screenplay run id update failed: ${runIdError.message}`);
 		return { screenplayId, runId };
 	} catch (error) {
 		await sb
 			.from("screenplays")
 			.update({ status: "failed", updated_at: new Date().toISOString() })
 			.eq("id", screenplayId);
+		if (error instanceof ScreenplayStartError && error.code === "workflow_runtime_unavailable") {
+			// Worth spelling out: the Workflow DevKit compiles workflow functions
+			// through the Next.js build, so `start()` from a bare tsx process is
+			// rejected. Generating here anyway would mean reintroducing exactly
+			// the ungrounded path this change removed.
+			throw new Error(
+				[
+					`screenplay ${screenplayId} was created but generation could not be started from the CLI.`,
+					"The Workflow DevKit runtime only exists inside the Next.js app.",
+					"Start the generation from the app (台本 → 生成), or POST /api/screenplays with a signed-in session.",
+				].join("\n"),
+			);
+		}
 		throw error;
 	}
 }
