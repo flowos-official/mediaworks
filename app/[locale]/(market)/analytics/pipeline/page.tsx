@@ -54,9 +54,10 @@ async function loadReadiness(
 }
 
 export default async function PipelinePage() {
-  const [t, finderCopy, locale, auth] = await Promise.all([
+  const [t, finderCopy, importsCopy, locale, auth] = await Promise.all([
     getTranslations("pipeline"),
     getTranslations("productFinder"),
+    getTranslations("imports"),
     getLocale(),
     requireUser(["viewer", "member", "admin"]),
   ]);
@@ -93,6 +94,17 @@ export default async function PipelinePage() {
             href: localePath(locale, "/analytics/product-finder"),
             label: finderCopy("cta.fromReadiness"),
           }}
+          // canWrite gates the LINK, not the coverage numbers above it: a
+          // viewer may see how much internal data exists, but the page behind
+          // this shows file names and the contents of a cost book.
+          dataManagement={
+            canWrite
+              ? {
+                  href: localePath(locale, "/analytics/data-management"),
+                  label: importsCopy("cta.fromReadiness"),
+                }
+              : undefined
+          }
         />
       ) : null}
 

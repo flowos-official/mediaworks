@@ -218,7 +218,8 @@
     "test:intelligence-import-storage": "tsx scripts/test-intelligence-import-storage.ts",
     "test:intelligence-workbook": "tsx scripts/test-intelligence-workbook.ts",
     "test:intelligence-import-routes": "tsx scripts/test-intelligence-import-routes.ts",
-    "test:intelligence-import-apply": "tsx scripts/test-intelligence-import-apply.ts"
+    "test:intelligence-import-apply": "tsx scripts/test-intelligence-import-apply.ts",
+    "test:intelligence-import-view": "tsx scripts/test-intelligence-import-view.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1016.0",

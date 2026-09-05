@@ -57,6 +57,9 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       // Member|admin only: the finder reads evidence derived from member-only
       // sources, so a viewer would reach an empty page at best.
       { labelKey: 'nav.market.productFinder', href: '/analytics/product-finder', roles: ['admin', 'member'], feature: 'productFinder' },
+      // Member|admin only, and for a stronger reason than the finder: these
+      // pages show file names and the contents of an operator's own cost book.
+      { labelKey: 'nav.market.dataManagement', href: '/analytics/data-management', roles: ['admin', 'member'], feature: 'dataManagement' },
     ],
     visibility: { admin: 'full', member: 'full', viewer: 'full' },
   },

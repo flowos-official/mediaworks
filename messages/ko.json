@@ -53,7 +53,8 @@
       "discovery": "신규 상품 발굴",
       "strategy": "신규 상품 추천",
       "pipeline": "파이프라인",
-      "productFinder": "상품 파인더"
+      "productFinder": "상품 파인더",
+      "dataManagement": "데이터 관리"
     },
     "strategyTabs": {
       "expansion": "확장 전략",
@@ -1679,6 +1680,91 @@
         "review_signal": "수요의 '대리 지표'",
         "ranking_signal": "수요의 '대리 지표'"
       }
+    }
+  },
+  "imports": {
+    "title": "데이터 관리(Excel 가져오기)",
+    "subtitle": "자사 상품·실적 데이터를 가져와 근거로 축적합니다. 가져온 내용은 언제든 취소할 수 있습니다.",
+    "applied": "{rows}행을 적용했습니다(실패 {failed}행 / 근거 {evidence}건)",
+    "cta": {
+      "fromReadiness": "자사 데이터 가져오기"
+    },
+    "upload": {
+      "title": "1. 파일 업로드",
+      "description": "Excel(.xls / .xlsx) 파일 1개를 선택하세요. 15MB까지.",
+      "optionalColumns": "상품 정보만으로도 가져올 수 있습니다. 수량·매출·원가 등 실적 열은 선택입니다.",
+      "uploading": "업로드 중…",
+      "failed": "업로드에 실패했습니다"
+    },
+    "mapping": {
+      "title": "2. 열 대응 확인",
+      "sheet": "시트 「{sheet}」 / {rows}행",
+      "duplicateWarning": "같은 내용의 파일이 과거에 {count}건 등록되어 있습니다. 수정본 가져오기라면 문제없습니다.",
+      "targetField": "가져오기 항목",
+      "sourceHeader": "파일의 열",
+      "unmapped": "(대응 없음)",
+      "optional": "선택",
+      "confirm": "이 대응으로 검증",
+      "validating": "검증 중…",
+      "productNameRequired": "상품명 열은 필수입니다",
+      "failed": "검증에 실패했습니다",
+      "field": {
+        "product_code": "상품코드",
+        "product_name": "상품명",
+        "brand": "브랜드",
+        "model_name": "모델명",
+        "category": "카테고리",
+        "description": "설명",
+        "list_price_jpy": "정가",
+        "sale_price_jpy": "판매가",
+        "quantity": "수량",
+        "revenue_jpy": "매출",
+        "cost_jpy": "원가",
+        "fees_jpy": "수수료",
+        "shipping_jpy": "배송비",
+        "gross_profit_jpy": "총이익",
+        "period_start": "기간 시작",
+        "period_end": "기간 종료"
+      }
+    },
+    "validation": {
+      "title": "3. 검증 결과 확인",
+      "valid": "가져오기 가능 {count}행",
+      "invalid": "오류 {count}행",
+      "total": "전체 {count}행",
+      "rowNumber": "행",
+      "productName": "상품명",
+      "errors": "오류 내용",
+      "apply": "4. 적용하기",
+      "confirmSentence": "{count}행을 근거 데이터로 등록합니다. 등록 후에도 취소할 수 있습니다.",
+      "confirmApply": "등록 실행",
+      "applying": "적용 중…",
+      "cancel": "취소",
+      "nothingToApply": "가져올 수 있는 행이 없습니다. 오류를 수정한 뒤 다시 업로드하세요.",
+      "failed": "적용에 실패했습니다"
+    },
+    "history": {
+      "title": "가져오기 이력",
+      "empty": "가져오기 이력이 아직 없습니다.",
+      "file": "파일",
+      "status": {
+        "uploaded": "업로드됨",
+        "mapped": "매핑됨",
+        "validated": "검증됨",
+        "applied": "적용됨",
+        "partial": "일부 적용",
+        "rolled_back": "취소됨",
+        "failed": "실패"
+      },
+      "rows": "행 수",
+      "hash": "해시",
+      "updated": "갱신일",
+      "rollback": "취소",
+      "confirmRollback": "취소 실행",
+      "cancel": "닫기",
+      "reasonPlaceholder": "취소 사유(3자 이상)",
+      "rollbackNote": "취소해도 이력과 과거 판단 근거는 남습니다. 이후 추천·대본에서는 사용되지 않습니다.",
+      "failed": "취소에 실패했습니다"
     }
   }
 }

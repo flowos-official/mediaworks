@@ -53,7 +53,8 @@
       "discovery": "新規発掘",
       "strategy": "MD戦略",
       "pipeline": "パイプライン",
-      "productFinder": "商品ファインダー"
+      "productFinder": "商品ファインダー",
+      "dataManagement": "データ管理"
     },
     "strategyTabs": {
       "expansion": "拡大戦略",
@@ -1679,6 +1680,91 @@
         "review_signal": "需要の「代理指標」",
         "ranking_signal": "需要の「代理指標」"
       }
+    }
+  },
+  "imports": {
+    "title": "データ管理（Excel取り込み）",
+    "subtitle": "自社の商品・実績データを取り込み、根拠として蓄積します。取り込んだ内容はいつでも取り消せます。",
+    "applied": "{rows}行を適用しました（失敗 {failed}行 / 根拠 {evidence}件）",
+    "cta": {
+      "fromReadiness": "自社データを取り込む"
+    },
+    "upload": {
+      "title": "1. ファイルをアップロード",
+      "description": "Excel (.xls / .xlsx) を1ファイル選択してください。15MBまで。",
+      "optionalColumns": "商品情報だけでも取り込めます。数量・売上・原価などの実績列は任意です。",
+      "uploading": "アップロード中…",
+      "failed": "アップロードに失敗しました"
+    },
+    "mapping": {
+      "title": "2. 列の対応を確認",
+      "sheet": "シート「{sheet}」 / {rows}行",
+      "duplicateWarning": "同じ内容のファイルが過去に{count}件取り込まれています。修正版の取り込みであれば問題ありません。",
+      "targetField": "取り込み項目",
+      "sourceHeader": "ファイルの列",
+      "unmapped": "（対応なし）",
+      "optional": "任意",
+      "confirm": "この対応で検証する",
+      "validating": "検証中…",
+      "productNameRequired": "商品名の列は必須です",
+      "failed": "検証に失敗しました",
+      "field": {
+        "product_code": "商品コード",
+        "product_name": "商品名",
+        "brand": "ブランド",
+        "model_name": "型番",
+        "category": "カテゴリ",
+        "description": "説明",
+        "list_price_jpy": "定価",
+        "sale_price_jpy": "販売価格",
+        "quantity": "数量",
+        "revenue_jpy": "売上",
+        "cost_jpy": "原価",
+        "fees_jpy": "手数料",
+        "shipping_jpy": "送料",
+        "gross_profit_jpy": "粗利",
+        "period_start": "期間開始",
+        "period_end": "期間終了"
+      }
+    },
+    "validation": {
+      "title": "3. 検証結果を確認",
+      "valid": "取り込み可能 {count}行",
+      "invalid": "エラー {count}行",
+      "total": "全 {count}行",
+      "rowNumber": "行",
+      "productName": "商品名",
+      "errors": "エラー内容",
+      "apply": "4. 適用する",
+      "confirmSentence": "{count}行を根拠データとして登録します。登録後も取り消しできます。",
+      "confirmApply": "登録を実行",
+      "applying": "適用中…",
+      "cancel": "やめる",
+      "nothingToApply": "取り込み可能な行がありません。エラーを修正して再アップロードしてください。",
+      "failed": "適用に失敗しました"
+    },
+    "history": {
+      "title": "取り込み履歴",
+      "empty": "取り込み履歴はまだありません。",
+      "file": "ファイル",
+      "status": {
+        "uploaded": "アップロード済み",
+        "mapped": "マッピング済み",
+        "validated": "検証済み",
+        "applied": "適用済み",
+        "partial": "一部適用",
+        "rolled_back": "取り消し済み",
+        "failed": "失敗"
+      },
+      "rows": "行数",
+      "hash": "ハッシュ",
+      "updated": "更新日",
+      "rollback": "取り消す",
+      "confirmRollback": "取り消しを実行",
+      "cancel": "やめる",
+      "reasonPlaceholder": "取り消し理由（3文字以上）",
+      "rollbackNote": "取り消しても履歴と過去の判断根拠は残ります。以後の推薦・台本では使用されなくなります。",
+      "failed": "取り消しに失敗しました"
     }
   }
 }

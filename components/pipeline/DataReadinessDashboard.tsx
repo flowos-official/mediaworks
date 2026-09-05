@@ -47,6 +47,10 @@ interface DataReadinessDashboardProps {
 	 *  readiness figures above it stay exactly what they were — the CTA reads
 	 *  the dashboard, it does not participate in it. */
 	productFinder?: { href: string; label: string };
+	/** Absent for a viewer. Import coverage is visible to everyone who can see
+	 *  this panel; the page it links to shows file names and cost data, so the
+	 *  link itself is member|admin only. */
+	dataManagement?: { href: string; label: string };
 }
 
 type CategorySample = IntelligenceReadiness["categorySamples"][number];
@@ -111,7 +115,13 @@ function MetricCard({
 	);
 }
 
-export function DataReadinessDashboard({ readiness, copy, locale, productFinder }: DataReadinessDashboardProps) {
+export function DataReadinessDashboard({
+	readiness,
+	copy,
+	locale,
+	productFinder,
+	dataManagement,
+}: DataReadinessDashboardProps) {
 	const intlLocale = locale === "ko" ? "ko-KR" : "ja-JP";
 	const dateFormatter = new Intl.DateTimeFormat(intlLocale, {
 		timeZone: "Asia/Tokyo",
@@ -165,14 +175,24 @@ export function DataReadinessDashboard({ readiness, copy, locale, productFinder 
 				<p className="mt-2 text-xs tabular-nums text-muted-foreground">
 					{copy.generatedAt}: {formatDate(readiness.generatedAt, dateFormatter, copy.noData)}
 				</p>
-				{productFinder ? (
-					<a
-						href={productFinder.href}
-						className="mt-3 inline-block rounded border px-2.5 py-1 text-sm hover:bg-muted"
-					>
-						{productFinder.label}
-					</a>
-				) : null}
+				<div className="mt-3 flex flex-wrap gap-2">
+					{productFinder ? (
+						<a
+							href={productFinder.href}
+							className="inline-block rounded border px-2.5 py-1 text-sm hover:bg-muted"
+						>
+							{productFinder.label}
+						</a>
+					) : null}
+					{dataManagement ? (
+						<a
+							href={dataManagement.href}
+							className="inline-block rounded border px-2.5 py-1 text-sm hover:bg-muted"
+						>
+							{dataManagement.label}
+						</a>
+					) : null}
+				</div>
 			</header>
 
 			<section aria-labelledby="data-readiness-sources-title">
