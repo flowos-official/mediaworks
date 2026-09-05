@@ -207,7 +207,8 @@
     "test:screenplay-reference-broadcasts": "tsx scripts/test-screenplay-reference-broadcasts.ts",
     "test:screenplay-structure-plan": "tsx scripts/test-screenplay-structure-plan.ts",
     "test:screenplay-context-build": "tsx scripts/test-screenplay-context-build.ts",
-    "test:screenplay-unified-entry": "tsx scripts/test-screenplay-unified-entry.ts"
+    "test:screenplay-unified-entry": "tsx scripts/test-screenplay-unified-entry.ts",
+    "test:screenplay-claim-links": "tsx scripts/test-screenplay-claim-links.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1016.0",

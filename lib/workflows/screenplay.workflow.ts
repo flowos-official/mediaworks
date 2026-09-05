@@ -31,6 +31,12 @@ import {
   type ScreenplayGenerationContext,
 } from "@/lib/screenplay/context/build";
 import { formatStructurePlanBlock } from "@/lib/screenplay/context/structure-plan";
+import { buildClaimLinks, claimsNeedingReview } from "@/lib/screenplay/grounding/claim-links";
+import { geminiClaimClassifier } from "@/lib/screenplay/grounding/claim-classifier-gemini";
+import {
+  findReferencePhraseOverlap,
+  loadReferencePhrases,
+} from "@/lib/screenplay/grounding/copy-guard";
 
 /**
  * Everything the draft will rest on, assembled and persisted BEFORE a word is
@@ -169,6 +175,7 @@ async function persistStep(
   thinkingLevel: string,
   patternSnapshot: CategoryPattern | null,
   generationContextId: string | null,
+  markReady: boolean,
 ): Promise<{ versionId: string; versionNumber: number }> {
   "use step";
   const supabase = getServiceClient();
@@ -220,18 +227,26 @@ async function persistStep(
     throw new FatalError(`failed to insert version after retries: ${lastErr?.message ?? "unknown"}`);
   }
 
-  const { error: updErr } = await supabase
+  // A generated version is NOT ready yet: it becomes the screenplay's current
+  // version only once its claims have been grounded. An import has no claims to
+  // ground — the operator's own draft is the contract — so it is ready here.
+  if (markReady) await markReadyStep(screenplayId, versionRow.id);
+
+  return { versionId: versionRow.id, versionNumber: versionRow.version_number };
+}
+
+async function markReadyStep(screenplayId: string, versionId: string): Promise<void> {
+  "use step";
+  const { error } = await getServiceClient()
     .from("screenplays")
     .update({
-      current_version_id: versionRow.id,
+      current_version_id: versionId,
       status: "ready",
       last_error: null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", screenplayId);
-  if (updErr) throw new FatalError(`failed to update screenplay: ${updErr.message}`);
-
-  return { versionId: versionRow.id, versionNumber: versionRow.version_number };
+  if (error) throw new FatalError(`failed to update screenplay: ${error.message}`);
 }
 
 async function safeCheck(
@@ -310,6 +325,7 @@ async function persistCheckStep(
   rulesLen: number,
   refsLen: number,
   autoRemediateEnabled: boolean,
+  competitorCopy?: ScriptCheckResult["competitorCopy"],
 ): Promise<void> {
   "use step";
   // Non-fatal: a failed persist must NEVER fail the generation.
@@ -319,6 +335,7 @@ async function persistCheckStep(
     const result: ScriptCheckResult = {
       ...check,
       remediation: { enabled: autoRemediateEnabled, iterations: trail, finalHigh: countHigh(check) },
+      ...(competitorCopy === undefined ? {} : { competitorCopy }),
     };
     await supabase.from("screenplay_version_checks").insert({
       version_id: versionId,
@@ -330,6 +347,96 @@ async function persistCheckStep(
     });
   } catch (err) {
     console.warn("[persistCheckStep] failed (non-fatal):", err instanceof Error ? err.message : String(err));
+  }
+}
+
+/**
+ * Ground the finished script, then record it.
+ *
+ * Runs AFTER remediation and after the version exists: a claim link points at
+ * a version_id, and remediation rewrites lines, so grounding the pre-remediation
+ * draft would attach line numbers to text that no longer exists.
+ *
+ * Failure here is fatal to the run. A version with no claim links is
+ * indistinguishable from one whose every claim was checked and cleared, and it
+ * is the second reading a person makes. Better a failed screenplay than a
+ * silently ungrounded one.
+ */
+async function persistClaimLinksStep(
+  versionId: string,
+  markdown: string,
+  context: ScreenplayGenerationContext,
+): Promise<{ total: number; needsReview: number }> {
+  "use step";
+  await writeProgressInline({ type: "step", name: "grounding", status: "started" });
+  try {
+    const drafts = await buildClaimLinks(
+      markdown,
+      context.productFactPack,
+      geminiClaimClassifier(context.screenplayId),
+    );
+    const supabase = getServiceClient();
+    if (drafts.length > 0) {
+      const { error } = await supabase.from("screenplay_claim_links").insert(
+        drafts.map((draft) => ({
+          version_id: versionId,
+          line_start: draft.lineStart,
+          line_end: draft.lineEnd,
+          claim_text: draft.claimText,
+          status: draft.status,
+          evidence_item_id: draft.evidenceItemId,
+          reason: draft.reason,
+        })),
+      );
+      if (error) throw new FatalError(`claim link insert failed: ${error.message}`);
+    }
+    const needsReview = claimsNeedingReview(drafts).length;
+    await writeProgressInline({
+      type: "step",
+      name: "grounding",
+      status: "completed",
+      detail: `claims:${drafts.length} needs_review:${needsReview}`,
+    });
+    return { total: drafts.length, needsReview };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    await writeProgressInline({ type: "step", name: "grounding", status: "failed", detail: msg });
+    throw err;
+  }
+}
+
+/**
+ * Did we write their script? Non-fatal by design: this is a check ON our
+ * output, not a precondition for having produced it, and a guard that could
+ * fail a generation would eventually be turned off.
+ */
+async function copyGuardStep(
+  markdown: string,
+  context: ScreenplayGenerationContext,
+): Promise<ScriptCheckResult["competitorCopy"]> {
+  "use step";
+  try {
+    const phrases = await loadReferencePhrases(
+      getServiceClient(),
+      context.referenceBroadcasts.map((r) => r.analysisId),
+    );
+    if (phrases.length === 0) return [];
+    // The product name and the operator's own guarantee wording are ours; a
+    // collision on them is not copying.
+    const exclusions = [
+      context.productFactPack.facts.find((f) => f.key === "name")?.value,
+      context.productFactPack.facts.find((f) => f.key === "guarantee")?.value,
+    ].filter((v): v is string => typeof v === "string");
+    const overlaps = findReferencePhraseOverlap(markdown, phrases, exclusions);
+    if (overlaps.length > 0) {
+      console.warn(
+        `[screenplay] ${context.screenplayId}: ${overlaps.length} passage(s) overlap a reference broadcast (longest ${overlaps[0].length} chars)`,
+      );
+    }
+    return overlaps;
+  } catch (err) {
+    console.warn("[screenplay] copy guard failed (non-fatal):", err instanceof Error ? err.message : String(err));
+    return undefined;
   }
 }
 
@@ -373,6 +480,7 @@ export async function screenplayWorkflow(input: ScreenplayWorkflowInput) {
         "none",
         null,
         null,
+        true,
       );
       await persistCheckStep(persisted.versionId, check, [], rules.length, references.length, false);
 
@@ -433,9 +541,27 @@ export async function screenplayWorkflow(input: ScreenplayWorkflowInput) {
       // never disagree about which aggregate shaped this version.
       context.patternResult.pattern,
       context.id,
+      false,
     );
 
-    await persistCheckStep(persisted.versionId, check, trail, rules.length, references.length, AUTO_REMEDIATE);
+    const competitorCopy = await copyGuardStep(markdown, context);
+    await persistCheckStep(
+      persisted.versionId,
+      check,
+      trail,
+      rules.length,
+      references.length,
+      AUTO_REMEDIATE,
+      competitorCopy,
+    );
+
+    // Fatal if it fails: a version with no claim links reads exactly like one
+    // whose every claim was checked and cleared.
+    await persistClaimLinksStep(persisted.versionId, markdown, context);
+
+    // Only now. A draft whose claims could not be grounded never becomes the
+    // screenplay a person opens.
+    await markReadyStep(input.screenplayId, persisted.versionId);
 
     await emitProgressStep({
       type: "done",
