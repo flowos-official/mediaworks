@@ -178,16 +178,29 @@ async function main(): Promise<void> {
 	}
 	const prefix = channel ? `videos/${channel}/` : "videos/";
 	const apply = has("apply");
+	// The identity that runs this could not read the bucket lifecycle config, so
+	// its grants are narrow and CopyObject-with-a-storage-class may not be among
+	// them. `--limit` exists so that is discovered on one object rather than on
+	// five thousand, halfway through, against a deadline.
+	const limitRaw = flag("limit");
+	let limit: number | undefined;
+	if (limitRaw !== undefined) {
+		const n = Number(limitRaw);
+		if (!Number.isInteger(n) || n <= 0) throw new Error(`--limit must be a positive integer, got ${JSON.stringify(limitRaw)}`);
+		limit = n;
+	}
 	const now = Date.now();
 
 	const all = await listArchive(prefix);
-	const cold = all.filter((o) => COLD.has(o.storageClass));
+	const coldAll = all.filter((o) => COLD.has(o.storageClass));
+	const cold = limit === undefined ? coldAll : coldAll.slice(0, limit);
 	const already = all.filter((o) => o.storageClass === TARGET_CLASS);
 	const standard = all.filter((o) => o.storageClass === "STANDARD");
 
 	const gb = (objs: ArchiveObject[]) => objs.reduce((t, o) => t + o.sizeBytes, 0) / 1e9;
 	console.log(`${prefix}: ${all.length}편 / ${(gb(all) / 1000).toFixed(2)} TB`);
-	console.log(`  DEEP_ARCHIVE (승격 대상): ${cold.length}편 / ${gb(cold).toFixed(0)} GB`);
+	console.log(`  DEEP_ARCHIVE (승격 대상): ${coldAll.length}편 / ${gb(coldAll).toFixed(0)} GB`);
+	if (limit !== undefined) console.log(`  --limit=${limit} -> 이번 실행 대상 ${cold.length}편 / ${gb(cold).toFixed(0)} GB`);
 	console.log(`  ${TARGET_CLASS} (완료)     : ${already.length}편 / ${gb(already).toFixed(0)} GB`);
 	console.log(`  STANDARD (전환 대기)     : ${standard.length}편 / ${gb(standard).toFixed(0)} GB`);
 
