@@ -8,9 +8,14 @@
  *   npm run restore:archives -- --category=家電 --channel=shopch --tier=Bulk --apply
  *
  * Why this exists: a lifecycle rule moved 5,051 of 5,089 archived objects
- * (3.24 TB) to DEEP_ARCHIVE one day after upload. The rule has since been
- * changed to Glacier Instant Retrieval, but that only affects NEW objects —
- * everything already cold stays cold until explicitly restored.
+ * (3.24 TB) to DEEP_ARCHIVE one day after upload. The rule was changed to
+ * Glacier Instant Retrieval on 2026-08-25, but that only governs NEW objects.
+ *
+ * The back catalogue was promoted out of Deep Archive on 2026-09-06 (see
+ * `promote-archive-storage-class.ts`), so this script is no longer the routine
+ * path — GLACIER_IR needs no restore. It still matters for anything that is
+ * cold again: the 46 QVC objects that had no live restore and so could not be
+ * copied, and any object a future lifecycle change buries.
  *
  * Restores are asynchronous: this only places the request. Deep Archive
  * Standard tier completes in ~12 hours, Bulk in ~48. Re-run with --status to
