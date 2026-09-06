@@ -234,7 +234,7 @@ export async function loadProductBriefForScreenplay(
 
 export type CanonicalBriefLoadResult =
 	| { ok: true; canonicalProductId: string; brief: ProductBrief }
-	| { ok: false; status: 400 | 404 | 500; error: string };
+	| { ok: false; status: 400 | 404 | 409 | 500; error: string };
 
 /**
  * Build a brief from a canonical product and its stored evidence. Reads the
@@ -260,7 +260,7 @@ export async function loadCanonicalProductBriefForScreenplay(
 
 	const { data: product, error } = await sb
 		.from("canonical_products")
-		.select("id, display_name, normalized_category")
+		.select("id, display_name, normalized_category, status")
 		.eq("id", id)
 		.maybeSingle();
 	if (error) {
@@ -268,6 +268,15 @@ export async function loadCanonicalProductBriefForScreenplay(
 		return { ok: false, status: 500, error: "商品情報の取得に失敗しました" };
 	}
 	if (!product) return { ok: false, status: 404, error: "商品が見つかりません" };
+	// Refused rather than followed through `merged_into_id`: a merge target is a
+	// different product with different evidence, and silently swapping it in
+	// would produce a script whose recorded subject is not the one the operator
+	// asked for. Nothing writes a non-active status automatically today, so this
+	// only ever fires on a deliberate operator decision — which is exactly the
+	// decision a grounded script must not talk over.
+	if (product.status !== "active") {
+		return { ok: false, status: 409, error: "この商品は統合または無効化されています。統合先の商品を選び直してください" };
+	}
 
 	const { data: evidence, error: evidenceError } = await sb
 		.from("evidence_items")

@@ -140,4 +140,24 @@ console.log("✓ a numeric signal rejects non-numeric evidence");
 }
 console.log("✓ the candidate loader reaches no network");
 
+// --- only an active canonical product may be ranked -------------------------
+// `merged` means the ledger has already decided two rows are one product:
+// ranking both shows the operator the same product twice, each holding half of
+// its evidence, so the pair scores worse than either would whole. `inactive`
+// is the ledger saying do not use this. Pinned statically because the query is
+// built against the live database and the filter is one line to lose.
+{
+	const src = readFileSync("lib/product-finder/candidates.ts", "utf8");
+	assert.ok(
+		/\.from\("canonical_products"\)[\s\S]{0,600}?\.eq\("status", "active"\)/.test(src),
+		"loadStoredCandidates must filter canonical_products to status = 'active'",
+	);
+	const brief = readFileSync("lib/screenplay/product-brief.ts", "utf8");
+	assert.ok(
+		brief.includes('product.status !== "active"'),
+		"the canonical brief loader must refuse a merged or inactive product",
+	);
+}
+console.log("✓ a merged or inactive canonical product never reaches a ranking or a script");
+
 console.log("PASS: product finder candidates");

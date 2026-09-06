@@ -215,7 +215,15 @@ export async function loadStoredCandidates(
 ): Promise<StoredCandidate[]> {
 	let productQuery = sb
 		.from("canonical_products")
+		// `status` is not decoration. A `merged` row means the ledger has already
+		// decided this and another row are the same product, so ranking both puts
+		// the same product on screen twice, each holding only its own half of the
+		// evidence — so the pair scores WORSE than either would whole. `inactive`
+		// is the ledger saying "do not use this". Neither may reach a ranking.
+		// The category index is partial on exactly this predicate, so the filter
+		// is also what lets a category query use it.
 		.select("id, display_name, normalized_category")
+		.eq("status", "active")
 		.order("id", { ascending: true })
 		.limit(MAX_CANDIDATES);
 	if (query.category) productQuery = productQuery.eq("normalized_category", query.category);
