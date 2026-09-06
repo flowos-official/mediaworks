@@ -170,7 +170,14 @@ async function main(): Promise<void> {
 	{
 		const detected = detectMajorClaimLines(
 			numberScriptLines(
-				["MC: カメラ3番へ。", "MC: 3倍長持ちします。", "MC: 業界初の設計です。", "MC: シワが改善します。"].join("\n"),
+				[
+					"MC: カメラ3番へ。",
+					"MC: 3倍長持ちします。",
+					"MC: 業界初の設計です。",
+					"MC: シワが改善します。",
+					"［SE］ジャジャーンという華やかな効果音。",
+					"MC: 効果音のあとに、効果を実感いただけます。",
+				].join("\n"),
 			),
 		);
 		const kinds = new Map(detected.map((d) => [d.line, d.kind]));
@@ -178,6 +185,12 @@ async function main(): Promise<void> {
 		assert.ok(kinds.get(2)?.includes("numeric"));
 		assert.ok(kinds.get(3)?.includes("superlative"));
 		assert.ok(kinds.get(4)?.includes("efficacy"));
+		// 効果音 is a sound effect. Every script has a few, and left in they were
+		// the majority of what the review panel showed — which is how an operator
+		// learns to skip it, and then misses the one real claim.
+		assert.equal(kinds.has(5), false, "a sound-effect cue is not an efficacy claim");
+		// Stripping the decoy must not deafen the line to a real claim beside it.
+		assert.ok(kinds.get(6)?.includes("efficacy"), "a real efficacy word still fires next to 効果音");
 	}
 	console.log("✓ the detector fires on units, superlatives and efficacy, not on stage numbers");
 

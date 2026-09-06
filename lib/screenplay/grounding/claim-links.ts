@@ -57,6 +57,13 @@ export type ClaimClassifier = (input: ClaimClassifierInput) => Promise<ClaimClas
  *  actually takes, and an ASCII-only pattern walks straight past it. */
 const NUMERIC =
 	/[0-9０-９][0-9０-９,.，．]*\s*[万億千百]?\s*(?:%|％|割|円|人|件|台|本|枚|個|回|倍|分|秒|時間|日|年|kg|g|ml|L|cm|mm|度|℃|W|Hz)/;
+// 「効果音」 is a sound effect and 「音響効果」 is sound design — production
+// directions that carry no claim about the product, and both contain 「効果」.
+// Every script has several, so left in they were the majority of what the
+// review panel showed an operator, which is how a panel stops being read.
+// Stripped before matching rather than excluded by a lookaround so the two
+// spellings stay legible next to the words they are not.
+const EFFICACY_DECOYS = /(効果音|音響効果)/g;
 const EFFICACY = /(効果|効能|改善|治る|治療|予防|解消|痩せ|やせ|若返|美白|シミ|シワ|殺菌|除菌|抗菌)/;
 const SUPERLATIVE = /(最高|最強|最安|最上|唯一|業界初|世界初|日本一|世界一|ナンバーワン|No\.?\s*1|№1|一番)/i;
 
@@ -68,7 +75,7 @@ export function detectMajorClaimLines(
 	for (const { line, text } of numberedLines) {
 		const kinds: string[] = [];
 		if (NUMERIC.test(text)) kinds.push("numeric");
-		if (EFFICACY.test(text)) kinds.push("efficacy");
+		if (EFFICACY.test(text.replace(EFFICACY_DECOYS, ""))) kinds.push("efficacy");
 		if (SUPERLATIVE.test(text)) kinds.push("superlative");
 		if (kinds.length > 0) found.push({ line, text, kind: kinds.join("+") });
 	}
