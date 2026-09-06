@@ -40,6 +40,47 @@ export interface SupplementResult {
 	failedGaps: SupplementGap[];
 }
 
+/**
+ * A supplemental run outlives the function that started it.
+ *
+ * The route is capped at 120s and the row is written before the providers are
+ * called, so a function that is killed — timeout, deploy, OOM — leaves a row
+ * saying research is in progress, forever. Observed in production on
+ * 2026-09-06: a run sat at `running` for eight minutes while the operator had
+ * already been told it failed.
+ *
+ * data_pipeline_runs solved this with reapOrphanedPipelineRuns; this is the
+ * same shape. The sweep is a preflight on the next run rather than a cron: a
+ * stranded row only misleads someone reading the audit trail, and the next
+ * person to start a run is exactly who is about to read it.
+ */
+export const ORPHANED_SUPPLEMENT_AFTER_MS = 10 * 60 * 1000;
+
+export async function reapOrphanedSupplementalRuns(
+	sb: SupabaseClient,
+	now: Date = new Date(),
+	olderThanMs: number = ORPHANED_SUPPLEMENT_AFTER_MS,
+): Promise<number> {
+	const cutoff = new Date(now.getTime() - olderThanMs).toISOString();
+	const { data, error } = await sb
+		.from("supplemental_research_runs")
+		.update({
+			status: "failed",
+			error_code: "orphaned",
+			error_summary: `run was still running with nothing written since ${cutoff}; settled by the orphan sweep`,
+			completed_at: now.toISOString(),
+		})
+		.eq("status", "running")
+		.lt("created_at", cutoff)
+		.select("id");
+	if (error) {
+		// Best-effort: never let bookkeeping stop somebody's research.
+		console.warn("[supplement] orphan sweep failed:", error.message);
+		return 0;
+	}
+	return (data ?? []).length;
+}
+
 export interface SupplementRepository {
 	/** The owned run, its query, and the snapshot it rested on. Ownership is
 	 *  checked in the query rather than after the read. */
@@ -49,6 +90,9 @@ export interface SupplementRepository {
 		knowledgeSnapshotId: string | null;
 	} | null>;
 	canonicalProductInRun(runId: string, canonicalProductId: string): Promise<{ id: string; name: string; category: string | null } | null>;
+	/** Settle anyone's runs left `running` by a killed function. Returns the
+	 *  count settled; never throws. */
+	reapOrphans(): Promise<number>;
 	createSupplementalRun(input: {
 		recommendationRunId: string;
 		canonicalProductId: string;
@@ -137,6 +181,7 @@ export function createSupplementRepository(
 			};
 			return { id: String(product.id), name: product.display_name, category: product.normalized_category };
 		},
+		reapOrphans: () => reapOrphanedSupplementalRuns(sb),
 		async createSupplementalRun(input) {
 			const { data, error } = await sb
 				.from("supplemental_research_runs")
@@ -221,6 +266,11 @@ export async function runSupplementalResearch(
 		gaps: SupplementGap[];
 	},
 ): Promise<SupplementResult> {
+	// Preflight, before anything is written: settle rows a killed function left
+	// behind so the audit trail does not claim research is still in progress.
+	const reaped = await repo.reapOrphans();
+	if (reaped > 0) console.info(`[supplement] settled ${reaped} orphaned run(s)`);
+
 	const run = await repo.loadOwnedRun(input.recommendationRunId, input.userId);
 	if (!run) throw new SupplementError("run_not_found", "recommendation run not found", 404);
 	if (!run.knowledgeSnapshotId) {

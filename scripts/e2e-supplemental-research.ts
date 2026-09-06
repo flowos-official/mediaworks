@@ -22,6 +22,7 @@ import {
 } from "@/lib/product-finder/run";
 import {
 	createSupplementRepository,
+	reapOrphanedSupplementalRuns,
 	runSupplementalResearch,
 } from "@/lib/intelligence/supplement/run";
 import type { SupplementProviderDeps } from "@/lib/intelligence/supplement/providers";
@@ -241,6 +242,35 @@ async function main(): Promise<void> {
 			.single();
 		assert.equal(failedAudit?.status, "failed");
 		assert.equal(failedAudit?.error_code, "all_gaps_failed");
+
+		// A run left `running` by a killed function must not sit there claiming
+		// research is in progress. Seen in production 2026-09-06: eight minutes
+		// and counting, while the operator had already been told it failed.
+		const { data: stranded } = await sb
+			.from("supplemental_research_runs")
+			.insert({
+				recommendation_run_id: original.runId,
+				canonical_product_id: original.canonicalProductId,
+				created_by: userId,
+				requested_gaps: ["current_price"],
+				status: "running",
+				prior_knowledge_snapshot_id: before?.knowledge_snapshot_id as string,
+				created_at: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+			})
+			.select("id")
+			.single();
+		if (stranded?.id) created.supplementalRuns.unshift(String(stranded.id));
+		const reaped = await reapOrphanedSupplementalRuns(sb);
+		assert.ok(reaped >= 1, "the sweep must settle a run stranded past the deadline");
+		const { data: settled } = await sb
+			.from("supplemental_research_runs")
+			.select("status, error_code, completed_at")
+			.eq("id", stranded!.id)
+			.single();
+		assert.equal(settled?.status, "failed");
+		assert.equal(settled?.error_code, "orphaned");
+		assert.ok(settled?.completed_at, "a settled run must carry the time it was settled");
+		console.log(`  [orphan-sweep] settled=${reaped}`);
 		assert.equal(
 			failedAudit?.result_recommendation_run_id,
 			null,

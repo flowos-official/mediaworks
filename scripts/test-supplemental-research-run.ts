@@ -35,6 +35,7 @@ interface Calls {
 	drafts: EvidenceDraft[];
 	reranks: number;
 	completed: Array<Record<string, unknown>>;
+	reaped: number;
 }
 
 function harness(
@@ -43,9 +44,13 @@ function harness(
 		failGaps?: string[];
 	} = {},
 ): { repo: SupplementRepository; deps: SupplementProviderDeps; calls: Calls } {
-	const calls: Calls = { gaps: [], drafts: [], reranks: 0, completed: [] };
+	const calls: Calls = { gaps: [], drafts: [], reranks: 0, completed: [], reaped: 0 };
 
 	const repo: SupplementRepository = {
+		async reapOrphans() {
+			calls.reaped++;
+			return 0;
+		},
 		async loadOwnedRun(runId, userId) {
 			return runId === RUN_ID && userId === USER_ID
 				? { id: RUN_ID, query: { mode: "stored_only", limit: 10 }, knowledgeSnapshotId: SNAPSHOT_ID }
@@ -130,6 +135,10 @@ async function main(): Promise<void> {
 			(e: unknown) => e instanceof SupplementError && e.code === "run_not_found",
 		);
 		assert.deepEqual(calls.gaps, [], "a run we do not own must cost no external call");
+		// The sweep runs BEFORE ownership is even checked: a row another
+		// operator's killed function stranded should not wait for that operator
+		// to come back.
+		assert.equal(calls.reaped, 1, "the orphan sweep is a preflight on every attempt");
 	}
 	{
 		const { repo, deps, calls } = harness();
