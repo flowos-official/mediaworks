@@ -43,7 +43,8 @@ export type BroadcastChannelSlug =
 	| "ropping"
 	| "kantv"
 	| "rakuraku"
-	| "ichiban";
+	| "ichiban"
+	| "rakutenlive";
 
 export const OA_CHANNELS: { slug: BroadcastChannelSlug; name: string }[] = [
 	{ slug: "japanet", name: "ジャパネット" },
@@ -56,6 +57,7 @@ export const OA_CHANNELS: { slug: BroadcastChannelSlug; name: string }[] = [
 	{ slug: "kantv", name: "カンテレSHOPPING" },
 	{ slug: "rakuraku", name: "ABCらくらく茂" },
 	{ slug: "ichiban", name: "いちばん本舗" },
+	{ slug: "rakutenlive", name: "楽天ショッピングチャンネル" },
 ];
 
 // Channels delisted from the calendar whose historical_broadcasts rows are kept
@@ -87,6 +89,7 @@ export const CHANNEL_BADGE: Record<BroadcastChannelSlug, string> = {
 	kantv: "bg-teal-100 text-teal-800 border-teal-200 dark:bg-teal-500/15 dark:text-teal-200 dark:border-teal-500/30",
 	rakuraku: "bg-lime-100 text-lime-800 border-lime-200 dark:bg-lime-500/15 dark:text-lime-200 dark:border-lime-500/30",
 	ichiban: "bg-fuchsia-100 text-fuchsia-800 border-fuchsia-200 dark:bg-fuchsia-500/15 dark:text-fuchsia-200 dark:border-fuchsia-500/30",
+	rakutenlive: "bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-500/15 dark:text-slate-200 dark:border-slate-500/30",
 };
 
 // Solid dots for compact calendar-cell rendering. Mirror the badge palette
@@ -106,6 +109,7 @@ export const CHANNEL_DOT: Record<BroadcastChannelSlug, string> = {
 	kantv: "bg-teal-500",
 	rakuraku: "bg-lime-500",
 	ichiban: "bg-fuchsia-500",
+	rakutenlive: "bg-slate-500",
 };
 
 // One-character abbreviation used on the calendar cell when a tooltip alone
@@ -127,6 +131,7 @@ export const CHANNEL_SHORT: Record<BroadcastChannelSlug, string> = {
 	kantv: "関",
 	rakuraku: "茂",
 	ichiban: "本",
+	rakutenlive: "楽",
 };
 
 export function channelDisplayName(slug: string): string {

@@ -24,6 +24,10 @@ export const IMAGE_EXTRACTORS: Record<OAChannelSlug, ImageExtractor | null> = {
 	kantv: null, // same — image_url populated from c-card__img inside parser
 	rakuraku: ogImageExtractor, // same asahi template as senobura/uranoura
 	ichiban: null, // image_url populated inside ichiban parser from card thumbnail
+	// Same — the archive card carries its own thumbnail. There is nothing to
+	// fetch per row anyway: the link target is a video player, not a page with
+	// an og:image describing the broadcast.
+	rakutenlive: null,
 };
 
 export type { ImageExtractor } from "./types";

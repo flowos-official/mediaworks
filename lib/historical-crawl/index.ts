@@ -16,6 +16,7 @@ import { txdParser } from "./parsers/txd";
 import { kantvParser } from "./parsers/kantv";
 import { rakurakuParser } from "./parsers/rakuraku";
 import { ichibanParser } from "./parsers/ichiban";
+import { rakutenliveParser } from "./parsers/rakutenlive";
 
 export const ALL_PARSERS: readonly ChannelParser[] = [
 	junsanpoParser,
@@ -28,6 +29,7 @@ export const ALL_PARSERS: readonly ChannelParser[] = [
 	kantvParser,
 	rakurakuParser,
 	ichibanParser,
+	rakutenliveParser,
 ];
 
 export interface CrawlAllResult {

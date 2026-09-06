@@ -221,7 +221,8 @@
     "test:intelligence-import-apply": "tsx scripts/test-intelligence-import-apply.ts",
     "test:intelligence-import-view": "tsx scripts/test-intelligence-import-view.ts",
     "e2e:supplemental-research": "tsx --env-file=.env.local scripts/e2e-supplemental-research.ts",
-    "e2e:intelligence-import": "tsx --env-file=.env.local scripts/e2e-intelligence-import.ts"
+    "e2e:intelligence-import": "tsx --env-file=.env.local scripts/e2e-intelligence-import.ts",
+    "test:historical-rakutenlive-parser": "tsx scripts/test-historical-rakutenlive-parser.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1016.0",
