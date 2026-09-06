@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MediaWorks · 15분 발표자 가이드</title>
+  <style>
+    :root { --ink:#18344b; --muted:#556b7d; --line:#d4e1e8; --paper:#f2f6f8; --teal:#086e78; }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; scroll-padding-top:24px; }
+    body { margin:0; background:var(--paper); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; line-height:1.75; word-break:keep-all; overflow-wrap:anywhere; }
+    a { color:var(--teal); text-underline-offset:4px; }
+    button { font:inherit; cursor:pointer; }
+    .shell { max-width:1160px; margin:auto; padding:32px 24px 64px; }
+    header { padding:40px; border-radius:24px; color:white; background:#13354d; }
+    .eyebrow { margin:0; color:#91dadd; font-size:12px; letter-spacing:.14em; font-weight:700; }
+    h1 { margin:12px 0; font-size:clamp(28px,5vw,44px); line-height:1.3; }
+    header p { max-width:770px; color:#d6e5ed; }
+    .actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:24px; }
+    .actions a,.actions button { display:inline-block; padding:10px 16px; border:1px solid #7797aa; border-radius:9px; background:transparent; color:white; text-decoration:none; }
+    .actions a:first-child { background:#bcebed; color:#13354d; border-color:#bcebed; font-weight:700; }
+    .layout { display:grid; grid-template-columns:220px minmax(0,1fr); gap:28px; margin-top:28px; }
+    nav { position:sticky; top:24px; align-self:start; }
+    nav p { margin:0 0 12px; color:var(--muted); font-size:13px; }
+    nav a { display:block; padding:10px 12px; margin-bottom:5px; border-radius:8px; color:var(--ink); text-decoration:none; font-size:14px; }
+    nav a:hover,nav a:focus-visible { background:#dcecef; }
+    nav small { display:block; color:var(--muted); }
+    main { min-width:0; }
+    section { margin-bottom:24px; padding:30px; border:1px solid var(--line); border-radius:18px; background:white; }
+    h2 { margin:8px 0 18px; font-size:25px; line-height:1.4; }
+    h3 { margin:24px 0 8px; font-size:17px; }
+    p { margin:10px 0; }
+    .time { font-size:12px; color:var(--teal); font-weight:750; letter-spacing:.05em; }
+    .screen { padding:12px 16px; background:#edf5f6; border-radius:9px; font-size:14px; }
+    .screen b { margin-right:8px; }
+    blockquote { margin:16px 0; padding:20px 22px; border-left:4px solid #26959d; background:#f3f8fa; font-size:18px; line-height:1.9; }
+    blockquote p:first-child { margin-top:0; } blockquote p:last-child { margin-bottom:0; }
+    .note { font-size:14px; color:var(--muted); }
+    .caution { padding:14px 16px; border-radius:9px; background:#fff5e3; color:#704d16; font-size:14px; }
+    .next { margin:18px 0 0; font-size:14px; color:var(--teal); }
+    ul,ol { padding-left:23px; } li { margin:8px 0; }
+    .steps { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-top:16px; }
+    .step { padding:16px; border:1px solid var(--line); border-radius:10px; font-size:14px; }
+    .step strong { display:block; color:var(--teal); margin-bottom:8px; }
+    details { padding:15px 0; border-top:1px solid var(--line); }
+    summary { cursor:pointer; font-weight:700; }
+    details p { padding:8px 0 0; color:var(--muted); }
+    footer { color:var(--muted); font-size:12px; margin-top:32px; }
+    @media(max-width:800px) { .layout { grid-template-columns:1fr; } nav { position:static; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:4px; } nav p { grid-column:1/-1; } .steps { grid-template-columns:1fr; } }
+    @media(max-width:480px) { .shell { padding:16px 14px 40px; } header,section { padding:22px; } blockquote { padding:16px; font-size:17px; } h2 { font-size:22px; } }
+    @media print { @page { size:A4; margin:16mm; } body { background:white; } .shell { max-width:none; padding:0; } header { padding:0; color:var(--ink); background:white; } header p,.eyebrow { color:var(--muted); } .actions,nav { display:none; } .layout { display:block; } section { border:0; border-radius:0; padding:0; margin-top:24px; break-before:page; } blockquote,.step,details { break-inside:avoid; } a { color:inherit; } }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <p class="eyebrow">MEDIAWORKS · PRESENTER NOTES · 2026.09.06</p>
+      <h1>15분 발표자 가이드</h1>
+      <p>발견한 기회를 설명하고, 실제 업무에 적용하는 방법을 보여준 뒤, 90일 실증의 범위를 합의합니다. 이 화면은 발표자가 보고 고객 화면에는 별도의 보고서를 띄우세요.</p>
+      <div class="actions">
+        <a href="2026-09-04-mediaworks-data-insight-report.html" target="_blank" rel="noopener">고객용 보고서 열기 ↗</a>
+        <a href="2026-09-04-mediaworks-pitch-guide-ko.md">상세 피치 가이드</a>
+        <button type="button" id="print">대본 인쇄 / PDF</button>
+      </div>
+    </header>
+    <div class="layout">
+      <nav aria-label="발표 순서">
+        <p>총 15분 · 질문 시간 별도</p>
+        <a href="#opening">01. 오늘의 제안<small>0:00–1:00 · 1분</small></a>
+        <a href="#assets">02. 자산과 과제<small>1:00–3:00 · 2분</small></a>
+        <a href="#insights">03. 실제 인사이트<small>3:00–7:00 · 4분</small></a>
+        <a href="#workflow">04. 사용하는 모습<small>7:00–10:00 · 3분</small></a>
+        <a href="#pilot">05. 90일 실행안<small>10:00–13:00 · 3분</small></a>
+        <a href="#closing">06. 결정 요청<small>13:00–15:00 · 2분</small></a>
+        <a href="#questions">예상 질문과 답변</a>
+        <a href="#prepare">발표 전 확인</a>
+      </nav>
+      <main>
+        <section id="opening">
+          <span class="time">01 · 0:00–1:00</span>
+          <h2>오늘 제안하는 것을 먼저 말하기</h2>
+          <div class="screen"><b>고객 화면</b><a href="2026-09-04-mediaworks-data-insight-report.html" target="_blank" rel="noopener">보고서 첫 화면 ↗</a></div>
+          <h3>그대로 말해도 되는 대본</h3>
+          <blockquote>“오늘은 지금까지 쌓은 데이터에서 어떤 사업 기회가 보이는지, 그리고 이 데이터를 실제 상품 검토와 판매에 어떻게 활용할지 말씀드리겠습니다. 제안드리는 것은 세 개 카테고리를 대상으로 한 90일 실증입니다.”</blockquote>
+          <p class="note">목적은 실증 범위의 합의입니다. 고객이 얻는 가치를 ‘검토 시간 단축’과 ‘선정 근거·결과 연결’로 설명하세요.</p>
+          <p class="next">다음 연결 → “먼저 지금까지 무엇이 쌓였는지 짧게 보겠습니다.”</p>
+        </section>
+        <section id="assets">
+          <span class="time">02 · 1:00–3:00</span>
+          <h2>확보한 자산과 다음 과제</h2>
+          <div class="screen"><b>고객 화면</b>KPI 카드 → <a href="2026-09-04-mediaworks-data-insight-report.html#status" target="_blank" rel="noopener">현재 성숙도 ↗</a></div>
+          <blockquote><p>“9월 4일 기준으로 상품 후보 8,199건과 방송 분석 2,561건이 쌓였습니다. 이제 경쟁사가 어떤 상품을 반복해서 보여주고, 어떤 표현과 시연을 사용하는지 살펴볼 수 있습니다.”</p><p>“다음 단계는 담당자가 어떤 후보를 선택했는지, 왜 제외했는지, 실제 결과는 어땠는지를 연결하는 것입니다.”</p></blockquote>
+          <p class="caution">‘선정 결과 0건’은 당시 조회한 시스템 테이블에 기록이 없었다는 뜻입니다. 미디어웍스가 실제 업무에서 상품 판단을 하지 않았다는 의미로 설명하지 마세요.</p>
+          <p class="next">다음 연결 → “이 데이터에서 우선 검토할 영역이 몇 가지 보입니다.”</p>
+        </section>
+        <section id="insights">
+          <span class="time">03 · 3:00–7:00</span>
+          <h2>어디부터 검증할 것인가</h2>
+          <div class="screen"><b>고객 화면</b><a href="2026-09-04-mediaworks-data-insight-report.html#opportunity" target="_blank" rel="noopener">Opportunity Map ↗</a> → <a href="2026-09-04-mediaworks-data-insight-report.html#category-plan" target="_blank" rel="noopener">카테고리 실행안 ↗</a></div>
+          <h3>의료·청소: 우선 검토할 기반</h3>
+          <blockquote>“의료·청소는 내부 이익 실적을 출발점으로 우선 검토할 영역입니다. 경쟁 방송에서 관찰한 판매 방식을 개별 상품에 적용해 검증하겠습니다.”</blockquote>
+          <h3>골프: 시점에 맞춰 시험할 영역</h3>
+          <blockquote>“골프는 계절성과 내부 수익성을 고려해 단기 테스트 후보로 볼 수 있습니다. 실제 실행 시점에 맞는 재확인이 필요합니다.”</blockquote>
+          <h3>숙면·침구: 소량으로 확인할 가설</h3>
+          <blockquote>“숙면·침구는 경쟁 노출이 눈에 띄지만 내부 판매 가능성은 아직 가설입니다. 적은 수량으로 수요를 확인하는 방식이 적절합니다.”</blockquote>
+          <p><strong>여기서 강조할 문장:</strong> “데이터를 보면 어떤 영역에 집중하고, 어떤 영역은 작게 시험할지 구분할 수 있습니다.”</p>
+          <p class="caution">자사 의료기기와 경쟁 건강·다이어트는 서로 다른 분류입니다. 방송 빈도는 실제 매출이 아니며, 카테고리 우선순위는 검증할 전략 가설입니다.</p>
+          <p class="next">다음 연결 → “그렇다면 담당자는 이 정보를 실제로 어떻게 사용하게 될까요?”</p>
+        </section>
+        <section id="workflow">
+          <span class="time">04 · 7:00–10:00</span>
+          <h2>담당자의 일주일을 보여주기</h2>
+          <div class="screen"><b>고객 화면</b><a href="2026-09-04-mediaworks-data-insight-report.html#dna" target="_blank" rel="noopener">Broadcast DNA ↗</a> → <a href="2026-09-04-mediaworks-data-insight-report.html#target-model" target="_blank" rel="noopener">목표 운영 모델 ↗</a></div>
+          <p class="note">DNA 화면에서 Home·Kitchen 등 한 카테고리만 선택하세요. 여러 카테고리를 모두 설명할 필요는 없습니다.</p>
+          <blockquote><p>“예를 들어 청소 상품을 검토한다면, 담당자는 사용 전후 변화를 보여줄 수 있는지, 사용법과 관리의 어려움을 어떻게 설명할지 확인합니다. 방송 분석은 이런 검토 항목과 대본 가설을 만드는 데 쓰입니다.”</p><p>“매주 후보 10개를 검토하고, Finder에서 근거와 부족한 정보를 확인합니다. 담당자가 관심·제외 이유를 기록하고, 샘플 평가와 판매 결과를 연결합니다. 다음 검토에서는 이전 판단을 참고할 수 있게 됩니다.”</p></blockquote>
+          <div class="steps">
+            <div class="step"><strong>후보 검토</strong>주간 후보 목록과 선정 근거 확인</div>
+            <div class="step"><strong>판단 기록</strong>관심·제외 이유와 추가 확인 항목 기록</div>
+            <div class="step"><strong>결과 연결</strong>샘플·판매 결과를 다음 판단에 활용</div>
+          </div>
+          <p class="caution">위 흐름은 목표 운영 방식입니다. Finder는 9월 5일 코드 구현이 확인됐고 운영 배포·실사용은 별도 확인 대상입니다. 시연 전 실제 환경에서 동작을 확인하세요. 방송 표현 빈도만으로 판매 효과가 입증된 것은 아닙니다.</p>
+          <p class="next">다음 연결 → “이 흐름을 90일 동안 실제 업무에서 확인하겠습니다.”</p>
+        </section>
+        <section id="pilot">
+          <span class="time">05 · 10:00–13:00</span>
+          <h2>90일 동안 확인할 변화</h2>
+          <div class="screen"><b>고객 화면</b><a href="2026-09-04-mediaworks-data-insight-report.html#ninety-day-plan" target="_blank" rel="noopener">90일 실행계획 ↗</a></div>
+          <blockquote><p>“첫 달에는 담당자와 대상 카테고리를 정하고 기존 검토 시간과 판단 기록을 측정하겠습니다. 두 번째 달에는 Finder를 실제 업무에서 검증하고 샘플 결과를 연결하겠습니다. 세 번째 달에는 검토 시간과 근거 품질이 어떻게 달라졌는지 평가하겠습니다.”</p><p>“초기 운영 목표로 상품 판단 100건과 중간 결과 20건을 제안드립니다. 실제 판매·이익·반품 결과는 3~6개월에 걸쳐 별도로 추적하겠습니다.”</p></blockquote>
+          <div class="steps">
+            <div class="step"><strong>1–30일 · 기준 측정</strong>담당자·카테고리 확정. 첫 2주간 기존 검토 시간과 근거 누락 측정.</div>
+            <div class="step"><strong>31–60일 · 실사용</strong>Finder 활용과 판단 이유 기록. 샘플·공급 조건 결과 연결.</div>
+            <div class="step"><strong>61–90일 · 평가</strong>비슷한 업무의 시간·근거 품질·운영비를 비교해 확대 여부 판단.</div>
+          </div>
+          <p class="note"><strong>숫자의 정의:</strong> 판단 100건은 중복을 제외한 상품 수입니다. 중간 결과 20건은 샘플 평가 또는 공급 조건 확인이 완료된 상품 수이며, 판매 완료 20건을 뜻하지 않습니다.</p>
+          <p class="caution">100건·20건은 고객과 합의할 운영 목표입니다. 수익 개선을 보장하는 기준이 아닙니다. 일정은 담당 인력·예산·검수 범위를 합의한 후 확정합니다.</p>
+          <p class="next">다음 연결 → “시작을 위해 오늘 함께 정할 사항은 네 가지입니다.”</p>
+        </section>
+        <section id="closing">
+          <span class="time">06 · 13:00–15:00</span>
+          <h2>네 가지 결정을 요청하며 마무리</h2>
+          <div class="screen"><b>고객 화면</b>90일 실행계획의 경영진 결정사항 유지</div>
+          <ol>
+            <li><strong>운영 책임자 한 명:</strong> 주간 검토와 결과 기록을 책임질 담당자</li>
+            <li><strong>우선 카테고리 세 개:</strong> 의료·청소를 출발점으로 골프 또는 숙면 등 검증군 합의</li>
+            <li><strong>주간 운영 방식:</strong> 검토 일정과 판단 이유·결과 기록 방식</li>
+            <li><strong>실험 예산 상한:</strong> 샘플·MOQ·재고·판매 실험 비용의 범위</li>
+          </ol>
+          <blockquote><p>“실증을 시작하려면 네 가지를 함께 정하면 됩니다. 운영 책임자 한 분, 우선 검토할 세 개 카테고리, 주간 검토와 결과 기록 방식, 그리고 샘플·판매 실험의 예산 상한입니다.”</p><p>“이 범위에 합의해주시면 담당 인력과 일정을 확정하고, 90일 뒤 같은 지표를 보면서 확대 여부를 판단하겠습니다.”</p></blockquote>
+          <p class="note">회의 메모에는 각 항목의 결정 내용·담당자·확정일을 남기세요. 미정 항목은 후속 확인 일정까지 정합니다.</p>
+        </section>
+        <section id="questions">
+          <span class="time">Q&amp;A · 질문을 누르면 답변 표시</span>
+          <h2>예상 질문에 짧게 답하기</h2>
+          <details open><summary>정말 잘 팔릴 상품을 찾을 수 있나요?</summary><p>“현재 데이터로 검토할 후보와 그 근거를 제시할 수 있습니다. 판매 가능성은 공급 조건, 샘플 평가, 실제 판매 결과까지 연결해 확인하겠습니다. 이번 실증에서 그 판단 과정이 얼마나 개선되는지 측정하려고 합니다.”</p></details>
+          <details><summary>이미 완성된 기능은 무엇인가요?</summary><p>“9월 5일 코드 기준으로 Finder 화면, 저장 근거 기반 순위 계산, 결과와 Snapshot 저장, 관심·제외 기록이 구현돼 있습니다. 실제 운영 동작을 확인하고 판단 이유와 샘플·매출 연결을 보완하는 것이 다음 범위입니다.”</p></details>
+          <details><summary>데이터가 쌓이면 자동으로 좋아지나요?</summary><p>“판단 이유와 실제 결과가 함께 기록돼야 개선 여부를 평가할 수 있습니다. 그 기록을 바탕으로 검토 기준을 조정하고, 같은 기준으로 다시 평가하겠습니다.”</p></details>
+          <details><summary>90일 뒤 무엇을 보고 성공이라고 하나요?</summary><p>“비슷한 업무에서 상품 검토 시간이 줄었는지, 근거 누락이 줄었는지, 기록이 업무에 정착했는지를 봅니다. 100개 판단과 20개 중간 결과는 그 운영을 위한 제안 목표이고, 판매 성과는 별도로 추적합니다.”</p></details>
+          <details><summary>비용은 얼마나 드나요?</summary><p>“개발·운영 인력, 저장·처리 비용, 샘플·판매 실험비를 나눠 범위와 상한을 확정하겠습니다. 기존에 기록된 AI 호출 비용만으로 전체 비용을 판단하지 않겠습니다.”</p></details>
+          <details><summary>외부 고객에게도 판매할 수 있나요?</summary><p>“후속 사업으로 검토할 수 있습니다. 내부 효과와 실제 비용을 먼저 확인하고, 외부 고객 데이터를 다루기 전에 고객별 데이터 격리와 운영 조건을 검증하겠습니다.”</p></details>
+        </section>
+        <section id="prepare">
+          <span class="time">BEFORE THE MEETING</span>
+          <h2>발표 직전 준비</h2>
+          <ul>
+            <li>고객용 보고서는 일본어로 열고, 이 대본은 발표자 화면이나 인쇄물로 준비합니다.</li>
+            <li>발표 중 사용할 화면은 첫 화면, 성숙도, 기회 지도, DNA, 운영 모델, 90일 계획입니다.</li>
+            <li>가이드의 고객 화면 링크는 새 탭으로 열립니다. 필요한 탭만 미리 열어두면 전환이 쉽습니다.</li>
+            <li>Finder 실시간 시연은 운영 환경에서 미리 확인했을 때 진행합니다.</li>
+            <li>시간이 부족하면 골프·숙면 설명을 줄이고, 90일 실행안과 결정 요청의 시간을 확보합니다.</li>
+          </ul>
+          <p class="note">인쇄 버튼을 누르면 모든 예상 답변이 펼쳐져 함께 출력됩니다. 브라우저의 ‘PDF로 저장’을 선택하면 발표 대본으로 보관할 수 있습니다.</p>
+        </section>
+      </main>
+    </div>
+    <footer>발표 가이드 작성: 2026-09-06 · 데이터: 2026-09-04 조회 기준 · 구현 확인: 2026-09-05 코드 기준.<br>이 문서 작성 중 운영 DB·배포 상태는 재조회하지 않았습니다. 일정·목표·예산은 고객과 합의할 제안입니다.</footer>
+  </div>
+  <script>
+    let previouslyOpen = [];
+    window.addEventListener('beforeprint', () => {
+      previouslyOpen = Array.from(document.querySelectorAll('details'), detail => detail.open);
+      document.querySelectorAll('details').forEach(detail => { detail.open = true; });
+    });
+    window.addEventListener('afterprint', () => {
+      document.querySelectorAll('details').forEach((detail, index) => { detail.open = previouslyOpen[index]; });
+    });
+    document.getElementById('print').addEventListener('click', () => window.print());
+  </script>
+</body>
+</html>
