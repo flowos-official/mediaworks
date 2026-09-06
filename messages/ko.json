@@ -1747,6 +1747,7 @@
       "title": "가져오기 이력",
       "empty": "가져오기 이력이 아직 없습니다.",
       "file": "파일",
+      "statusLabel": "상태",
       "status": {
         "uploaded": "업로드됨",
         "mapped": "매핑됨",

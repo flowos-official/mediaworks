@@ -73,7 +73,11 @@ export function ImportBatchHistory({
 					<thead className="bg-muted/40 text-xs">
 						<tr>
 							<th className="p-2 text-left">{t("file")}</th>
-							<th className="p-2 text-left">{t("status")}</th>
+							{/* `status` is the status -> label map, so it cannot double as the
+								    column header: next-intl returns the key path when a
+								    message resolves to an object, and the header rendered
+								    as "imports.history.status" on screen. */}
+								<th className="p-2 text-left">{t("statusLabel")}</th>
 							<th className="p-2 text-left">{t("rows")}</th>
 							<th className="p-2 text-left">{t("hash")}</th>
 							<th className="p-2 text-left">{t("updated")}</th>

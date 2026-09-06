@@ -1747,6 +1747,7 @@
       "title": "取り込み履歴",
       "empty": "取り込み履歴はまだありません。",
       "file": "ファイル",
+      "statusLabel": "状態",
       "status": {
         "uploaded": "アップロード済み",
         "mapped": "マッピング済み",
