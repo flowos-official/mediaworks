@@ -3,7 +3,12 @@ import { ChevronLeft } from "lucide-react";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { ScreenplayWorkspace } from "@/components/screenplay/ScreenplayWorkspace";
-import type { ScreenplayRow, ScreenplayVersionRow } from "@/lib/screenplay/types";
+import type {
+	ScreenplayClaimLinkRow,
+	ScreenplayRow,
+	ScreenplayVersionRow,
+} from "@/lib/screenplay/types";
+import { rowToContext } from "@/lib/screenplay/context/build";
 import type { ScriptCheckResult } from "@/lib/screenplay/compliance/types";
 import { localePath } from "@/lib/i18n/locale-path";
 import { getServerClient } from "@/lib/supabase/server";
@@ -35,11 +40,50 @@ async function fetchDetail(id: string) {
 	const { data: versions, error: versionsErr } = await sb
 		.from("screenplay_versions")
 		.select(
-			"id, version_number, markdown, feedback, base_version_id, model, thinking_level, pattern_snapshot, created_at",
+			"id, version_number, markdown, feedback, base_version_id, model, thinking_level, pattern_snapshot, generation_context_id, created_at",
 		)
 		.eq("screenplay_id", id)
 		.order("version_number", { ascending: true });
 	if (versionsErr) return null;
+
+	// Provenance is loaded HERE, not only in the GET route: this page reads the
+	// database directly, so wiring the API route alone left every version's
+	// panels saying "generation context unavailable" — the exact plausible-
+	// looking empty state those panels exist to avoid, on a version that had
+	// 20 claim links in the table.
+	//
+	// Scoped by screenplay_id / this screenplay's version ids, and non-fatal:
+	// a version still has to render if its provenance cannot be read.
+	const versionIds = (versions ?? []).map((v) => String(v.id));
+	const [contexts, claimLinks] = await Promise.all([
+		sb.from("screenplay_generation_contexts").select("*").eq("screenplay_id", id),
+		versionIds.length > 0
+			? sb
+					.from("screenplay_claim_links")
+					.select("id, version_id, line_start, line_end, claim_text, status, evidence_item_id, reason")
+					.in("version_id", versionIds)
+					.order("line_start", { ascending: true })
+			: Promise.resolve({ data: [], error: null }),
+	]);
+	if (contexts.error) console.warn("[screenplays/page] context load failed:", contexts.error.message);
+	if (claimLinks.error) console.warn("[screenplays/page] claim link load failed:", claimLinks.error.message);
+
+	const contextById = new Map(
+		(contexts.data ?? []).map((row) => [String(row.id), rowToContext(row as Record<string, unknown>)]),
+	);
+	const linksByVersion = new Map<string, ScreenplayClaimLinkRow[]>();
+	for (const row of (claimLinks.data ?? []) as ScreenplayClaimLinkRow[]) {
+		const held = linksByVersion.get(row.version_id);
+		if (held) held.push(row);
+		else linksByVersion.set(row.version_id, [row]);
+	}
+	const versionsWithProvenance = (versions ?? []).map((version) => ({
+		...version,
+		generation_context: version.generation_context_id
+			? contextById.get(String(version.generation_context_id)) ?? null
+			: null,
+		claim_links: linksByVersion.get(String(version.id)) ?? [],
+	}));
 
 	let latestCheck: (ScriptCheckResult & { created_at?: string; lexicon_version?: string }) | null = null;
 	if (screenplay.current_version_id) {
@@ -55,7 +99,7 @@ async function fetchDetail(id: string) {
 
 	return {
 		screenplay: screenplay as ScreenplayRow,
-		versions: (versions ?? []) as ScreenplayVersionRow[],
+		versions: versionsWithProvenance as unknown as ScreenplayVersionRow[],
 		latestCheck,
 	};
 }
