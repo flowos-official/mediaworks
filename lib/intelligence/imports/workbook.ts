@@ -180,6 +180,19 @@ export function parseDateCell(value: unknown): string | null | undefined {
 	}
 	const raw = String(value).trim();
 	if (raw === "") return null;
+
+	// A Date does not survive the round trip through import_rows.raw_json — it
+	// is stored as JSON and comes back an ISO string. Reading it as text then
+	// failed the calendar-date pattern below, so every dated row in a
+	// browser-uploaded sheet was rejected with "日付として読めません" while the
+	// same sheet validated fine in-process. Delegate to the Date branch, which
+	// reads local components, so a value written as local midnight and stored
+	// as the previous day in UTC still comes back as the day it was typed.
+	if (/^\d{4}-\d{2}-\d{2}T/.test(raw)) {
+		const parsed = new Date(raw);
+		return Number.isNaN(parsed.getTime()) ? undefined : parseDateCell(parsed);
+	}
+
 	const normalised = raw.normalize("NFKC").replace(/[年月/.]/g, "-").replace(/日/g, "").trim();
 	const match = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(normalised);
 	if (!match) return undefined;

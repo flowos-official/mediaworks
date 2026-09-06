@@ -170,6 +170,17 @@ console.log("✓ headers normalise across width, case, spacing and language");
 	// A Date built by the xlsx library from a serial number is local midnight;
 	// reading its UTC components would move it a day the other way.
 	assert.equal(parseDateCell(new Date(2026, 7, 1)), "2026-08-01");
+	// A Date does NOT survive import_rows.raw_json — it is stored as JSON and
+	// read back as an ISO string. Missing this rejected every dated row in a
+	// browser-uploaded sheet ("日付として読めません") while the same sheet
+	// validated fine in-process, which is why the in-memory e2e never saw it.
+	assert.equal(parseDateCell("2026-08-01T09:00:52.000Z"), "2026-08-01");
+	assert.equal(
+		parseDateCell(new Date(2026, 7, 1).toISOString()),
+		"2026-08-01",
+		"a local-midnight date stored as the previous day in UTC must come back as the day it was typed",
+	);
+	assert.equal(parseDateCell("2026-08-01T99:99:99.000Z"), undefined);
 }
 console.log("✓ blank, zero and unreadable are three different answers");
 

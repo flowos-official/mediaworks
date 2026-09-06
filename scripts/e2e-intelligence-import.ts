@@ -75,7 +75,38 @@ async function stageBatch(userId: string, fixture: string): Promise<string> {
 	// Confirm the suggested mapping, exactly as the operator would.
 	const mapping = suggestColumnMapping(parsed.headers);
 	assert.ok(mapping.product_name, `${fixture}: product_name must be auto-detected`);
-	const normalised = validateImportRows(parsed, mapping);
+
+	// Normalise from the STORED rows, not from the freshly parsed workbook.
+	// That is what the mapping route does, and the difference is not cosmetic:
+	// a Date does not survive JSON, so validating the in-memory parse hid a bug
+	// that rejected every dated row of a browser-uploaded sheet. Read it back.
+	const { data: storedRows, error: readError } = await sb
+		.from("import_rows")
+		.select("row_number, raw_json")
+		.eq("import_batch_id", batchId)
+		.order("row_number", { ascending: true });
+	if (readError) throw new Error(`row read-back failed: ${readError.message}`);
+	const normalised = validateImportRows(
+		{
+			sheetName: parsed.sheetName,
+			headers: parsed.headers,
+			rows: (storedRows ?? []).map((row) => ({
+				rowNumber: Number(row.row_number),
+				cells: (row.raw_json ?? {}) as Record<string, unknown>,
+			})),
+			totalRows: (storedRows ?? []).length,
+			truncated: false,
+		},
+		mapping,
+	);
+	// Only meaningful where the sheet actually has a period column — the
+	// product-only fixture has none, and that is the point of it.
+	if (mapping.period_start) {
+		assert.ok(
+			normalised.some((row) => row.periodStart !== null),
+			`${fixture}: a dated row must survive the JSON round trip through import_rows`,
+		);
+	}
 	for (const row of normalised) {
 		await sb
 			.from("import_rows")
