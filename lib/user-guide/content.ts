@@ -51,6 +51,12 @@ const quickLinkHrefs = {
 	dataManagement: "/analytics/data-management",
 };
 
+const guideImagePath = (file: string) => `/guide/ja/${file}`;
+// Korean captures of the same screens. The two sets are NOT interchangeable:
+// the chrome differs, so showing the ja shot in the ko guide asks a reader to
+// find a Korean label in a Japanese screenshot.
+const koGuideImagePath = (file: string) => `/guide/ko/${file}`;
+
 const ko: GuideContent = {
 	badge: "MediaWorks 사용자 가이드",
 	heroTitle: "추천 시스템을 업무에 사용하는 방법",
@@ -104,6 +110,11 @@ const ko: GuideContent = {
 						"열 대응 화면에서 자동 제안을 확인하고 확정한다. 필수는 상품명 하나뿐이다.",
 						"검증 결과에서 오류 행을 확인하고, 문제가 없으면 적용한다.",
 					],
+					image: {
+						src: koGuideImagePath("10-import-mapping.png"),
+						alt: "데이터 관리의 열 대응 화면. 왼쪽에 가져오기 항목, 오른쪽에 파일 열 선택이 나열되고 아래에 앞부분 행 미리보기 표가 있다.",
+						caption: "자동 제안은 뜨지만 확정하는 것은 사람. 필수는 상품명 한 열뿐이다.",
+					},
 				},
 				{
 					title: "실적 열이 없어도 된다",
@@ -114,6 +125,11 @@ const ko: GuideContent = {
 					title: "빈 칸과 0은 다르게 저장된다",
 					body:
 						"수량 칸이 비어 있으면 '모름'으로, 0이면 '0개 팔렸다'는 사실로 저장된다. 이 구분이 중요한 이유는, 빈 칸을 0으로 읽으면 아직 입력하지 않은 상품이 '안 팔린 상품'으로 순위가 매겨지기 때문이다. 엑셀에서 모르는 값은 비워 두면 된다.",
+					image: {
+						src: koGuideImagePath("11-import-validation.png"),
+						alt: "검증 결과 화면. 가져올 수 있는 행과 오류 행의 건수가 나오고, 아래에 가져오기 이력 표가 있다.",
+						caption: "오류는 엑셀 행 번호와 함께 나온다. 고쳐서 다시 올리면 된다.",
+					},
 				},
 				{
 					title: "잘못 넣었을 때",
@@ -129,6 +145,11 @@ const ko: GuideContent = {
 				{
 					title: "상단 메뉴 이해",
 					body: "자사는 내부 판매 흐름을 보는 곳이고, 시장은 경쟁 방송과 신규 상품 기회를 보는 곳이다. 제작은 리서치 결과를 방송 대본과 실행 자료로 바꾸는 곳이다. 시장 안에는 방송 캘린더·신규 발굴·MD 전략 외에 파이프라인(고른 상품 관리), 상품 파인더(쌓인 데이터로 검색), 데이터 관리(자사 엑셀 취입)가 있다.",
+					image: {
+						src: koGuideImagePath("01-overview.png"),
+						alt: "자사 매출 개요 화면. 왼쪽 사이드바에 자사·시장·제작 메뉴, 본문에 KPI 카드와 매출 추이 그래프가 있다.",
+						caption: "자사 → 매출 개요. 메뉴 구조는 여기서부터 익힌다.",
+					},
 				},
 				{
 					title: "자동으로 도는 것과 눌러야 도는 것",
@@ -148,14 +169,29 @@ const ko: GuideContent = {
 				{
 					title: "연결 상태",
 					body: "신규 상품 추천 화면의 연결 상태에서 내부 판매, 경쟁 방송, 발굴 상품, 리서치, 대본까지 이어지는 흐름을 한 번에 확인한다. 모두 정상이라면 추천 결과를 바로 검토해도 된다.",
+					image: {
+						src: koGuideImagePath("02-status-ok.png"),
+						alt: "연결 상태 화면. 필수 점검 항목이 나열되고 각각 상태 배지가 붙어 있다.",
+						caption: "여기가 정상으로 떠 있는 것이 기본 상태다.",
+					},
 				},
 				{
 					title: "방송 캘린더",
 					body: "QVC, Shop Channel, OA 방송에서 어떤 카테고리와 상품이 반복되는지 확인한다. 특정 카테고리가 자주 보이면 신규 상품 발굴과 MD 전략에서 우선 검토한다.",
+					image: {
+						src: koGuideImagePath("03-broadcasts-calendar.png"),
+						alt: "방송 캘린더 화면. 월 단위 달력에 채널별 색상 칩이 배치돼 있다.",
+						caption: "색 칩은 채널별 방송 밀도. 날짜를 누르면 상세 패널이 열린다.",
+					},
 				},
 				{
 					title: "자사 매출 개요",
 					body: "내부 판매 상위 상품과 카테고리 흐름을 확인한다. 시장에서 강한 상품이 자사에서도 팔릴 가능성이 있는지 비교하는 기준으로 사용한다.",
+					image: {
+						src: koGuideImagePath("01-overview.png"),
+						alt: "자사 매출 개요. KPI 카드, 매출 추이, 카테고리 구성, 상품 랭킹이 나열된다.",
+						caption: "매일의 판단은 자사 주력 카테고리를 파악한 뒤에 한다.",
+					},
 				},
 			],
 		},
@@ -166,6 +202,11 @@ const ko: GuideContent = {
 				{
 					title: "후보 목록 보기",
 					body: "시장 리서치의 신규 상품 발굴에서 상품 이미지, 가격, 리뷰, 적합도 점수, 추천 이유를 함께 본다. 점수만 보지 말고 가격대와 방송 설명 가능성까지 같이 판단한다.",
+					image: {
+						src: koGuideImagePath("04-discovery-list.png"),
+						alt: "신규 상품 발굴 화면. 위에 최근 30일 타사 카테고리 분포, 아래에 TV 홈쇼핑 방송 중인 후보 카드가 나열된다.",
+						caption: "이미 TV 홈쇼핑에 나온 후보가 맨 위에 모인다.",
+					},
 				},
 				{
 					title: "검토 버튼 사용",
@@ -174,6 +215,11 @@ const ko: GuideContent = {
 				{
 					title: "상세 정보 확인",
 					body: "상품이 유망해 보이면 상세 분석을 열어 판매 포인트, 경쟁 근거, 위험 요소를 확인한다. 근거가 부족하면 바로 전략에 넣기보다 추가 리서치 대상으로 본다.",
+					image: {
+						src: koGuideImagePath("04b-discovery-card-breakdown.png"),
+						alt: "발굴 카드의 내역 패널이 펼쳐져 점수 구성 항목별 막대가 표시된 화면.",
+						caption: "'내역'을 펼친 뒤에 점수가 타당한지 판단한다.",
+					},
 				},
 			],
 		},
@@ -191,6 +237,11 @@ const ko: GuideContent = {
 						"방송예정으로 옮기면 방송 검색 창이 뜬다 — 편성을 고르거나 메모를 적는다.",
 						"카드 메뉴에서 '이력 보기'를 열면 누가 언제 무엇을 바꿨는지 전부 남아 있다.",
 					],
+					image: {
+						src: koGuideImagePath("12-pipeline-kanban.png"),
+						alt: "파이프라인 화면. 선택 → 소싱 → 방송예정 → 종료 4단계 보드가 표시된다.",
+						caption: "발굴에서 후보를 선택하면 여기에 카드가 생긴다. 비어 있으면 아직 아무것도 고르지 않았다는 뜻이다.",
+					},
 				},
 				{
 					title: "종료는 자동으로도 된다",
@@ -223,6 +274,11 @@ const ko: GuideContent = {
 					title: "'판단 자료 부족'은 0점이 아니다",
 					body:
 						"어떤 축에 '판단 자료 부족'이 뜨면 그건 나쁜 점수가 아니라 잴 데이터가 없다는 뜻이다. 0점으로 표시하지 않는 이유가 이것이다 — 안 팔리는 상품과, 아직 아무도 조사하지 않은 상품은 다르다. 수익성이 계속 비어 있다면 자사 엑셀을 아직 안 넣은 것이다.",
+					image: {
+						src: koGuideImagePath("09-product-finder.png"),
+						alt: "상품 파인더의 평가 결과. 순위와 종합 지표, 5개 축이 나열되고 데이터가 없는 축에는 '데이터 없음', 예상 공헌이익에는 '판단 자료 부족'이 표시된다.",
+						caption: "'데이터 없음'과 '판단 자료 부족'은 낮은 점수가 아니라 잴 재료가 없다는 표시다.",
+					},
 				},
 				{
 					title: "근거가 부족하면 추가 조사",
@@ -254,10 +310,20 @@ const ko: GuideContent = {
 				{
 					title: "신규 리서치 생성",
 					body: "발굴 상품을 더 깊게 검토해야 할 때 신규 리서치로 보낸다. 리포트에서는 시장성, 가격 전략, 타깃 고객, 콘텐츠 아이디어를 확인한다.",
+					image: {
+						src: koGuideImagePath("07-research-list.png"),
+						alt: "신규 리서치의 상품 목록. 상품이 상태와 요약과 함께 카드로 나열된다.",
+						caption: "완료된 상품부터 열어 보며 리포트 구조에 익숙해진다.",
+					},
 				},
 				{
 					title: "리포트 판단 기준",
 					body: "점수가 높아도 공급 안정성, 가격 설득력, 계절성, 방송에서 보여줄 장면이 부족하면 우선순위를 낮춘다. 반대로 점수가 중간이어도 방송 시연이 강하면 검토 가치가 있다.",
+					image: {
+						src: koGuideImagePath("07b-research-report.png"),
+						alt: "개별 상품 리서치 리포트 화면. 시장성 점수, 타깃 인구통계, 계절성, 원가 분석 등이 세로로 이어진다.",
+						caption: "13개 섹션을 위에서부터 읽으면 한 상품의 판단 재료가 갖춰진다.",
+					},
 				},
 			],
 		},
@@ -268,10 +334,20 @@ const ko: GuideContent = {
 				{
 					title: "전략 생성 전 확인",
 					body: "목표 시장, 가격대, 카테고리, 원하는 상품 방향을 명확히 입력한다. 목표가 구체적일수록 추천 후보와 실행 전략이 실무에 맞게 좁혀진다.",
+					image: {
+						src: koGuideImagePath("05-md-strategy-form.png"),
+						alt: "확장 전략 입력 화면. 위에 목표 입력란과 카테고리·타깃 시장·가격대, 아래에 자사 매출 분석 데이터 미리보기가 있다.",
+						caption: "여기에 넣은 목표가 이후 모든 스킬의 입력이 된다.",
+					},
 				},
 				{
 					title: "추천 상품 보기",
 					body: "추천 상품은 시장 반응, 자사 판매 흐름, 경쟁 방송 근거, 상품 설명 가능성을 함께 반영한다. 추천 이유와 위험 요소를 같이 읽고 최종 후보를 정한다.",
+					image: {
+						src: koGuideImagePath("05b-md-strategy-result.png"),
+						alt: "확장 전략 결과 페이지. 상품 선정 섹션과 추천 상품 목록이 표시된다.",
+						caption: "상위 티어와 리스크 항목은 반드시 회의에서 공유한다.",
+					},
 				},
 				{
 					title: "전략 결과 활용",
@@ -286,6 +362,11 @@ const ko: GuideContent = {
 				{
 					title: "플랫폼 관점으로 보기",
 					body: "라이브 커머스 전략은 짧은 설명, 실시간 반응, 시연 장면, 진행자 멘트를 중점으로 본다. TV 홈쇼핑과 같은 상품이라도 강조 포인트가 달라질 수 있다.",
+					image: {
+						src: koGuideImagePath("06-live-strategy-form.png"),
+						alt: "라이브 커머스 전략 입력 화면. 목표 입력란, 플랫폼 선택 배지, 과거 전략 목록이 표시된다.",
+						caption: "플랫폼은 복수 선택 가능. 비워 두면 전 플랫폼을 함께 분석한다.",
+					},
 				},
 				{
 					title: "실행 계획 확인",
@@ -300,10 +381,20 @@ const ko: GuideContent = {
 				{
 					title: "상품 선택",
 					body: "리서치가 완료된 상품이나 추천 전략에서 선택한 상품을 기준으로 대본을 만든다. 상품의 차별점, 시연 포인트, 가격 설득 근거가 충분한지 먼저 확인한다.",
+					image: {
+						src: koGuideImagePath("08-screenplays-list.png"),
+						alt: "방송 대본 목록. 생성된 대본이 갱신 일시와 함께 표 형태로 나열된다.",
+						caption: "완성 상태인 것부터 열어 볼 수 있다.",
+					},
 				},
 				{
 					title: "대본 검토",
 					body: "도입, 문제 제기, 시연, 가격 제안, 구매 유도 흐름이 자연스러운지 확인한다. 표현은 실제 진행자 말투와 브랜드 톤에 맞게 다듬는다.",
+					image: {
+						src: koGuideImagePath("08c-screenplay-revise.png"),
+						alt: "대본 화면 아래쪽의 개고 입력란. 자연문으로 수정 지시를 넣는 입력창과 자주 쓰는 요청 버튼이 있다.",
+						caption: "자연문으로 지시하면 새 원고가 생성된다. 이전 원고는 그대로 남는다.",
+					},
 				},
 				{
 					title: "무엇을 근거로 썼는지 확인한다",
@@ -315,16 +406,31 @@ const ko: GuideContent = {
 						"구성 / 실연 — 대본을 쓰기 전에 확정한 진행 순서와 척 배분. 지시한 필수 실연이 빠지지 않았는지 여기서 본다.",
 						"주장 — 대본 안의 사실 주장과 그 근거. 항목을 누르면 해당 줄로 이동한다.",
 					],
+					image: {
+						src: koGuideImagePath("08b-screenplay-detail.png"),
+						alt: "방송 대본 상세 화면. 위에 원고 전환과 내려받기 버튼, 아래에 대본·구성·실연·사실·참조·주장·이력 탭과 본문이 있다.",
+						caption: "문장을 읽기 전에 이 탭들을 먼저 본다.",
+					},
 				},
 				{
 					title: "배지 세 가지를 구분한다",
 					body:
 						"사실 탭의 각 항목에는 등급이 붙는다. 단정 가능 = 자사 입력이나 검증된 값, 그대로 말해도 된다. 출처 명시 = 메이커 주장, '메이커에 따르면'을 붙여야 한다. 구성 전용 = 방송 횟수 같은 대리 지표로, 구성을 정할 때만 쓰고 방송에서는 말하면 안 된다.",
+					image: {
+						src: koGuideImagePath("14-screenplay-facts.png"),
+						alt: "대본의 사실 탭. 각 항목에 등급 배지와 근거 종류·출처·관측일이 표시된다.",
+						caption: "배지가 그 문장을 방송에서 단정해도 되는지를 결정한다.",
+					},
 				},
 				{
 					title: "'요확인'은 방송 전에 반드시 처리한다",
 					body:
 						"주장 탭에서 빨간 '요확인'이 맨 위에 온다. 근거가 없는 수치나 효과 표현이라는 뜻이다. 시스템은 숫자·효과·최상급 표현을 기계적으로 찾아내므로, 검토가 놓친 문장도 여기 걸린다. 상단 표시줄에도 건수가 뜬다.",
+					image: {
+						src: koGuideImagePath("13-screenplay-claims.png"),
+						alt: "대본의 주장 탭. '요확인' 배지가 붙은 주장이 줄 번호와 함께 위쪽에 나열되고, 상단 표시줄에도 건수가 뜬다.",
+						caption: "상단의 건수가 미처리 수. 항목을 누르면 대본의 해당 줄로 이동한다.",
+					},
 				},
 				{
 					title: "예전 원고에는 이 정보가 없다",
@@ -367,8 +473,6 @@ const ko: GuideContent = {
 		},
 	],
 };
-
-const guideImagePath = (file: string) => `/guide/ja/${file}`;
 
 const ja: GuideContent = {
 	badge: "MediaWorks 利用ガイド",
