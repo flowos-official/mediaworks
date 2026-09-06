@@ -86,11 +86,31 @@ export function parseChannelSlugs(value: string | null | undefined): string[] {
 
 /**
  * Channels whose products must NOT surface in discovery / strategy search.
- * Operator policy (2026-06-02): テレ東マート (txd) is excluded by default.
+ * `isDiscoverySearchable` reads this set, so a slug here also stops Pass D
+ * spending a Brave call on it — the exclusion saves quota, it does not merely
+ * filter results.
+ *
  * Calendar visibility (lib/broadcasts/channel-style.ts) is a SEPARATE registry
  * and is unaffected by this set.
+ *
+ * - txd (テレ東マート): operator policy, 2026-06-02.
+ * - uranoura (ABCウラのウラまで): the programme went off air and ABC replaced it
+ *   with らくらく茂 (already registered as `rakurakum`). The calendar crawl was
+ *   delisted 2026-06-19 but this registry was missed, so the daily cron kept
+ *   searching a dead programme — 0 products in the 45 days measured.
+ * - rakuten_shopping_channel (楽天市場ショッピングチャンネル): the service is
+ *   live, but its commerce happens INSIDE the video stream. A `site:` search
+ *   over event.rakuten.co.jp/campaign/live-shopping returns exactly one page —
+ *   the campaign landing page — for every keyword, so the channel produced one
+ *   row on 2026-07-23 (the landing page itself, not a product) and nothing
+ *   since. Measured 2026-09-06. Collecting it needs a parser over the archive
+ *   listing, not a keyword search.
  */
-export const EXCLUDED_DISCOVERY_SLUGS: ReadonlySet<string> = new Set(["txd"]);
+export const EXCLUDED_DISCOVERY_SLUGS: ReadonlySet<string> = new Set([
+	"txd",
+	"uranoura",
+	"rakuten_shopping_channel",
+]);
 
 /**
  * True when a persisted `tv_channel_source` (comma-joined slugs) contains any
